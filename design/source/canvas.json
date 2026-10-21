@@ -1,0 +1,319 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "03-Setup.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "03 Default browser & import",
+      "w": 412,
+      "x": 492,
+      "y": 0
+    },
+    "04-Home.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "04 Home / New tab",
+      "w": 412,
+      "x": 0,
+      "y": 1315
+    },
+    "04b-Search.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "04b Search & suggestions",
+      "w": 412,
+      "x": 492,
+      "y": 1315
+    },
+    "04c-Skim-History.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "04c Skim history",
+      "w": 412,
+      "x": 984,
+      "y": 1315
+    },
+    "05-Browsing.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "05 Browsing",
+      "w": 412,
+      "x": 1476,
+      "y": 1315
+    },
+    "05b-Menu.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "05b More menu",
+      "w": 412,
+      "x": 1968,
+      "y": 1315
+    },
+    "05c-Find.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "05c Find in page",
+      "w": 412,
+      "x": 2460,
+      "y": 1315
+    },
+    "05d-Link-Menu.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "05d Link & image options",
+      "w": 412,
+      "x": 2952,
+      "y": 1315
+    },
+    "06-AI-Panel.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "06 Ask about this page",
+      "w": 412,
+      "x": 0,
+      "y": 2630
+    },
+    "06b-Ask-Home.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "06b Ask Skim from Home & Tabs",
+      "w": 412,
+      "x": 492,
+      "y": 2630
+    },
+    "06c-AI-States.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "06c AI generating & errors",
+      "w": 412,
+      "x": 984,
+      "y": 2630
+    },
+    "06d-AI-Permission.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "06d AI permission, first time per site",
+      "w": 412,
+      "x": 1476,
+      "y": 2630
+    },
+    "08-Reader.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "08 Reader view",
+      "w": 412,
+      "x": 3444,
+      "y": 1315
+    },
+    "08b-Reader-Text.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "08b Reader text settings",
+      "w": 412,
+      "x": 3936,
+      "y": 1315
+    },
+    "09-Tabs.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "09 Tabs",
+      "w": 412,
+      "x": 0,
+      "y": 3945
+    },
+    "09b-Incognito-Tabs.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "09b Incognito tabs",
+      "w": 412,
+      "x": 492,
+      "y": 3945
+    },
+    "09c-Incognito-New-Tab.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "09c Incognito new tab",
+      "w": 412,
+      "x": 984,
+      "y": 3945
+    },
+    "10-AI-Settings.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "10 AI & privacy settings",
+      "w": 412,
+      "x": 492,
+      "y": 5260
+    },
+    "11-Load-Error.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "11 Page failed to load",
+      "w": 412,
+      "x": 4428,
+      "y": 1315
+    },
+    "12-Settings.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "12 Settings",
+      "w": 412,
+      "x": 0,
+      "y": 5260
+    },
+    "13-History.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "13 History",
+      "w": 412,
+      "x": 984,
+      "y": 5260
+    },
+    "14-Bookmarks.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "14 Bookmarks",
+      "w": 412,
+      "x": 1476,
+      "y": 5260
+    },
+    "15-Dialogs.dc.html": {
+      "h": 2384,
+      "radius": 24,
+      "title": "15 Dialogs, menus & snackbars",
+      "w": 1872,
+      "x": 0,
+      "y": 6575
+    },
+    "16-Navigation-Map.dc.html": {
+      "h": 4756,
+      "radius": 24,
+      "title": "16 Navigation map",
+      "w": 1872,
+      "x": 0,
+      "y": 9359
+    },
+    "17-Tokens.dc.html": {
+      "h": 4178,
+      "radius": 24,
+      "title": "17 Tokens",
+      "w": 1872,
+      "x": 1952,
+      "y": 9359
+    },
+    "18-Components.dc.html": {
+      "h": 3818,
+      "radius": 24,
+      "title": "18 Components & setup",
+      "w": 1872,
+      "x": 3904,
+      "y": 9359
+    },
+    "Main.dc.html": {
+      "h": 915,
+      "radius": 24,
+      "title": "01 Welcome",
+      "w": 412,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-20T03:55:03Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "flow-ask": {
+      "kind": "title1",
+      "maxW": 1888,
+      "text": "Ask Skim",
+      "w": 240,
+      "x": 0,
+      "y": 2330
+    },
+    "flow-browse": {
+      "kind": "title1",
+      "maxW": 4840,
+      "text": "Browse",
+      "w": 240,
+      "x": 0,
+      "y": 1015
+    },
+    "flow-dialogs": {
+      "kind": "title1",
+      "maxW": 1872,
+      "text": "Dialogs, menus & snackbars",
+      "w": 240,
+      "x": 0,
+      "y": 6275
+    },
+    "flow-handoff": {
+      "kind": "title1",
+      "maxW": 5776,
+      "text": "Handoff for Claude Code",
+      "w": 240,
+      "x": 0,
+      "y": 9059
+    },
+    "flow-onboarding": {
+      "kind": "title1",
+      "maxW": 904,
+      "text": "Onboarding",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "flow-settings": {
+      "kind": "title1",
+      "maxW": 1888,
+      "text": "Settings & library",
+      "w": 240,
+      "x": 0,
+      "y": 4960
+    },
+    "flow-tabs": {
+      "kind": "title1",
+      "maxW": 1396,
+      "text": "Tabs & incognito",
+      "w": 240,
+      "x": 0,
+      "y": 3645
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "03-Setup.dc.html",
+    "04-Home.dc.html",
+    "04b-Search.dc.html",
+    "04c-Skim-History.dc.html",
+    "05-Browsing.dc.html",
+    "05b-Menu.dc.html",
+    "05c-Find.dc.html",
+    "05d-Link-Menu.dc.html",
+    "08-Reader.dc.html",
+    "08b-Reader-Text.dc.html",
+    "11-Load-Error.dc.html",
+    "06-AI-Panel.dc.html",
+    "06b-Ask-Home.dc.html",
+    "06c-AI-States.dc.html",
+    "06d-AI-Permission.dc.html",
+    "09-Tabs.dc.html",
+    "09b-Incognito-Tabs.dc.html",
+    "09c-Incognito-New-Tab.dc.html",
+    "12-Settings.dc.html",
+    "10-AI-Settings.dc.html",
+    "13-History.dc.html",
+    "14-Bookmarks.dc.html",
+    "15-Dialogs.dc.html",
+    "16-Navigation-Map.dc.html",
+    "17-Tokens.dc.html",
+    "18-Components.dc.html"
+  ],
+  "pages": [],
+  "title": "Skim AI Browser"
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skim onboarding: default browser and import</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</helmet>
+<div style="width: 412px; height: 915px; background: #F8F5FF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <div style="height: 24px; flex-shrink: 0"></div>
+
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; padding: 48px 16px 0; overflow: hidden">
+
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 8px">
+      <h1 style="margin: 0; font-size: 32px; line-height: 40px; font-weight: 500; color: #292B51">Almost there</h1>
+      <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Two optional steps that make Skim feel like home. You can change the default browser later in Settings.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 28px; background: #F1EFFF">
+        <div style="display: flex; gap: 16px">
+          <span aria-hidden="true" style="width: 48px; height: 48px; background: {{primaryContainer}}; color: {{onPrimaryContainer}}; clip-path: polygon(50.0% 0.0%, 54.9% 0.6%, 59.4% 2.5%, 63.6% 5.3%, 67.1% 8.8%, 70.1% 12.4%, 72.7% 16.0%, 75.2% 19.3%, 77.8% 22.2%, 80.7% 24.8%, 84.0% 27.3%, 87.6% 29.9%, 91.2% 32.9%, 94.7% 36.4%, 97.5% 40.6%, 99.4% 45.1%, 100.0% 50.0%, 99.4% 54.9%, 97.5% 59.4%, 94.7% 63.6%, 91.2% 67.1%, 87.6% 70.1%, 84.0% 72.7%, 80.7% 75.2%, 77.8% 77.8%, 75.2% 80.7%, 72.7% 84.0%, 70.1% 87.6%, 67.1% 91.2%, 63.6% 94.7%, 59.4% 97.5%, 54.9% 99.4%, 50.0% 100.0%, 45.1% 99.4%, 40.6% 97.5%, 36.4% 94.7%, 32.9% 91.2%, 29.9% 87.6%, 27.3% 84.0%, 24.8% 80.7%, 22.2% 77.8%, 19.3% 75.2%, 16.0% 72.7%, 12.4% 70.1%, 8.8% 67.1%, 5.3% 63.6%, 2.5% 59.4%, 0.6% 54.9%, 0.0% 50.0%, 0.6% 45.1%, 2.5% 40.6%, 5.3% 36.4%, 8.8% 32.9%, 12.4% 29.9%, 16.0% 27.3%, 19.3% 24.8%, 22.2% 22.2%, 24.8% 19.3%, 27.3% 16.0%, 29.9% 12.4%, 32.9% 8.8%, 36.4% 5.3%, 40.6% 2.5%, 45.1% 0.6%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms">public</span></span>
+          <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+            <span style="font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Make Skim your default browser</span>
+            <span style="font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Links from other apps open here, with summaries and answers one tap away.</span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end">
+          <button type="button" style="height: 40px; border: 0; border-radius: 20px; padding: 0 16px; background: {{secondaryContainer}}; color: {{onSecondaryContainer}}; font-size: 14px; line-height: 20px; font-weight: 500">Set as default</button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 28px; background: #F1EFFF">
+        <div style="display: flex; gap: 16px">
+          <span aria-hidden="true" style="width: 48px; height: 48px; background: {{secondaryContainer}}; color: {{onSecondaryContainer}}; clip-path: polygon(95.2% 4.8%, 98.4% 9.4%, 100.0% 15.0%, 100.0% 21.1%, 98.7% 27.3%, 96.4% 33.1%, 93.8% 38.3%, 91.4% 42.7%, 89.8% 46.5%, 89.2% 50.0%, 89.8% 53.5%, 91.4% 57.3%, 93.8% 61.7%, 96.4% 66.9%, 98.7% 72.7%, 100.0% 78.9%, 100.0% 85.0%, 98.4% 90.6%, 95.2% 95.2%, 90.6% 98.4%, 85.0% 100.0%, 78.9% 100.0%, 72.7% 98.7%, 66.9% 96.4%, 61.7% 93.8%, 57.3% 91.4%, 53.5% 89.8%, 50.0% 89.2%, 46.5% 89.8%, 42.7% 91.4%, 38.3% 93.8%, 33.1% 96.4%, 27.3% 98.7%, 21.1% 100.0%, 15.0% 100.0%, 9.4% 98.4%, 4.8% 95.2%, 1.6% 90.6%, 0.0% 85.0%, 0.0% 78.9%, 1.3% 72.7%, 3.6% 66.9%, 6.2% 61.7%, 8.6% 57.3%, 10.2% 53.5%, 10.8% 50.0%, 10.2% 46.5%, 8.6% 42.7%, 6.2% 38.3%, 3.6% 33.1%, 1.3% 27.3%, 0.0% 21.1%, 0.0% 15.0%, 1.6% 9.4%, 4.8% 4.8%, 9.4% 1.6%, 15.0% 0.0%, 21.1% 0.0%, 27.3% 1.3%, 33.1% 3.6%, 38.3% 6.2%, 42.7% 8.6%, 46.5% 10.2%, 50.0% 10.8%, 53.5% 10.2%, 57.3% 8.6%, 61.7% 6.2%, 66.9% 3.6%, 72.7% 1.3%, 78.9% 0.0%, 85.0% 0.0%, 90.6% 1.6%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms">bookmarks</span></span>
+          <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+            <span style="font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Bring your bookmarks</span>
+            <span style="font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Choose an HTML bookmarks file exported from another browser.</span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end">
+          <button type="button" style="height: 40px; border: 0; border-radius: 20px; padding: 0 16px; background: {{secondaryContainer}}; color: {{onSecondaryContainer}}; font-size: 14px; line-height: 20px; font-weight: 500">Choose file</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 0 8px; color: #565881">
+      <span class="ms" aria-hidden="true" style="font-size: 20px; flex-shrink: 0">verified_user</span>
+      <span style="font-size: 12px; line-height: 16px; text-wrap: pretty">Skim reads a page only when you ask, and never in incognito tabs. Page text is sent encrypted and deleted after each answer.</span>
+    </div>
+  </div>
+
+  <div style="flex-shrink: 0; padding: 16px 24px 40px">
+    <button type="button" style="width: 100%; height: 56px; border: 0; border-radius: 28px; padding: 0 24px; background: {{primary}}; color: {{onPrimary}}; font-size: 16px; line-height: 24px; font-weight: 500">Start browsing</button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"seed":{"editor":"color","default":"#1A56DB","options":["#1A56DB","#2E7D32","#8E24AA","#C62828"],"section":"Dynamic color"},"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var T = {
+      '#1A56DB': { primary: '#004FD9', onPrimary: '#F1F2FF', primaryContainer: '#7D9CFF', onPrimaryContainer: '#001D5C', secondaryContainer: '#CCCEFF', onSecondaryContainer: '#343AA2', tertiary: '#8E3A88', tertiaryContainer: '#FC99EF', onTertiaryContainer: '#651162', inversePrimary: '#638AFF' },
+      '#2E7D32': { primary: '#006B1A', onPrimary: '#D1FFC8', primaryContainer: '#7AFE7C', onPrimaryContainer: '#006016', secondaryContainer: '#86FAAC', onSecondaryContainer: '#005F31', tertiary: '#00656F', tertiaryContainer: '#10EAFE', onTertiaryContainer: '#005159', inversePrimary: '#7AFE7C' },
+      '#8E24AA': { primary: '#9323B0', onPrimary: '#FFEEFD', primaryContainer: '#E272FD', onPrimaryContainer: '#3F0050', secondaryContainer: '#FFBDF3', onSecondaryContainer: '#762473', tertiary: '#A0392D', tertiaryContainer: '#FF9383', onTertiaryContainer: '#640D07', inversePrimary: '#E272FD' },
+      '#C62828': { primary: '#AF2524', onPrimary: '#FFEFED', primaryContainer: '#FF766C', onPrimaryContainer: '#4F0004', secondaryContainer: '#FFC2C9', onSecondaryContainer: '#842139', tertiary: '#7742A6', tertiaryContainer: '#D09AFF', onTertiaryContainer: '#490C77', inversePrimary: '#F85B52' }
+    };
+    var seed = (this.props.seed || '#1A56DB').toUpperCase();
+    return T[seed] || T['#1A56DB'];
+  }
+}
+</script>
+</body>
+</html>

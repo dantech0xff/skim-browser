@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skim: page failed to load</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</helmet>
+<div style="width: 412px; height: 915px; background: #F8F5FF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <div style="height: 24px; flex-shrink: 0"></div>
+
+  <div style="flex-shrink: 0; padding: 8px 16px; background: #F8F5FF">
+    <div style="height: 56px; border-radius: 28px; background: #E0E0FF; display: flex; align-items: center; gap: 4px; padding: 0 16px 0 4px">
+      <span style="width: 48px; height: 48px; color: #565881; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" role="img" aria-label="Page didn't load" style="font-size: 20px">error</span></span>
+      <button type="button" aria-label="Edit address, nightbus-kansai.jp/timetable" style="flex: 1 1 auto; min-width: 0; height: 48px; border: 0; background: transparent; text-align: left; padding: 0; font-size: 16px; line-height: 24px; color: #292B51; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">nightbus-kansai.jp/timetable</button>
+    </div>
+  </div>
+
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 0 32px 120px; overflow: hidden">
+
+    <sc-if value="{{isUnreachable}}" hint-placeholder-val="{{ true }}">
+      <span aria-hidden="true" style="width: 128px; height: 128px; background: {{primaryContainer}}; color: {{onPrimaryContainer}}; clip-path: polygon(50.0% 0.0%, 53.0% 2.2%, 55.5% 6.8%, 57.6% 10.4%, 59.8% 11.9%, 62.1% 12.6%, 64.5% 13.4%, 67.2% 13.5%, 71.0% 11.9%, 75.7% 9.6%, 79.4% 9.5%, 80.5% 13.1%, 79.8% 18.3%, 79.4% 22.4%, 80.3% 24.9%, 81.8% 26.9%, 83.2% 28.9%, 85.3% 30.6%, 89.4% 31.5%, 94.5% 32.4%, 97.6% 34.5%, 96.4% 38.1%, 92.7% 41.8%, 90.0% 44.9%, 89.3% 47.5%, 89.3% 50.0%, 89.3% 52.5%, 90.0% 55.1%, 92.7% 58.2%, 96.4% 61.9%, 97.6% 65.5%, 94.5% 67.6%, 89.4% 68.5%, 85.3% 69.4%, 83.2% 71.1%, 81.8% 73.1%, 80.3% 75.1%, 79.4% 77.6%, 79.8% 81.7%, 80.5% 86.9%, 79.4% 90.5%, 75.7% 90.4%, 71.0% 88.1%, 67.2% 86.5%, 64.5% 86.6%, 62.1% 87.4%, 59.8% 88.1%, 57.6% 89.6%, 55.5% 93.2%, 53.0% 97.8%, 50.0% 100.0%, 47.0% 97.8%, 44.5% 93.2%, 42.4% 89.6%, 40.2% 88.1%, 37.9% 87.4%, 35.5% 86.6%, 32.8% 86.5%, 29.0% 88.1%, 24.3% 90.4%, 20.6% 90.5%, 19.5% 86.9%, 20.2% 81.7%, 20.6% 77.6%, 19.7% 75.1%, 18.2% 73.1%, 16.8% 71.1%, 14.7% 69.4%, 10.6% 68.5%, 5.5% 67.6%, 2.4% 65.5%, 3.6% 61.9%, 7.3% 58.2%, 10.0% 55.1%, 10.7% 52.5%, 10.7% 50.0%, 10.7% 47.5%, 10.0% 44.9%, 7.3% 41.8%, 3.6% 38.1%, 2.4% 34.5%, 5.5% 32.4%, 10.6% 31.5%, 14.7% 30.6%, 16.8% 28.9%, 18.2% 26.9%, 19.7% 24.9%, 20.6% 22.4%, 20.2% 18.3%, 19.5% 13.1%, 20.6% 9.5%, 24.3% 9.6%, 29.0% 11.9%, 32.8% 13.5%, 35.5% 13.4%, 37.9% 12.6%, 40.2% 11.9%, 42.4% 10.4%, 44.5% 6.8%, 47.0% 2.2%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" style="font-size: 56px">public_off</span></span>
+    </sc-if>
+    <sc-if value="{{isNoInternet}}" hint-placeholder-val="{{ false }}">
+      <span aria-hidden="true" style="width: 128px; height: 128px; background: {{primaryContainer}}; color: {{onPrimaryContainer}}; clip-path: polygon(50.0% 0.0%, 53.2% 0.8%, 56.2% 2.8%, 59.0% 4.9%, 61.7% 6.3%, 64.8% 6.5%, 68.2% 6.0%, 71.8% 5.8%, 75.0% 6.7%, 77.4% 9.0%, 79.0% 12.2%, 80.3% 15.5%, 82.0% 18.0%, 84.5% 19.7%, 87.8% 21.0%, 91.0% 22.6%, 93.3% 25.0%, 94.2% 28.2%, 94.0% 31.8%, 93.5% 35.2%, 93.7% 38.3%, 95.1% 41.0%, 97.2% 43.8%, 99.2% 46.8%, 100.0% 50.0%, 99.2% 53.2%, 97.2% 56.2%, 95.1% 59.0%, 93.7% 61.7%, 93.5% 64.8%, 94.0% 68.2%, 94.2% 71.8%, 93.3% 75.0%, 91.0% 77.4%, 87.8% 79.0%, 84.5% 80.3%, 82.0% 82.0%, 80.3% 84.5%, 79.0% 87.8%, 77.4% 91.0%, 75.0% 93.3%, 71.8% 94.2%, 68.2% 94.0%, 64.8% 93.5%, 61.7% 93.7%, 59.0% 95.1%, 56.2% 97.2%, 53.2% 99.2%, 50.0% 100.0%, 46.8% 99.2%, 43.8% 97.2%, 41.0% 95.1%, 38.3% 93.7%, 35.2% 93.5%, 31.8% 94.0%, 28.2% 94.2%, 25.0% 93.3%, 22.6% 91.0%, 21.0% 87.8%, 19.7% 84.5%, 18.0% 82.0%, 15.5% 80.3%, 12.2% 79.0%, 9.0% 77.4%, 6.7% 75.0%, 5.8% 71.8%, 6.0% 68.2%, 6.5% 64.8%, 6.3% 61.7%, 4.9% 59.0%, 2.8% 56.2%, 0.8% 53.2%, 0.0% 50.0%, 0.8% 46.8%, 2.8% 43.8%, 4.9% 41.0%, 6.3% 38.3%, 6.5% 35.2%, 6.0% 31.8%, 5.8% 28.2%, 6.7% 25.0%, 9.0% 22.6%, 12.2% 21.0%, 15.5% 19.7%, 18.0% 18.0%, 19.7% 15.5%, 21.0% 12.2%, 22.6% 9.0%, 25.0% 6.7%, 28.2% 5.8%, 31.8% 6.0%, 35.2% 6.5%, 38.3% 6.3%, 41.0% 4.9%, 43.8% 2.8%, 46.8% 0.8%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" style="font-size: 56px">wifi_off</span></span>
+    </sc-if>
+    <sc-if value="{{isTimeout}}" hint-placeholder-val="{{ false }}">
+      <span aria-hidden="true" style="width: 128px; height: 128px; background: {{primaryContainer}}; color: {{onPrimaryContainer}}; clip-path: polygon(50.0% 0.0%, 53.2% 1.0%, 56.1% 3.8%, 58.4% 7.7%, 60.3% 11.7%, 61.9% 14.8%, 63.9% 16.5%, 66.4% 16.7%, 69.8% 15.7%, 73.9% 14.2%, 78.3% 13.1%, 82.4% 13.1%, 85.4% 14.6%, 86.9% 17.6%, 86.9% 21.7%, 85.8% 26.1%, 84.3% 30.2%, 83.3% 33.6%, 83.5% 36.1%, 85.2% 38.1%, 88.3% 39.7%, 92.3% 41.6%, 96.2% 43.9%, 99.0% 46.8%, 100.0% 50.0%, 99.0% 53.2%, 96.2% 56.1%, 92.3% 58.4%, 88.3% 60.3%, 85.2% 61.9%, 83.5% 63.9%, 83.3% 66.4%, 84.3% 69.8%, 85.8% 73.9%, 86.9% 78.3%, 86.9% 82.4%, 85.4% 85.4%, 82.4% 86.9%, 78.3% 86.9%, 73.9% 85.8%, 69.8% 84.3%, 66.4% 83.3%, 63.9% 83.5%, 61.9% 85.2%, 60.3% 88.3%, 58.4% 92.3%, 56.1% 96.2%, 53.2% 99.0%, 50.0% 100.0%, 46.8% 99.0%, 43.9% 96.2%, 41.6% 92.3%, 39.7% 88.3%, 38.1% 85.2%, 36.1% 83.5%, 33.6% 83.3%, 30.2% 84.3%, 26.1% 85.8%, 21.7% 86.9%, 17.6% 86.9%, 14.6% 85.4%, 13.1% 82.4%, 13.1% 78.3%, 14.2% 73.9%, 15.7% 69.8%, 16.7% 66.4%, 16.5% 63.9%, 14.8% 61.9%, 11.7% 60.3%, 7.7% 58.4%, 3.8% 56.1%, 1.0% 53.2%, 0.0% 50.0%, 1.0% 46.8%, 3.8% 43.9%, 7.7% 41.6%, 11.7% 39.7%, 14.8% 38.1%, 16.5% 36.1%, 16.7% 33.6%, 15.7% 30.2%, 14.2% 26.1%, 13.1% 21.7%, 13.1% 17.6%, 14.6% 14.6%, 17.6% 13.1%, 21.7% 13.1%, 26.1% 14.2%, 30.2% 15.7%, 33.6% 16.7%, 36.1% 16.5%, 38.1% 14.8%, 39.7% 11.7%, 41.6% 7.7%, 43.9% 3.8%, 46.8% 1.0%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" style="font-size: 56px">schedule</span></span>
+    </sc-if>
+
+    <div style="display: flex; flex-direction: column; align-items: center; width: 100%">
+      <sc-if value="{{isUnreachable}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 500; color: #292B51; text-wrap: balance">Can't reach this site</h1>
+          <p style="margin: 0; font-size: 16px; line-height: 24px; color: #565881; text-wrap: pretty">Skim couldn't find nightbus-kansai.jp. Check the address for typos, or try again in a moment.</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{isNoInternet}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 500; color: #292B51; text-wrap: balance">No internet connection</h1>
+          <p style="margin: 0; font-size: 16px; line-height: 24px; color: #565881; text-wrap: pretty">Turn on Wi-Fi or mobile data, then try again. Skim reloads this tab as soon as you're back online.</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{isTimeout}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 500; color: #292B51; text-wrap: balance">This site is taking too long</h1>
+          <p style="margin: 0; font-size: 16px; line-height: 24px; color: #565881; text-wrap: pretty">nightbus-kansai.jp didn't respond. It may be busy or briefly down.</p>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 280px">
+      <button type="button" style="width: 100%; height: 56px; border: 0; border-radius: 28px; background: {{primary}}; color: {{onPrimary}}; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; font-size: 16px; line-height: 24px; font-weight: 500"><span class="ms" aria-hidden="true">refresh</span>Try again</button>
+      <sc-if value="{{isNoInternet}}" hint-placeholder-val="{{ false }}">
+        <button type="button" style="width: 100%; height: 56px; border: 0; border-radius: 28px; background: {{secondaryContainer}}; color: {{onSecondaryContainer}}; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; font-size: 16px; line-height: 24px; font-weight: 500"><span class="ms" aria-hidden="true">wifi</span>Internet settings</button>
+      </sc-if>
+    </div>
+
+    <span style="font-size: 12px; line-height: 16px; color: #565881">{{errorCode}}</span>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; align-items: center; gap: 8px">
+    <div role="toolbar" aria-label="Browser controls" style="height: 64px; border-radius: 32px; background: #E7E6FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; padding: 0 8px">
+      <button type="button" aria-label="Back" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_back</span></button>
+      <button type="button" aria-label="Forward" disabled="" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: rgba(41,43,81,0.38); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_forward</span></button>
+      <button type="button" aria-label="Tabs, 7 open" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span style="width: 22px; height: 22px; border: 2px solid currentColor; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 12px; font-weight: 700">7</span></button>
+      <button type="button" aria-label="More options" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">more_vert</span></button>
+    </div>
+    <button type="button" aria-label="Ask Skim about this page, unavailable until the page loads" disabled="" style="width: 56px; height: 56px; border: 0; border-radius: 16px; background: rgba(41,43,81,0.10); color: rgba(41,43,81,0.38); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">auto_awesome</span></button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"seed":{"editor":"color","default":"#1A56DB","options":["#1A56DB","#2E7D32","#8E24AA","#C62828"],"section":"Dynamic color"},"variant":{"editor":"enum","options":["Unreachable","No internet","Timed out"],"default":"Unreachable","section":"State"},"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var T = {
+      '#1A56DB': { primary: '#004FD9', onPrimary: '#F1F2FF', primaryContainer: '#7D9CFF', onPrimaryContainer: '#001D5C', secondaryContainer: '#CCCEFF', onSecondaryContainer: '#343AA2', tertiary: '#8E3A88', tertiaryContainer: '#FC99EF', onTertiaryContainer: '#651162', inversePrimary: '#638AFF' },
+      '#2E7D32': { primary: '#006B1A', onPrimary: '#D1FFC8', primaryContainer: '#7AFE7C', onPrimaryContainer: '#006016', secondaryContainer: '#86FAAC', onSecondaryContainer: '#005F31', tertiary: '#00656F', tertiaryContainer: '#10EAFE', onTertiaryContainer: '#005159', inversePrimary: '#7AFE7C' },
+      '#8E24AA': { primary: '#9323B0', onPrimary: '#FFEEFD', primaryContainer: '#E272FD', onPrimaryContainer: '#3F0050', secondaryContainer: '#FFBDF3', onSecondaryContainer: '#762473', tertiary: '#A0392D', tertiaryContainer: '#FF9383', onTertiaryContainer: '#640D07', inversePrimary: '#E272FD' },
+      '#C62828': { primary: '#AF2524', onPrimary: '#FFEFED', primaryContainer: '#FF766C', onPrimaryContainer: '#4F0004', secondaryContainer: '#FFC2C9', onSecondaryContainer: '#842139', tertiary: '#7742A6', tertiaryContainer: '#D09AFF', onTertiaryContainer: '#490C77', inversePrimary: '#F85B52' }
+    };
+    var seed = (this.props.seed || '#1A56DB').toUpperCase();
+    var c = T[seed] || T['#1A56DB'];
+    var vals = {};
+    for (var k in c) { vals[k] = c[k]; }
+    var variant = this.props.variant || 'Unreachable';
+    var noInternet = variant === 'No internet';
+    var timeout = variant === 'Timed out';
+    vals.isUnreachable = !noInternet && !timeout;
+    vals.isNoInternet = noInternet;
+    vals.isTimeout = timeout;
+    vals.errorCode = noInternet ? 'ERR_INTERNET_DISCONNECTED' : (timeout ? 'ERR_CONNECTION_TIMED_OUT' : 'ERR_NAME_NOT_RESOLVED');
+    return vals;
+  }
+}
+</script>
+</body>
+</html>

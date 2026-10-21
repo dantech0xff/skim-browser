@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skim reader view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</helmet>
+<div style="width: 412px; height: 915px; background: #F8F5FF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <div style="height: 24px; flex-shrink: 0"></div>
+
+  <div style="height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+    <button type="button" aria-label="Exit reader view" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #292B51; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">close</span></button>
+    <button type="button" aria-label="Text size" aria-pressed="false" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">format_size</span></button>
+  </div>
+
+  <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 8px 24px 0">
+    <div style="font-size: 12px; line-height: 16px; color: #565881">daylightjournal.com</div>
+    <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 500; color: #292B51; text-wrap: pretty">Why heat pumps are winning in cold climates</h1>
+    <div style="font-size: 14px; line-height: 20px; color: #565881">Marta Lindqvist</div>
+    <p style="margin: 4px 0 0; font-size: 17px; line-height: 28px; color: #292B51; text-wrap: pretty">For decades the advice was simple: if your winters drop well below freezing, a heat pump is not for you. That advice is now out of date, and the numbers coming out of Norway, Finland and the northern United States show how quickly it has aged.</p>
+    <p style="margin: 0; font-size: 17px; line-height: 28px; color: #292B51; text-wrap: pretty">Cold-climate models from several manufacturers keep delivering useful heat at minus 25 °C. The trick is a variable-speed compressor paired with refrigerants that stay efficient when the air outside has little warmth left to give.</p>
+    <p style="margin: 0; font-size: 17px; line-height: 28px; color: #292B51; text-wrap: pretty">Installers in Maine report that the question has shifted from whether a heat pump will cope to how large a unit a house really needs. Oversizing, once a safety margin, now mostly means paying for capacity that sits idle.</p>
+    <p style="margin: 0; font-size: 17px; line-height: 28px; color: #292B51; text-wrap: pretty">The economics follow the engineering. A typical home switching from oil heating saves between $300 and $900 a year, according to the study.</p>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; align-items: center; gap: 8px">
+    <div role="toolbar" aria-label="Browser controls" style="height: 64px; border-radius: 32px; background: #E7E6FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; padding: 0 8px">
+      <button type="button" aria-label="Back" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_back</span></button>
+      <button type="button" aria-label="Forward" disabled="" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: rgba(41,43,81,0.38); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_forward</span></button>
+      <button type="button" aria-label="Tabs, 7 open" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span style="width: 22px; height: 22px; border: 2px solid currentColor; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 12px; font-weight: 700">7</span></button>
+      <button type="button" aria-label="More options" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">more_vert</span></button>
+    </div>
+    <button type="button" aria-label="Ask Skim about this page" style="width: 56px; height: 56px; border: 0; border-radius: 16px; background: {{tertiaryContainer}}; color: {{onTertiaryContainer}}; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms fill" aria-hidden="true">auto_awesome</span></button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"seed":{"editor":"color","default":"#1A56DB","options":["#1A56DB","#2E7D32","#8E24AA","#C62828"],"section":"Dynamic color"},"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var T = {
+      '#1A56DB': { primary: '#004FD9', onPrimary: '#F1F2FF', primaryContainer: '#7D9CFF', onPrimaryContainer: '#001D5C', secondaryContainer: '#CCCEFF', onSecondaryContainer: '#343AA2', tertiary: '#8E3A88', tertiaryContainer: '#FC99EF', onTertiaryContainer: '#651162', inversePrimary: '#638AFF' },
+      '#2E7D32': { primary: '#006B1A', onPrimary: '#D1FFC8', primaryContainer: '#7AFE7C', onPrimaryContainer: '#006016', secondaryContainer: '#86FAAC', onSecondaryContainer: '#005F31', tertiary: '#00656F', tertiaryContainer: '#10EAFE', onTertiaryContainer: '#005159', inversePrimary: '#7AFE7C' },
+      '#8E24AA': { primary: '#9323B0', onPrimary: '#FFEEFD', primaryContainer: '#E272FD', onPrimaryContainer: '#3F0050', secondaryContainer: '#FFBDF3', onSecondaryContainer: '#762473', tertiary: '#A0392D', tertiaryContainer: '#FF9383', onTertiaryContainer: '#640D07', inversePrimary: '#E272FD' },
+      '#C62828': { primary: '#AF2524', onPrimary: '#FFEFED', primaryContainer: '#FF766C', onPrimaryContainer: '#4F0004', secondaryContainer: '#FFC2C9', onSecondaryContainer: '#842139', tertiary: '#7742A6', tertiaryContainer: '#D09AFF', onTertiaryContainer: '#490C77', inversePrimary: '#F85B52' }
+    };
+    var seed = (this.props.seed || '#1A56DB').toUpperCase();
+    return T[seed] || T['#1A56DB'];
+  }
+}
+</script>
+</body>
+</html>

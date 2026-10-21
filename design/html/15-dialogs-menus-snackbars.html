@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15 Dialogs, menus & snackbars</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</head>
+<body>
+<div style="width: 1872px; height: 2384px; background: #F1EFFF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; padding: 40px; overflow: hidden">
+
+  <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 32px">
+    <h1 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 500; color: #292B51">Dialogs, menus &amp; snackbars</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881">Every overlay in Skim and where it opens from. Dialogs are 344 wide on surfaceContainerHigh with radius 28. Menus use surfaceContainer with radius 16 and a gap between groups. Snackbars use inverseSurface and sit above the floating toolbar.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, 412px); column-gap: 48px; row-gap: 48px; align-items: start">
+
+    <!-- Row 1 -->
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Add shortcut</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Home › Add (04). Edit shortcut in the shortcut menu opens the same dialog, filled in.</p>
+      </div>
+      <div style="height: 400px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-shortcut-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-shortcut-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Add shortcut</h3>
+          <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px">
+            <div style="position: relative; height: 56px; border: 1px solid #71739E; border-radius: 4px">
+              <label for="d-shortcut-name" style="position: absolute; top: -9px; left: 12px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #565881">Name</label>
+              <input id="d-shortcut-name" type="text" value="Daylight Journal" style="width: 100%; height: 100%; border: 0; border-radius: 4px; background: transparent; padding: 0 16px; font-size: 16px; line-height: 24px; color: #292B51; outline: none">
+            </div>
+            <div style="position: relative; height: 56px; border: 2px solid #004FD9; border-radius: 4px">
+              <label for="d-shortcut-url" style="position: absolute; top: -10px; left: 11px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #004FD9">URL</label>
+              <input id="d-shortcut-url" type="url" value="daylightjournal.com" style="width: 100%; height: 100%; border: 0; border-radius: 4px; background: transparent; padding: 0 15px; font-size: 16px; line-height: 24px; color: #292B51; outline: none">
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Search engine</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Settings › Search engine (12). Tapping an option saves it and closes the dialog.</p>
+      </div>
+      <div style="height: 400px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-engine-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-engine-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Search engine</h3>
+          <div role="radiogroup" aria-labelledby="d-engine-title" style="display: flex; flex-direction: column; margin: 16px -12px 0">
+            <div role="radio" aria-checked="true" tabindex="0" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #004FD9; display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: #004FD9"></span></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Google</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Bing</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">DuckDuckGo</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Ecosia</span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Theme</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Settings › Theme (12). Applies at once. Dark uses the dark scheme in 17.</p>
+      </div>
+      <div style="height: 400px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-theme-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-theme-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Theme</h3>
+          <div role="radiogroup" aria-labelledby="d-theme-title" style="display: flex; flex-direction: column; margin: 16px -12px 0">
+            <div role="radio" aria-checked="true" tabindex="0" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #004FD9; display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: #004FD9"></span></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">System default</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Light</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Dark</span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Clear browsing data</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Settings (12) and History (13). Clear is disabled while nothing is checked.</p>
+      </div>
+      <div style="height: 400px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-clear-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-clear-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Clear browsing data</h3>
+          <p style="margin: 16px 0 0; font-size: 14px; line-height: 20px; color: #565881">Removes data saved on this phone, from all time.</p>
+          <div style="display: flex; flex-direction: column; margin: 8px -12px 0">
+            <div role="checkbox" aria-checked="true" tabindex="0" style="display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 4px 12px 4px 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 18px; height: 18px; border-radius: 2px; background: #004FD9; color: #F1F2FF; display: flex; align-items: center; justify-content: center"><span class="ms" aria-hidden="true" style="font-size: 16px; font-variation-settings: 'FILL' 0,'wght' 600,'GRAD' 0,'opsz' 20">check</span></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Browsing history</span>
+            </div>
+            <div role="checkbox" aria-checked="true" tabindex="-1" style="display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 4px 12px 4px 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 18px; height: 18px; border-radius: 2px; background: #004FD9; color: #F1F2FF; display: flex; align-items: center; justify-content: center"><span class="ms" aria-hidden="true" style="font-size: 16px; font-variation-settings: 'FILL' 0,'wght' 600,'GRAD' 0,'opsz' 20">check</span></span></span>
+              <span style="display: flex; flex-direction: column; min-width: 0">
+                <span style="font-size: 16px; line-height: 24px; color: #292B51">Cookies and site data</span>
+                <span style="font-size: 14px; line-height: 20px; color: #565881">Signs you out of most sites</span>
+              </span>
+            </div>
+            <div role="checkbox" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 4px 12px 4px 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 18px; height: 18px; border-radius: 2px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Cached images and files</span>
+            </div>
+          </div>
+          <p style="margin: 8px 0 0; font-size: 12px; line-height: 16px; color: #565881">Skim history is managed in AI &amp; privacy.</p>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Delete all AI data</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">AI &amp; privacy (10). Clears Skim history and every site's AI permission.</p>
+      </div>
+      <div style="height: 360px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="alertdialog" aria-labelledby="d-ai-title" aria-describedby="d-ai-body" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: center; color: #B41340">
+            <span class="ms" aria-hidden="true">delete</span>
+          </div>
+          <h3 id="d-ai-title" style="margin: 16px 0 0; font-size: 24px; line-height: 32px; font-weight: 400; text-align: center; color: #292B51">Delete all AI data?</h3>
+          <p id="d-ai-body" style="margin: 16px 0 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Your Skim history is deleted and every site asks again before Skim reads it. You can't undo this.</p>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #B41340; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Clear Skim history</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Delete all Skim history in Skim history (04c). Site permissions stay as they are.</p>
+      </div>
+      <div style="height: 360px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="alertdialog" aria-labelledby="d-skimhist-title" aria-describedby="d-skimhist-body" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-skimhist-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Clear Skim history?</h3>
+          <p id="d-skimhist-body" style="margin: 16px 0 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Summaries and answers saved on this phone are deleted. Sites you allowed stay allowed.</p>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Site permission</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">A page asks for location, camera or mic. After Allow, Android's own prompt shows if Skim lacks it.</p>
+      </div>
+      <div style="height: 360px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="alertdialog" aria-labelledby="d-perm-title" aria-describedby="d-perm-body" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: center; color: #004FD9">
+            <span class="ms" aria-hidden="true">location_on</span>
+          </div>
+          <h3 id="d-perm-title" style="margin: 16px 0 0; font-size: 24px; line-height: 32px; font-weight: 400; text-align: center; color: #292B51; text-wrap: balance">Share your location with daylightjournal.com?</h3>
+          <p id="d-perm-body" style="margin: 16px 0 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">The site can use it while it's open. Change this anytime from the lock in the address bar.</p>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Block</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Allow</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Rename group</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Group options › Rename group (09). Save is disabled while the name is empty.</p>
+      </div>
+      <div style="height: 360px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-rename-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-rename-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Rename group</h3>
+          <div style="position: relative; height: 56px; margin-top: 16px; border: 2px solid #004FD9; border-radius: 4px">
+            <label for="d-rename-input" style="position: absolute; top: -10px; left: 11px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #004FD9">Group name</label>
+            <input id="d-rename-input" type="text" value="Heat pump research" style="width: 100%; height: 100%; border: 0; border-radius: 4px; background: transparent; padding: 0 15px; font-size: 16px; line-height: 24px; color: #292B51; outline: none">
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Edit bookmark</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Bookmark options › Edit (14), the Edit action on Bookmark added, or Edit bookmark in the More menu (05b).</p>
+      </div>
+      <div style="height: 420px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-bm-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-bm-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Edit bookmark</h3>
+          <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px">
+            <div style="position: relative; height: 56px; border: 1px solid #71739E; border-radius: 4px">
+              <label for="d-bm-name" style="position: absolute; top: -9px; left: 12px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #565881">Name</label>
+              <input id="d-bm-name" type="text" value="Why heat pumps are winning in cold climates" style="width: 100%; height: 100%; border: 0; border-radius: 4px; background: transparent; padding: 0 16px; font-size: 16px; line-height: 24px; color: #292B51; outline: none; text-overflow: ellipsis">
+            </div>
+            <div style="position: relative; height: 56px; border: 1px solid #71739E; border-radius: 4px">
+              <label for="d-bm-url" style="position: absolute; top: -9px; left: 12px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #565881">URL</label>
+              <input id="d-bm-url" type="url" value="daylightjournal.com/energy/heat-pumps-cold" style="width: 100%; height: 100%; border: 0; border-radius: 4px; background: transparent; padding: 0 16px; font-size: 16px; line-height: 24px; color: #292B51; outline: none; text-overflow: ellipsis">
+            </div>
+            <button type="button" aria-haspopup="listbox" aria-label="Folder, Mobile bookmarks" style="position: relative; height: 56px; border: 1px solid #71739E; border-radius: 4px; background: transparent; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 16px; text-align: left">
+              <span style="position: absolute; top: -9px; left: 12px; padding: 0 4px; background: #E0E0FF; font-size: 12px; line-height: 16px; color: #565881">Folder</span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Mobile bookmarks</span>
+              <span class="ms" aria-hidden="true" style="color: #565881">arrow_drop_down</span>
+            </button>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Move to folder</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Bookmark options › Move to folder (14), and the Folder field in Edit bookmark.</p>
+      </div>
+      <div style="height: 420px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), #F8F5FF; display: flex; align-items: center; justify-content: center">
+        <div role="dialog" aria-labelledby="d-move-title" style="width: 344px; border-radius: 28px; background: #E0E0FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 24px; display: flex; flex-direction: column">
+          <h3 id="d-move-title" style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 400; color: #292B51">Move to folder</h3>
+          <div role="radiogroup" aria-labelledby="d-move-title" style="display: flex; flex-direction: column; margin: 16px -12px 0">
+            <div role="radio" aria-checked="true" tabindex="0" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #004FD9; display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: #004FD9"></span></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Mobile bookmarks</span>
+            </div>
+            <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 2px">
+              <span style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 20px; height: 20px; border-radius: 10px; border: 2px solid #565881"></span></span>
+              <span style="font-size: 16px; line-height: 24px; color: #292B51">Imported</span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px">
+            <button type="button" style="height: 40px; border: 0; border-radius: 20px; background: transparent; color: #004FD9; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Shortcut menu</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Long-press a shortcut on Home (04). Remove acts at once and shows Shortcut removed with Undo.</p>
+      </div>
+      <div style="position: relative; height: 420px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #F8F5FF">
+        <div aria-hidden="true" style="position: absolute; left: 16px; right: 16px; top: 32px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 8px">
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 64px; background: #CCCEFF; color: #343AA2; clip-path: polygon(50.0% 0.0%, 54.3% 1.2%, 58.1% 4.2%, 61.4% 7.5%, 64.7% 9.6%, 68.6% 10.1%, 73.3% 9.7%, 78.1% 9.9%, 82.1% 11.7%, 84.6% 15.4%, 85.6% 20.1%, 86.1% 24.7%, 87.3% 28.5%, 89.9% 31.4%, 93.7% 34.1%, 97.3% 37.3%, 99.2% 41.3%, 98.8% 45.7%, 96.5% 50.0%, 93.9% 53.8%, 92.4% 57.5%, 92.5% 61.4%, 93.7% 65.9%, 94.4% 70.7%, 93.3% 75.0%, 90.1% 78.1%, 85.6% 79.9%, 81.1% 81.1%, 77.7% 83.0%, 75.3% 86.1%, 73.3% 90.3%, 70.7% 94.4%, 67.1% 97.0%, 62.7% 97.3%, 58.1% 95.8%, 53.8% 93.9%, 50.0% 93.0%, 46.2% 93.9%, 41.9% 95.8%, 37.3% 97.3%, 32.9% 97.0%, 29.3% 94.4%, 26.7% 90.3%, 24.7% 86.1%, 22.3% 83.0%, 18.9% 81.1%, 14.4% 79.9%, 9.9% 78.1%, 6.7% 75.0%, 5.6% 70.7%, 6.3% 65.9%, 7.5% 61.4%, 7.6% 57.5%, 6.1% 53.8%, 3.5% 50.0%, 1.2% 45.7%, 0.8% 41.3%, 2.7% 37.3%, 6.3% 34.1%, 10.1% 31.4%, 12.7% 28.5%, 13.9% 24.7%, 14.4% 20.1%, 15.4% 15.4%, 17.9% 11.7%, 21.9% 9.9%, 26.7% 9.7%, 31.4% 10.1%, 35.3% 9.6%, 38.6% 7.5%, 41.9% 4.2%, 45.7% 1.2%); display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 28px; font-weight: 500">W</span><span style="font-size: 12px; line-height: 16px; color: #292B51">Wikipedia</span></span>
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 64px; background: #DADAFF; color: #343AA2; clip-path: polygon(95.2% 4.8%, 98.4% 9.4%, 100.0% 15.0%, 100.0% 21.1%, 98.7% 27.3%, 96.4% 33.1%, 93.8% 38.3%, 91.4% 42.7%, 89.8% 46.5%, 89.2% 50.0%, 89.8% 53.5%, 91.4% 57.3%, 93.8% 61.7%, 96.4% 66.9%, 98.7% 72.7%, 100.0% 78.9%, 100.0% 85.0%, 98.4% 90.6%, 95.2% 95.2%, 90.6% 98.4%, 85.0% 100.0%, 78.9% 100.0%, 72.7% 98.7%, 66.9% 96.4%, 61.7% 93.8%, 57.3% 91.4%, 53.5% 89.8%, 50.0% 89.2%, 46.5% 89.8%, 42.7% 91.4%, 38.3% 93.8%, 33.1% 96.4%, 27.3% 98.7%, 21.1% 100.0%, 15.0% 100.0%, 9.4% 98.4%, 4.8% 95.2%, 1.6% 90.6%, 0.0% 85.0%, 0.0% 78.9%, 1.3% 72.7%, 3.6% 66.9%, 6.2% 61.7%, 8.6% 57.3%, 10.2% 53.5%, 10.8% 50.0%, 10.2% 46.5%, 8.6% 42.7%, 6.2% 38.3%, 3.6% 33.1%, 1.3% 27.3%, 0.0% 21.1%, 0.0% 15.0%, 1.6% 9.4%, 4.8% 4.8%, 9.4% 1.6%, 15.0% 0.0%, 21.1% 0.0%, 27.3% 1.3%, 33.1% 3.6%, 38.3% 6.2%, 42.7% 8.6%, 46.5% 10.2%, 50.0% 10.8%, 53.5% 10.2%, 57.3% 8.6%, 61.7% 6.2%, 66.9% 3.6%, 72.7% 1.3%, 78.9% 0.0%, 85.0% 0.0%, 90.6% 1.6%); display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 28px; font-weight: 500">G</span><span style="font-size: 12px; line-height: 16px; color: #292B51">GitHub</span></span>
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 64px; background: #DADAFF; color: #343AA2; clip-path: polygon(50.0% 0.0%, 53.0% 2.2%, 55.5% 6.8%, 57.6% 10.4%, 59.8% 11.9%, 62.1% 12.6%, 64.5% 13.4%, 67.2% 13.5%, 71.0% 11.9%, 75.7% 9.6%, 79.4% 9.5%, 80.5% 13.1%, 79.8% 18.3%, 79.4% 22.4%, 80.3% 24.9%, 81.8% 26.9%, 83.2% 28.9%, 85.3% 30.6%, 89.4% 31.5%, 94.5% 32.4%, 97.6% 34.5%, 96.4% 38.1%, 92.7% 41.8%, 90.0% 44.9%, 89.3% 47.5%, 89.3% 50.0%, 89.3% 52.5%, 90.0% 55.1%, 92.7% 58.2%, 96.4% 61.9%, 97.6% 65.5%, 94.5% 67.6%, 89.4% 68.5%, 85.3% 69.4%, 83.2% 71.1%, 81.8% 73.1%, 80.3% 75.1%, 79.4% 77.6%, 79.8% 81.7%, 80.5% 86.9%, 79.4% 90.5%, 75.7% 90.4%, 71.0% 88.1%, 67.2% 86.5%, 64.5% 86.6%, 62.1% 87.4%, 59.8% 88.1%, 57.6% 89.6%, 55.5% 93.2%, 53.0% 97.8%, 50.0% 100.0%, 47.0% 97.8%, 44.5% 93.2%, 42.4% 89.6%, 40.2% 88.1%, 37.9% 87.4%, 35.5% 86.6%, 32.8% 86.5%, 29.0% 88.1%, 24.3% 90.4%, 20.6% 90.5%, 19.5% 86.9%, 20.2% 81.7%, 20.6% 77.6%, 19.7% 75.1%, 18.2% 73.1%, 16.8% 71.1%, 14.7% 69.4%, 10.6% 68.5%, 5.5% 67.6%, 2.4% 65.5%, 3.6% 61.9%, 7.3% 58.2%, 10.0% 55.1%, 10.7% 52.5%, 10.7% 50.0%, 10.7% 47.5%, 10.0% 44.9%, 7.3% 41.8%, 3.6% 38.1%, 2.4% 34.5%, 5.5% 32.4%, 10.6% 31.5%, 14.7% 30.6%, 16.8% 28.9%, 18.2% 26.9%, 19.7% 24.9%, 20.6% 22.4%, 20.2% 18.3%, 19.5% 13.1%, 20.6% 9.5%, 24.3% 9.6%, 29.0% 11.9%, 32.8% 13.5%, 35.5% 13.4%, 37.9% 12.6%, 40.2% 11.9%, 42.4% 10.4%, 44.5% 6.8%, 47.0% 2.2%); display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 28px; font-weight: 500">Y</span><span style="font-size: 12px; line-height: 16px; color: #292B51">YouTube</span></span>
+          <span style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 64px; background: #DADAFF; color: #343AA2; clip-path: polygon(50.0% 0.0%, 54.9% 0.6%, 59.4% 2.5%, 63.6% 5.3%, 67.1% 8.8%, 70.1% 12.4%, 72.7% 16.0%, 75.2% 19.3%, 77.8% 22.2%, 80.7% 24.8%, 84.0% 27.3%, 87.6% 29.9%, 91.2% 32.9%, 94.7% 36.4%, 97.5% 40.6%, 99.4% 45.1%, 100.0% 50.0%, 99.4% 54.9%, 97.5% 59.4%, 94.7% 63.6%, 91.2% 67.1%, 87.6% 70.1%, 84.0% 72.7%, 80.7% 75.2%, 77.8% 77.8%, 75.2% 80.7%, 72.7% 84.0%, 70.1% 87.6%, 67.1% 91.2%, 63.6% 94.7%, 59.4% 97.5%, 54.9% 99.4%, 50.0% 100.0%, 45.1% 99.4%, 40.6% 97.5%, 36.4% 94.7%, 32.9% 91.2%, 29.9% 87.6%, 27.3% 84.0%, 24.8% 80.7%, 22.2% 77.8%, 19.3% 75.2%, 16.0% 72.7%, 12.4% 70.1%, 8.8% 67.1%, 5.3% 63.6%, 2.5% 59.4%, 0.6% 54.9%, 0.0% 50.0%, 0.6% 45.1%, 2.5% 40.6%, 5.3% 36.4%, 8.8% 32.9%, 12.4% 29.9%, 16.0% 27.3%, 19.3% 24.8%, 22.2% 22.2%, 24.8% 19.3%, 27.3% 16.0%, 29.9% 12.4%, 32.9% 8.8%, 36.4% 5.3%, 40.6% 2.5%, 45.1% 0.6%); display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 28px; font-weight: 500">H</span><span style="font-size: 12px; line-height: 16px; color: #292B51">Hacker News</span></span>
+        </div>
+        <div role="menu" aria-label="Wikipedia shortcut" style="position: absolute; left: 24px; top: 128px; width: 220px; display: flex; flex-direction: column; gap: 2px">
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="0" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">edit</span>Edit shortcut</div>
+          </div>
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="-1" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">delete</span>Remove</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Tab group menu</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Group options in Tabs (09). Close 4 tabs shows the Undo snackbar.</p>
+      </div>
+      <div style="position: relative; height: 420px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #F8F5FF">
+        <div aria-hidden="true" style="position: absolute; left: 16px; right: 16px; top: 24px; height: 40px; display: flex; align-items: center; gap: 8px">
+          <span style="font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Heat pump research</span>
+          <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 8px; border-radius: 12px; background: #CCCEFF; color: #343AA2; font-size: 12px; line-height: 16px; font-weight: 600">4</span>
+          <span style="flex: 1 1 auto"></span>
+          <span style="width: 40px; height: 40px; margin-right: -8px; border-radius: 20px; background: rgba(86,88,129,0.12); color: #565881; display: flex; align-items: center; justify-content: center"><span class="ms">more_vert</span></span>
+        </div>
+        <div aria-hidden="true" style="position: absolute; left: 16px; right: 16px; top: 72px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <span style="height: 144px; border-radius: 20px; background: #F1EFFF; box-shadow: inset 0 0 0 3px #004FD9"></span>
+          <span style="height: 144px; border-radius: 20px; background: #F1EFFF"></span>
+          <span style="height: 144px; border-radius: 20px; background: #F1EFFF"></span>
+          <span style="height: 144px; border-radius: 20px; background: #F1EFFF"></span>
+        </div>
+        <div role="menu" aria-label="Heat pump research group" style="position: absolute; right: 16px; top: 68px; width: 220px; display: flex; flex-direction: column; gap: 2px">
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="0" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">drive_file_rename_outline</span>Rename group</div>
+            <div role="menuitem" tabindex="-1" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">layers_clear</span>Ungroup</div>
+          </div>
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="-1" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">close</span>Close 4 tabs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4 -->
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Bookmark menu</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Bookmark options in Bookmarks (14). Delete removes it at once and offers Undo.</p>
+      </div>
+      <div style="position: relative; height: 560px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #F1EFFF">
+        <div aria-hidden="true" style="position: absolute; left: 16px; right: 16px; top: 16px; display: flex; flex-direction: column; gap: 2px">
+          <div style="display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 0 4px 0 16px; border-radius: 20px 20px 4px 4px; background: #FFFFFF">
+            <span style="width: 40px; height: 40px; background: #DADAFF; color: #565881; clip-path: polygon(50.0% 0.0%, 54.9% 0.6%, 59.4% 2.5%, 63.6% 5.3%, 67.1% 8.8%, 70.1% 12.4%, 72.7% 16.0%, 75.2% 19.3%, 77.8% 22.2%, 80.7% 24.8%, 84.0% 27.3%, 87.6% 29.9%, 91.2% 32.9%, 94.7% 36.4%, 97.5% 40.6%, 99.4% 45.1%, 100.0% 50.0%, 99.4% 54.9%, 97.5% 59.4%, 94.7% 63.6%, 91.2% 67.1%, 87.6% 70.1%, 84.0% 72.7%, 80.7% 75.2%, 77.8% 77.8%, 75.2% 80.7%, 72.7% 84.0%, 70.1% 87.6%, 67.1% 91.2%, 63.6% 94.7%, 59.4% 97.5%, 54.9% 99.4%, 50.0% 100.0%, 45.1% 99.4%, 40.6% 97.5%, 36.4% 94.7%, 32.9% 91.2%, 29.9% 87.6%, 27.3% 84.0%, 24.8% 80.7%, 22.2% 77.8%, 19.3% 75.2%, 16.0% 72.7%, 12.4% 70.1%, 8.8% 67.1%, 5.3% 63.6%, 2.5% 59.4%, 0.6% 54.9%, 0.0% 50.0%, 0.6% 45.1%, 2.5% 40.6%, 5.3% 36.4%, 8.8% 32.9%, 12.4% 29.9%, 16.0% 27.3%, 19.3% 24.8%, 22.2% 22.2%, 24.8% 19.3%, 27.3% 16.0%, 29.9% 12.4%, 32.9% 8.8%, 36.4% 5.3%, 40.6% 2.5%, 45.1% 0.6%); display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 24px; font-weight: 600; flex-shrink: 0">D</span>
+            <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+              <span style="font-size: 16px; line-height: 24px; color: #292B51; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Why heat pumps are winning in cold climates</span>
+              <span style="font-size: 14px; line-height: 20px; color: #565881">daylightjournal.com</span>
+            </span>
+            <span style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 40px; height: 40px; border-radius: 20px; background: rgba(86,88,129,0.12); color: #565881; display: flex; align-items: center; justify-content: center"><span class="ms">more_vert</span></span></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 0 4px 0 16px; border-radius: 4px 4px 20px 20px; background: #FFFFFF">
+            <span style="width: 40px; height: 40px; background: #DADAFF; color: #565881; clip-path: polygon(50.0% 0.0%, 54.9% 0.6%, 59.4% 2.5%, 63.6% 5.3%, 67.1% 8.8%, 70.1% 12.4%, 72.7% 16.0%, 75.2% 19.3%, 77.8% 22.2%, 80.7% 24.8%, 84.0% 27.3%, 87.6% 29.9%, 91.2% 32.9%, 94.7% 36.4%, 97.5% 40.6%, 99.4% 45.1%, 100.0% 50.0%, 99.4% 54.9%, 97.5% 59.4%, 94.7% 63.6%, 91.2% 67.1%, 87.6% 70.1%, 84.0% 72.7%, 80.7% 75.2%, 77.8% 77.8%, 75.2% 80.7%, 72.7% 84.0%, 70.1% 87.6%, 67.1% 91.2%, 63.6% 94.7%, 59.4% 97.5%, 54.9% 99.4%, 50.0% 100.0%, 45.1% 99.4%, 40.6% 97.5%, 36.4% 94.7%, 32.9% 91.2%, 29.9% 87.6%, 27.3% 84.0%, 24.8% 80.7%, 22.2% 77.8%, 19.3% 75.2%, 16.0% 72.7%, 12.4% 70.1%, 8.8% 67.1%, 5.3% 63.6%, 2.5% 59.4%, 0.6% 54.9%, 0.0% 50.0%, 0.6% 45.1%, 2.5% 40.6%, 5.3% 36.4%, 8.8% 32.9%, 12.4% 29.9%, 16.0% 27.3%, 19.3% 24.8%, 22.2% 22.2%, 24.8% 19.3%, 27.3% 16.0%, 29.9% 12.4%, 32.9% 8.8%, 36.4% 5.3%, 40.6% 2.5%, 45.1% 0.6%); display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 24px; font-weight: 600; flex-shrink: 0">T</span>
+            <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+              <span style="font-size: 16px; line-height: 24px; color: #292B51; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Osaka night buses: a complete guide</span>
+              <span style="font-size: 14px; line-height: 20px; color: #565881">tabi-note.jp</span>
+            </span>
+            <span style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: #565881; flex-shrink: 0"><span class="ms">more_vert</span></span>
+          </div>
+        </div>
+        <div role="menu" aria-label="Bookmark options" style="position: absolute; right: 20px; top: 76px; width: 220px; display: flex; flex-direction: column; gap: 2px">
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="0" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">edit</span>Edit</div>
+            <div role="menuitem" tabindex="-1" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">drive_file_move</span>Move to folder</div>
+          </div>
+          <div style="border-radius: 16px; background: #E7E6FF; padding: 4px; box-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)">
+            <div role="menuitem" tabindex="-1" style="height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font-size: 14px; line-height: 20px; font-weight: 500; color: #292B51"><span class="ms" aria-hidden="true" style="color: #565881">delete</span>Delete</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Site information sheet</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">The lock in the address bar (05). Shows Skim AI plus only the permissions this site asked for.</p>
+      </div>
+      <div style="position: relative; height: 560px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #FFFFFF">
+        <div aria-hidden="true" style="position: absolute; left: 20px; right: 20px; top: 24px; display: flex; flex-direction: column; gap: 12px">
+          <div style="height: 24px; width: 80%; border-radius: 4px; background: #E3E3E3"></div>
+          <div style="height: 120px; border-radius: 4px; background: #DCE2E8"></div>
+          <div style="height: 10px; width: 95%; border-radius: 5px; background: #ECECEC"></div>
+          <div style="height: 10px; width: 88%; border-radius: 5px; background: #ECECEC"></div>
+        </div>
+        <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,0,0.32)"></div>
+        <div role="dialog" aria-labelledby="d-site-title" style="position: absolute; left: 0; right: 0; bottom: 0; border-radius: 28px 28px 0 0; background: #F1EFFF; box-shadow: 0px -1px 3px rgba(0,0,0,0.12); padding-bottom: 16px; display: flex; flex-direction: column">
+          <div aria-hidden="true" style="height: 36px; display: flex; align-items: center; justify-content: center"><span style="width: 32px; height: 4px; border-radius: 2px; background: rgba(86,88,129,0.4)"></span></div>
+          <div style="display: flex; align-items: center; gap: 16px; padding: 0 24px 8px">
+            <span aria-hidden="true" style="width: 40px; height: 40px; background: #DADAFF; color: #565881; clip-path: polygon(50.0% 0.0%, 54.9% 0.6%, 59.4% 2.5%, 63.6% 5.3%, 67.1% 8.8%, 70.1% 12.4%, 72.7% 16.0%, 75.2% 19.3%, 77.8% 22.2%, 80.7% 24.8%, 84.0% 27.3%, 87.6% 29.9%, 91.2% 32.9%, 94.7% 36.4%, 97.5% 40.6%, 99.4% 45.1%, 100.0% 50.0%, 99.4% 54.9%, 97.5% 59.4%, 94.7% 63.6%, 91.2% 67.1%, 87.6% 70.1%, 84.0% 72.7%, 80.7% 75.2%, 77.8% 77.8%, 75.2% 80.7%, 72.7% 84.0%, 70.1% 87.6%, 67.1% 91.2%, 63.6% 94.7%, 59.4% 97.5%, 54.9% 99.4%, 50.0% 100.0%, 45.1% 99.4%, 40.6% 97.5%, 36.4% 94.7%, 32.9% 91.2%, 29.9% 87.6%, 27.3% 84.0%, 24.8% 80.7%, 22.2% 77.8%, 19.3% 75.2%, 16.0% 72.7%, 12.4% 70.1%, 8.8% 67.1%, 5.3% 63.6%, 2.5% 59.4%, 0.6% 54.9%, 0.0% 50.0%, 0.6% 45.1%, 2.5% 40.6%, 5.3% 36.4%, 8.8% 32.9%, 12.4% 29.9%, 16.0% 27.3%, 19.3% 24.8%, 22.2% 22.2%, 24.8% 19.3%, 27.3% 16.0%, 29.9% 12.4%, 32.9% 8.8%, 36.4% 5.3%, 40.6% 2.5%, 45.1% 0.6%); display: flex; align-items: center; justify-content: center; font-size: 16px; line-height: 24px; font-weight: 600; flex-shrink: 0">D</span>
+            <span style="display: flex; flex-direction: column; min-width: 0">
+              <span id="d-site-title" style="font-size: 16px; line-height: 24px; font-weight: 500; color: #292B51">daylightjournal.com</span>
+              <span style="display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; color: #565881"><span class="ms" aria-hidden="true" style="font-size: 16px">lock</span>Connection is secure</span>
+            </span>
+          </div>
+          <h4 style="margin: 0; padding: 12px 32px 8px; font-size: 14px; line-height: 20px; font-weight: 600; color: #004FD9">Permissions</h4>
+          <div role="group" style="display: flex; flex-direction: column; gap: 2px; margin: 0 16px">
+            <div style="display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 12px 16px; border-radius: 20px 20px 4px 4px; background: #FFFFFF">
+              <span aria-hidden="true" style="width: 40px; height: 40px; background: #FC99EF; color: #651162; clip-path: polygon(50.0% 0.0%, 53.2% 1.3%, 56.0% 4.6%, 58.3% 8.5%, 60.3% 11.6%, 62.4% 13.4%, 64.7% 14.4%, 67.1% 15.3%, 69.9% 15.6%, 73.5% 14.8%, 77.9% 13.7%, 82.2% 13.3%, 85.4% 14.6%, 86.7% 17.8%, 86.3% 22.1%, 85.2% 26.5%, 84.4% 30.1%, 84.7% 32.9%, 85.6% 35.3%, 86.6% 37.6%, 88.4% 39.7%, 91.5% 41.7%, 95.4% 44.0%, 98.7% 46.8%, 100.0% 50.0%, 98.7% 53.2%, 95.4% 56.0%, 91.5% 58.3%, 88.4% 60.3%, 86.6% 62.4%, 85.6% 64.7%, 84.7% 67.1%, 84.4% 69.9%, 85.2% 73.5%, 86.3% 77.9%, 86.7% 82.2%, 85.4% 85.4%, 82.2% 86.7%, 77.9% 86.3%, 73.5% 85.2%, 69.9% 84.4%, 67.1% 84.7%, 64.7% 85.6%, 62.4% 86.6%, 60.3% 88.4%, 58.3% 91.5%, 56.0% 95.4%, 53.2% 98.7%, 50.0% 100.0%, 46.8% 98.7%, 44.0% 95.4%, 41.7% 91.5%, 39.7% 88.4%, 37.6% 86.6%, 35.3% 85.6%, 32.9% 84.7%, 30.1% 84.4%, 26.5% 85.2%, 22.1% 86.3%, 17.8% 86.7%, 14.6% 85.4%, 13.3% 82.2%, 13.7% 77.9%, 14.8% 73.5%, 15.6% 69.9%, 15.3% 67.1%, 14.4% 64.7%, 13.4% 62.4%, 11.6% 60.3%, 8.5% 58.3%, 4.6% 56.0%, 1.3% 53.2%, 0.0% 50.0%, 1.3% 46.8%, 4.6% 44.0%, 8.5% 41.7%, 11.6% 39.7%, 13.4% 37.6%, 14.4% 35.3%, 15.3% 32.9%, 15.6% 30.1%, 14.8% 26.5%, 13.7% 22.1%, 13.3% 17.8%, 14.6% 14.6%, 17.8% 13.3%, 22.1% 13.7%, 26.5% 14.8%, 30.1% 15.6%, 32.9% 15.3%, 35.3% 14.4%, 37.6% 13.4%, 39.7% 11.6%, 41.7% 8.5%, 44.0% 4.6%, 46.8% 1.3%); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms fill" style="font-size: 20px">auto_awesome</span></span>
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+                <span id="d-site-ai" style="font-size: 16px; line-height: 24px; color: #292B51">Skim AI</span>
+                <span style="font-size: 14px; line-height: 20px; color: #565881">Can read this site when you ask</span>
+              </span>
+              <button type="button" role="switch" aria-checked="true" aria-labelledby="d-site-ai" style="width: 52px; height: 32px; border: 0; border-radius: 16px; background: #004FD9; position: relative; padding: 0; flex-shrink: 0">
+                <span style="position: absolute; top: 4px; left: 24px; width: 24px; height: 24px; border-radius: 12px; background: #F1F2FF; color: #004FD9; display: flex; align-items: center; justify-content: center"><span class="ms" aria-hidden="true" style="font-size: 16px">check</span></span>
+              </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 12px 16px; border-radius: 4px; background: #FFFFFF">
+              <span style="width: 40px; height: 40px; border-radius: 20px; background: #E7E6FF; color: #565881; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" aria-hidden="true">location_on</span></span>
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+                <span id="d-site-location" style="font-size: 16px; line-height: 24px; color: #292B51">Location</span>
+                <span style="font-size: 14px; line-height: 20px; color: #565881">Blocked</span>
+              </span>
+              <button type="button" role="switch" aria-checked="false" aria-labelledby="d-site-location" style="width: 52px; height: 32px; border: 2px solid #71739E; border-radius: 16px; background: #DADAFF; position: relative; padding: 0; flex-shrink: 0">
+                <span style="position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; border-radius: 8px; background: #71739E"></span>
+              </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 12px 4px 12px 16px; border-radius: 4px 4px 20px 20px; background: #FFFFFF">
+              <span style="width: 40px; height: 40px; border-radius: 20px; background: #E7E6FF; color: #565881; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span class="ms" aria-hidden="true">cookie</span></span>
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+                <span style="font-size: 16px; line-height: 24px; color: #292B51">Cookies and site data</span>
+                <span style="font-size: 14px; line-height: 20px; color: #565881">Stored by this site on your phone</span>
+              </span>
+              <button type="button" aria-label="Delete cookies and site data for daylightjournal.com" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0"><span class="ms" aria-hidden="true">delete</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Snackbars: undo and edit</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Above the floating toolbar. With an action they last 10 s (Long), without one 4 s (Short).</p>
+      </div>
+      <div style="height: 560px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #F8F5FF; display: flex; flex-direction: column; gap: 16px; padding: 24px 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Close a tab or swipe it away (09)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Tab closed</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Undo</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Close all tabs, or close a group (09)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">7 tabs closed</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Undo</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Add bookmark in the More menu (05b)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Bookmark added</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Edit</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Remove in History (13) or Skim history (04c)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Removed from history</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Undo</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Bookmark options › Delete (14)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Bookmark deleted</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Undo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="min-height: 68px; display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Snackbars: results and errors</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #565881; text-wrap: pretty">Copy confirmations only on Android 12 and lower. Android 13+ shows its own.</p>
+      </div>
+      <div style="height: 560px; border-radius: 28px; border: 1px solid #A8A9D7; overflow: hidden; background: #F8F5FF; display: flex; flex-direction: column; gap: 16px; padding: 24px 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Link options › Open in new tab (05d)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Opened in a new tab</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Switch</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">File chosen in Setup (03)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Imported 24 bookmarks</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">View</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">The file isn't a bookmarks export</span>
+          <div role="alert" style="display: flex; align-items: center; min-height: 68px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 14px 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6; text-wrap: pretty">Couldn't read that file. Choose an HTML bookmarks file exported from a browser.</span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">A download finishes (Android DownloadManager)</span>
+          <div role="status" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 8px 0 16px">
+            <span style="flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 20px; color: #9799C6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">rebate-guide.pdf downloaded</span>
+            <button type="button" style="height: 36px; border: 0; border-radius: 18px; background: transparent; color: #638AFF; padding: 0 8px; font-size: 14px; line-height: 20px; font-weight: 500">Open</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 12px; line-height: 16px; color: #565881">Copy link (05d), copy summary or answer (06, 06b)</span>
+          <div role="status" style="display: flex; align-items: center; min-height: 48px; border-radius: 4px; background: #07092F; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); padding: 0 16px">
+            <span style="flex: 1 1 auto; font-size: 14px; line-height: 20px; color: #9799C6">Copied to clipboard</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

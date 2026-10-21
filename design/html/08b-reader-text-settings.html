@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08b Reader text settings</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</head>
+<body>
+<div style="width: 412px; height: 915px; background: #F8F5FF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <div style="height: 24px; flex-shrink: 0"></div>
+
+  <div style="height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+    <button type="button" aria-label="Exit reader view" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #292B51; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">close</span></button>
+    <span style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center">
+      <button type="button" aria-label="Text size" aria-pressed="true" style="width: 40px; height: 40px; border: 0; border-radius: 12px; background: #CCCEFF; color: #343AA2; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms fill" aria-hidden="true">format_size</span></button>
+    </span>
+  </div>
+
+  <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 8px 24px 0">
+    <div style="font-size: 12px; line-height: 16px; color: #565881">daylightjournal.com</div>
+    <h1 style="margin: 0; font-size: 31px; line-height: 40px; font-weight: 500; color: #292B51; text-wrap: pretty">Why heat pumps are winning in cold climates</h1>
+    <div style="font-size: 14px; line-height: 20px; color: #565881">Marta Lindqvist</div>
+    <p style="margin: 4px 0 0; font-size: 19px; line-height: 31px; color: #292B51; text-wrap: pretty">For decades the advice was simple: if your winters drop well below freezing, a heat pump is not for you. That advice is now out of date, and the numbers coming out of Norway, Finland and the northern United States show how quickly it has aged.</p>
+    <p style="margin: 0; font-size: 19px; line-height: 31px; color: #292B51; text-wrap: pretty">Cold-climate models from several manufacturers keep delivering useful heat at minus 25 °C.</p>
+  </div>
+
+  <div role="dialog" aria-label="Text settings" style="position: absolute; left: 0; right: 0; bottom: 0; border-radius: 28px 28px 0 0; background: #F1EFFF; color: #292B51; box-shadow: 0px -1px 3px rgba(0,0,0,0.3), 0px -2px 6px 2px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px; padding: 0 24px 32px">
+
+    <div aria-hidden="true" style="height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center"><span style="width: 32px; height: 4px; border-radius: 2px; background: rgba(86,88,129,0.4)"></span></div>
+
+    <h2 style="margin: -8px 0 0; font-size: 16px; line-height: 24px; font-weight: 600; color: #292B51">Text</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span id="text-size-label" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #565881">Size</span>
+        <span style="font-size: 14px; line-height: 20px; color: #292B51">110%</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px">
+        <span aria-hidden="true" style="font-size: 14px; line-height: 20px; color: #565881">A</span>
+        <div role="slider" aria-labelledby="text-size-label" aria-valuemin="80" aria-valuemax="200" aria-valuenow="110" aria-valuetext="110%" tabindex="0" style="flex: 1 1 auto; min-width: 0; display: flex; align-items: center; height: 44px">
+          <span style="height: 16px; width: 25%; border-radius: 8px 2px 2px 8px; background: #004FD9"></span>
+          <span style="width: 6px; flex-shrink: 0"></span>
+          <span style="width: 4px; height: 44px; border-radius: 2px; background: #004FD9; flex-shrink: 0"></span>
+          <span style="width: 6px; flex-shrink: 0"></span>
+          <span style="flex: 1 1 auto; height: 16px; border-radius: 2px 8px 8px 2px; background: #CCCEFF; position: relative"><span style="position: absolute; right: 6px; top: 6px; width: 4px; height: 4px; border-radius: 2px; background: #004FD9"></span></span>
+        </div>
+        <span aria-hidden="true" style="font-size: 24px; line-height: 32px; color: #565881">A</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span id="font-label" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #565881">Font</span>
+      <div role="group" aria-labelledby="font-label" style="display: flex; gap: 2px">
+        <button type="button" aria-pressed="true" style="flex: 1 1 0; height: 40px; border: 0; border-radius: 20px; background: #004FD9; color: #F1F2FF; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; font-size: 14px; line-height: 20px; font-weight: 600"><span class="ms" aria-hidden="true" style="font-size: 20px">check</span>Sans serif</button>
+        <button type="button" aria-pressed="false" style="flex: 1 1 0; height: 40px; border: 0; border-radius: 8px 20px 20px 8px; background: #E7E6FF; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0 16px; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; line-height: 20px">Serif</button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

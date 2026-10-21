@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 Browsing (Loading)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&amp;display=block">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:default}
+a{color:inherit}
+input{font:inherit}
+input::placeholder{color:#565881;opacity:1}
+input.on-dark::placeholder{color:#A6A7D5;opacity:1}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;user-select:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+</style>
+</head>
+<body>
+<div style="width: 412px; height: 915px; background: #F8F5FF; color: #292B51; font-family: 'Google Sans Flex', Roboto, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <div style="height: 24px; flex-shrink: 0"></div>
+
+  <div style="flex-shrink: 0; padding: 8px 16px; background: #F8F5FF; position: relative; z-index: 1">
+    <div style="height: 56px; border-radius: 28px; background: #E0E0FF; display: flex; align-items: center; gap: 4px; padding: 0 4px">
+      <button type="button" aria-label="Site information, connection is secure" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0"><span class="ms" aria-hidden="true" style="font-size: 20px">lock</span></button>
+      <button type="button" aria-label="Edit address, daylightjournal.com" style="flex: 1 1 auto; min-width: 0; height: 48px; border: 0; background: transparent; text-align: left; padding: 0; font-size: 16px; line-height: 24px; color: #292B51; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">daylightjournal.com</button>
+      <button type="button" aria-label="Reader view" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0"><span class="ms" aria-hidden="true">chrome_reader_mode</span></button>
+    </div>
+    
+      <svg role="progressbar" aria-label="Loading page" width="380" height="12" viewBox="0 0 380 12" style="position: absolute; left: 16px; bottom: -6px; overflow: visible">
+        <path d="M 2 6 Q 12 0 22 6 Q 32 12 42 6 Q 52 0 62 6 Q 72 12 82 6 Q 92 0 102 6 Q 112 12 122 6 Q 132 0 142 6 Q 152 12 162 6 Q 172 0 182 6 Q 192 12 202 6 Q 212 0 222 6" fill="none" stroke="#004FD9" stroke-width="4" stroke-linecap="round"></path>
+        <line x1="232" y1="6" x2="370" y2="6" stroke="#CCCEFF" stroke-width="4" stroke-linecap="round"></line>
+        <circle cx="377" cy="6" r="2" fill="#004FD9"></circle>
+      </svg>
+    
+  </div>
+
+  <div style="flex: 1 1 auto; position: relative; overflow: hidden; background: #FFFFFF; color: #1F1F1F; font-family: Roboto, system-ui, sans-serif">
+    <div style="display: flex; flex-direction: column; gap: 16px; padding: 0 20px 24px">
+      <div style="height: 48px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E3E3E3; margin: 0 -20px; padding: 0 20px">
+        <span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px; line-height: 24px; font-weight: 700; letter-spacing: -0.2px; color: #1F1F1F">Daylight Journal</span>
+        <span style="font-size: 12px; line-height: 16px; letter-spacing: 0.8px; text-transform: uppercase; color: #5C5C5C">Energy</span>
+      </div>
+      <h1 style="margin: 8px 0 0; font-family: Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 32px; font-weight: 700; color: #1F1F1F; text-wrap: pretty">Why heat pumps are winning in cold climates</h1>
+      <div style="font-size: 13px; line-height: 18px; color: #5C5C5C">By Marta Lindqvist</div>
+      <figure style="margin: 4px 0 0; display: flex; flex-direction: column; gap: 8px">
+        <div role="img" aria-label="Photo: a heat pump unit mounted outside a timber house in snow" style="height: 176px; border-radius: 4px; background: #DCE2E8; display: flex; align-items: flex-end; justify-content: flex-end; padding: 12px">
+          <span style="font-size: 11px; line-height: 16px; letter-spacing: 0.4px; color: #4A5560">PHOTO</span>
+        </div>
+        <figcaption style="font-size: 12px; line-height: 16px; color: #5C5C5C">A cold-climate heat pump outside a timber house near Tromsø, Norway.</figcaption>
+      </figure>
+      <p style="margin: 0; font-size: 17px; line-height: 27px; color: #1F1F1F; text-wrap: pretty">For decades the advice was simple: if your winters drop well below freezing, a heat pump is not for you. That advice is now out of date, and the numbers coming out of Norway, Finland and the northern United States show how quickly it has aged.</p>
+      <p style="margin: 0; font-size: 17px; line-height: 27px; color: #1F1F1F; text-wrap: pretty">Cold-climate models from several manufacturers keep delivering useful heat at minus 25 °C. The trick is a variable-speed compressor paired with refrigerants that stay efficient when the air outside has little warmth left to give.</p>
+      <p style="margin: 0; font-size: 17px; line-height: 27px; color: #1F1F1F; text-wrap: pretty">Installers in Maine report that the question has shifted from whether a heat pump will cope to how large a unit a house really needs.</p>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; align-items: center; gap: 8px">
+    <div role="toolbar" aria-label="Browser controls" style="height: 64px; border-radius: 32px; background: #E7E6FF; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; padding: 0 8px">
+      <button type="button" aria-label="Back" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_back</span></button>
+      <button type="button" aria-label="Forward" disabled="" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: rgba(41,43,81,0.38); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">arrow_forward</span></button>
+      <button type="button" aria-label="Tabs, 7 open" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span style="width: 22px; height: 22px; border: 2px solid currentColor; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 12px; font-weight: 700">7</span></button>
+      <button type="button" aria-label="More options" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #565881; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms" aria-hidden="true">more_vert</span></button>
+    </div>
+    <button type="button" aria-label="Ask Skim about this page" style="width: 56px; height: 56px; border: 0; border-radius: 16px; background: #FC99EF; color: #651162; box-shadow: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; padding: 0"><span class="ms fill" aria-hidden="true">auto_awesome</span></button>
+  </div>
+
+</div>
+</body>
+</html>
