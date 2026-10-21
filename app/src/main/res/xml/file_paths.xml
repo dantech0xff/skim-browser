@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider exposes only cacheDir/shared/ (images being shared; incognito tabs use shared/incognito/). -->
+<paths>
+    <cache-path
+        name="shared"
+        path="shared/" />
+</paths>

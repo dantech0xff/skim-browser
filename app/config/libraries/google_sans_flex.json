@@ -1,0 +1,15 @@
+{
+  "uniqueId": "com.github.googlefonts:googlesans-flex",
+  "name": "Google Sans Flex",
+  "description": "Variable font used for all app text. Copyright 2015 The Google Sans Flex Authors (https://github.com/googlefonts/googlesans-flex).",
+  "website": "https://github.com/googlefonts/googlesans-flex",
+  "developers": [
+    {
+      "name": "The Google Sans Flex Authors",
+      "organisationUrl": "https://github.com/googlefonts/googlesans-flex"
+    }
+  ],
+  "licenses": [
+    "OFL-1.1"
+  ]
+}
