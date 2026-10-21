@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  A page that takes the drag for itself, like a map: its touchmove listener calls preventDefault.
+  With ?free in the URL the listener only counts, so the same page can also be pulled.
+  mapUncancelable counts the moves that arrived as touch events the page cannot cancel: Chromium
+  sends a touch sequence that way when the page was slow to answer the one before, and no page can
+  keep such a drag. mapEnds counts the ends of touch sequences.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map</title>
+<style>html,body{margin:0;height:100%} #map{height:100%;background:#cde;font-size:28px}</style></head>
+<body><div id="map">Drag the map</div>
+<script>
+window.mapMoves = 0;
+window.mapStarts = 0;
+window.mapEnds = 0;
+window.mapUncancelable = 0;
+var keepsDrag = location.search.indexOf('free') === -1;
+document.addEventListener('touchstart', function () { window.mapStarts++; }, { passive: true });
+['touchend', 'touchcancel'].forEach(function (type) {
+  document.addEventListener(type, function () { window.mapEnds++; }, { passive: true });
+});
+document.getElementById('map').addEventListener('touchmove', function (event) {
+  window.mapMoves++;
+  if (!event.cancelable) window.mapUncancelable++;
+  if (keepsDrag) event.preventDefault();
+}, { passive: false });
+</script></body></html>

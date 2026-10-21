@@ -1,0 +1,19 @@
+<!doctype html>
+<!--
+  A page that embeds ?src= in a frame over the whole page, letting it ask for the camera and the
+  microphone; what the frame reports of its answer lands in window.skimMedia.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embedding page</title>
+<style>html,body{margin:0;height:100%} iframe{border:0;width:100%;height:100%}</style></head>
+<body>
+<script>
+window.skimMedia = null;
+window.addEventListener('message', function (event) {
+  if (event.data && typeof event.data.skimMedia === 'string') window.skimMedia = event.data.skimMedia;
+});
+var frame = document.createElement('iframe');
+frame.setAttribute('allow', 'camera; microphone');
+frame.src = new URLSearchParams(location.search).get('src');
+document.body.appendChild(frame);
+</script></body></html>

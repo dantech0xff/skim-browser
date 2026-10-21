@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  One download link, a band over the top 45% of the screen; the rest of the page is three screens
+  of plain text, so a drag there scrolls. ?href= is the link's address (/report.pdf when absent)
+  and ?name= its download attribute (empty when absent). With ?plain the link has no download
+  attribute, so the WebView requests what it points to before handing the download over: an older
+  WebView hands a link with the attribute over at once, unrequested. skimClick(n) clicks the link n
+  times from script, with no tap; ?auto=n does so once the page loaded.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downloads</title>
+<style>html,body{margin:0} #link{display:block;width:100%;height:45vh;font-size:28px;background:#eef} #rest{height:300vh;font-size:20px}</style></head>
+<body><a id="link">Download the file</a><div id="rest">The rest of the page.</div>
+<script>
+var params = new URLSearchParams(location.search);
+var link = document.getElementById('link');
+link.href = params.get('href') || '/report.pdf';
+if (!params.has('plain')) link.setAttribute('download', params.get('name') || '');
+window.skimClick = function (times) {
+  for (var i = 0; i < times; i++) link.click();
+};
+var auto = Number(params.get('auto') || 0);
+if (auto > 0) window.addEventListener('load', function () { window.skimClick(auto); });
+</script></body></html>

@@ -1,0 +1,33 @@
+package com.dantech.skimbrowser.browser.ui
+
+import android.view.View
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
+import com.dantech.skimbrowser.browser.LocalBrowserHost
+
+/**
+ * Shows the WebView of tab [tabId] from the Activity's WebView pool ([LocalBrowserHost]).
+ *
+ * The WebView belongs to the pool, not to this composable: leaving the composition takes the
+ * tab's thumbnail, pauses the WebView and detaches it, and the pool decides when it is destroyed.
+ * When the pool replaces the tab's WebView (its renderer went away) the view is built again; while
+ * the tab's renderer crashed too often nothing is drawn, so the error screen above it shows.
+ */
+@Composable
+fun WebViewHost(tabId: String, modifier: Modifier = Modifier) {
+    val pool = LocalBrowserHost.current.pool
+    val generation by remember(pool, tabId) { pool.generation(tabId) }.collectAsState()
+    val current = generation ?: return
+    key(tabId, current) {
+        AndroidView(
+            factory = { context -> pool.showInHost(tabId) ?: View(context) },
+            modifier = modifier,
+            onRelease = { view -> pool.releaseFromHost(tabId, view) },
+        )
+    }
+}
