@@ -28,8 +28,9 @@ import org.junit.rules.ExternalResource
  * files: there a file counts as the app's when its row was made during the test, for a file in
  * that folder. Nothing of another app is touched either way.
  *
- * As a rule it gives the app Android's storage permission where saving to the shared Downloads
- * folder needs one (before Android 10), removes every download before and after the test, then
+ * As a rule it makes sure DownloadManager may fetch the test server's cleartext pages, gives the
+ * app Android's storage permission where saving to the shared Downloads folder needs one (before
+ * Android 10), removes every download before and after the test, then
  * waits until the shared Downloads folder holds exactly the files it held before the test: a test
  * leaves nothing behind.
  */
@@ -60,6 +61,7 @@ class DeviceDownloads : ExternalResource() {
     private var newestRowBefore = Long.MAX_VALUE
 
     override fun before() {
+        startDownloadsProcessFromDownloadProvider()
         grantStorageWhereNeeded()
         removeAll()
         folderBefore = downloadFolder()
@@ -148,6 +150,23 @@ class DeviceDownloads : ExternalResource() {
                 context.contentResolver.delete(saved.uri, null, null)
             }
         }
+    }
+
+    /**
+     * Where DownloadProvider shares its process with MediaProvider (Android 9 runs both in
+     * android.process.media), that process's network security policy is the one of the provider
+     * that started it, and MediaProvider's refuses cleartext: DownloadManager then fails every http
+     * download, whichever app asked ("Cleartext HTTP traffic to 127.0.0.1 not permitted"). Anything
+     * that reads MediaStore first starts it that way, the test runner's own setup included. So the
+     * process is ended and started again from DownloadProvider, which allows cleartext.
+     */
+    private fun startDownloadsProcessFromDownloadProvider() {
+        val packages = context.packageManager
+        val downloads = packages.resolveContentProvider(DOWNLOADS_AUTHORITY, 0) ?: return
+        val media = packages.resolveContentProvider(MediaStore.AUTHORITY, 0) ?: return
+        if (downloads.processName != media.processName) return
+        shell("am force-stop ${downloads.packageName}")
+        manager.query(DownloadManager.Query())?.close()
     }
 
     /**
@@ -261,6 +280,9 @@ class DeviceDownloads : ExternalResource() {
         /** DownloadManager schedules its work as a job; on a busy emulator it can take a while to start. */
         const val DOWNLOAD_TIMEOUT_MS = 30_000L
         const val EXTERNAL_VOLUME = "external"
+
+        /** DownloadManager's content provider. */
+        const val DOWNLOADS_AUTHORITY = "downloads"
 
         /** Writing the shared Downloads folder before scoped storage, and reading it, which comes with writing. */
         val STORAGE_PERMISSIONS = listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE)

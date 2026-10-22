@@ -912,7 +912,15 @@ class TabManager(
                 } else {
                     LoadError.Crashed(runtime.committedUrl ?: tab.url.orEmpty(), if (didCrash) "RENDERER_CRASHED" else "RENDERER_KILLED")
                 }
-                runtime.copy(progress = null, pageLoaded = false, find = null, loadError = error)
+                // A tab that shows the error has no WebView, so no history to go back or forward in until Try again.
+                runtime.copy(
+                    progress = null,
+                    pageLoaded = false,
+                    find = null,
+                    loadError = error,
+                    canGoBack = runtime.canGoBack && recovers,
+                    canGoForward = runtime.canGoForward && recovers,
+                )
             }
             return if (recovers) RendererGoneAction.RESTORE else RendererGoneAction.SHOW_ERROR
         }

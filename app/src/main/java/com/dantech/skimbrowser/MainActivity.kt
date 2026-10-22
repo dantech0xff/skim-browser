@@ -12,10 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.MainThread
 import androidx.annotation.VisibleForTesting
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.dantech.skimbrowser.browser.ActivityHost
 import com.dantech.skimbrowser.browser.ActivityResultHost
@@ -29,8 +26,10 @@ import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.downloads.InProcessDownloader
 import com.dantech.skimbrowser.browser.downloads.MediaStoreDownloads
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
-import com.dantech.skimbrowser.ui.theme.SkimTheme
-import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import com.dantech.skimbrowser.ui.shell.IncomingIntents
+import com.dantech.skimbrowser.ui.shell.SkimApp
+import kotlinx.coroutines.channels.Channel
 
 /**
  * The only activity. Rotation, dark mode and font changes are declared in the manifest's
@@ -41,6 +40,9 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
  * switches) as one [BrowserHost], provided to the screens as [LocalBrowserHost], and attaches the
  * pool to the process's tab manager while it lives. While it is started it hears DownloadManager
  * finish Skim's downloads.
+ *
+ * It shows the app ([SkimApp]) and hands it the web links other apps send: the one that started it
+ * and, as the activity is single-task, each later one through [onNewIntent].
  */
 class MainActivity : ComponentActivity() {
 
@@ -49,9 +51,21 @@ class MainActivity : ComponentActivity() {
     private lateinit var activityHost: ActivityResultHost
     private lateinit var browserHost: BrowserHost
 
+    /**
+     * Links other apps sent, waiting for the app to open them. It belongs to this Activity, so a
+     * link is opened exactly once: a recreated Activity, or Skim reopened from the launcher, never
+     * opens an earlier one again.
+     */
+    private val pendingLinks = Channel<String>(Channel.BUFFERED)
+    private var navigator: SkimNavigator? = null
+
     /** The Activity's browser host, for the device tests of its life cycle. */
     @get:VisibleForTesting
     internal val browserHostForTests: BrowserHost get() = browserHost
+
+    /** The navigator of the app on screen, once it has started; for the device tests of the shell. */
+    @get:VisibleForTesting
+    internal val navigatorForTests: SkimNavigator? get() = navigator
 
     private val downloadFinished = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -70,13 +84,23 @@ class MainActivity : ComponentActivity() {
         container.tabManager.attach(browserHost.pool)
         // Deleting old incognito profiles needs the main thread; it waits until the first frame is drawn.
         window.decorView.post { container.incognitoSession.purgeStale() }
+        // A recreated Activity gets the intent that started the first one again: that link was opened.
+        if (savedInstanceState == null) receiveLink(intent)
         setContent {
             CompositionLocalProvider(LocalBrowserHost provides browserHost) {
-                SkimTheme(ThemeSetting.System) {
-                    Surface(Modifier.fillMaxSize()) {}
-                }
+                SkimApp(container, browserHost, pendingLinks, onNavigator = { navigator = it })
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        receiveLink(intent)
+    }
+
+    /** Queues the web link of [intent] from another app, if it carries one. */
+    private fun receiveLink(intent: Intent?) {
+        IncomingIntents.urlFrom(intent)?.let { pendingLinks.trySend(it) }
     }
 
     override fun onStart() {

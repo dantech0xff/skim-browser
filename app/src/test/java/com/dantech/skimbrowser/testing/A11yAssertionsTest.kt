@@ -13,6 +13,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -40,6 +43,37 @@ class A11yAssertionsTest {
         }
 
         composeRule.assertA11y()
+    }
+
+    @Test
+    fun aLinkInsideATextIsLabelledByItsWords() {
+        composeRule.setSkimContent {
+            Text(
+                buildAnnotatedString {
+                    append("Read the ")
+                    withLink(LinkAnnotation.Clickable("terms") {}) { append("Terms of Service") }
+                    append(".")
+                },
+            )
+        }
+
+        composeRule.assertA11y()
+    }
+
+    @Test
+    fun aLinkOverBlankWordsFails() {
+        composeRule.setSkimContent {
+            Text(
+                buildAnnotatedString {
+                    append("Read")
+                    withLink(LinkAnnotation.Clickable("blank") {}) { append("   ") }
+                    append("this.")
+                },
+            )
+        }
+
+        val error = assertThrows(AssertionError::class.java) { composeRule.assertA11y() }
+        assertTrue(error.message, error.message!!.contains("no text or content description"))
     }
 
     @Test

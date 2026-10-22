@@ -13,8 +13,8 @@ private val MinTouchTarget = 48.dp
 
 /**
  * Asserts the accessibility rules every screen follows, on the merged semantics tree that TalkBack
- * reads: each node a user can tap or toggle has a label (text or content description), and a touch
- * area of at least 48 by 48 dp.
+ * reads: each node a user can tap or toggle has a label (text or content description; a link inside
+ * a text is labelled by the words it covers), and a touch area of at least 48 by 48 dp.
  *
  * The touch area is the node's touch bounds, the area that accepts its touches: Compose widens the
  * touch bounds of a clickable smaller than 48 dp to the minimum touch target, so a drawn 36 dp
@@ -56,5 +56,21 @@ private fun labelOf(node: SemanticsNode): String {
     val parts = config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() +
         config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
         listOfNotNull(config.getOrNull(SemanticsProperties.EditableText)?.text)
-    return parts.filter { it.isNotBlank() }.joinToString(", ")
+    val label = parts.filter { it.isNotBlank() }.joinToString(", ")
+    return label.ifEmpty { inlineLinkText(node) }
+}
+
+/**
+ * The words a link inside a text covers ("Terms of Service" in 01's legal line). Compose gives each
+ * link of a text a node of its own, in the order of the links, without text: TalkBack reads it as a
+ * link of the text that holds it.
+ */
+private fun inlineLinkText(node: SemanticsNode): String {
+    if (SemanticsProperties.LinkTestMarker !in node.config) return ""
+    val holder = node.parent ?: return ""
+    val links = holder.config.getOrNull(SemanticsProperties.Text).orEmpty().flatMap { text ->
+        text.getLinkAnnotations(0, text.length).map { text.text.substring(it.start, it.end) }
+    }
+    val index = holder.children.filter { SemanticsProperties.LinkTestMarker in it.config }.indexOfFirst { it.id == node.id }
+    return links.getOrNull(index)?.takeIf { it.isNotBlank() }.orEmpty()
 }

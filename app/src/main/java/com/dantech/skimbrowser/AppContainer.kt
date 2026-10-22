@@ -17,6 +17,7 @@ import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.PageScripts
 import com.dantech.skimbrowser.data.db.SkimDatabase
+import com.dantech.skimbrowser.data.importer.BookmarkImporter
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
 import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.data.repo.HistoryRepository
@@ -24,6 +25,8 @@ import com.dantech.skimbrowser.data.repo.ShortcutRepository
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.repo.TabRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.ui.snackbar.SnackbarController
+import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -40,10 +43,11 @@ import okhttp3.OkHttpClient
 /**
  * Manual dependency container: one per process, created in [SkimApplication.onCreate]. Storage
  * comes from [storage], so tests can run a container on a temporary directory. Nothing is opened
- * until first use: the database, the settings store, every repository, the HTTP client and the
+ * until first use: the database, the settings store, every repository, the HTTP client, the
  * browser's process-wide parts (tabs, incognito session, WebView profiles, network monitor,
- * stores, page scripts, download tracker) are created lazily, once. What lives only as long as the
- * Activity (the WebView pool and the rest of the Activity's browser host) is never kept here.
+ * stores, page scripts, download tracker), the snackbar with its undo registry and the bookmark
+ * importer are created lazily, once. What lives only as long as the Activity (the WebView pool and
+ * the rest of the Activity's browser host, the navigator) is never kept here.
  */
 class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : Closeable {
 
@@ -143,6 +147,15 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
             scripts = pageScripts,
         )
     }
+
+    /** Deletions that can still be undone; their blocks run on [appScope]. */
+    val undoRegistry: UndoRegistry by lazy { UndoRegistry(appScope) }
+
+    /** The app's one snackbar, shown by the main window's host. */
+    val snackbarController: SnackbarController by lazy { SnackbarController(undoRegistry) }
+
+    /** Imports a picked bookmarks file into a new Imported folder. */
+    val bookmarkImporter: BookmarkImporter by lazy { BookmarkImporter(app.contentResolver, bookmarkRepository) }
 
     /**
      * Stops watching the network, lets the HTTP client's connections and threads go, closes the

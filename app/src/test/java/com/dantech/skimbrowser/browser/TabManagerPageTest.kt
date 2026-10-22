@@ -302,6 +302,29 @@ class TabManagerPageTest {
         assertEquals("a minute later it recovers by itself again", RendererGoneAction.RESTORE, f.engine.loseRenderer(id))
     }
 
+    @Test
+    fun aTabThatShowsTheCrashErrorHasNoHistoryToGoBackInUntilTryAgain() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://heavy.example/")
+        f.engine.openPage(id, "https://heavy.example/", "Heavy")
+        f.engine.reportHistory(id, canGoBack = true, canGoForward = true)
+
+        assertEquals(RendererGoneAction.RESTORE, f.engine.loseRenderer(id))
+        assertTrue("a restored WebView brings its history back", f.manager.runtime(id).value.canGoBack)
+        assertTrue(f.manager.runtime(id).value.canGoForward)
+        advanceTimeBy(1_000)
+        assertEquals(RendererGoneAction.RESTORE, f.engine.loseRenderer(id))
+        advanceTimeBy(1_000)
+        assertEquals(RendererGoneAction.SHOW_ERROR, f.engine.loseRenderer(id))
+
+        assertFalse("there is no WebView to go back in", f.manager.runtime(id).value.canGoBack)
+        assertFalse(f.manager.runtime(id).value.canGoForward)
+
+        f.manager.reload(id)
+        f.engine.reportHistory(id, canGoBack = true, canGoForward = false)
+        assertTrue("Try again brings the history back", f.manager.runtime(id).value.canGoBack)
+    }
+
     // Commands to the engine
 
     @Test

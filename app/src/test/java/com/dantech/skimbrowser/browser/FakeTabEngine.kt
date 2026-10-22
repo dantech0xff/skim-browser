@@ -86,6 +86,11 @@ class FakeTabEngine(
         sink.onVisitedHistory(tabId, url)
     }
 
+    /** The WebView says whether its history has a page before and after the current one. */
+    fun reportHistory(tabId: String, canGoBack: Boolean, canGoForward: Boolean) {
+        sink.onNavigationState(tabId, canGoBack, canGoForward)
+    }
+
     /**
      * A failed main-frame load of [url], in the WebView's order: page started, the error, page
      * finished, then the visit of the error page it commits.

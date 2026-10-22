@@ -69,8 +69,7 @@ class DownloadLimitsDeviceTest {
         val (id, view) = showDownloadPage()
         assertEquals("the page's own download", listOf(COMPLETED), kinds(start(id, times = 1, ending = 1)))
 
-        Finger.drag(view, fromY = DRAG_FROM, toY = DRAG_TO)
-        waitUntil("the page to scroll") { ((jsValue(rig.evaluate(id, "window.scrollY")) as? Number)?.toDouble() ?: 0.0) > 0.0 }
+        scrollThePage(id, view)
         assertEquals("a scroll is no tap", listOf(FAILED), kinds(start(id, times = 1, ending = 1)))
 
         Finger.tap(view, fractionY = REST_Y)
@@ -147,6 +146,21 @@ class DownloadLimitsDeviceTest {
         return eventsAfter(before, ending)
     }
 
+    /**
+     * Drags up the page until it scrolled. Now and then WebView 66 takes no part of a drag on a busy
+     * device: the page gets no touch event at all and does not move. That drag was no tap either, so
+     * nothing about the download limit hangs on it, and the page is dragged again.
+     */
+    private fun scrollThePage(tabId: String, view: SkimWebView) {
+        repeat(MAX_DRAGS) {
+            Finger.drag(view, fromY = DRAG_FROM, toY = DRAG_TO)
+            if (!holdsFor(SCROLL_WATCH_MS) { scrollY(tabId) == 0.0 }) return
+        }
+        throw AssertionError("The page did not scroll after $MAX_DRAGS drags")
+    }
+
+    private fun scrollY(tabId: String): Double = (jsValue(rig.evaluate(tabId, "window.scrollY")) as? Number)?.toDouble() ?: 0.0
+
     /** The [count] download ends that follow the first [before]. */
     private fun eventsAfter(before: Int, count: Int): List<DownloadEvent> = rig.awaitDownloadEvents(before + count).subList(before, before + count)
 
@@ -174,6 +188,10 @@ class DownloadLimitsDeviceTest {
         const val DRAG_FROM = 0.85f
         const val DRAG_TO = 0.3f
         const val SETTLE_MS = 1_000L
+
+        /** How many drags a page gets to scroll, and how long after each one it is watched for moving. */
+        const val MAX_DRAGS = 3
+        const val SCROLL_WATCH_MS = 2_000L
         const val COMPLETED = "completed"
         const val FAILED = "failed"
 
