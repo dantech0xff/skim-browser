@@ -25,6 +25,7 @@ import com.dantech.skimbrowser.data.repo.ShortcutRepository
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.repo.TabRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import java.io.Closeable
@@ -45,9 +46,10 @@ import okhttp3.OkHttpClient
  * comes from [storage], so tests can run a container on a temporary directory. Nothing is opened
  * until first use: the database, the settings store, every repository, the HTTP client, the
  * browser's process-wide parts (tabs, incognito session, WebView profiles, network monitor,
- * stores, page scripts, download tracker), the snackbar with its undo registry and the bookmark
- * importer are created lazily, once. What lives only as long as the Activity (the WebView pool and
- * the rest of the Activity's browser host, the navigator) is never kept here.
+ * stores, page scripts, download tracker), the snackbar with its undo registry, the bookmark
+ * importer and the search suggestions are created lazily, once. What lives only as long as the
+ * Activity (the WebView pool and the rest of the Activity's browser host, the navigator) is never
+ * kept here.
  */
 class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : Closeable {
 
@@ -109,7 +111,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /**
      * The app's one HTTP client, shared so that every caller pools connections and threads: 15 s to
-     * connect and 15 s at most between two reads.
+     * connect and 15 s at most between two reads. It carries no interceptor: the search suggestions
+     * go over it with what the user types, and nothing else may ride along. A caller that needs one
+     * derives its own client with `newBuilder()`.
      */
     val httpClient: OkHttpClient by httpClientHolder
 
@@ -156,6 +160,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** Imports a picked bookmarks file into a new Imported folder. */
     val bookmarkImporter: BookmarkImporter by lazy { BookmarkImporter(app.contentResolver, bookmarkRepository) }
+
+    /** The search engine's suggestions for the search field, over the connections of [httpClient]. */
+    val suggestionService: SuggestionService by lazy { SuggestionService(httpClient) }
 
     /**
      * Stops watching the network, lets the HTTP client's connections and threads go, closes the

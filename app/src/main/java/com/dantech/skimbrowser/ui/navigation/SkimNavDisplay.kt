@@ -22,6 +22,9 @@ import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
 import com.dantech.skimbrowser.ui.browser.PageStoppedWorking
+import com.dantech.skimbrowser.ui.home.NewTabPageRoute
+import com.dantech.skimbrowser.ui.home.ShortcutDialogProperties
+import com.dantech.skimbrowser.ui.home.ShortcutDialogRoute
 import com.dantech.skimbrowser.ui.onboarding.SetupRoute
 import com.dantech.skimbrowser.ui.onboarding.WelcomeScreen
 import com.dantech.skimbrowser.ui.shell.rememberSecureEntryDecorator
@@ -83,7 +86,7 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
             BrowserRoute(
                 container = container,
                 navigator = navigator,
-                newTabPage = {},
+                newTabPage = { tab -> NewTabPageRoute(tab, container, navigator) },
                 page = { tab, runtime ->
                     val error = runtime.loadError
                     if (error is LoadError.Crashed) {
@@ -93,5 +96,8 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
                     }
                 },
             )
+        }
+        entry<ShortcutDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
+            ShortcutDialogRoute(key, container, navigator)
         }
     }

@@ -116,16 +116,23 @@ fun FaviconLetterTile(
 /**
  * The 64 dp tile of a shortcut on Home (04): its first letter on the shape of its [position], so
  * neighbouring shortcuts look different at a glance. The name below it is the label.
+ *
+ * @param container surfaceContainerHighest; secondaryContainer while the shortcut's menu is open (15).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ShortcutTile(letter: String, position: Int, modifier: Modifier = Modifier) {
+fun ShortcutTile(
+    letter: String,
+    position: Int,
+    modifier: Modifier = Modifier,
+    container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+) {
     LetterTile(
         letter = letter,
         shape = shortcutShapeFor(position).toDrawnShape(),
         size = ShortcutTileSize,
         textStyle = MaterialTheme.typography.titleLargeEmphasized,
-        container = MaterialTheme.colorScheme.surfaceContainerHighest,
+        container = container,
         content = MaterialTheme.colorScheme.onSecondaryContainer,
         modifier = modifier,
     )

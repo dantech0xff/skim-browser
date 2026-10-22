@@ -97,30 +97,61 @@ fun SkimAlertDialog(
     iconTint: Color = MaterialTheme.colorScheme.secondary,
     text: (@Composable () -> Unit)? = null,
 ) {
-    val body: (@Composable ColumnScope.() -> Unit)? = if (text == null) {
-        null
-    } else {
-        {
-            Box(Modifier.padding(horizontal = DialogPadding)) {
-                ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(lineBreak = LineBreak.Paragraph)) {
-                    CompositionLocalProvider(
-                        LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
-                        content = text,
-                    )
-                }
-            }
-        }
-    }
     DialogFrame(
         title = title,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         icon = icon,
         iconTint = iconTint,
-        body = body,
+        body = alertBody(text),
     ) {
         if (dismiss != null) DialogButton(dismiss)
         DialogButton(confirm, destructive = destructiveConfirm)
+    }
+}
+
+/**
+ * [SkimAlertDialog] for a dialog destination, drawn in the window the navigation's dialog scene
+ * opens for it: that window must not use the platform's dialog width
+ * (`DialogProperties(usePlatformDefaultWidth = false)`), and Back or a tap outside the dialog go
+ * back through the scene. This draws the same 344 dp surface and the 32% scrim, without a second
+ * window of its own.
+ */
+@Composable
+fun SkimDialogContent(
+    title: String,
+    confirm: DialogAction,
+    modifier: Modifier = Modifier,
+    dismiss: DialogAction? = null,
+    destructiveConfirm: Boolean = false,
+    icon: (@Composable () -> Unit)? = null,
+    iconTint: Color = MaterialTheme.colorScheme.secondary,
+    text: (@Composable () -> Unit)? = null,
+) {
+    DialogSurface(
+        title = title,
+        modifier = modifier,
+        icon = icon,
+        iconTint = iconTint,
+        body = alertBody(text),
+    ) {
+        if (dismiss != null) DialogButton(dismiss)
+        DialogButton(confirm, destructive = destructiveConfirm)
+    }
+}
+
+/** The [text] of an alert dialog, inset like the title, in bodyMedium and onSurfaceVariant. */
+private fun alertBody(text: (@Composable () -> Unit)?): (@Composable ColumnScope.() -> Unit)? {
+    if (text == null) return null
+    return {
+        Box(Modifier.padding(horizontal = DialogPadding)) {
+            ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(lineBreak = LineBreak.Paragraph)) {
+                CompositionLocalProvider(
+                    LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
+                    content = text,
+                )
+            }
+        }
     }
 }
 
@@ -207,10 +238,7 @@ private fun Modifier.labelOverhang(overhang: Dp): Modifier = layout { measurable
     layout(placeable.width, (placeable.height - top).coerceAtLeast(0)) { placeable.place(0, -top) }
 }
 
-/**
- * The dialog window and surface shared by the dialogs above: the title, the [body] 16 dp under it,
- * then the [buttons] row.
- */
+/** The dialog window of the dialogs above, holding their [DialogSurface]. */
 @Composable
 private fun DialogFrame(
     title: String,
@@ -222,46 +250,62 @@ private fun DialogFrame(
     buttons: @Composable FlowRowScope.() -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        ScrimBehindDialog()
-        val colors = MaterialTheme.colorScheme
-        Surface(
-            modifier = modifier
-                .width(DialogWidth)
-                .semantics { paneTitle = title },
-            shape = DialogShape,
-            color = colors.surfaceContainerHigh,
-            contentColor = colors.onSurface,
-        ) {
-            Column(Modifier.padding(top = DialogPadding, bottom = DialogPadding - ButtonTargetInset)) {
-                if (icon != null) {
-                    Box(Modifier.align(Alignment.CenterHorizontally).padding(bottom = TitleGap)) {
-                        CompositionLocalProvider(LocalContentColor provides iconTint, content = icon)
-                    }
+        DialogSurface(title, modifier, icon, iconTint, body, buttons)
+    }
+}
+
+/**
+ * The surface shared by the dialogs above, in the dialog window it is composed in: the title, the
+ * [body] 16 dp under it, then the [buttons] row, over the 32% scrim.
+ */
+@Composable
+private fun DialogSurface(
+    title: String,
+    modifier: Modifier,
+    icon: (@Composable () -> Unit)?,
+    iconTint: Color,
+    body: (@Composable ColumnScope.() -> Unit)?,
+    buttons: @Composable FlowRowScope.() -> Unit,
+) {
+    ScrimBehindDialog()
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier
+            .width(DialogWidth)
+            .semantics { paneTitle = title },
+        shape = DialogShape,
+        color = colors.surfaceContainerHigh,
+        contentColor = colors.onSurface,
+    ) {
+        Column(Modifier.padding(top = DialogPadding, bottom = DialogPadding - ButtonTargetInset)) {
+            if (icon != null) {
+                Box(Modifier.align(Alignment.CenterHorizontally).padding(bottom = TitleGap)) {
+                    CompositionLocalProvider(LocalContentColor provides iconTint, content = icon)
                 }
-                Text(
-                    text = title,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = DialogPadding),
-                    // Balanced lines, as the boards draw a two-line title (site permission).
-                    style = MaterialTheme.typography.headlineSmall.copy(lineBreak = LineBreak.Heading),
-                    textAlign = if (icon != null) TextAlign.Center else TextAlign.Start,
-                )
-                if (body != null) {
-                    Column(
-                        Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState())
-                            .padding(top = TitleGap),
-                        content = body,
-                    )
-                }
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = DialogPadding, top = DialogPadding - ButtonTargetInset, end = DialogPadding),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGap, Alignment.End),
-                    content = buttons,
+            }
+            Text(
+                text = title,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogPadding),
+                // Balanced lines, as the boards draw a two-line title (site permission).
+                style = MaterialTheme.typography.headlineSmall.copy(lineBreak = LineBreak.Heading),
+                textAlign = if (icon != null) TextAlign.Center else TextAlign.Start,
+            )
+            if (body != null) {
+                Column(
+                    Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = TitleGap),
+                    content = body,
                 )
             }
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = DialogPadding, top = DialogPadding - ButtonTargetInset, end = DialogPadding),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGap, Alignment.End),
+                content = buttons,
+            )
         }
     }
 }
