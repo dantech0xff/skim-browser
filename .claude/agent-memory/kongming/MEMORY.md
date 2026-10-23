@@ -1,0 +1,2 @@
+- [Search overlay text state](project-search-overlay-text-state.md) — 04b field is composable-owned TextFieldState; VM is Compose-free; why the plan's TextFieldValue was a slip
+- [Agent workflow contracts](user-agent-workflow-contracts.md) — Dan's orchestrated subagent workflow; deviations need file:line evidence; report signatures for the controller
