@@ -98,7 +98,7 @@ Biến handoff `design/` thành app Android native (Kotlin, Jetpack Compose, Mat
 | 9 | [Tabs](./phase-09-tabs.md) | 21h | 2, 4, 5 | Done with concerns |
 | 10 | [Reader view](./phase-10-reader-view.md) | 11h | 4, 7 | Done with concerns |
 | 11 | [Skim AI core](./phase-11-skim-ai-core.md) | 33h | 3, 4, 7, 10 | Done with concerns |
-| 12 | [Skim AI across tabs & Skim history](./phase-12-skim-ai-across-tabs-history.md) | 19h | 6, 8, 9, 11 | Pending |
+| 12 | [Skim AI across tabs & Skim history](./phase-12-skim-ai-across-tabs-history.md) | 19h | 6, 8, 9, 11 | Done with concerns |
 | 13 | [Verification, hardening & docs](./phase-13-verification-hardening-docs.md) | 22h | 1–12 | Pending |
 
 ## Dependencies

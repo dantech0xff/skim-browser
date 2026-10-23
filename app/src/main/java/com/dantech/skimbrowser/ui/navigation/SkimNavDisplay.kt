@@ -20,11 +20,14 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
 import com.dantech.skimbrowser.ui.ai.AskPageRoute
+import com.dantech.skimbrowser.ui.ai.AskTabsRoute
 import com.dantech.skimbrowser.ui.bookmarks.BookmarksRoute
 import com.dantech.skimbrowser.ui.bookmarks.EditBookmarkRoute
 import com.dantech.skimbrowser.ui.bookmarks.MoveToFolderRoute
 import com.dantech.skimbrowser.ui.history.HistoryRoute
 import com.dantech.skimbrowser.ui.settings.AiPrivacyRoute
+import com.dantech.skimbrowser.ui.skimhistory.ClearSkimHistoryRoute
+import com.dantech.skimbrowser.ui.skimhistory.SkimHistoryRoute
 import com.dantech.skimbrowser.ui.settings.ClearBrowsingDataRoute
 import com.dantech.skimbrowser.ui.settings.DeleteAiDataRoute
 import com.dantech.skimbrowser.ui.settings.LicensesRoute
@@ -126,6 +129,11 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         entry<SiteInfoKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_site_info)) { key ->
             SiteInfoRoute(key, container, navigator)
         }
+        entry<AskTabsKey>(
+            metadata = BottomSheetSceneStrategy.bottomSheet(R.string.ask_skim),
+        ) { key ->
+            AskTabsRoute(key, container, navigator)
+        }
         entry<AskPageKey>(
             metadata = BottomSheetSceneStrategy.bottomSheet(
                 R.string.ai_ask_about_page,
@@ -147,6 +155,10 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         entry<SettingsKey> { SettingsRoute(container, navigator) }
         entry<AiPrivacyKey> { AiPrivacyRoute(container, navigator) }
         entry<HistoryKey> { HistoryRoute(container, navigator) }
+        entry<SkimHistoryKey> { SkimHistoryRoute(container, navigator) }
+        entry<ClearSkimHistoryKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            ClearSkimHistoryRoute(container, navigator)
+        }
         entry<BookmarksKey> { key -> BookmarksRoute(key, container, navigator) }
         entry<LicensesKey> { LicensesRoute(navigator) }
         entry<SearchEngineDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
