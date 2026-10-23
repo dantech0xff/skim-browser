@@ -2,12 +2,14 @@ package com.dantech.skimbrowser.browser
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
+import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
+import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -48,6 +50,17 @@ class BrowsingDataCleanerTest {
         f.manager.newTab(incognito = false, url = PAGE)
         runCurrent()
         f.history.recordVisit(PAGE, "Heat pumps", f.now())
+        f.db.tabDao().putSnapshot(
+            TabGroupingSnapshotEntity(
+                previousLayoutJson = "[]",
+                tabSetKey = "tabs",
+                appliedLayoutVersion = 1,
+                bannerVisible = true,
+                createdAt = 1,
+            ),
+        )
+        File(f.stateDir.apply { mkdirs() }, "old.bin").writeText("state")
+        File(f.thumbsDir.apply { mkdirs() }, "old.webp").writeBytes(byteArrayOf(1))
         f.settle()
 
         val undo = UndoRegistry(backgroundScope)
@@ -64,6 +77,9 @@ class BrowsingDataCleanerTest {
         assertTrue(f.history.observe(null).first().isEmpty())
         assertTrue(finalized)
         assertNull(snackbar.current.value)
+        assertNull(f.tabRepo.snapshot())
+        assertTrue(f.stateDir.listFiles().isNullOrEmpty())
+        assertTrue(f.thumbsDir.listFiles().isNullOrEmpty())
         assertTrue(f.engine.calls.any { it is Call.ClearHistory })
         assertEquals(listOf(Call.TemporaryWebView(null)), f.engine.callsOf<Call.TemporaryWebView>())
         assertTrue(site.clearedAll.not())

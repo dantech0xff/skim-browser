@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import com.dantech.skimbrowser.ai.AiDataEraser
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
@@ -187,6 +188,16 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
             stateStore = tabStateStore,
             thumbnails = thumbnails,
             incognito = incognitoSession,
+            undo = undoRegistry,
+            snackbar = snackbarController,
+        )
+    }
+
+    /** Deletes saved Skim chats, and every site's Skim AI decision when all AI data is deleted. */
+    val aiDataEraser: AiDataEraser by lazy {
+        AiDataEraser(
+            chats = chatRepository,
+            sites = sitePermissionRepository,
             undo = undoRegistry,
             snackbar = snackbarController,
         )
