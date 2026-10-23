@@ -4,8 +4,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
 import com.dantech.skimbrowser.testing.MainDispatcherRule
+import com.dantech.skimbrowser.domain.undo.PendingUndo
+import com.dantech.skimbrowser.domain.undo.UndoSubject
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
+import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
@@ -69,8 +72,15 @@ class BrowsingDataCleanerTest {
         val snackbar = SnackbarController(undo)
         snackbar.show(UiText.Raw("Removed from history"), SnackbarAction.Undo(token))
         val site = RecordingSiteData()
+        val pending = object : PendingUndo {
+            override suspend fun cancel(subject: UndoSubject) {
+                assertEquals(UndoSubject.HISTORY, subject)
+                assertTrue(f.history.observe(null).first().isNotEmpty())
+                SnackbarUndo(undo, snackbar).cancel(subject)
+            }
+        }
 
-        cleaner(f, undo, snackbar, site).clearAll(history = true, cookies = false, cache = true, engine = f.engine)
+        cleaner(f, pending, site).clearAll(history = true, cookies = false, cache = true, engine = f.engine)
         runCurrent()
         f.settle()
 
@@ -93,7 +103,8 @@ class BrowsingDataCleanerTest {
         val private = f.manager.newTab(incognito = true, url = "https://example.com/secret")
         runCurrent()
         val site = RecordingSiteData()
-        val cleaner = cleaner(f, UndoRegistry(backgroundScope), SnackbarController(UndoRegistry(backgroundScope)), site)
+        val idle = UndoRegistry(backgroundScope)
+        val cleaner = cleaner(f, SnackbarUndo(idle, SnackbarController(idle)), site)
 
         cleaner.clearAll(history = false, cookies = true, cache = true, engine = null)
         runCurrent()
@@ -114,8 +125,7 @@ class BrowsingDataCleanerTest {
 
     private fun cleaner(
         f: TabManagerFixture,
-        undo: UndoRegistry,
-        snackbar: SnackbarController,
+        pendingUndo: PendingUndo,
         site: RecordingSiteData,
     ) = BrowsingDataCleaner(
         history = f.history,
@@ -124,8 +134,7 @@ class BrowsingDataCleanerTest {
         stateStore = f.stateStore,
         thumbnails = f.thumbnails,
         incognito = f.incognito,
-        undo = undo,
-        snackbar = snackbar,
+        pendingUndo = pendingUndo,
         siteData = site,
         mainDispatcher = f.main,
     )

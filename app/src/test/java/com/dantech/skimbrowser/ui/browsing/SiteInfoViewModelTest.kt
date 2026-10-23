@@ -20,6 +20,7 @@ import com.dantech.skimbrowser.domain.usecase.SetSitePermission
 import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
+import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -135,8 +136,7 @@ class SiteInfoViewModelTest {
             stateStore = f.stateStore,
             thumbnails = f.thumbnails,
             incognito = f.incognito,
-            undo = UndoRegistry(backgroundScope),
-            snackbar = SnackbarController(UndoRegistry(backgroundScope)),
+            pendingUndo = SnackbarUndo(UndoRegistry(backgroundScope), SnackbarController(UndoRegistry(backgroundScope))),
             siteData = site,
             mainDispatcher = f.main,
         )

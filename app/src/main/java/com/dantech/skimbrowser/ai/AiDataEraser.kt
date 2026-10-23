@@ -1,10 +1,9 @@
 package com.dantech.skimbrowser.ai
 
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.undo.PendingUndo
+import com.dantech.skimbrowser.domain.undo.UndoSubject
 import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
-import com.dantech.skimbrowser.ui.snackbar.SnackbarController
-import com.dantech.skimbrowser.ui.snackbar.UndoKind
-import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 
 /**
  * Deletes Skim's saved chats. [deleteAllAiData] also forgets every site's Skim AI decision, so the
@@ -17,24 +16,27 @@ import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 class AiDataEraser(
     private val deleteAllChats: DeleteAllSkimChats,
     private val sites: SitePermissionRepository,
-    private val undo: UndoRegistry,
-    private val snackbar: SnackbarController,
+    private val pendingUndo: PendingUndo,
 ) {
 
     /** Deletes every saved chat and every site's Skim AI decision. */
-    suspend fun deleteAllAiData() {
+    suspend fun deleteAllAiData(): AiDataCleared {
         dropChats()
         sites.deleteAllSkimAiData()
+        return AiDataCleared.CHATS_AND_SITE_CHOICES
     }
 
     /** Deletes every saved chat and leaves site decisions untouched. */
-    suspend fun clearSkimHistory() {
+    suspend fun clearSkimHistory(): AiDataCleared {
         dropChats()
+        return AiDataCleared.CHATS
     }
 
     private suspend fun dropChats() {
-        undo.cancelAll(UndoKind.SKIM_CHAT)
-        snackbar.dismissFor(UndoKind.SKIM_CHAT)
+        pendingUndo.cancel(UndoSubject.SKIM_CHAT)
         deleteAllChats()
     }
 }
+
+/** What a Skim AI delete removed. Site choices stay on [CHATS]. */
+enum class AiDataCleared { CHATS, CHATS_AND_SITE_CHOICES }

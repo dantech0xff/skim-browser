@@ -10,8 +10,11 @@ import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
+import com.dantech.skimbrowser.domain.undo.PendingUndo
+import com.dantech.skimbrowser.domain.undo.UndoSubject
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
+import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
@@ -47,9 +50,16 @@ class AiDataEraserTest {
         val token = undo.register(UndoKind.SKIM_CHAT, undo = { chats.createChat(chat("Brought back")) }, finalize = { finalized = true })
         val snackbar = SnackbarController(undo)
         snackbar.show(UiText.Raw("Removed"), SnackbarAction.Undo(token))
+        val pending = object : PendingUndo {
+            override suspend fun cancel(subject: UndoSubject) {
+                assertEquals(UndoSubject.SKIM_CHAT, subject)
+                assertEquals(1, chats.observeCount().first())
+                SnackbarUndo(undo, snackbar).cancel(subject)
+            }
+        }
 
         chats.removals.test {
-            AiDataEraser(DeleteAllSkimChats(chats), sites, undo, snackbar).deleteAllAiData()
+            assertEquals(AiDataCleared.CHATS_AND_SITE_CHOICES, AiDataEraser(DeleteAllSkimChats(chats), sites, pending).deleteAllAiData())
             assertNull(awaitItem())
         }
 
@@ -70,7 +80,10 @@ class AiDataEraserTest {
         sites.setSkimAi("daylightjournal.com", SkimAiState.ALLOWED)
         val undo = UndoRegistry(backgroundScope)
 
-        AiDataEraser(DeleteAllSkimChats(chats), sites, undo, SnackbarController(undo)).clearSkimHistory()
+        assertEquals(
+            AiDataCleared.CHATS,
+            AiDataEraser(DeleteAllSkimChats(chats), sites, SnackbarUndo(undo, SnackbarController(undo))).clearSkimHistory(),
+        )
 
         assertEquals(0, chats.observeCount().first())
         assertEquals(SkimAiState.ALLOWED, sites.get("daylightjournal.com")?.skimAi)

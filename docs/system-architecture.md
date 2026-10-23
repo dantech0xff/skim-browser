@@ -74,6 +74,8 @@ Chats are stored when "Keep chat history" is on. A chat id stays negative until 
 | Tab state, thumbnails | Files | Purged for tabs that are gone |
 | Incognito profile | WebView profile directory | `IncognitoSession.end` |
 
+Clear browsing data and the two Skim chat deletes finalize a waiting undo, and dismiss its snackbar, before the rows are removed. `AiDataEraser` and `BrowsingDataCleaner` call `PendingUndo`. `SnackbarUndo` is the implementation and is the type that knows the snackbar.
+
 Backup and device transfer are off (`allowBackup=false` and `data_extraction_rules.xml`).
 
 The install id is a UUID created on first use inside one DataStore edit (`SettingsRepository.installId`). Release requests send it as `X-Skim-Install`. It is not logged.

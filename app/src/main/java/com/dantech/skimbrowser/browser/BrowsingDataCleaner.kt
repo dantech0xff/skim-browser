@@ -6,9 +6,8 @@ import android.webkit.WebStorage
 import com.dantech.skimbrowser.data.normalizeHost
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.TabRepository
-import com.dantech.skimbrowser.ui.snackbar.SnackbarController
-import com.dantech.skimbrowser.ui.snackbar.UndoKind
-import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
+import com.dantech.skimbrowser.domain.undo.PendingUndo
+import com.dantech.skimbrowser.domain.undo.UndoSubject
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,8 +30,7 @@ class BrowsingDataCleaner(
     private val stateStore: TabStateStore,
     private val thumbnails: ThumbnailStore,
     private val incognito: IncognitoSession,
-    private val undo: UndoRegistry,
-    private val snackbar: SnackbarController,
+    private val pendingUndo: PendingUndo,
     private val siteData: DefaultProfileSiteData = AndroidDefaultProfileSiteData(),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) {
@@ -74,8 +72,7 @@ class BrowsingDataCleaner(
     }
 
     private suspend fun clearHistory(engine: TabEngine?) {
-        undo.cancelAll(UndoKind.HISTORY)
-        snackbar.dismissFor(UndoKind.HISTORY)
+        pendingUndo.cancel(UndoSubject.HISTORY)
         history.clearAll()
         val open = tabs.state.value.tabs
         val normal = open.filterNot { it.incognito }

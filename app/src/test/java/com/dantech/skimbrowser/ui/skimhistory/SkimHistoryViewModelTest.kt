@@ -28,6 +28,7 @@ import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
+import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.DateBucket
@@ -123,7 +124,7 @@ class SkimHistoryViewModelTest {
         val id = chat(chats, ChatKind.PAGE, "Why heat pumps are winning", NOW, host = "daylightjournal.com")
         val undo = UndoRegistry(backgroundScope)
         val snackbar = SnackbarController(undo)
-        val eraser = AiDataEraser(DeleteAllSkimChats(chats), sites, undo, snackbar)
+        val eraser = AiDataEraser(DeleteAllSkimChats(chats), sites, SnackbarUndo(undo, snackbar))
         val model = model(chats, undo, snackbar)
         model.state.first { it.sections.isNotEmpty() }
 

@@ -9,6 +9,7 @@ import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.ai.ChatSessionStore
 import com.dantech.skimbrowser.ai.ClaudeClientProvider
 import com.dantech.skimbrowser.ai.SkimAiService
+import com.dantech.skimbrowser.domain.undo.PendingUndo
 import com.dantech.skimbrowser.domain.ai.AskPage
 import com.dantech.skimbrowser.domain.ai.AskTabs
 import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
@@ -83,6 +84,7 @@ import com.dantech.skimbrowser.system.ShareImage
 import com.dantech.skimbrowser.system.purgeOldShares
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
+import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import java.io.Closeable
 import java.util.concurrent.TimeUnit
@@ -266,6 +268,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     /** The app's one snackbar, shown by the main window's host. */
     val snackbarController: SnackbarController by lazy { SnackbarController(undoRegistry) }
 
+    /** Finalizes a waiting undo and dismisses its snackbar before a bulk delete. */
+    val pendingUndo: PendingUndo by lazy { SnackbarUndo(undoRegistry, snackbarController) }
+
     /** Citations that scroll Reader view to a block. Lives with the process, like the snackbar. */
     val readerHighlights: ReaderHighlights by lazy { ReaderHighlights() }
 
@@ -296,8 +301,7 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
             stateStore = tabStateStore,
             thumbnails = thumbnails,
             incognito = incognitoSession,
-            undo = undoRegistry,
-            snackbar = snackbarController,
+            pendingUndo = pendingUndo,
         )
     }
 
@@ -363,8 +367,7 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
         AiDataEraser(
             deleteAllChats = deleteAllSkimChats,
             sites = sitePermissionRepository,
-            undo = undoRegistry,
-            snackbar = snackbarController,
+            pendingUndo = pendingUndo,
         )
     }
 
