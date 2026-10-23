@@ -41,19 +41,21 @@ class ClaudeStreamingTest {
         val server = FakeClaudeServer()
         val slow = server.serveSlowly("slow-stream.sse")
         try {
-            val started = System.nanoTime()
+            // The client is built first. The clock covers the stream only. The server holds the
+            // rest of the body for 2s, so finishing under 1.5s means the close did not wait for it.
             runBlocking {
                 val client = provider(slow.baseUrl).client()
+                val started = System.nanoTime()
                 val job = launch {
                     client.streamEvents(probeParams()).collect { event ->
                         if (event is AiEvent.Text) throw kotlinx.coroutines.CancellationException()
                     }
                 }
-                withTimeout(1_000) { job.join() }
+                withTimeout(1_500) { job.join() }
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                assertTrue("stream took ${elapsedMs}ms", elapsedMs < 1_500)
+                assertTrue("sent ${slow.written()} of ${slow.size}", slow.written() < slow.size)
             }
-            val elapsedMs = (System.nanoTime() - started) / 1_000_000
-            assertTrue("stream took ${elapsedMs}ms", elapsedMs < 1_000)
-            assertTrue("sent ${slow.written()} of ${slow.size}", slow.written() < slow.size)
         } finally {
             slow.close()
             server.close()

@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,6 +42,7 @@ fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNaviga
     val context = LocalContext.current
     val sheet = LocalSkimSheetState.current
     val scope = rememberCoroutineScope()
+    val copied = stringResource(R.string.snackbar_copied)
     LaunchedEffect(model) {
         model.effects.collect { effect ->
             when (effect) {
@@ -60,7 +62,7 @@ fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNaviga
             onCopy = {
                 val text = (model.state.value.summary as? SummaryState.Done)?.text.orEmpty()
                 if (text.isNotEmpty() && Clipboard.copy(context, text, sensitive = false)) {
-                    scope.launch { snackbar.showSnackbar(context.getString(R.string.snackbar_copied)) }
+                    scope.launch { snackbar.showSnackbar(copied) }
                 }
             },
             onGood = { model.feedback(good = true) },

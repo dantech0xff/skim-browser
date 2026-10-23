@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -312,8 +314,11 @@ private fun PageHeader(state: MoreMenuUiState, onStar: () -> Unit, onShare: () -
 
 @Composable
 private fun PageActions(desktop: Boolean, onFind: () -> Unit, onDesktop: () -> Unit) {
+    val pageActions = stringResource(R.string.cd_page_actions)
     Row(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .semantics { contentDescription = pageActions },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SkimButton(

@@ -97,6 +97,7 @@ fun AskTabsRoute(key: AskTabsKey, container: AppContainer, navigator: SkimNaviga
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val copied = stringResource(R.string.snackbar_copied)
     AskTabsSheet(
         state = state,
         snackbar = snackbar,
@@ -109,7 +110,7 @@ fun AskTabsRoute(key: AskTabsKey, container: AppContainer, navigator: SkimNaviga
             onCopy = {
                 val text = tabsAnswerText(model.state.value)
                 if (text.isNotEmpty() && Clipboard.copy(context, text, sensitive = false)) {
-                    scope.launch { snackbar.showSnackbar(context.getString(R.string.snackbar_copied)) }
+                    scope.launch { snackbar.showSnackbar(copied) }
                 }
             },
             onGood = { model.feedback(good = true) },
