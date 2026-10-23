@@ -137,6 +137,23 @@ class IncognitoSession(
         if (_state.value == State.None) deleteSharedFiles()
     }
 
+    /**
+     * Forgets the cookies and web storage this session's profile holds for [host]. Nothing happens
+     * without a session. The permission answers given in the session stay: the site information
+     * sheet changes those on their own.
+     */
+    fun clearSiteData(host: String) {
+        val key = normalizeHost(host)
+        if (key.isEmpty() || activeProfile() == null) return
+        val profile = activeProfile() ?: return
+        step("clear site data") {
+            profiles.get(profile)?.let { store ->
+                store.expireCookiesForHost(key)
+                store.deleteOriginsForHost(key)
+            }
+        }
+    }
+
     /** The answer given in this session to [host] for [kind]; UNSET when there is none. */
     @AnyThread
     fun decision(host: String, kind: SitePermissionKind): PermissionState =

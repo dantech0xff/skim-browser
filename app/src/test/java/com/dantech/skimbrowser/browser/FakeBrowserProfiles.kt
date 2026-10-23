@@ -36,6 +36,20 @@ class FakeBrowserProfiles(
             return cookies[url]
         }
 
+        override fun expireCookiesForHost(host: String) {
+            record("expireCookies:$host")
+            expireHostCookies(
+                host,
+                read = { cookies[it] },
+                write = { url, _ -> cookies.remove(url) },
+                flush = { record("flushCookies") },
+            )
+        }
+
+        override fun deleteOriginsForHost(host: String) {
+            record("deleteOrigins:$host")
+        }
+
         private fun record(call: String) {
             calls += call
             if (failing == call) throw IllegalStateException("$call failed")

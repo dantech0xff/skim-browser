@@ -51,4 +51,14 @@ interface BrowserProfile {
      * what a download of the profile's tabs sends, never the default profile's cookies.
      */
     fun cookieHeader(url: String): String?
+
+    /**
+     * Expires every cookie this profile would send to http and https of [host]: each name is
+     * overwritten with `Max-Age=0` for `path=/` and for `domain=.[host]`, then the store is flushed.
+     * Cookies on another path are left, which the platform does not list.
+     */
+    fun expireCookiesForHost(host: String)
+
+    /** Deletes web storage for `https://[host]` and `http://[host]`. */
+    fun deleteOriginsForHost(host: String)
 }
