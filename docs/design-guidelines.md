@@ -1,8 +1,16 @@
 # Skim design guidelines
 
-Tài liệu này ghi cách app hiện thực bản vẽ trong `design/` và những chỗ app khác bản vẽ. Hiện chỉ có mục kiểm parity và "Known deviations"; các mục khác sẽ được bổ sung sau.
+Tài liệu này ghi cách app hiện thực bản vẽ trong `design/` và những chỗ app khác bản vẽ.
 
-Nguồn sự thật của thiết kế: `design/spec/*.md`, `design/html/*.html` (số đo chính xác) và `design/screens/*.png` (ảnh đối chiếu). Khi bản vẽ khác default của component Compose, bản vẽ thắng (`design/spec/components.md`).
+Nguồn sự thật của thiết kế: `design/spec/*.md`, `design/html/*.html` (số đo chính xác) và `design/screens/*.png` (ảnh đối chiếu). Khi bản vẽ khác default của component Compose, bản vẽ thắng (`design/spec/components.md`). Board 16–18 chỉ là tài liệu (navigation map, tokens, components), không có màn hình riêng trong app.
+
+## Token
+
+App dùng `MaterialExpressiveTheme` và `MotionScheme.expressive()`. Màu, chữ, hình và khoảng cách lấy từ `design/spec/tokens.md` và `design/compose/` (`ui/theme/`). Từ Android 12, dynamic color bật; ảnh golden tắt dynamic color để so với PNG seed `#1A56DB`. Elevation giữ default của Compose (toolbar Level 1, FAB Level 2), như tokens.md, dù HTML vẽ bóng mức 3. Chữ tab count dùng `labelMediumEmphasized`. Vùng chạm tối thiểu 48 dp dù hình vẽ nhỏ hơn.
+
+## Mâu thuẫn spec và HTML
+
+Scout ghi 19 chỗ spec và HTML không khớp (`plans/reports/scout-261020-2319-design-inventory.md`, mục 3(e)). App theo cột "bên thắng" của bảng đó: HTML thắng trừ số đếm tab và elevation (token thắng). Những lệch còn nhìn thấy trên golden nằm ở "Known deviations" bên dưới, không mở lại 19 dòng đó.
 
 ## Kiểm parity bằng golden
 
@@ -11,6 +19,7 @@ Nguồn sự thật của thiết kế: `design/spec/*.md`, `design/html/*.html`
 - Mọi screenshot test gọi `assertA11y()`: node bấm được phải có nhãn và vùng chạm từ 48 dp.
 - Diff pixel với PNG không bao giờ bằng 0 (chữ và hình do Chrome raster). Người duyệt so số đo và màu; lệch thật được ghi vào bảng dưới, cùng lý do.
 - Ghi lại golden: `./gradlew :app:recordRoborazziDebug --tests '<package>.*'`; kiểm: `./gradlew :app:verifyRoborazziDebug`.
+- `./gradlew :app:designParity` ghép mỗi board cùng tên với `design/screens/` và ghi ảnh pixel khác (tô đỏ) cùng tỉ lệ vào `app/build/design-parity/`. Task này không nằm trong `check` và không làm đỏ build.
 
 ### Golden đã duyệt
 

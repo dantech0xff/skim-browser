@@ -1,7 +1,7 @@
 ---
 phase: 13
 title: "Verification, hardening & docs"
-status: pending
+status: done-with-concerns
 priority: P1
 effort: "22h"
 dependencies: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -111,18 +111,36 @@ Hợp đồng bảo mật tối thiểu của proxy (ghi trong `docs/deployment-
 - Khuyến nghị thêm Play Integrity (standard request) trước khi mở rộng phân phối.
 - Không ghi log nội dung trang hay câu hỏi (khớp copy "Page text is sent encrypted and deleted after each answer").
 
+## Verification notes (2026-10-23)
+
+Không có system image trong môi trường này và không cài image. Cổng thiết bị (TalkBack, `connectedDebugAndroidTest`, `ReleaseSmokeTest` trên máy, checklist adb process death, bộ nhớ, trim, `FLAG_SECURE`) chưa chạy. Phase là done-with-concerns vì cổng đó.
+
+Đã chạy:
+
+- `testDebugUnitTest` xanh, gồm `RestoreAcrossContainersTest`. Fixture SSE nằm ở `app/src/sharedTest/sse/` và unit test vẫn đọc được `/sse/`.
+- `ProcessDeathRestoreTest` và `ReleaseSmokeTest` biên dịch (`compileDebugAndroidTestKotlin` và `compileReleaseSmokeAndroidTestKotlin`). Chưa cài lên thiết bị.
+- Kover `:app:koverXmlReportDebug`. Loại trừ class Android sinh ra và Room `*Dao_Impl` / `*Database_Impl`. Không loại composable. Một module `:app`: LINE 83.45% (10748/12879), INSTRUCTION 77.19% (114423/148240), BRANCH 60.13% (5639/9378), METHOD 80.05% (2151/2687), CLASS 86.03% (770/895).
+- `designParity` viết `app/build/design-parity/summary.txt`. Lệch lớn đã có trong Known deviations: vùng WebView trống (05, 06, 06d), preview tab trống (09, 09b), sheet 06b đầy chiều cao, font Robolectric hẹp hơn PNG.
+- `lintDebug` xanh, 0 error. Warning để lại, không dùng baseline: phiên bản mới hơn bản plan đã chốt (Gradle, material3, webkit, datastore, anthropic-java, okhttp, roborazzi); `ComposableNaming` và `ModifierFactoryExtensionFunction` trên helper nội bộ; `InsecureBaseConfiguration` vì trình duyệt mở được http và smoke test gọi `127.0.0.1`; `UnusedResources` cho `ic_folder`, `ic_stop` (UI dùng bản `_filled`) và ba string `error_code_*` chưa hiện trên UI.
+- Mọi `cd_*` trong `strings.xml` được tham chiếu từ `app/src/main/java` (kể cả `cd_page_actions` trên hàng Page actions).
+- `assembleDebug`, `assembleRelease`, `bundleRelease`, `assembleReleaseSmoke`, `bundleReleaseSmoke` xanh với `-Pskim.aiProxyUrl=https://proxy.example.invalid` và ba URL pháp lý https. `verifyNoApiKeyRelease` và `verifyNoApiKeyReleaseSmoke`: 0 match trên APK và AAB. `local.properties` không có `skim.anthropicApiKey`, nên lượt quét chứng minh không có tiền tố `sk-ant-`, không chứng minh một giá trị key debug cụ thể.
+- Release APK unsigned: 5,724,857 byte, 1 file `classes.dex` (cấu hình `packageScope` cũ trong plan: 9.65 MB / 4 dex). `apkanalyzer` không có trên máy. `res/M7.json` trong APK là catalog AboutLibraries (141 libraries, 2 licenses) — resource shrinking đổi tên file, `tools:keep="@raw/aboutlibraries"` giữ payload. Debug APK: 31,828,435 byte.
+
 ## Todo list
 
-- [ ] `designParity` + duyệt tổng + bổ sung "Known deviations"
-- [ ] Kiểm phủ cd + lượt TalkBack Main path
-- [ ] RestoreAcrossContainersTest + ProcessDeathRestoreTest (pool rỗng) + checklist process death thủ công
-- [ ] D1: đo release APK/dex, kiểm resource AboutLibraries
-- [ ] releaseSmoke + sharedTest fixtures + ReleaseSmokeTest (instrumented, MockWebServer trên thiết bị)
-- [ ] verifyNoApiKey cho mọi variant không phải debug (APK + AAB) với key debug có mặt
-- [ ] Lint sạch error
+- [x] `designParity` + duyệt tổng + bổ sung "Known deviations"
+- [x] Kiểm phủ cd
+- [ ] Lượt TalkBack Main path trên `skim_api36`
+- [x] RestoreAcrossContainersTest
+- [ ] ProcessDeathRestoreTest trên thiết bị + checklist process death thủ công
+- [x] D1: đo release APK/dex, kiểm resource AboutLibraries (không có `apkanalyzer`; đã đọc JSON trong APK)
+- [x] releaseSmoke + sharedTest fixtures + ReleaseSmokeTest biên dịch
+- [ ] ReleaseSmokeTest trên `skim_api36`
+- [x] verifyNoApiKeyRelease và verifyNoApiKeyReleaseSmoke (APK + AAB), 0 match; không có key debug trong `local.properties`
+- [x] Lint sạch error (warning ghi ở trên)
 - [ ] Cổng thiết bị cuối `skim_api36` + `skim_api28` (báo cáo capability, số test incognito đã chạy; bộ nhớ, trim, FLAG_SECURE, pull to refresh)
-- [ ] README.md + 7 file docs/ (gồm hợp đồng proxy và checklist phát hành)
-- [ ] Commit cuối phase
+- [x] README.md + 7 file docs/ (gồm hợp đồng proxy và checklist phát hành)
+- [x] Commit cuối phase
 
 ## Success criteria
 
