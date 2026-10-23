@@ -93,7 +93,7 @@ Biến handoff `design/` thành app Android native (Kotlin, Jetpack Compose, Mat
 | 4 | [Browser engine](./phase-04-browser-engine.md) | 44h | 1, 3 | Completed |
 | 5 | [App shell, navigation & onboarding](./phase-05-app-shell-navigation-onboarding.md) | 22h | 2, 3, 4 | Completed |
 | 6 | [Home, search & incognito new tab](./phase-06-home-search-incognito-new-tab.md) | 16h | 5 | Completed |
-| 7 | [Browsing surfaces](./phase-07-browsing-surfaces.md) | 29h | 4, 5, 6 | Pending |
+| 7 | [Browsing surfaces](./phase-07-browsing-surfaces.md) | 29h | 4, 5, 6 | Done with concerns |
 | 8 | [Settings, AI & privacy, History, Bookmarks](./phase-08-settings-privacy-history-bookmarks.md) | 20h | 5, 7 | Pending |
 | 9 | [Tabs](./phase-09-tabs.md) | 21h | 2, 4, 5 | Pending |
 | 10 | [Reader view](./phase-10-reader-view.md) | 11h | 4, 7 | Pending |
