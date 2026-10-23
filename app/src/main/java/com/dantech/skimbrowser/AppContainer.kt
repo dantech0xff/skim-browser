@@ -30,6 +30,7 @@ import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.system.ShareImage
 import com.dantech.skimbrowser.system.purgeOldShares
+import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import java.io.Closeable
@@ -162,6 +163,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** The app's one snackbar, shown by the main window's host. */
     val snackbarController: SnackbarController by lazy { SnackbarController(undoRegistry) }
+
+    /** Citations that scroll Reader view to a block. Lives with the process, like the snackbar. */
+    val readerHighlights: ReaderHighlights by lazy { ReaderHighlights() }
 
     /** Imports a picked bookmarks file into a new Imported folder. */
     val bookmarkImporter: BookmarkImporter by lazy { BookmarkImporter(app.contentResolver, bookmarkRepository) }

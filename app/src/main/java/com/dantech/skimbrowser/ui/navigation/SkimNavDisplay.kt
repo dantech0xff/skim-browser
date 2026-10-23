@@ -29,6 +29,7 @@ import com.dantech.skimbrowser.ui.settings.LicensesRoute
 import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
 import com.dantech.skimbrowser.ui.settings.SettingsRoute
 import com.dantech.skimbrowser.ui.settings.ThemeRoute
+import com.dantech.skimbrowser.ui.reader.ReaderRoute
 import com.dantech.skimbrowser.ui.tabs.RenameGroupRoute
 import com.dantech.skimbrowser.ui.tabs.TabsRoute
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
@@ -96,6 +97,7 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         entry<SetupKey> {
             SetupRoute(container, navigator)
         }
+        entry<ReaderKey> { key -> ReaderRoute(key, container, navigator) }
         entry<BrowserKey> {
             BrowserRoute(
                 container = container,
