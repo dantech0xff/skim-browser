@@ -76,6 +76,10 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -116,6 +120,7 @@ class NewTabPageRouteTest {
     private lateinit var container: AppContainer
     private lateinit var navigator: SkimNavigator
     private val backStack = NavBackStack<NavKey>(BrowserKey)
+    private lateinit var gateScope: CoroutineScope
 
     /** The browser destination's store: the search and Home view models live in it. */
     private val destination = object : ViewModelStoreOwner {
@@ -127,6 +132,7 @@ class NewTabPageRouteTest {
 
     @Before
     fun setUp() {
+        gateScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         container = AppContainer(app, AppStorage.temp(folder.newFolder()))
         val window = composeRule.activity.window
         navigator = SkimNavigator(
@@ -135,12 +141,15 @@ class NewTabPageRouteTest {
             container.incognitoSession,
             WindowSecureController(window, setRecentsScreenshotEnabled = null),
             container.snackbarController,
+            container.aiGate,
+            gateScope,
         )
     }
 
     @After
     fun tearDown() {
         destination.viewModelStore.clear()
+        gateScope.cancel()
         container.close()
     }
 

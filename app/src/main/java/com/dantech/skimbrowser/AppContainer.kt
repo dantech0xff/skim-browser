@@ -5,6 +5,10 @@ import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.dantech.skimbrowser.ai.AiDataEraser
+import com.dantech.skimbrowser.ai.AiGate
+import com.dantech.skimbrowser.ai.ChatSessionStore
+import com.dantech.skimbrowser.ai.ClaudeClientProvider
+import com.dantech.skimbrowser.ai.SkimAiService
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
@@ -196,6 +200,29 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
             snackbar = snackbarController,
         )
     }
+
+    /**
+     * The Claude client. A debug build sends [BuildConfig.ANTHROPIC_API_KEY] when one is set.
+     * Without a key the client names the install and sends no key.
+     */
+    val claudeClients: ClaudeClientProvider by lazy {
+        ClaudeClientProvider(
+            baseUrl = BuildConfig.AI_BASE_URL,
+            apiKey = (BuildConfig.ANTHROPIC_API_KEY as String?).takeIf { !it.isNullOrBlank() },
+            installId = settings::installId,
+        )
+    }
+
+    /** The only path that builds a model request and opens a connection. */
+    val skimAi: SkimAiService by lazy { SkimAiService(claudeClients, sitePermissionRepository, settings) }
+
+    /** Page chats for this process: saved while Keep chat history is on, otherwise memory only. */
+    val chatSessions: ChatSessionStore by lazy {
+        ChatSessionStore(chatRepository, tabManager, settings, appScope)
+    }
+
+    /** Whether Ask Skim may read a tab's page, and the record of a site the person allowed. */
+    val aiGate: AiGate by lazy { AiGate(sitePermissionRepository, settings) }
 
     /** Deletes saved Skim chats, and every site's Skim AI decision when all AI data is deleted. */
     val aiDataEraser: AiDataEraser by lazy {

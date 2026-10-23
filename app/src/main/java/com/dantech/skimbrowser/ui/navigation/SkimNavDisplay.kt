@@ -18,6 +18,8 @@ import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
+import com.dantech.skimbrowser.ui.ai.AskPageRoute
 import com.dantech.skimbrowser.ui.bookmarks.BookmarksRoute
 import com.dantech.skimbrowser.ui.bookmarks.EditBookmarkRoute
 import com.dantech.skimbrowser.ui.bookmarks.MoveToFolderRoute
@@ -123,6 +125,17 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         }
         entry<SiteInfoKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_site_info)) { key ->
             SiteInfoRoute(key, container, navigator)
+        }
+        entry<AskPageKey>(
+            metadata = BottomSheetSceneStrategy.bottomSheet(
+                R.string.ai_ask_about_page,
+                skipPartiallyExpanded = false,
+            ),
+        ) { key ->
+            AskPageRoute(key, container, navigator)
+        }
+        entry<AiPermissionKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
+            AiPermissionRoute(key, container, navigator)
         }
         entry<EditBookmarkKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
             EditBookmarkRoute(key, container, navigator)

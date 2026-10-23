@@ -6,14 +6,20 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.ai.AiGate
+import com.dantech.skimbrowser.ai.AiGateDecision
 import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.ui.shell.INCOGNITO_SURFACE_OWNER
 import com.dantech.skimbrowser.ui.shell.secureTarget
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * Every move between destinations: the back stack the shell saves, the current tab and the
@@ -30,6 +36,8 @@ class SkimNavigator(
     private val incognito: IncognitoSession,
     private val secure: WindowSecureController,
     private val snackbar: SnackbarController,
+    private val aiGate: AiGate,
+    private val scope: CoroutineScope,
 ) {
     private val arming = mutableIntStateOf(0)
 
@@ -128,7 +136,24 @@ class SkimNavigator(
 
     fun openSiteInfo(tabId: String) = push(SiteInfoKey(tabId))
 
-    fun openAskPage(tabId: String, fromReader: Boolean = false) = push(AskPageKey(tabId = tabId, fromReader = fromReader))
+    /**
+     * Ask Skim about [tabId]. Incognito does nothing. A site that has not been allowed opens the
+     * permission dialog; an allowed site opens the sheet with that host remembered.
+     */
+    fun openAskPage(tabId: String, fromReader: Boolean = false): Job = scope.launch {
+            val tab = tabs.state.value.tab(tabId) ?: return@launch
+            when (aiGate.decide(tab)) {
+                AiGateDecision.OffInIncognito -> Unit
+                AiGateDecision.NeedsPermission -> push(AiPermissionKey(tabId, fromReader))
+                AiGateDecision.Allowed -> push(
+                    AskPageKey(
+                        tabId = tabId,
+                        fromReader = fromReader,
+                        approvedHost = hostOf(tab.url.orEmpty()),
+                    ),
+                )
+            }
+    }
 
     fun openSavedChat(chatId: Long) = push(AskPageKey(savedChatId = chatId))
 

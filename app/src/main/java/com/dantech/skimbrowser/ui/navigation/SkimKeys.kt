@@ -102,6 +102,8 @@ data class AskPageKey(
     override val tabId: String? = null,
     val savedChatId: Long? = null,
     val fromReader: Boolean = false,
+    /** The host allowed when the sheet opened. Null on a saved chat and on a restored stack. */
+    val approvedHost: String? = null,
 ) : SheetKey
 
 /** 06b Ask Skim across the open tabs: with [prompt] already sent, or the saved chat [savedChatId]. */

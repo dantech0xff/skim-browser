@@ -7,9 +7,11 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
@@ -174,9 +176,11 @@ class SkimNavigatorTest {
     fun destinationsOpenWithTheirParameters() = runTest {
         val app = app(BrowserKey)
         val n = app.navigator
+        val id = app.tabs.newTab(incognito = false, url = "https://daylightjournal.com/energy/heat-pumps-cold")
+        app.fixture.settings.setAskBeforeSending(false)
 
-        n.openReader("tab-1")
-        n.openAskPage("tab-1", fromReader = true)
+        n.openReader(id)
+        n.openAskPage(id, fromReader = true).join()
         n.openBookmarks(folderId = 4)
         n.openSavedTabsChat(9)
         n.openDialog(MoveToFolderKey(bookmarkId = 2))
@@ -184,14 +188,41 @@ class SkimNavigatorTest {
         assertEquals(
             listOf(
                 BrowserKey,
-                ReaderKey("tab-1"),
-                AskPageKey(tabId = "tab-1", fromReader = true),
+                ReaderKey(id),
+                AskPageKey(tabId = id, fromReader = true, approvedHost = "daylightjournal.com"),
                 BookmarksKey(folderId = 4),
                 AskTabsKey(savedChatId = 9),
                 MoveToFolderKey(bookmarkId = 2),
             ),
             app.keys(),
         )
+    }
+
+    @Test
+    fun askSkimAsksTheFirstTimeAndOpensOnceTheSiteMayBeRead() = runTest {
+        val app = app(BrowserKey)
+        val id = app.tabs.newTab(incognito = false, url = "https://daylightjournal.com/energy/heat-pumps-cold")
+
+        app.navigator.openAskPage(id).join()
+        assertEquals(listOf(BrowserKey, AiPermissionKey(id)), app.keys())
+
+        app.navigator.back()
+        app.fixture.settings.setAskBeforeSending(false)
+        app.navigator.openAskPage(id, fromReader = true).join()
+        assertEquals(
+            listOf(BrowserKey, AskPageKey(tabId = id, fromReader = true, approvedHost = "daylightjournal.com")),
+            app.keys(),
+        )
+    }
+
+    @Test
+    fun askSkimDoesNothingOnAnIncognitoTab() = runTest {
+        val app = app(BrowserKey)
+        val id = app.tabs.newTab(incognito = true, url = "https://daylightjournal.com/private")
+
+        app.navigator.openAskPage(id).join()
+
+        assertEquals(listOf(BrowserKey), app.keys())
     }
 
     // Tabs
@@ -363,7 +394,16 @@ class SkimNavigatorTest {
         val fixture = TabManagerFixture(this, folder.root, supportsIncognito = supportsIncognito).also { fixtures += it }
         val backStack = NavBackStack(*keys)
         val snackbar = SnackbarController(UndoRegistry(backgroundScope))
-        val navigator = SkimNavigator(backStack, fixture.manager, fixture.incognito, secure, snackbar)
+        val sites = SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db)
+        val navigator = SkimNavigator(
+            backStack,
+            fixture.manager,
+            fixture.incognito,
+            secure,
+            snackbar,
+            AiGate(sites, fixture.settings),
+            this,
+        )
         recordWhenSecured(backStack, fixture)
         return App(navigator, backStack, fixture, snackbar)
     }

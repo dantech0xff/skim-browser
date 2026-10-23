@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.browsing
 
 import android.app.Application
+import android.content.pm.PackageInfo
 import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
@@ -54,6 +55,7 @@ import com.dantech.skimbrowser.createBrowserHost
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
+import com.dantech.skimbrowser.ui.navigation.AiPermissionKey
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
@@ -67,6 +69,11 @@ import com.dantech.skimbrowser.ui.search.SearchViewModel
 import com.dantech.skimbrowser.ui.search.latestDialog
 import com.dantech.skimbrowser.ui.search.pass
 import com.dantech.skimbrowser.ui.search.searchViewModel
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -80,6 +87,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowWebView
 
 /**
  * The browsing screen in the browser's slot over the app as it runs: a real container on a
@@ -105,6 +113,15 @@ class BrowsingRouteTest {
     private lateinit var engine: FakeTabEngine
     private val backStack = NavBackStack<NavKey>(BrowserKey)
 
+    /**
+     * Ask Skim reads the site's permission on this dispatcher. The compose test is itself inside
+     * runTest, so work posted to Main never runs while the test is blocked in waitUntil. This
+     * scheduler is advanced from the wait.
+     */
+    private val gateDispatcher = StandardTestDispatcher()
+    private lateinit var gateScope: CoroutineScope
+    private var gateError: Throwable? = null
+
     /** The browser destination's store: the browsing and search view models live in it. */
     private val destination = object : ViewModelStoreOwner {
         override val viewModelStore = ViewModelStore()
@@ -115,11 +132,31 @@ class BrowsingRouteTest {
 
     @Before
     fun setUp() {
+        // Robolectric reports no WebView package, so page scripts would stay off and Reader view
+        // would never be offered. A current package makes the check run, as it does on a device.
+        ShadowWebView.setCurrentWebViewPackage(
+            PackageInfo().apply {
+                packageName = "com.google.android.webview"
+                versionName = "120.0.6099.230"
+            },
+        )
+        gateError = null
+        gateScope = CoroutineScope(
+            SupervisorJob() + gateDispatcher + CoroutineExceptionHandler { _, error -> gateError = error },
+        )
         container = AppContainer(app, AppStorage.temp(folder.newFolder()))
         host = createBrowserHost(composeRule.activity, container, FakeActivityHost())
         engine = FakeTabEngine(tabs.events)
         tabs.attach(engine)
-        navigator = SkimNavigator(backStack, tabs, container.incognitoSession, host.secure, container.snackbarController)
+        navigator = SkimNavigator(
+            backStack,
+            tabs,
+            container.incognitoSession,
+            host.secure,
+            container.snackbarController,
+            container.aiGate,
+            gateScope,
+        )
     }
 
     @After
@@ -127,6 +164,7 @@ class BrowsingRouteTest {
         destination.viewModelStore.clear()
         host.destroy()
         tabs.detach(engine)
+        gateScope.cancel()
         container.close()
     }
 
@@ -230,11 +268,25 @@ class BrowsingRouteTest {
             "More options",
             "Ask Skim about this page",
         ).map { label ->
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithContentDescription(label).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.onNodeWithContentDescription(label).performClick()
+            if (label == "Ask Skim about this page") {
+                composeRule.waitUntil(5_000) {
+                    gateDispatcher.scheduler.advanceUntilIdle()
+                    gateError?.let { throw it }
+                    keys().lastOrNull() is AiPermissionKey
+                }
+            }
+            composeRule.waitForIdle()
             keys().last().also { navigator.back() }
         }
 
-        assertEquals(listOf(SiteInfoKey(id), ReaderKey(id), TabsKey(incognito = false), MoreMenuKey(id), AskPageKey(tabId = id)), opened)
+        assertEquals(
+            listOf(SiteInfoKey(id), ReaderKey(id), TabsKey(incognito = false), MoreMenuKey(id), AiPermissionKey(id)),
+            opened,
+        )
     }
 
     @Test
