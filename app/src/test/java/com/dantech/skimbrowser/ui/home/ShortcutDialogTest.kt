@@ -19,7 +19,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
+import com.dantech.skimbrowser.domain.shortcut.Shortcut
+import com.dantech.skimbrowser.domain.usecase.AddShortcut
+import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.data.repo.ShortcutRepository
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -145,7 +147,7 @@ class ShortcutDialogTest {
         composeRule.onNodeWithText("Save").performClick()
 
         awaitClose()
-        assertEquals(listOf(ShortcutEntity(github.id, "GitHub", "https://github.com/mobile", github.position)), runBlocking { shortcuts.observe().first() })
+        assertEquals(listOf(Shortcut(github.id, "GitHub", "https://github.com/mobile", github.position)), runBlocking { shortcuts.observe().first() })
     }
 
     @Test
@@ -159,7 +161,11 @@ class ShortcutDialogTest {
     private fun show(shortcutId: Long? = null) {
         val dialog = ViewModelProvider.create(
             viewModels,
-            viewModelFactory { initializer { ShortcutDialogViewModel(shortcutId, shortcuts, appScope) } },
+            viewModelFactory {
+                initializer {
+                    ShortcutDialogViewModel(shortcutId, shortcuts, AddShortcut(shortcuts), UpdateShortcut(shortcuts), appScope)
+                }
+            },
         )[ShortcutDialogViewModel::class]
         composeRule.setSkimContent {
             Dialog(onDismissRequest = {}, properties = ShortcutDialogProperties) {
@@ -181,7 +187,7 @@ class ShortcutDialogTest {
 
     private fun urlField() = composeRule.onNode(hasSetTextAction() and hasText("URL"))
 
-    private fun add(name: String, url: String): ShortcutEntity = runBlocking {
+    private fun add(name: String, url: String): Shortcut = runBlocking {
         shortcuts.add(name, url)
         shortcuts.observe().first().single { it.url == url }
     }

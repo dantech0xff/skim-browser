@@ -9,9 +9,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.TabManagerFixture
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
+import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.longQuery
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
@@ -74,7 +75,7 @@ class MoreMenuViewModelTest {
         val f = fixture()
         val id = f.manager.newTab(incognito = false)
         runCurrent()
-        val menu = menuOf(f, id, BookmarkRepository(f.db.bookmarkDao()), snackbar())
+        val menu = menuOf(f, id, FakeBookmarkRepository(), snackbar())
         await { menu.state.value.bookmarkKnown }
 
         assertFalse(menu.state.value.page)
@@ -108,7 +109,7 @@ class MoreMenuViewModelTest {
         open.menu.addBookmark()
         runCurrent()
 
-        assertEquals(1L, open.fixture.db.longQuery("SELECT COUNT(*) FROM bookmarks"))
+        assertEquals(1, open.bookmarks.stored().size)
     }
 
     @Test
@@ -131,7 +132,7 @@ class MoreMenuViewModelTest {
         val id = f.manager.newTab(incognito = false, url = url)
         f.engine.openPage(id, url, title = title)
         runCurrent()
-        val bookmarks = BookmarkRepository(f.db.bookmarkDao())
+        val bookmarks = FakeBookmarkRepository()
         val snackbar = snackbar()
         return Open(f, bookmarks, snackbar, menuOf(f, id, bookmarks, snackbar))
     }
@@ -139,10 +140,10 @@ class MoreMenuViewModelTest {
     private fun TestScope.menuOf(
         f: TabManagerFixture,
         tabId: String,
-        bookmarks: BookmarkRepository,
+        bookmarks: FakeBookmarkRepository,
         snackbar: SnackbarController,
     ): MoreMenuViewModel {
-        val menu = kept { MoreMenuViewModel(tabId, f.manager, bookmarks, snackbar, backgroundScope) }
+        val menu = kept { MoreMenuViewModel(tabId, f.manager, bookmarks, AddBookmark(bookmarks), snackbar, backgroundScope) }
         backgroundScope.launch { menu.state.collect {} }
         runCurrent()
         return menu
@@ -170,7 +171,7 @@ class MoreMenuViewModelTest {
 
     private class Open(
         val fixture: TabManagerFixture,
-        val bookmarks: BookmarkRepository,
+        val bookmarks: FakeBookmarkRepository,
         val snackbar: SnackbarController,
         val menu: MoreMenuViewModel,
     )

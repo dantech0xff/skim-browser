@@ -19,6 +19,8 @@ import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
 import com.dantech.skimbrowser.data.repo.HistoryRepository
 import com.dantech.skimbrowser.data.settings.SearchEngine
+import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
+import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.testing.BOARD_STATUS_BAR_HEIGHT
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import java.io.Closeable
@@ -51,8 +53,8 @@ class SearchRig(val engine: SearchEngine = SearchEngine.BING) : Closeable {
                 SearchViewModel(
                     engine = flowOf(engine),
                     suggestions = { _, text -> suggested[text].orEmpty() },
-                    history = history,
-                    bookmarks = bookmarks,
+                    matchHistory = MatchHistory(history),
+                    matchBookmarks = MatchBookmarks(bookmarks),
                 )
             }
         },

@@ -12,14 +12,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.withSkimSetup
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.settings.SearchEngine
+import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
+import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
+import com.dantech.skimbrowser.domain.settings.SearchEngine
+import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
+import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.execRaw
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CancellationException
@@ -61,11 +60,8 @@ class SearchViewModelTest {
     @get:Rule
     val main = MainDispatcherRule(StandardTestDispatcher())
 
-    private lateinit var db: SkimDatabase
-    private lateinit var history: HistoryRepository
-    private lateinit var bookmarks: BookmarkRepository
-    private val statements = CopyOnWriteArrayList<String>()
-    private var bookmarkClock = 0L
+    private lateinit var history: FakeHistoryRepository
+    private lateinit var bookmarks: FakeBookmarkRepository
     private val engine = MutableStateFlow(SearchEngine.GOOGLE)
 
     private class EngineRequest(val engine: SearchEngine, val text: String) {
@@ -101,12 +97,8 @@ class SearchViewModelTest {
 
     @Before
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), SkimDatabase::class.java)
-            .withSkimSetup()
-            .setQueryCallback({ sql, _ -> statements += sql }, Runnable::run)
-            .build()
-        history = HistoryRepository(db.historyDao(), db)
-        bookmarks = BookmarkRepository(db.bookmarkDao(), clock = { ++bookmarkClock })
+        history = FakeHistoryRepository()
+        bookmarks = FakeBookmarkRepository()
     }
 
     @After
@@ -117,7 +109,6 @@ class SearchViewModelTest {
             client.connectionPool.evictAll()
         }
         servers.forEach { it.shutdown() }
-        db.close()
     }
 
     // When something is looked up
@@ -267,7 +258,7 @@ class SearchViewModelTest {
     @Test
     fun aHistoryThatCannotBeReadHidesOnlyItsOwnRows() = runTest {
         seedPages()
-        db.execRaw("DROP TABLE history")
+        history.failMatches = true
         val search = search()
         search.open(incognito = false)
 
@@ -484,7 +475,7 @@ class SearchViewModelTest {
         server.start()
         server.enqueue(MockResponse().setHeader("Content-Type", "text/javascript; charset=UTF-8").setBody(fixture("google")))
         val service = SuggestionService(clientTo(server))
-        val search = kept { SearchViewModel(engine, service::suggestions, history, bookmarks) }
+        val search = kept { SearchViewModel(engine, service::suggestions, MatchHistory(history), MatchBookmarks(bookmarks)) }
 
         search.open("https://bank.example/reset?token=secret", selectAll = true, incognito = false)
         settle()
@@ -504,7 +495,8 @@ class SearchViewModelTest {
 
     // Helpers
 
-    private fun search(engineSetting: Flow<SearchEngine> = engine) = kept { SearchViewModel(engineSetting, fakeEngine, history, bookmarks) }
+    private fun search(engineSetting: Flow<SearchEngine> = engine) =
+        kept { SearchViewModel(engineSetting, fakeEngine, MatchHistory(history), MatchBookmarks(bookmarks)) }
 
     private inline fun <reified T : ViewModel> kept(noinline make: () -> T): T =
         ViewModelProvider.create(viewModels, viewModelFactory { initializer { make() } })["view-model-${viewModelCount++}", T::class]
@@ -546,11 +538,12 @@ class SearchViewModelTest {
         bookmarks.addToMobile("Heat pump rebates 2026", "https://rebates.example/heat-pump")
         bookmarks.addToMobile("Why heat pumps are winning in cold climates", DAYLIGHT)
         bookmarks.addToMobile("Osaka night buses: a complete guide", "https://tabi-note.jp/osaka")
-        statements.clear()
+        history.clearReads()
+        bookmarks.clearReads()
     }
 
     /** Whether history or bookmarks were searched since the pages were added. */
-    private fun readPages(): Boolean = statements.any { sql -> sql.startsWith("SELECT") && ("FROM history" in sql || "FROM bookmarks" in sql) }
+    private fun readPages(): Boolean = history.matchReads > 0 || bookmarks.matchReads > 0
 
     /** A client whose requests reach [server] instead of the engine, keeping their path and query. */
     private fun clientTo(server: MockWebServer): OkHttpClient = OkHttpClient.Builder()

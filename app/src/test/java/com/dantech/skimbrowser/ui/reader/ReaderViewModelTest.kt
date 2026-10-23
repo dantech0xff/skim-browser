@@ -7,7 +7,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakePageScripts
 import com.dantech.skimbrowser.browser.TabManagerFixture
-import com.dantech.skimbrowser.data.settings.ReaderFont
+import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
+import com.dantech.skimbrowser.domain.settings.ReaderFont
+import com.dantech.skimbrowser.domain.usecase.SetReaderFont
+import com.dantech.skimbrowser.domain.usecase.SetReaderTextScale
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -106,7 +109,17 @@ class ReaderViewModelTest {
     private fun model(fixture: TabManagerFixture, scope: TestScope, tabId: String = "tab-1"): ReaderViewModel {
         val store = ViewModelStore().also { stores += it }
         val factory = viewModelFactory {
-            initializer { ReaderViewModel(tabId, fixture.manager, fixture.settings, scope) }
+            initializer {
+                val settings = FakeSettingsRepository()
+                ReaderViewModel(
+                    tabId,
+                    fixture.manager,
+                    settings,
+                    SetReaderTextScale(settings),
+                    SetReaderFont(settings),
+                    scope,
+                )
+            }
         }
         return ViewModelProvider(store, factory)[ReaderViewModel::class.java]
     }

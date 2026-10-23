@@ -397,7 +397,7 @@ class NewTabPageRouteTest {
     @Test
     fun aContinueCardOpensItsSavedChatAndSeeAllOpensSkimHistory() {
         val chatId = runBlocking {
-            container.chatRepository.createChat(
+            container.chatStore.createChat(
                 SkimChatEntity(
                     kind = ChatKind.PAGE,
                     url = "https://daylightjournal.com/energy",

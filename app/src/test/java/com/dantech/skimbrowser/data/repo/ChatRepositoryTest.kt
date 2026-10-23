@@ -56,7 +56,7 @@ class ChatRepositoryTest {
         chats.removals.test {
             val deleted = chats.delete(id)
             assertEquals(id, awaitItem())
-            assertEquals(DeletedChat(chat, messages), deleted)
+            assertEquals(DeletedChat(chat.toDomain(), messages.map { it.toDomain() }), deleted)
             expectNoEvents()
         }
         assertNull(chats.chat(id))
@@ -84,7 +84,12 @@ class ChatRepositoryTest {
         val chat = checkNotNull(chats.chat(id))
         val messages = chats.messages(id)
 
-        chats.restore(DeletedChat(chat.copy(title = "Changed"), messages.map { it.copy(text = "Changed") }))
+        chats.restore(
+            DeletedChat(
+                chat.toDomain().copy(title = "Changed"),
+                messages.map { it.toDomain().copy(text = "Changed") },
+            ),
+        )
 
         assertEquals(chat, chats.chat(id))
         assertEquals(messages, chats.messages(id))

@@ -14,7 +14,10 @@ import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
+import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.usecase.SetSitePermission
+import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
@@ -123,7 +126,7 @@ class SiteInfoViewModelTest {
         val id = f.manager.newTab(incognito = incognito, url = url)
         f.engine.openPage(id, url, title = "Daylight")
         runCurrent()
-        val permissions = SitePermissionRepository(f.db.sitePermissionDao(), f.db)
+        val permissions = FakeSitePermissionRepository()
         val site = RecordingSiteData()
         val cleaner = BrowsingDataCleaner(
             history = HistoryRepository(f.db.historyDao(), f.db),
@@ -138,7 +141,17 @@ class SiteInfoViewModelTest {
             mainDispatcher = f.main,
         )
         val info = kept {
-            SiteInfoViewModel(id, f.manager, permissions, f.settings, f.incognito, cleaner, backgroundScope)
+            SiteInfoViewModel(
+                id,
+                f.manager,
+                permissions,
+                f.settings,
+                SetSkimAi(permissions),
+                SetSitePermission(permissions),
+                f.incognito,
+                cleaner,
+                backgroundScope,
+            )
         }
         backgroundScope.launch { info.state.collect {} }
         runCurrent()

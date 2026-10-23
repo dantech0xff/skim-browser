@@ -25,6 +25,7 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
 import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
 import com.dantech.skimbrowser.data.repo.ChatRepository
+import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
@@ -333,7 +334,7 @@ class AskPageViewModelTest {
                     ai = ai,
                     network = fixture.network,
                     readerHighlights = ReaderHighlights(),
-                    chats = chats,
+                    loadSavedChat = LoadSavedChat(chats),
                     savedState = saved,
                     appScope = appScope,
                 )

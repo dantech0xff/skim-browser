@@ -6,10 +6,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.repo.HistoryRepository
+import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
+import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
@@ -35,13 +36,11 @@ class HistoryViewModelTest {
     @get:Rule
     val main = MainDispatcherRule(StandardTestDispatcher())
 
-    private val databases = mutableListOf<SkimDatabase>()
     private val stores = mutableListOf<ViewModelStore>()
 
     @After
     fun tearDown() {
         stores.forEach { it.clear() }
-        databases.forEach { it.close() }
     }
 
     @Test
@@ -122,10 +121,7 @@ class HistoryViewModelTest {
         assertTrue(history.observe(null).first().isEmpty())
     }
 
-    private fun history(): HistoryRepository {
-        val db = inMemorySkimDatabase().also { databases += it }
-        return HistoryRepository(db.historyDao(), db)
-    }
+    private fun history(): HistoryRepository = FakeHistoryRepository()
 
     private fun model(
         history: HistoryRepository,
@@ -137,7 +133,15 @@ class HistoryViewModelTest {
             store,
             viewModelFactory {
                 initializer {
-                    HistoryViewModel(history, snackbar, undo, clock = { NOW }, zone = ZoneId.of("UTC"))
+                    HistoryViewModel(
+                        history,
+                        RemoveHistoryEntry(history),
+                        RestoreHistoryEntry(history),
+                        snackbar,
+                        undo,
+                        clock = { NOW },
+                        zone = ZoneId.of("UTC"),
+                    )
                 }
             },
         )[HistoryViewModel::class.java]

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabRuntime
-import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
+import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.shell.TabAiFab
 import com.dantech.skimbrowser.ui.text.UiText
@@ -13,7 +13,7 @@ import com.dantech.skimbrowser.ui.text.UiText
 object HomeFixtures {
 
     /** The seven shortcuts of 04, in tile order. */
-    val Shortcuts: List<ShortcutEntity> = listOf(
+    val Shortcuts: List<Shortcut> = listOf(
         "Wikipedia" to "https://www.wikipedia.org",
         "GitHub" to "https://github.com",
         "YouTube" to "https://www.youtube.com",
@@ -21,7 +21,7 @@ object HomeFixtures {
         "Reddit" to "https://www.reddit.com",
         "Medium" to "https://medium.com",
         "Stack Overflow" to "https://stackoverflow.com",
-    ).mapIndexed { index, (name, url) -> ShortcutEntity(id = index + 1L, name = name, url = url, position = index) }
+    ).mapIndexed { index, (name, url) -> Shortcut(id = index + 1L, name = name, url = url, position = index) }
 
     /** The two Continue with Skim cards of 04. */
     val ContinueCards: List<ContinueCard> = listOf(

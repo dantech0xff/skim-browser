@@ -8,12 +8,11 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
-import com.dantech.skimbrowser.data.repo.ImportedNode
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
+import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
+import com.dantech.skimbrowser.domain.usecase.MoveBookmark
+import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -38,8 +37,7 @@ class BookmarkDialogViewModelTest {
     @get:Rule
     val main = MainDispatcherRule(StandardTestDispatcher())
 
-    private lateinit var db: SkimDatabase
-    private lateinit var bookmarks: BookmarkRepository
+    private lateinit var bookmarks: FakeBookmarkRepository
     private val viewModels = ViewModelStore()
     private var viewModelCount = 0
     private val appJob = SupervisorJob()
@@ -48,7 +46,6 @@ class BookmarkDialogViewModelTest {
     fun tearDown() {
         viewModels.clear()
         appJob.cancel()
-        if (::db.isInitialized) db.close()
     }
 
     @Test
@@ -74,7 +71,7 @@ class BookmarkDialogViewModelTest {
         val saved = bookmarks.observe(id).first()
         assertEquals("Cold climates", saved?.title)
         assertEquals("https://daylightjournal.com/cold", saved?.url)
-        assertEquals(BookmarkFolderEntity.MOBILE_ID, saved?.folderId)
+        assertEquals(BookmarkFolder.MOBILE_ID, saved?.folderId)
     }
 
     @Test
@@ -100,10 +97,7 @@ class BookmarkDialogViewModelTest {
     fun moveToFolderMovesAtOnceAndNamesImportedFolders() = runTest {
         open()
         val id = bookmarks.addToMobile("Heat pumps", "https://daylightjournal.com/energy")
-        val imported = bookmarks.importTree(
-            "bookmarks.html",
-            listOf(ImportedNode("Guide", "https://energysaver.example/guide")),
-        )!!.folderId
+        val imported = bookmarks.addImported("bookmarks.html", "Guide", "https://energysaver.example/guide")
         val move = move(id)
         await { move.state.value.loaded }
 
@@ -115,16 +109,16 @@ class BookmarkDialogViewModelTest {
     }
 
     private fun TestScope.open() {
-        db = inMemorySkimDatabase()
-        bookmarks = BookmarkRepository(db.bookmarkDao())
+        bookmarks = FakeBookmarkRepository()
     }
 
     private fun TestScope.edit(id: Long): EditBookmarkViewModel {
-        val dialog = kept { EditBookmarkViewModel(id, bookmarks, appScope()) }
+        val dialog = kept { EditBookmarkViewModel(id, bookmarks, UpdateBookmark(bookmarks), appScope()) }
         return dialog
     }
 
-    private fun TestScope.move(id: Long): MoveToFolderViewModel = kept { MoveToFolderViewModel(id, bookmarks, appScope()) }
+    private fun TestScope.move(id: Long): MoveToFolderViewModel =
+        kept { MoveToFolderViewModel(id, bookmarks, MoveBookmark(bookmarks), appScope()) }
 
     private fun TestScope.appScope(): CoroutineScope = CoroutineScope(appJob + StandardTestDispatcher(testScheduler))
 

@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.usecase.MoveBookmark
+import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.data.repo.ImportedNode
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
@@ -106,8 +108,8 @@ class BookmarkDialogsTest {
         }
         val scope = CoroutineScope(jobs + Dispatchers.Main.immediate)
         return Dialogs(
-            EditBookmarkViewModel(id, bookmarks, scope),
-            MoveToFolderViewModel(id, bookmarks, scope),
+            EditBookmarkViewModel(id, bookmarks, UpdateBookmark(bookmarks), scope),
+            MoveToFolderViewModel(id, bookmarks, MoveBookmark(bookmarks), scope),
         )
     }
 

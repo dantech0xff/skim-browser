@@ -2,7 +2,7 @@ package com.dantech.skimbrowser.ui.history
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
+import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.captureBoard
@@ -48,7 +48,7 @@ class HistoryScreenshotTest {
         composeRule.assertA11y()
     }
 
-    private fun entry(id: Long, row: Triple<String, String, String>) = HistoryEntryEntity(
+    private fun entry(id: Long, row: Triple<String, String, String>) = HistoryEntry(
         id = id,
         url = "https://${row.third}/",
         title = row.second,

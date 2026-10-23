@@ -16,6 +16,15 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
 import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
 import com.dantech.skimbrowser.data.repo.ChatRepository
+import com.dantech.skimbrowser.domain.chat.ChatRepository as ChatStore
+import com.dantech.skimbrowser.domain.chat.MessageKind as DomainMessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole as DomainMessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus as DomainMessageStatus
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
+import com.dantech.skimbrowser.domain.fake.FakeChatRepository
+import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
+import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -53,12 +62,12 @@ class SkimHistoryViewModelTest {
 
     @Test
     fun chatsGroupByDayAndSearchKeepsMatches() = runTest {
-        val chats = chats()
-        val page = chat(chats, ChatKind.PAGE, "Why heat pumps are winning in cold climates", NOW, host = "daylightjournal.com")
+        val chats = fakeChats()
+        val page = savedChat(chats, ChatKind.PAGE, "Why heat pumps are winning in cold climates", NOW, host = "daylightjournal.com")
         chats.addMessage(question(page, "Why?"))
-        val tabs = chat(chats, ChatKind.TABS, "Summarize my 7 open tabs", NOW - 1_000, tabCount = 7)
+        val tabs = savedChat(chats, ChatKind.TABS, "Summarize my 7 open tabs", NOW - 1_000, tabCount = 7)
         chats.addMessage(overview(tabs))
-        chat(chats, ChatKind.PAGE, "Osaka night buses: a complete guide", NOW - DAY, host = "tabi-note.jp")
+        savedChat(chats, ChatKind.PAGE, "Osaka night buses: a complete guide", NOW - DAY, host = "tabi-note.jp")
         val model = model(chats)
 
         val grouped = model.state.first { it.sections.size == 2 }
@@ -89,8 +98,8 @@ class SkimHistoryViewModelTest {
 
     @Test
     fun undoRestoresAfterTheScreenIsGone() = runTest {
-        val chats = chats()
-        val id = chat(chats, ChatKind.PAGE, "Why heat pumps are winning", NOW, host = "daylightjournal.com")
+        val chats = fakeChats()
+        val id = savedChat(chats, ChatKind.PAGE, "Why heat pumps are winning", NOW, host = "daylightjournal.com")
         val undo = UndoRegistry(backgroundScope)
         val snackbar = SnackbarController(undo)
         val model = model(chats, undo, snackbar)
@@ -129,6 +138,45 @@ class SkimHistoryViewModelTest {
         assertEquals(SkimAiState.ALLOWED, sites.skimAiStates(setOf("daylightjournal.com"))["daylightjournal.com"])
     }
 
+    private fun fakeChats() = FakeChatRepository()
+
+    private fun savedChat(
+        chats: FakeChatRepository,
+        kind: ChatKind,
+        title: String,
+        updatedAt: Long,
+        host: String? = null,
+        tabCount: Int = 0,
+    ): Long = chats.insert(
+        SavedChat(
+            kind = kind,
+            url = host?.let { "https://$it/" },
+            host = host,
+            title = title,
+            tabCount = tabCount,
+            createdAt = updatedAt,
+            updatedAt = updatedAt,
+        ),
+    )
+
+    private fun question(chatId: Long, text: String) = SavedMessage(
+        chatId = chatId,
+        role = DomainMessageRole.USER,
+        kind = DomainMessageKind.QUESTION,
+        text = text,
+        status = DomainMessageStatus.COMPLETE,
+        createdAt = 1,
+    )
+
+    private fun overview(chatId: Long) = SavedMessage(
+        chatId = chatId,
+        role = DomainMessageRole.ASSISTANT,
+        kind = DomainMessageKind.TABS_OVERVIEW,
+        text = """{"intro":"Kept.","groups":[],"followUps":[]}""",
+        status = DomainMessageStatus.COMPLETE,
+        createdAt = 2,
+    )
+
     private fun chats(): ChatRepository {
         val db = inMemorySkimDatabase().also { databases += it }
         return ChatRepository(db.skimChatDao(), db)
@@ -153,26 +201,8 @@ class SkimHistoryViewModelTest {
         ),
     )
 
-    private fun question(chatId: Long, text: String) = SkimMessageEntity(
-        chatId = chatId,
-        role = MessageRole.USER,
-        kind = MessageKind.QUESTION,
-        text = text,
-        status = MessageStatus.COMPLETE,
-        createdAt = 1,
-    )
-
-    private fun overview(chatId: Long) = SkimMessageEntity(
-        chatId = chatId,
-        role = MessageRole.ASSISTANT,
-        kind = MessageKind.TABS_OVERVIEW,
-        text = """{"intro":"Kept.","groups":[],"followUps":[]}""",
-        status = MessageStatus.COMPLETE,
-        createdAt = 2,
-    )
-
     private fun model(
-        chats: ChatRepository,
+        chats: ChatStore,
         undo: UndoRegistry = UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope),
         snackbar: SnackbarController = SnackbarController(undo),
     ): SkimHistoryViewModel {
@@ -181,7 +211,15 @@ class SkimHistoryViewModelTest {
             store,
             viewModelFactory {
                 initializer {
-                    SkimHistoryViewModel(chats, snackbar, undo, clock = { NOW }, zone = ZoneId.of("UTC"))
+                    SkimHistoryViewModel(
+                        chats,
+                        RemoveSkimChat(chats),
+                        RestoreSkimChat(chats),
+                        snackbar,
+                        undo,
+                        clock = { NOW },
+                        zone = ZoneId.of("UTC"),
+                    )
                 }
             },
         )[SkimHistoryViewModel::class.java]

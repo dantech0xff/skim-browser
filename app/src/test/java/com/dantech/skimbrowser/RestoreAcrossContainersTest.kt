@@ -55,7 +55,7 @@ class RestoreAcrossContainersTest {
                 ),
             )
             tabs.select(heat)
-            chatId = container.chatRepository.createChat(
+            chatId = container.chatStore.createChat(
                 SkimChatEntity(
                     kind = ChatKind.PAGE,
                     url = HEAT,

@@ -2,11 +2,11 @@ package com.dantech.skimbrowser.ui.bookmarks
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
-import com.dantech.skimbrowser.data.repo.ImportedNode
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
+import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
+import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
@@ -14,7 +14,6 @@ import com.dantech.skimbrowser.ui.text.UiText
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -29,22 +28,12 @@ class BookmarksViewModelTest {
     @get:Rule
     val main = MainDispatcherRule(StandardTestDispatcher())
 
-    private val databases = mutableListOf<SkimDatabase>()
-
-    @After
-    fun tearDown() {
-        databases.forEach { it.close() }
-    }
-
     @Test
     fun theRootListsFoldersAndRecentlyAddedAndSearchCrossesFolders() = runTest {
         val bookmarks = bookmarks()
         bookmarks.addToMobile("Why heat pumps are winning", "https://daylightjournal.com/energy")
-        val imported = bookmarks.importTree(
-            "bookmarks.html",
-            listOf(ImportedNode("Osaka night buses", "https://tabi-note.jp/osaka")),
-        )
-        val model = BookmarksViewModel(null, bookmarks, SnackbarController(UndoRegistry(backgroundScope)), UndoRegistry(backgroundScope))
+        val imported = bookmarks.addImported("bookmarks.html", "Osaka night buses", "https://tabi-note.jp/osaka")
+        val model = model(null, bookmarks)
         val root = model.state.first { it.folders.size == 2 && it.bookmarks.isNotEmpty() }
 
         assertNull(root.title)
@@ -54,12 +43,7 @@ class BookmarksViewModelTest {
         assertEquals("bookmarks.html", root.folders[1].sourceFileName)
         assertEquals(BookmarkListHeading.RecentlyAdded, root.heading)
 
-        val opened = BookmarksViewModel(
-            imported!!.folderId,
-            bookmarks,
-            SnackbarController(UndoRegistry(backgroundScope)),
-            UndoRegistry(backgroundScope),
-        )
+        val opened = model(imported, bookmarks)
         val folder = opened.state.first { it.title == FolderLabel.Imported && it.bookmarks.size == 1 }
         assertEquals("tabi-note.jp", folder.bookmarks.single().host)
         assertTrue(folder.folders.isEmpty())
@@ -72,7 +56,7 @@ class BookmarksViewModelTest {
 
     @Test
     fun anEmptyRootShowsNothingToList() = runTest {
-        val model = BookmarksViewModel(null, bookmarks(), SnackbarController(UndoRegistry(backgroundScope)), UndoRegistry(backgroundScope))
+        val model = model(null, bookmarks())
         val state = model.state.first { it.loaded }
         assertTrue(state.empty)
         assertTrue(state.folders.isEmpty())
@@ -84,7 +68,7 @@ class BookmarksViewModelTest {
         val id = bookmarks.addToMobile("Kotlin", "https://kotlinlang.org/")
         val undo = UndoRegistry(backgroundScope)
         val snackbar = SnackbarController(undo)
-        val model = BookmarksViewModel(null, bookmarks, snackbar, undo)
+        val model = model(null, bookmarks, snackbar, undo)
         model.state.first { it.bookmarks.isNotEmpty() }
 
         model.delete(id)
@@ -97,13 +81,17 @@ class BookmarksViewModelTest {
 
     @Test
     fun aMissingFolderIsReported() = runTest {
-        val model = BookmarksViewModel(404, bookmarks(), SnackbarController(UndoRegistry(backgroundScope)), UndoRegistry(backgroundScope))
+        val model = model(404, bookmarks())
         val state = model.state.first { it.loaded }
         assertTrue(state.missing)
     }
 
-    private fun bookmarks(): BookmarkRepository {
-        val db = inMemorySkimDatabase().also { databases += it }
-        return BookmarkRepository(db.bookmarkDao())
-    }
+    private fun bookmarks(): FakeBookmarkRepository = FakeBookmarkRepository()
+
+    private fun model(
+        folderId: Long?,
+        bookmarks: BookmarkRepository,
+        snackbar: SnackbarController = SnackbarController(UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope)),
+        undo: UndoRegistry = UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope),
+    ) = BookmarksViewModel(folderId, bookmarks, DeleteBookmark(bookmarks), RestoreBookmark(bookmarks), snackbar, undo)
 }

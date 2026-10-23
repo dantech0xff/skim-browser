@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.entity.FolderKind
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import com.dantech.skimbrowser.testing.TestDocuments
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import java.io.File

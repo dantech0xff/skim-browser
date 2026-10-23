@@ -43,6 +43,9 @@ class UrlPartsTest {
             "ftp://ftp.example.com/",
             "example.com",
             "https://",
+            "http:",
+            "https:",
+            "https:example.com",
             "http://exa mple.com/",
             "",
             "   ",
@@ -65,7 +68,7 @@ class UrlPartsTest {
         listOf("http://a.example", "HTTPS://a.example", "Http://a.example", "  https://a.example  ").forEach {
             assertTrue(it, isWebUrl(it))
         }
-        listOf("ftp://a.example", "httpx://a.example", "javascript:http://a.example", "about:blank", "", "file:///a", "view-source:https://a.example").forEach {
+        listOf("ftp://a.example", "httpx://a.example", "http:", "https:", "javascript:http://a.example", "about:blank", "", "file:///a", "view-source:https://a.example").forEach {
             assertFalse(it, isWebUrl(it))
         }
     }
