@@ -1,7 +1,7 @@
 ---
 phase: 9
 title: "Tabs"
-status: pending
+status: done-with-concerns
 priority: P1
 effort: "21h"
 dependencies: [2, 4, 5]
@@ -94,16 +94,16 @@ Sửa:
 
 ## Todo list
 
-- [ ] TabsViewModel (section, lọc, đóng/Undo qua registry, nhóm, sắp xếp qua applyLayout) + test
-- [ ] TabsScreen 09 + 09b (tiêu đề plural, search, connected group, banner slot, lưới, toolbar, FAB)
-- [ ] Đóng bằng nút và vuốt + snackbar Undo; Close all + Undo; Close all incognito (không Undo, kết thúc phiên, về 09)
-- [ ] Tab group menu + Rename dialog + Ungroup + Close N tabs + Undo
-- [ ] Kéo thả trong nhóm (DragReorder) + test
-- [ ] Cuộn tới section chứa `focusTabId`
-- [ ] Đăng ký entry TabsKey, RenameGroupKey
-- [ ] Ảnh Roborazzi (+ `assertA11y`, lệch ghi docs) + instrumented gesture test
-- [ ] Cổng thiết bị `skim_api36` + `skim_api28`
-- [ ] Commit cuối phase
+- [x] TabsViewModel (section, lọc, đóng/Undo qua registry, nhóm, sắp xếp qua applyLayout) + test
+- [x] TabsScreen 09 + 09b (tiêu đề plural, search, connected group, banner slot, lưới, toolbar, FAB)
+- [x] Đóng bằng nút và vuốt + snackbar Undo; Close all + Undo; Close all incognito (không Undo, kết thúc phiên, về 09)
+- [x] Tab group menu + Rename dialog + Ungroup + Close N tabs + Undo
+- [x] Kéo thả trong nhóm (DragReorder) + test
+- [x] Cuộn tới section chứa `focusTabId`
+- [x] Đăng ký entry TabsKey, RenameGroupKey
+- [x] Ảnh Roborazzi (+ `assertA11y`, lệch ghi docs)
+- [ ] Instrumented `TabsGesturesTest` và cổng thiết bị `skim_api36` + `skim_api28` — chưa chạy: máy này không có system image
+- [x] Commit cuối phase
 
 ## Success criteria
 
