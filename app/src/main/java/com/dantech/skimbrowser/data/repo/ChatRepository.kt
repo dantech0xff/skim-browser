@@ -3,14 +3,12 @@ package com.dantech.skimbrowser.data.repo
 import androidx.room.withTransaction
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.containsPattern
-import com.dantech.skimbrowser.data.db.dao.ChatListItem
 import com.dantech.skimbrowser.data.db.dao.SkimChatDao
 import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
 import com.dantech.skimbrowser.domain.chat.ChatRepository as ChatStore
 import com.dantech.skimbrowser.domain.chat.ChatSummary
 import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -50,23 +48,21 @@ class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase)
 
     override suspend fun load(id: Long): SavedChat? = dao.chat(id)?.toDomain()
 
-    suspend fun chat(id: Long): SkimChatEntity? = dao.chat(id)
+    /** Saves a new chat and returns its id; the database always picks a fresh positive id. */
+    override suspend fun createChat(chat: SavedChat): Long = dao.insertChat(chat.toEntity().copy(id = 0))
 
     /** The messages of [chatId] in the order they were written. */
-    suspend fun messages(chatId: Long): List<SkimMessageEntity> = dao.messages(chatId)
+    override suspend fun messages(chatId: Long): List<SavedMessage> = dao.messages(chatId).map { it.toDomain() }
 
-    /** Saves a new chat and returns its id; the database always picks a fresh positive id. */
-    suspend fun createChat(c: SkimChatEntity): Long = dao.insertChat(c.copy(id = 0))
-
-    suspend fun updateChat(c: SkimChatEntity) = dao.updateChat(c)
+    override suspend fun updateChat(chat: SavedChat) = dao.updateChat(chat.toEntity())
 
     /** Saves a new message of a saved chat and returns its id; the database picks the id. */
-    suspend fun addMessage(m: SkimMessageEntity): Long {
-        require(m.chatId > 0) { "A message belongs to a saved chat" }
-        return dao.insertMessage(m.copy(id = 0))
+    override suspend fun addMessage(message: SavedMessage): Long {
+        require(message.chatId > 0) { "A message belongs to a saved chat" }
+        return dao.insertMessage(message.toEntity().copy(id = 0))
     }
 
-    suspend fun updateMessage(m: SkimMessageEntity) = dao.updateMessage(m)
+    override suspend fun updateMessage(message: SavedMessage) = dao.updateMessage(message.toEntity())
 
     /**
      * Deletes chat [id] with its messages, then emits [id] on [removals]. Returns what was deleted,
@@ -99,7 +95,7 @@ class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase)
      * Deletes every chat, checkpoints so no deleted text stays in the write-ahead log, then emits
      * null on [removals] even when nothing was saved, so chats kept only in memory go too.
      */
-    suspend fun deleteAll() {
+    override suspend fun deleteAll() {
         withContext(NonCancellable) {
             dao.deleteAllChats()
             db.checkpointTruncate()

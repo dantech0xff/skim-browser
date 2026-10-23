@@ -52,6 +52,24 @@ class DomainBoundaryTest {
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
     }
 
+    @Test
+    fun onlyTheCompositionRootConstructsTheConcreteChatRepository() {
+        val root = sourceRoot()
+        val violations = kotlinFiles(root).filter { file ->
+            val path = file.path.replace('\\', '/')
+            !path.contains("/data/") && file.name != "AppContainer.kt"
+        }.flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                if (line.trim().startsWith("import com.dantech.skimbrowser.data.repo.ChatRepository")) {
+                    "${file.path}:${index + 1}"
+                } else {
+                    null
+                }
+            }
+        }
+        assertTrue(violations.joinToString("\n"), violations.isEmpty())
+    }
+
     private fun sourceRoot(): File {
         val candidates = listOf(
             File("src/main/java/com/dantech/skimbrowser"),

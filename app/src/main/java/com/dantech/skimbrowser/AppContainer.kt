@@ -41,11 +41,15 @@ import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.usecase.AddBookmark
+import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
 import com.dantech.skimbrowser.domain.usecase.AddShortcut
 import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
+import com.dantech.skimbrowser.domain.usecase.CreateSavedChat
+import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
 import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
 import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
+import com.dantech.skimbrowser.domain.usecase.ReadSavedMessages
 import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
 import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.domain.usecase.MoveBookmark
@@ -64,6 +68,8 @@ import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
 import com.dantech.skimbrowser.domain.usecase.SetSitePermission
 import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.domain.usecase.SetTheme
+import com.dantech.skimbrowser.domain.usecase.UpdateSavedChat
+import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
 import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.search.SuggestionService
@@ -160,10 +166,10 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     val shortcutRepository: ShortcutRepository get() = shortcutStore
 
     /**
-     * The chat table, including the transcript writes [chatSessions] makes. Screens see
-     * [chatRepository].
+     * The chat table. Screens and the transcript engine see [chatRepository]; this concrete store
+     * only maps Room rows.
      */
-    internal val chatStore: ChatStore by lazy { ChatStore(database.skimChatDao(), database) }
+    private val chatStore: ChatStore by lazy { ChatStore(database.skimChatDao(), database) }
 
     val chatRepository: ChatRepository get() = chatStore
 
@@ -194,6 +200,12 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     val setReaderFont: SetReaderFont by lazy { SetReaderFont(settings) }
     val completeOnboarding: CompleteOnboarding by lazy { CompleteOnboarding(settings) }
     val loadSavedChat: LoadSavedChat by lazy { LoadSavedChat(chatRepository) }
+    val createSavedChat: CreateSavedChat by lazy { CreateSavedChat(chatRepository) }
+    val readSavedMessages: ReadSavedMessages by lazy { ReadSavedMessages(chatRepository) }
+    val addSavedMessage: AddSavedMessage by lazy { AddSavedMessage(chatRepository) }
+    val updateSavedChat: UpdateSavedChat by lazy { UpdateSavedChat(chatRepository) }
+    val updateSavedMessage: UpdateSavedMessage by lazy { UpdateSavedMessage(chatRepository) }
+    val deleteAllSkimChats: DeleteAllSkimChats by lazy { DeleteAllSkimChats(chatRepository) }
     val removeSkimChat: RemoveSkimChat by lazy { RemoveSkimChat(chatRepository) }
     val restoreSkimChat: RestoreSkimChat by lazy { RestoreSkimChat(chatRepository) }
     val setSkimAi: SetSkimAi by lazy { SetSkimAi(sitePermissionRepository) }
@@ -300,7 +312,17 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** Page chats for this process: saved while Keep chat history is on, otherwise memory only. */
     val chatSessions: ChatSessionStore by lazy {
-        ChatSessionStore(chatStore, tabManager, settings, appScope)
+        ChatSessionStore(
+            chats = chatRepository,
+            createChat = createSavedChat,
+            messages = readSavedMessages,
+            addMessage = addSavedMessage,
+            updateChat = updateSavedChat,
+            updateMessage = updateSavedMessage,
+            tabs = tabManager,
+            settings = settings,
+            appScope = appScope,
+        )
     }
 
     /** Groups ungrouped normal tabs once per set, and keeps the Undo for the tabs screen. */
@@ -321,8 +343,8 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     /** Deletes saved Skim chats, and every site's Skim AI decision when all AI data is deleted. */
     val aiDataEraser: AiDataEraser by lazy {
         AiDataEraser(
-            chats = chatStore,
-            sites = siteStore,
+            deleteAllChats = deleteAllSkimChats,
+            sites = sitePermissionRepository,
             undo = undoRegistry,
             snackbar = snackbarController,
         )

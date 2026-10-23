@@ -361,7 +361,7 @@ class FakeShortcutRepository(private val held: MutableSharedFlow<List<Shortcut>>
 
 class FakeChatRepository : ChatRepository {
     private val chats = MutableStateFlow<List<SavedChat>>(emptyList())
-    private val messages = mutableListOf<SavedMessage>()
+    private val storedMessages = mutableListOf<SavedMessage>()
     private var nextChatId = 1L
     private var nextMessageId = 1L
     private val removalSignals = MutableSharedFlow<Long?>(extraBufferCapacity = 16)
@@ -375,16 +375,34 @@ class FakeChatRepository : ChatRepository {
         return id
     }
 
-    fun addMessage(message: SavedMessage): Long {
-        val id = if (message.id > 0) message.id else nextMessageId++
-        nextMessageId = maxOf(nextMessageId, id + 1)
-        messages += message.copy(id = id)
+    override suspend fun createChat(chat: SavedChat): Long {
+        val id = nextChatId++
+        chats.value = chats.value + chat.copy(id = id)
         return id
     }
 
-    suspend fun deleteAll() {
+    override suspend fun messages(chatId: Long): List<SavedMessage> = storedMessages.filter { it.chatId == chatId }
+
+    override suspend fun addMessage(message: SavedMessage): Long {
+        require(message.chatId > 0) { "A message belongs to a saved chat" }
+        val id = nextMessageId++
+        storedMessages += message.copy(id = id)
+        return id
+    }
+
+    override suspend fun updateChat(chat: SavedChat) {
+        if (chats.value.none { it.id == chat.id }) return
+        chats.value = chats.value.map { if (it.id == chat.id) chat else it }
+    }
+
+    override suspend fun updateMessage(message: SavedMessage) {
+        val index = storedMessages.indexOfFirst { it.id == message.id }
+        if (index >= 0) storedMessages[index] = message
+    }
+
+    override suspend fun deleteAll() {
         chats.value = emptyList()
-        messages.clear()
+        storedMessages.clear()
         removalSignals.emit(null)
     }
 
@@ -407,9 +425,9 @@ class FakeChatRepository : ChatRepository {
 
     override suspend fun delete(id: Long): DeletedChat? {
         val chat = chats.value.firstOrNull { it.id == id } ?: return null
-        val kept = messages.filter { it.chatId == id }
+        val kept = storedMessages.filter { it.chatId == id }
         chats.value = chats.value.filterNot { it.id == id }
-        messages.removeAll { it.chatId == id }
+        storedMessages.removeAll { it.chatId == id }
         removalSignals.emit(id)
         return DeletedChat(chat, kept)
     }
@@ -417,11 +435,11 @@ class FakeChatRepository : ChatRepository {
     override suspend fun restore(deleted: DeletedChat) {
         if (chats.value.any { it.id == deleted.chat.id }) return
         chats.value = chats.value + deleted.chat
-        messages += deleted.messages
+        storedMessages += deleted.messages
     }
 
     private fun summaryOf(chat: SavedChat): ChatSummary {
-        val own = messages.filter { it.chatId == chat.id }
+        val own = storedMessages.filter { it.chatId == chat.id }
         val kept = own.filter { it.status == MessageStatus.COMPLETE || it.status == MessageStatus.STOPPED }
         return ChatSummary(
             chat = chat,

@@ -57,7 +57,7 @@ import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.browser.WindowSecureController
 import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
@@ -397,8 +397,8 @@ class NewTabPageRouteTest {
     @Test
     fun aContinueCardOpensItsSavedChatAndSeeAllOpensSkimHistory() {
         val chatId = runBlocking {
-            container.chatStore.createChat(
-                SkimChatEntity(
+            container.chatRepository.createChat(
+                SavedChat(
                     kind = ChatKind.PAGE,
                     url = "https://daylightjournal.com/energy",
                     host = "daylightjournal.com",

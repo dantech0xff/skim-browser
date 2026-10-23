@@ -5,8 +5,9 @@ import app.cash.turbine.test
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.data.repo.ChatRepository
+import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
@@ -48,7 +49,7 @@ class AiDataEraserTest {
         snackbar.show(UiText.Raw("Removed"), SnackbarAction.Undo(token))
 
         chats.removals.test {
-            AiDataEraser(chats, sites, undo, snackbar).deleteAllAiData()
+            AiDataEraser(DeleteAllSkimChats(chats), sites, undo, snackbar).deleteAllAiData()
             assertNull(awaitItem())
         }
 
@@ -69,7 +70,7 @@ class AiDataEraserTest {
         sites.setSkimAi("daylightjournal.com", SkimAiState.ALLOWED)
         val undo = UndoRegistry(backgroundScope)
 
-        AiDataEraser(chats, sites, undo, SnackbarController(undo)).clearSkimHistory()
+        AiDataEraser(DeleteAllSkimChats(chats), sites, undo, SnackbarController(undo)).clearSkimHistory()
 
         assertEquals(0, chats.observeCount().first())
         assertEquals(SkimAiState.ALLOWED, sites.get("daylightjournal.com")?.skimAi)
@@ -77,7 +78,7 @@ class AiDataEraserTest {
 
     private fun database(): SkimDatabase = inMemorySkimDatabase().also { databases += it }
 
-    private fun chat(title: String) = SkimChatEntity(
+    private fun chat(title: String) = SavedChat(
         kind = ChatKind.PAGE,
         url = "https://daylightjournal.com/energy",
         host = "daylightjournal.com",

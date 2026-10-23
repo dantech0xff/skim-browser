@@ -1,15 +1,15 @@
 package com.dantech.skimbrowser.ai
 
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.MessageStatus
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
-internal fun ChatMessage.toEntity(chatId: Long, createdAt: Long) = SkimMessageEntity(
+internal fun ChatMessage.toSaved(chatId: Long, createdAt: Long) = SavedMessage(
     id = id,
     chatId = chatId,
     role = role,
@@ -22,7 +22,7 @@ internal fun ChatMessage.toEntity(chatId: Long, createdAt: Long) = SkimMessageEn
     createdAt = createdAt,
 )
 
-internal fun SkimMessageEntity.toMessage() = ChatMessage(
+internal fun SavedMessage.toMessage() = ChatMessage(
     id = id,
     role = role,
     kind = kind,

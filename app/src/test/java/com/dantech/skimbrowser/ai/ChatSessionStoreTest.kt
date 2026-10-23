@@ -100,7 +100,7 @@ class ChatSessionStoreTest {
         assertEquals(tied, open.tab().chatId)
         assertEquals(
             "The first point is the one shown on Home.",
-            open.chats.chat(session.chatId)?.snippet,
+            open.chats.load(session.chatId)?.snippet,
         )
     }
 
@@ -123,7 +123,7 @@ class ChatSessionStoreTest {
         fixture.manager.attach(fixture.engine)
         val chats = ChatRepository(fixture.db.skimChatDao(), fixture.db)
         val appJob = SupervisorJob().also { appJobs += it }
-        val store = ChatSessionStore(
+        val store = chatSessionsForTest(
             chats = chats,
             tabs = fixture.manager,
             settings = fixture.settings,

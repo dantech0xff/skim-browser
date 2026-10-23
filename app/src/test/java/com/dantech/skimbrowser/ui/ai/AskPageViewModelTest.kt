@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.ai.ChatSessionStore
+import com.dantech.skimbrowser.ai.chatSessionsForTest
 import com.dantech.skimbrowser.ai.FakeClaudeServer
 import com.dantech.skimbrowser.ai.PAGE_HOST
 import com.dantech.skimbrowser.ai.PAGE_URL
@@ -22,8 +23,8 @@ import com.dantech.skimbrowser.data.db.entity.MessageKind
 import com.dantech.skimbrowser.data.db.entity.MessageRole
 import com.dantech.skimbrowser.data.db.entity.MessageStatus
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
@@ -287,7 +288,7 @@ class AskPageViewModelTest {
         val chats = ChatRepository(fixture.db.skimChatDao(), fixture.db)
         val appJob = SupervisorJob().also { appJobs += it }
         val appScope = CoroutineScope(appJob + StandardTestDispatcher(scope.testScheduler))
-        val sessions = ChatSessionStore(chats, fixture.manager, fixture.settings, appScope, fixture.main)
+        val sessions = chatSessionsForTest(chats, fixture.manager, fixture.settings, appScope, fixture.main)
         val sites = SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db)
         val ai = SkimAiService(provider(baseUrl), sites, fixture.settings)
         return Open(fixture, chats, sessions, ai, appScope, sites, id = "")
@@ -300,7 +301,7 @@ class AskPageViewModelTest {
 
     private suspend fun Open.savedChat(): Long {
         val chatId = chats.createChat(
-            SkimChatEntity(
+            SavedChat(
                 kind = ChatKind.PAGE,
                 url = PAGE_URL,
                 host = PAGE_HOST,
@@ -311,7 +312,7 @@ class AskPageViewModelTest {
             ),
         )
         chats.addMessage(
-            SkimMessageEntity(
+            SavedMessage(
                 chatId = chatId,
                 role = MessageRole.ASSISTANT,
                 kind = MessageKind.SUMMARY,

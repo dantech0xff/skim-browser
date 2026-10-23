@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.ai.ChatSessionStore
+import com.dantech.skimbrowser.ai.chatSessionsForTest
 import com.dantech.skimbrowser.ai.FakeClaudeServer
 import com.dantech.skimbrowser.ai.OverviewGroup
 import com.dantech.skimbrowser.ai.SkimAiService
@@ -20,8 +21,8 @@ import com.dantech.skimbrowser.data.db.entity.MessageFeedback
 import com.dantech.skimbrowser.data.db.entity.MessageKind
 import com.dantech.skimbrowser.data.db.entity.MessageRole
 import com.dantech.skimbrowser.data.db.entity.MessageStatus
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
@@ -276,7 +277,7 @@ class AskTabsViewModelTest {
         val chats = ChatRepository(fixture.db.skimChatDao(), fixture.db)
         val appJob = SupervisorJob().also { appJobs += it }
         val appScope = CoroutineScope(appJob + StandardTestDispatcher(scope.testScheduler))
-        val sessions = ChatSessionStore(chats, fixture.manager, fixture.settings, appScope, fixture.main)
+        val sessions = chatSessionsForTest(chats, fixture.manager, fixture.settings, appScope, fixture.main)
         val sites = SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db)
         val ai = SkimAiService(provider(baseUrl), sites, fixture.settings)
         return Open(fixture, chats, sessions, ai, sites, appScope, scope)
@@ -292,7 +293,7 @@ class AskTabsViewModelTest {
 
     private suspend fun Open.savedTabsChat(): Long {
         val chatId = chats.createChat(
-            SkimChatEntity(
+            SavedChat(
                 kind = ChatKind.TABS,
                 url = null,
                 host = null,
@@ -303,7 +304,7 @@ class AskTabsViewModelTest {
             ),
         )
         chats.addMessage(
-            SkimMessageEntity(
+            SavedMessage(
                 chatId = chatId,
                 role = MessageRole.USER,
                 kind = MessageKind.QUESTION,
@@ -313,7 +314,7 @@ class AskTabsViewModelTest {
             ),
         )
         chats.addMessage(
-            SkimMessageEntity(
+            SavedMessage(
                 chatId = chatId,
                 role = MessageRole.ASSISTANT,
                 kind = MessageKind.TABS_OVERVIEW,

@@ -5,7 +5,11 @@ import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
 import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.DeletedChat
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkFiles
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
@@ -21,6 +25,7 @@ import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
+import com.dantech.skimbrowser.testing.assertThrowsSuspending
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -109,6 +114,35 @@ class UseCaseTest {
         val settings = FakeSettingsRepository()
         SetReaderTextScale(settings)(10)
         assertEquals(80, settings.settings.first().readerTextScalePercent)
+    }
+
+    @Test
+    fun chatWriteUseCasesCreateReadUpdateAndClear() = runTest {
+        val chats = FakeChatRepository()
+        val id = CreateSavedChat(chats)(
+            SavedChat(kind = ChatKind.PAGE, url = "https://example.com", host = "example.com", title = "Heat", createdAt = 1, updatedAt = 1),
+        )
+        assertEquals("Heat", chats.load(id)?.title)
+
+        val messageId = AddSavedMessage(chats)(
+            SavedMessage(chatId = id, role = MessageRole.USER, kind = MessageKind.QUESTION, text = "Why?", status = MessageStatus.COMPLETE, createdAt = 2),
+        )
+        assertEquals(listOf(messageId), ReadSavedMessages(chats)(id).map { it.id })
+
+        UpdateSavedChat(chats)(chats.load(id)!!.copy(snippet = "A line", updatedAt = 3))
+        assertEquals("A line", chats.load(id)?.snippet)
+        UpdateSavedMessage(chats)(ReadSavedMessages(chats)(id).single().copy(text = "Why now?"))
+        assertEquals("Why now?", ReadSavedMessages(chats)(id).single().text)
+
+        assertThrowsSuspending<IllegalArgumentException> {
+            AddSavedMessage(chats)(
+                SavedMessage(chatId = -1, role = MessageRole.USER, kind = MessageKind.QUESTION, text = "No", status = MessageStatus.COMPLETE, createdAt = 4),
+            )
+        }
+
+        DeleteAllSkimChats(chats)()
+        assertTrue(chats.observeAll(null).first().isEmpty())
+        assertTrue(ReadSavedMessages(chats)(id).isEmpty())
     }
 
     @Test

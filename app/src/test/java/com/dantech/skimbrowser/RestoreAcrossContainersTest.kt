@@ -6,7 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.GroupLayout
 import com.dantech.skimbrowser.browser.RestoreResult
 import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -55,8 +55,8 @@ class RestoreAcrossContainersTest {
                 ),
             )
             tabs.select(heat)
-            chatId = container.chatStore.createChat(
-                SkimChatEntity(
+            chatId = container.chatRepository.createChat(
+                SavedChat(
                     kind = ChatKind.PAGE,
                     url = HEAT,
                     host = "daylightjournal.com",

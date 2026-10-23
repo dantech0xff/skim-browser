@@ -13,8 +13,6 @@ import com.dantech.skimbrowser.data.db.entity.MessageKind
 import com.dantech.skimbrowser.data.db.entity.MessageRole
 import com.dantech.skimbrowser.data.db.entity.MessageStatus
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
 import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.domain.chat.ChatRepository as ChatStore
 import com.dantech.skimbrowser.domain.chat.MessageKind as DomainMessageKind
@@ -23,6 +21,7 @@ import com.dantech.skimbrowser.domain.chat.MessageStatus as DomainMessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
+import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
 import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
@@ -124,7 +123,7 @@ class SkimHistoryViewModelTest {
         val id = chat(chats, ChatKind.PAGE, "Why heat pumps are winning", NOW, host = "daylightjournal.com")
         val undo = UndoRegistry(backgroundScope)
         val snackbar = SnackbarController(undo)
-        val eraser = AiDataEraser(chats, sites, undo, snackbar)
+        val eraser = AiDataEraser(DeleteAllSkimChats(chats), sites, undo, snackbar)
         val model = model(chats, undo, snackbar)
         model.state.first { it.sections.isNotEmpty() }
 
@@ -190,7 +189,7 @@ class SkimHistoryViewModelTest {
         host: String? = null,
         tabCount: Int = 0,
     ): Long = chats.createChat(
-        SkimChatEntity(
+        SavedChat(
             kind = kind,
             url = host?.let { "https://$it/" },
             host = host,

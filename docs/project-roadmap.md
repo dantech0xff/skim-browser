@@ -31,7 +31,7 @@ From `design/README.md`. The app does not invent screens for these:
 
 ## Open questions
 
-1. **Clean Architecture.** Closed as option B. `domain/` holds models, repository interfaces, and use cases. `data/` implements the interfaces and maps entities. ViewModels take use cases or those interfaces. `AppContainer` wires them. The transcript engine still calls the concrete chat repository for `createChat`, messages, and `deleteAll`. A full presentation / domain / data rewrite (option C) was not done.
+1. **Clean Architecture.** Closed as option B. `domain/` holds models, repository interfaces, and use cases. `data/` implements the interfaces and maps entities. ViewModels take use cases or those interfaces. Chat writes (`createChat`, messages, `addMessage`, updates, `deleteAll`) are on `domain.chat.ChatRepository`, and `ChatSessionStore` and `AiDataEraser` call the use cases. `AppContainer` wires them. A full presentation / domain / data rewrite (option C) was not done.
 
 2. **D2 on a device.** Owner kept option A. Incognito tabs are omitted from Room and from `TabManager.restore()`. `ProcessDeathRestoreTest` recreates the Activity after `pool.destroyAll()`. It has not been run on `skim_api36`. Run the instrumented test and the adb checklist before any beta.
 

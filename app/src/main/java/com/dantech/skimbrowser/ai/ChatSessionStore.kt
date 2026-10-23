@@ -4,14 +4,19 @@ import com.dantech.skimbrowser.browser.PageEvent
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.page.PageContent
-import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.ChatRepository
+import com.dantech.skimbrowser.domain.chat.ChatKind
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
-import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.withoutFragment
+import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
+import com.dantech.skimbrowser.domain.usecase.CreateSavedChat
+import com.dantech.skimbrowser.domain.usecase.ReadSavedMessages
+import com.dantech.skimbrowser.domain.usecase.UpdateSavedChat
+import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -29,6 +34,11 @@ import kotlinx.coroutines.withContext
  */
 class ChatSessionStore(
     private val chats: ChatRepository,
+    private val createChat: CreateSavedChat,
+    private val messages: ReadSavedMessages,
+    private val addMessage: AddSavedMessage,
+    private val updateChat: UpdateSavedChat,
+    private val updateMessage: UpdateSavedMessage,
     private val tabs: TabManager,
     private val settings: SettingsRepository,
     private val appScope: CoroutineScope,
@@ -62,8 +72,8 @@ class ChatSessionStore(
         val keep = settings.settings.first().keepChatHistory && !tab.incognito
         val id = if (keep) {
             val now = clock()
-            chats.createChat(
-                SkimChatEntity(
+            createChat(
+                SavedChat(
                     kind = ChatKind.PAGE,
                     url = url,
                     host = hostOf(content.url),
@@ -84,8 +94,8 @@ class ChatSessionStore(
      * Nothing is sent. Null when the chat is gone.
      */
     suspend fun openSaved(chatId: Long, tab: Tab, content: PageContent): ChatSession? {
-        val chat = chats.chat(chatId) ?: return null
-        val saved = chats.messages(chatId).map { it.toMessage() }
+        val chat = chats.load(chatId) ?: return null
+        val saved = messages(chatId).map { it.toMessage() }
         val session = session(chat.id, tab, content, hostOf(content.url).orEmpty(), withoutFragment(chat.url ?: content.url))
         restoreTurns(session, saved)
         session.replaceMessages(saved)
@@ -102,8 +112,8 @@ class ChatSessionStore(
         val keep = settings.settings.first().keepChatHistory
         val id = if (keep) {
             val now = clock()
-            chats.createChat(
-                SkimChatEntity(
+            createChat(
+                SavedChat(
                     kind = ChatKind.TABS,
                     url = null,
                     host = null,
@@ -125,9 +135,9 @@ class ChatSessionStore(
      */
     suspend fun openSavedTabs(chatId: Long): ChatSession? {
         byChat[chatId]?.let { return it }
-        val chat = chats.chat(chatId) ?: return null
+        val chat = chats.load(chatId) ?: return null
         if (chat.kind != ChatKind.TABS) return null
-        val saved = chats.messages(chatId).map { it.toMessage() }
+        val saved = messages(chatId).map { it.toMessage() }
         val session = tabsSession(chat.id, chat.title, chat.tabCount, emptyList())
         restoreTabs(session, saved)
         session.replaceMessages(saved)
@@ -141,8 +151,8 @@ class ChatSessionStore(
             message.copy(id = message.id.takeIf { it != 0L } ?: nextMemoryId.getAndDecrement())
         } else {
             val now = clock()
-            val id = chats.addMessage(message.toEntity(session.chatId, now))
-            val chat = chats.chat(session.chatId)
+            val id = addMessage(message.toSaved(session.chatId, now))
+            val chat = chats.load(session.chatId)
             if (chat != null) {
                 val snippet = when (message.kind) {
                     MessageKind.SUMMARY -> summarySnippet(message.text) ?: chat.snippet
@@ -150,7 +160,7 @@ class ChatSessionStore(
                     else -> chat.snippet
                 }
                 val count = if (session.tabCount > 0) session.tabCount else chat.tabCount
-                chats.updateChat(chat.copy(snippet = snippet, tabCount = count, updatedAt = now))
+                updateChat(chat.copy(snippet = snippet, tabCount = count, updatedAt = now))
             }
             message.copy(id = id)
         }
@@ -161,8 +171,8 @@ class ChatSessionStore(
         val updated = session.messages.value.map { if (it.id == messageId) it.copy(feedback = feedback) else it }
         session.replaceMessages(updated)
         if (session.chatId <= 0) return
-        val entity = chats.messages(session.chatId).firstOrNull { it.id == messageId } ?: return
-        chats.updateMessage(entity.copy(feedback = feedback))
+        val saved = messages(session.chatId).firstOrNull { it.id == messageId } ?: return
+        updateMessage(saved.copy(feedback = feedback))
     }
 
     private suspend fun onNavigated(event: PageEvent.Navigated) {
