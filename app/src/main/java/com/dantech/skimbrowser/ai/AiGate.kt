@@ -1,6 +1,9 @@
 package com.dantech.skimbrowser.ai
 
+import com.dantech.skimbrowser.domain.permission.ResolveSkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiAudience
+import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.Tab
@@ -26,16 +29,16 @@ enum class AiGateDecision {
 class AiGate(
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
+    private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
 ) {
     suspend fun decide(tab: Tab): AiGateDecision {
         if (tab.incognito) return AiGateDecision.OffInIncognito
         val host = hostOf(tab.url.orEmpty()) ?: return AiGateDecision.NeedsPermission
         val state = sites.get(host)?.skimAi ?: SkimAiState.UNSET
         val askFirst = settings.settings.first().askBeforeSending
-        return when {
-            state == SkimAiState.ASK -> AiGateDecision.NeedsPermission
-            state == SkimAiState.UNSET && askFirst -> AiGateDecision.NeedsPermission
-            else -> AiGateDecision.Allowed
+        return when (resolveConsent(state, askFirst, SkimAiAudience.PAGE)) {
+            SkimAiConsent.Allowed -> AiGateDecision.Allowed
+            SkimAiConsent.NeedsPermission -> AiGateDecision.NeedsPermission
         }
     }
 

@@ -8,7 +8,10 @@ import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
 import com.dantech.skimbrowser.domain.ai.PageConversation
 import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.permission.ResolveSkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiAudience
+import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import kotlinx.coroutines.CancellationException
@@ -27,6 +30,7 @@ class SkimAiService(
     private val clients: ClaudeClientProvider,
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
+    private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
 ) : AiAssistant {
     override fun summarize(session: PageConversation): Flow<AiReply> {
         val chat = session as ChatSession
@@ -155,12 +159,10 @@ class SkimAiService(
         }
         val askBefore = settings.settings.first().askBeforeSending
         val states = sites.skimAiStates(sources.map { it.host }.toSet())
+        val audience = if (consent == Consent.SITE_APPROVED) SkimAiAudience.PAGE else SkimAiAudience.TABS
         val denied = sources.any { source ->
             val state = states[source.host] ?: SkimAiState.UNSET
-            when (consent) {
-                Consent.SITE_APPROVED -> state == SkimAiState.ASK || (state == SkimAiState.UNSET && askBefore)
-                Consent.TABS_ACTION -> state == SkimAiState.ASK
-            }
+            resolveConsent(state, askBefore, audience) == SkimAiConsent.NeedsPermission
         }
         if (denied) throw AiDenied(AiFailure.NotAllowed(hostChanged = false))
         emitAll(clients.client().streamEvents(params))

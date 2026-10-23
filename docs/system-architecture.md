@@ -47,7 +47,7 @@ Incognito pages never reach `SkimAiService`. The service rejects them before the
 
 ## Ask Skim
 
-`AiGate.decide` runs before page text is read:
+`ResolveSkimAiConsent` is the one rule for a site's saved choice and ask-before-sending. `AiGate.decide`, the site information switch, and `SkimAiService.send` all use it. A page asks when the site is `ASK`, or `UNSET` while ask-before-sending is on. An across-tabs action refuses only `ASK`. `AiGate.decide` runs before page text is read:
 
 - Incognito → do not ask.
 - Site state `ASK`, or `UNSET` while "ask before sending" is on → permission dialog (06d).

@@ -39,9 +39,12 @@ import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.permission.PermissionState
+import com.dantech.skimbrowser.domain.permission.ResolveSkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SitePermission
 import com.dantech.skimbrowser.domain.permission.SitePermissionKind
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiAudience
+import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.url.hostOf
@@ -118,6 +121,7 @@ class SiteInfoViewModel(
 ) : ViewModel() {
 
     private val revision = MutableStateFlow(0)
+    private val skimAiConsent = ResolveSkimAiConsent()
 
     private val tab = tabs.state.map { it.tab(tabId) }.distinctUntilChanged()
 
@@ -192,11 +196,7 @@ class SiteInfoViewModel(
             page = page,
             host = host,
             showSkimAi = host.isNotEmpty(),
-            skimAiOn = when (skim) {
-                SkimAiState.ALLOWED -> true
-                SkimAiState.ASK -> false
-                SkimAiState.UNSET -> !askBeforeSending
-            },
+            skimAiOn = skimAiConsent(skim, askBeforeSending, SkimAiAudience.PAGE) == SkimAiConsent.Allowed,
             permissions = permissionRows(host) { entity?.permission(it) ?: PermissionState.UNSET },
         )
     }
