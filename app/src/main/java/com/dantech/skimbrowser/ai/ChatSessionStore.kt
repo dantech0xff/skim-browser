@@ -1,9 +1,11 @@
 package com.dantech.skimbrowser.ai
 
-import com.dantech.skimbrowser.domain.tab.PageEvent
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.page.PageContent
+import com.dantech.skimbrowser.domain.ai.PageChats
+import com.dantech.skimbrowser.domain.ai.PageConversation
+import com.dantech.skimbrowser.domain.page.PageContent
+import com.dantech.skimbrowser.domain.tab.PageEvent
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
@@ -45,7 +47,7 @@ class ChatSessionStore(
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val clock: () -> Long = System::currentTimeMillis,
     private val languageTag: () -> String = { Locale.getDefault().toLanguageTag() },
-) {
+) : PageChats {
     private val byTab = ConcurrentHashMap<String, ChatSession>()
     private val byChat = ConcurrentHashMap<Long, ChatSession>()
     private val nextMemoryId = AtomicLong(-1)
@@ -61,13 +63,13 @@ class ChatSessionStore(
         }
     }
 
-    fun sessionFor(tabId: String): ChatSession? = byTab[tabId]
+    override fun sessionFor(tabId: String): ChatSession? = byTab[tabId]
 
     /** The across-tabs chat [chatId], when this process already has it open. */
-    fun sessionForChat(chatId: Long): ChatSession? = byChat[chatId]
+    override fun sessionForChat(chatId: Long): ChatSession? = byChat[chatId]
 
     /** Starts the chat for [tab] about [content]. [approvedHost] is the host the person allowed. */
-    suspend fun openForTab(tab: Tab, content: PageContent, approvedHost: String): ChatSession {
+    override suspend fun openForTab(tab: Tab, content: PageContent, approvedHost: String): ChatSession {
         val url = withoutFragment(content.url)
         val keep = settings.settings.first().keepChatHistory && !tab.incognito
         val id = if (keep) {
@@ -93,7 +95,7 @@ class ChatSessionStore(
      * Attaches the saved chat [chatId] to [tab] and fills it with the messages already stored.
      * Nothing is sent. Null when the chat is gone.
      */
-    suspend fun openSaved(chatId: Long, tab: Tab, content: PageContent): ChatSession? {
+    override suspend fun openSaved(chatId: Long, tab: Tab, content: PageContent): ChatSession? {
         val chat = chats.load(chatId) ?: return null
         val saved = messages(chatId).map { it.toMessage() }
         val session = session(chat.id, tab, content, hostOf(content.url).orEmpty(), withoutFragment(chat.url ?: content.url))
@@ -108,7 +110,7 @@ class ChatSessionStore(
      * Starts an across-tabs chat. It is saved while Keep chat history is on, and it is never tied
      * to a tab. [title] is the question the person asked.
      */
-    suspend fun openTabs(title: String, tabCount: Int, sources: List<AiSource>): ChatSession {
+    override suspend fun openTabs(title: String, tabCount: Int, pages: List<TabContext>): ChatSession {
         val keep = settings.settings.first().keepChatHistory
         val id = if (keep) {
             val now = clock()
@@ -126,14 +128,14 @@ class ChatSessionStore(
         } else {
             nextMemoryId.getAndDecrement()
         }
-        return tabsSession(id, title, tabCount, sources).also { byChat[id] = it }
+        return tabsSession(id, title, tabCount, pages.toSources()).also { byChat[id] = it }
     }
 
     /**
      * Opens the saved across-tabs chat [chatId] and fills it with the messages already stored.
      * Nothing is sent. Null when the chat is gone or it is about one page.
      */
-    suspend fun openSavedTabs(chatId: Long): ChatSession? {
+    override suspend fun openSavedTabs(chatId: Long): ChatSession? {
         byChat[chatId]?.let { return it }
         val chat = chats.load(chatId) ?: return null
         if (chat.kind != ChatKind.TABS) return null
@@ -146,32 +148,34 @@ class ChatSessionStore(
     }
 
     /** Appends [message]. A memory-only chat is not written, and the tab's chat id is left alone. */
-    suspend fun record(session: ChatSession, message: ChatMessage) {
-        val stored = if (session.chatId <= 0) {
+    override suspend fun record(session: PageConversation, message: ChatMessage) {
+        val chat = session as ChatSession
+        val stored = if (chat.chatId <= 0) {
             message.copy(id = message.id.takeIf { it != 0L } ?: nextMemoryId.getAndDecrement())
         } else {
             val now = clock()
-            val id = addMessage(message.toSaved(session.chatId, now))
-            val chat = chats.load(session.chatId)
-            if (chat != null) {
+            val id = addMessage(message.toSaved(chat.chatId, now))
+            val saved = chats.load(chat.chatId)
+            if (saved != null) {
                 val snippet = when (message.kind) {
-                    MessageKind.SUMMARY -> summarySnippet(message.text) ?: chat.snippet
-                    MessageKind.TABS_OVERVIEW -> overviewSnippet(message.text) ?: chat.snippet
-                    else -> chat.snippet
+                    MessageKind.SUMMARY -> summarySnippet(message.text) ?: saved.snippet
+                    MessageKind.TABS_OVERVIEW -> overviewSnippet(message.text) ?: saved.snippet
+                    else -> saved.snippet
                 }
-                val count = if (session.tabCount > 0) session.tabCount else chat.tabCount
-                updateChat(chat.copy(snippet = snippet, tabCount = count, updatedAt = now))
+                val count = if (chat.tabCount > 0) chat.tabCount else saved.tabCount
+                updateChat(saved.copy(snippet = snippet, tabCount = count, updatedAt = now))
             }
             message.copy(id = id)
         }
-        session.replaceMessages(session.messages.value + stored)
+        chat.replaceMessages(chat.messages.value + stored)
     }
 
-    suspend fun setFeedback(session: ChatSession, messageId: Long, feedback: MessageFeedback) {
-        val updated = session.messages.value.map { if (it.id == messageId) it.copy(feedback = feedback) else it }
-        session.replaceMessages(updated)
-        if (session.chatId <= 0) return
-        val saved = messages(session.chatId).firstOrNull { it.id == messageId } ?: return
+    override suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback) {
+        val chat = session as ChatSession
+        val updated = chat.messages.value.map { if (it.id == messageId) it.copy(feedback = feedback) else it }
+        chat.replaceMessages(updated)
+        if (chat.chatId <= 0) return
+        val saved = messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
         updateMessage(saved.copy(feedback = feedback))
     }
 

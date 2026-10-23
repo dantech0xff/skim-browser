@@ -12,6 +12,9 @@ import com.dantech.skimbrowser.ai.FakeClaudeServer
 import com.dantech.skimbrowser.ai.PAGE_HOST
 import com.dantech.skimbrowser.ai.PAGE_URL
 import com.dantech.skimbrowser.ai.SkimAiService
+import com.dantech.skimbrowser.domain.ai.AskPage
+import com.dantech.skimbrowser.domain.ai.RetryAnswer
+import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.ai.articlePage
 import com.dantech.skimbrowser.ai.provider
 import com.dantech.skimbrowser.browser.FakePageScripts
@@ -332,7 +335,9 @@ class AskPageViewModelTest {
                     key = key,
                     tabs = fixture.manager,
                     sessions = sessions,
-                    ai = ai,
+                    summarizePage = SummarizePage(ai),
+                    askPage = AskPage(ai),
+                    retryAnswer = RetryAnswer(ai),
                     network = fixture.network,
                     readerHighlights = ReaderHighlights(),
                     loadSavedChat = LoadSavedChat(chats),

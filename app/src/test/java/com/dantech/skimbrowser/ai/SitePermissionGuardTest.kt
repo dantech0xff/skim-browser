@@ -6,9 +6,12 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
+import com.dantech.skimbrowser.domain.ai.AiFailure
+import com.dantech.skimbrowser.domain.ai.AiReply
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -56,8 +59,8 @@ class SitePermissionGuardTest {
         val (service, server, sites, settings) = rig()
         sites.setSkimAi("other.example", SkimAiState.ALLOWED)
         settings.setAskBeforeSending(false)
-        val denied = assertDenied(service.summarize(allowedSession(host = "other.example", approvedHost = PAGE_HOST)))
-        assertTrue(denied.failure is AiFailure.NotAllowed && denied.failure.hostChanged)
+        val failure = assertDenied(service.summarize(allowedSession(host = "other.example", approvedHost = PAGE_HOST)))
+        assertTrue(failure is AiFailure.NotAllowed && failure.hostChanged)
         assertEquals(0, server.requestCount)
         server.close()
     }
@@ -75,10 +78,10 @@ class SitePermissionGuardTest {
         return Rig(service, server, sites, settings)
     }
 
-    private fun assertDenied(events: kotlinx.coroutines.flow.Flow<AiEvent>): AiDenied {
-        val error = runCatching { runBlocking { events.collect() } }.exceptionOrNull()
-        assertTrue(error is AiDenied)
-        return error as AiDenied
+    private fun assertDenied(events: Flow<AiReply>): AiFailure {
+        val failed = runBlocking { events.toList() }.filterIsInstance<AiReply.Failed>()
+        assertEquals(failed.toString(), 1, failed.size)
+        return failed.single().failure
     }
 
     private data class Rig(

@@ -4,18 +4,7 @@ import com.anthropic.errors.AnthropicIoException
 import com.anthropic.errors.InternalServerException
 import com.anthropic.errors.RateLimitException
 import com.anthropic.errors.SseException
-
-/** Why a Skim AI request produced no answer. */
-sealed interface AiFailure {
-    data object Offline : AiFailure
-
-    data object Server : AiFailure
-
-    data object Refused : AiFailure
-
-    /** The site is not allowed, or [hostChanged] when the page moved to another site. */
-    data class NotAllowed(val hostChanged: Boolean) : AiFailure
-}
+import com.dantech.skimbrowser.domain.ai.AiFailure
 
 /** Thrown by the one send path when a request is not allowed to leave the device. */
 class AiDenied(val failure: AiFailure) : RuntimeException()

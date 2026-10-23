@@ -5,18 +5,19 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.util.Log
+import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import java.io.Closeable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** The phone's connectivity, as far as page loading cares. */
-interface NetworkMonitor {
+interface NetworkMonitor : NetworkAvailability {
     /** True while there is a default network at all, validated or not. Read when needed. */
-    val hasActiveNetwork: Boolean
+    override val hasActiveNetwork: Boolean
 
     /** True while the default network is validated, that is, reaches the internet. */
-    val validated: StateFlow<Boolean>
+    override val validated: StateFlow<Boolean>
 }
 
 /**

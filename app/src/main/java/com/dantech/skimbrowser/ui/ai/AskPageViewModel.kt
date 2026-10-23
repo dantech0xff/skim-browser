@@ -4,16 +4,15 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.ai.AiEvent
-import com.dantech.skimbrowser.ai.AiFailure
-import com.dantech.skimbrowser.ai.ChatMessage
-import com.dantech.skimbrowser.ai.ChatSession
-import com.dantech.skimbrowser.ai.ChatSessionStore
-import com.dantech.skimbrowser.ai.HistoryTurn
-import com.dantech.skimbrowser.ai.SkimAiService
-import com.dantech.skimbrowser.ai.stoppedMessage
-import com.dantech.skimbrowser.ai.toAiFailure
-import com.dantech.skimbrowser.browser.NetworkMonitor
+import com.dantech.skimbrowser.domain.ai.AiFailure
+import com.dantech.skimbrowser.domain.ai.AiReply
+import com.dantech.skimbrowser.domain.ai.AskPage
+import com.dantech.skimbrowser.domain.ai.ChatMessage
+import com.dantech.skimbrowser.domain.ai.NetworkAvailability
+import com.dantech.skimbrowser.domain.ai.PageChats
+import com.dantech.skimbrowser.domain.ai.PageConversation
+import com.dantech.skimbrowser.domain.ai.RetryAnswer
+import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.domain.page.HighlightRequest
 import com.dantech.skimbrowser.domain.page.PageContent
 import com.dantech.skimbrowser.domain.tab.Tab
@@ -111,9 +110,11 @@ sealed interface AskPageEffect {
 class AskPageViewModel(
     private val key: AskPageKey,
     private val tabs: TabsController,
-    private val sessions: ChatSessionStore,
-    private val ai: SkimAiService,
-    private val network: NetworkMonitor,
+    private val sessions: PageChats,
+    private val summarizePage: SummarizePage,
+    private val askPage: AskPage,
+    private val retryAnswer: RetryAnswer,
+    private val network: NetworkAvailability,
     private val readerHighlights: ReaderHighlights,
     private val loadSavedChat: LoadSavedChat,
     private val savedState: SavedStateHandle,
@@ -126,7 +127,7 @@ class AskPageViewModel(
     private val _effects = MutableSharedFlow<AskPageEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<AskPageEffect> = _effects.asSharedFlow()
 
-    private var session: ChatSession? = null
+    private var session: PageConversation? = null
     private var job: Job? = null
     private var runtimeJob: Job? = null
     private val citedText = mutableMapOf<Int, String>()
@@ -153,7 +154,7 @@ class AskPageViewModel(
                 ),
             )
             publish(current, generating = true, waiting = true, streamingKind = MessageKind.ANSWER)
-            collect(current, ai.ask(current, text), MessageKind.ANSWER)
+            collect(current, askPage(current, text), MessageKind.ANSWER)
         }
     }
 
@@ -164,7 +165,7 @@ class AskPageViewModel(
         current?.cancelStream()
         job?.cancel()
         if (current != null && wasStreaming && current.takeStop()) {
-            val message = stoppedMessage(current)
+            val message = current.stoppedMessage()
             current.endStream()
             _state.value = _state.value.copy(
                 summary = if (message.kind == MessageKind.SUMMARY) SummaryState.Interrupted(message.text) else _state.value.summary,
@@ -205,8 +206,8 @@ class AskPageViewModel(
             return
         }
         val unanswered = current.messages.value.lastOrNull()?.kind == MessageKind.QUESTION
-        val kind = if (current.lastParams != null && unanswered) MessageKind.ANSWER else MessageKind.SUMMARY
-        if (kind == MessageKind.SUMMARY && current.lastParams == null && !enoughText(current.document)) return
+        val kind = if (current.canRetry && unanswered) MessageKind.ANSWER else MessageKind.SUMMARY
+        if (kind == MessageKind.SUMMARY && !current.canRetry && !enoughText(current.document)) return
         launchRequest {
             publish(
                 current,
@@ -215,7 +216,7 @@ class AskPageViewModel(
                 streamingKind = kind,
                 summaryOverride = SummaryState.Generating.takeIf { kind == MessageKind.SUMMARY },
             )
-            val flow = if (current.lastParams != null) ai.retry(current) else ai.summarize(current)
+            val flow = if (current.canRetry) retryAnswer(current) else summarizePage(current)
             collect(current, flow, kind)
         }
     }
@@ -262,7 +263,7 @@ class AskPageViewModel(
         val current = session ?: return
         current.cancelStream()
         if (current.streaming && current.takeStop()) {
-            val message = stoppedMessage(current)
+            val message = current.stoppedMessage()
             appScope.launch { sessions.record(current, message) }
         }
     }
@@ -338,7 +339,7 @@ class AskPageViewModel(
         showHeader(tab, SummaryState.Interrupted(""), generating = false)
     }
 
-    private suspend fun adopt(opened: ChatSession, summarize: Boolean) {
+    private suspend fun adopt(opened: PageConversation, summarize: Boolean) {
         session = opened
         watch(opened.tabId)
         val already = opened.messages.value.any { it.kind == MessageKind.SUMMARY }
@@ -351,35 +352,39 @@ class AskPageViewModel(
             return
         }
         publish(opened, generating = true, streamingKind = MessageKind.SUMMARY, summaryOverride = SummaryState.Generating)
-        collect(opened, ai.summarize(opened), MessageKind.SUMMARY)
+        collect(opened, summarizePage(opened), MessageKind.SUMMARY)
     }
 
-    private suspend fun collect(opened: ChatSession, events: Flow<AiEvent>, kind: MessageKind) {
+    private suspend fun collect(opened: PageConversation, events: Flow<AiReply>, kind: MessageKind) {
         val stream = coroutineContext[Job] ?: return
         var refused = false
         opened.beginStream(stream, kind)
         try {
             events.collect { event ->
                 when (event) {
-                    is AiEvent.Text -> {
+                    is AiReply.Text -> {
                         opened.noteText(event.delta)
                         publish(opened, generating = true, streamingKind = kind)
                     }
-                    is AiEvent.Cite -> {
+                    is AiReply.Cite -> {
                         opened.noteCite(event.start)
                         if (event.start !in citedText) citedText[event.start] = event.citedText
                         publish(opened, generating = true, streamingKind = kind)
                     }
-                    is AiEvent.Done -> if (event.stopReason.equals("refusal", ignoreCase = true)) {
+                    is AiReply.Done -> if (event.stopReason.equals("refusal", ignoreCase = true)) {
                         refused = true
                         opened.draft = ""
                         opened.draftCitations = emptyList()
                     }
-                    is AiEvent.Final -> {
-                        if (!refused) opened.addTurn(HistoryTurn.Live(event.message))
+                    is AiReply.Finished -> {
+                        opened.commitPendingReply(!refused)
                         sessions.record(opened, finishedMessage(opened, kind, refused))
                         opened.endStream()
                         publish(opened, summaryOverride = SummaryState.Refused.takeIf { refused && kind == MessageKind.SUMMARY })
+                    }
+                    is AiReply.Failed -> {
+                        opened.endStream()
+                        fail(opened, event.failure, kind)
                     }
                 }
             }
@@ -389,13 +394,10 @@ class AskPageViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Throwable) {
-            opened.endStream()
-            fail(opened, e.toAiFailure(), kind)
         }
     }
 
-    private fun fail(opened: ChatSession, failure: AiFailure, kind: MessageKind) {
+    private fun fail(opened: PageConversation, failure: AiFailure, kind: MessageKind) {
         when (failure) {
             AiFailure.Offline -> publish(
                 opened,
@@ -450,7 +452,7 @@ class AskPageViewModel(
     }
 
     private fun publish(
-        opened: ChatSession,
+        opened: PageConversation,
         generating: Boolean = false,
         waiting: Boolean = false,
         streamingKind: MessageKind? = null,
@@ -481,7 +483,7 @@ class AskPageViewModel(
         )
     }
 
-    private fun streamingSummary(opened: ChatSession): SummaryState =
+    private fun streamingSummary(opened: PageConversation): SummaryState =
         if (opened.draft.isEmpty()) SummaryState.Generating else SummaryState.Streaming(opened.draft)
 
     private fun showHeader(tab: Tab?, summary: SummaryState, generating: Boolean) {
@@ -534,7 +536,7 @@ class AskPageViewModel(
         return turns
     }
 
-    private fun finishedMessage(opened: ChatSession, kind: MessageKind, refused: Boolean) = ChatMessage(
+    private fun finishedMessage(opened: PageConversation, kind: MessageKind, refused: Boolean) = ChatMessage(
         id = 0,
         role = MessageRole.ASSISTANT,
         kind = kind,
@@ -543,7 +545,7 @@ class AskPageViewModel(
         status = if (refused) MessageStatus.REFUSED else MessageStatus.COMPLETE,
     )
 
-    private fun sameDocument(opened: ChatSession, runtime: TabRuntime): Boolean =
+    private fun sameDocument(opened: PageConversation, runtime: TabRuntime): Boolean =
         runtime.loadNonce == opened.document.loadNonce &&
             withoutFragment(runtime.committedUrl.orEmpty()) == withoutFragment(opened.document.url)
 

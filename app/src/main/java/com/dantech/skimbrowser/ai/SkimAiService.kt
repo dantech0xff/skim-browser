@@ -3,10 +3,15 @@ package com.dantech.skimbrowser.ai
 import com.anthropic.models.messages.JsonOutputFormat
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.OutputConfig
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.SkimAiState
+import com.dantech.skimbrowser.domain.ai.AiAssistant
+import com.dantech.skimbrowser.domain.ai.AiFailure
+import com.dantech.skimbrowser.domain.ai.AiReply
+import com.dantech.skimbrowser.domain.ai.PageConversation
+import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -22,13 +27,14 @@ class SkimAiService(
     private val clients: ClaudeClientProvider,
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
-) {
-    fun summarize(session: ChatSession): Flow<AiEvent> {
+) : AiAssistant {
+    override fun summarize(session: PageConversation): Flow<AiReply> {
+        val chat = session as ChatSession
         val params = base()
-            .addUserMessageOfBlockParams(session.summaryOpening())
+            .addUserMessageOfBlockParams(chat.summaryOpening())
             .build()
-        session.lastParams = params
-        return send(params, session.sources, Consent.SITE_APPROVED, session.approvedHost)
+        chat.lastParams = params
+        return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
     }
 
     /**
@@ -36,35 +42,37 @@ class SkimAiService(
      * message. A later question is added after the turns already sent, and remembered so the
      * request after it repeats them.
      */
-    fun ask(session: ChatSession, question: String): Flow<AiEvent> {
+    override fun ask(session: PageConversation, question: String): Flow<AiReply> {
+        val chat = session as ChatSession
         val wrapped = Prompts.question(question)
-        val params = if (session.opening == null) {
-            base().addUserMessageOfBlockParams(session.questionOpening(wrapped)).build()
+        val params = if (chat.opening == null) {
+            base().addUserMessageOfBlockParams(chat.questionOpening(wrapped)).build()
         } else {
-            val turns = session.history
+            val turns = chat.history
             val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
-            val builder = base().addUserMessageOfBlockParams(session.opening!!)
+            val builder = base().addUserMessageOfBlockParams(chat.opening!!)
             replay(builder, if (already) turns.dropLast(1) else turns)
             builder.addUserMessage(wrapped)
-            if (!already) session.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
+            if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
             builder.build()
         }
-        session.lastParams = params
-        return send(params, session.sources, Consent.SITE_APPROVED, session.approvedHost)
+        chat.lastParams = params
+        return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
     }
 
     /**
      * Asks for one answer across [context]. The first user message is one document per tab, then
      * [prompt]. A later call replaces that message, so a failed overview can be asked again.
      */
-    fun overviewTabs(session: ChatSession, context: List<TabContext>, prompt: String): Flow<AiEvent> {
-        val opening = session.setOpening(overviewBlocks(context, prompt))
-        session.replaceSources(context.toSources())
+    override fun overviewTabs(session: PageConversation, context: List<TabContext>, prompt: String): Flow<AiReply> {
+        val chat = session as ChatSession
+        val opening = chat.setOpening(overviewBlocks(context, prompt))
+        chat.replaceSources(context.toSources())
         val params = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, TABS_OVERVIEW_FORMAT)
             .addUserMessageOfBlockParams(opening)
             .build()
-        session.lastParams = params
-        return send(params, session.sources, Consent.TABS_ACTION, session.approvedHost)
+        chat.lastParams = params
+        return send(params, chat.sources, Consent.TABS_ACTION, chat.approvedHost).toReplies(chat)
     }
 
     /**
@@ -72,19 +80,20 @@ class SkimAiService(
      * The answer is plain text: no JSON schema and no citations. Nothing is sent when that first
      * message has not been built.
      */
-    fun askTabs(session: ChatSession, question: String): Flow<AiEvent> {
-        val opening = session.opening ?: return flow { }
+    override fun askTabs(session: PageConversation, question: String): Flow<AiReply> {
+        val chat = session as ChatSession
+        val opening = chat.opening ?: return flow { }
         val wrapped = Prompts.question(question)
-        val turns = session.history
+        val turns = chat.history
         val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
         val builder = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, format = null)
             .addUserMessageOfBlockParams(opening)
         replay(builder, if (already) turns.dropLast(1) else turns)
         builder.addUserMessage(wrapped)
-        if (!already) session.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
+        if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
         val params = builder.build()
-        session.lastParams = params
-        return send(params, session.sources, Consent.TABS_ACTION, session.approvedHost)
+        chat.lastParams = params
+        return send(params, chat.sources, Consent.TABS_ACTION, chat.approvedHost).toReplies(chat)
     }
 
     /**
@@ -104,9 +113,30 @@ class SkimAiService(
     }
 
     /** Sends the last summary or question again, without adding a turn. */
-    fun retry(session: ChatSession): Flow<AiEvent> {
-        val params = session.lastParams ?: return flow { }
-        return send(params, session.sources, Consent.SITE_APPROVED, session.approvedHost)
+    override fun retry(session: PageConversation): Flow<AiReply> {
+        val chat = session as ChatSession
+        val params = chat.lastParams ?: return flow { }
+        return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
+    }
+
+    private fun Flow<AiEvent>.toReplies(session: ChatSession): Flow<AiReply> = flow {
+        try {
+            collect { event ->
+                when (event) {
+                    is AiEvent.Text -> emit(AiReply.Text(event.delta))
+                    is AiEvent.Cite -> emit(AiReply.Cite(event.start, event.end, event.citedText))
+                    is AiEvent.Done -> emit(AiReply.Done(event.stopReason))
+                    is AiEvent.Final -> {
+                        session.stashReply(event.message)
+                        emit(AiReply.Finished)
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            emit(AiReply.Failed(e.toAiFailure()))
+        }
     }
 
     internal fun send(

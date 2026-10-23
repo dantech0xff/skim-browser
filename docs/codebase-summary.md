@@ -8,11 +8,11 @@ One Gradle module, `:app`. Kotlin is compiled by the Android Gradle Plugin (buil
 
 | Package | Role |
 |---|---|
-| `domain/` | Pure Kotlin. Models, repository interfaces, and use cases (`domain/usecase`). Subpackages: `history`, `bookmark`, `shortcut`, `chat`, `permission`, `tab`, `settings`, `url`. |
+| `domain/` | Pure Kotlin. Models, repository interfaces, and use cases (`domain/usecase`, `domain/ai`). Subpackages: `history`, `bookmark`, `shortcut`, `chat`, `permission`, `tab`, `page`, `settings`, `url`, `ai`. |
 | `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. ViewModels take use cases or domain interfaces. |
 | `browser/` | `TabManager` implements `domain.tab.TabsController` (process-wide tab list). `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. Tab models live in `domain/tab`. |
 | `data/` | Room (`data/db`), concrete repositories (`data/repo`) that implement the domain interfaces and map entities, settings DataStore (`data/settings`), bookmark import (`BookmarkFiles`). |
-| `ai/` | `AiGate`, `SkimAiService`, Claude streaming, chat sessions, tab grouping. The only request builder is `SkimAiService`. Site, settings, and chat reads and writes use domain interfaces and use cases. |
+| `ai/` | `AiGate`, `SkimAiService` (`AiAssistant`), Claude streaming, chat sessions (`PageChats`), tab grouping. The only request builder is `SkimAiService`. SDK types stay in this package. Site, settings, and chat reads and writes use domain interfaces and use cases. |
 | `search/` | Suggestion fetches for the search field. |
 | `system/` | Share sheet, clipboard, share-image files. |
 

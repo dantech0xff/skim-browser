@@ -4,7 +4,7 @@
 
 Kotlin. UI is Jetpack Compose. Strings and content descriptions live in `app/src/main/res/values/strings.xml`. Plurals are real plural resources. UI copy is English. Do not concatenate sentences in code.
 
-A composable reads state and sends events. It does not decide whether a page may be sent to the model, whether a tab is incognito, or how a layout is stored. Those decisions sit in domain use cases and tab rules, applied by `AiGate`, `SkimAiService`, and `TabManager`.
+A composable reads state and sends events. It does not decide whether a page may be sent to the model, whether a tab is incognito, or how a layout is stored. Those decisions sit in domain use cases and tab rules. `AiGate`, `SkimAiService`, and `TabManager` apply them. ViewModels call `TabsController`, `AiAssistant` use cases, and `PageChats`.
 
 ## ViewModels
 
@@ -30,7 +30,7 @@ Process work uses `AppContainer.appScope` (`SupervisorJob` + `Dispatchers.Defaul
 
 ## AI requests
 
-Only `SkimAiService.send` opens a model connection. Callers pass sources and a consent mode. Incognito sources are rejected before any request. Do not add a second HTTP client for Claude, a fallback model, a beta header, or sampling parameters. Model id and token limits stay in `AiConfig`.
+Only `SkimAiService.send` opens a model connection. Callers pass sources and a consent mode. Incognito sources are rejected before any request. The Anthropic request types stay inside `ai/`. Sheets depend on `AiAssistant` use cases and receive `AiReply`, which carries no SDK type. Do not add a second HTTP client for Claude, a fallback model, a beta header, or sampling parameters. Model id and token limits stay in `AiConfig`.
 
 ## Secrets
 

@@ -43,7 +43,7 @@ Opening a tab is `TabManager.newTab` on the main thread. Layout changes (group, 
 
 The session has a state (`None`, active, `Ending`). An ending session is not reused. Ending the session clears the profile (cookies, and the HTTP cache when the device can) and deletes `cache/shared/incognito`. `FLAG_SECURE` is set while an incognito tab or an incognito sheet is on screen, including while that screen is fading out. Instrumented coverage of the flag is `SecureFlagTest`; it has not been run on a device in this environment.
 
-Incognito pages never reach `SkimAiService`. The service rejects them before the client is created.
+Incognito pages never reach `SkimAiService`. The service rejects them before the client is created. Ask about this page and Ask about tabs call `SummarizePage`, `AskPage`, `RetryAnswer`, `OverviewTabs`, `AskTabs`, and `CollectOpenTabs`. Those use cases talk to `AiAssistant`. `SkimAiService` implements it and is the only type that sees the model SDK. A reply the sheet sees is `AiReply`. `ChatSession` implements `PageConversation` and keeps the last request internally; the sheet reads `canRetry`. `ChatSessionStore` implements `PageChats`. `NetworkMonitor` implements `NetworkAvailability`.
 
 ## Ask Skim
 

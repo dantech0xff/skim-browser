@@ -1,26 +1,12 @@
 package com.dantech.skimbrowser.ai
 
 import com.anthropic.models.messages.ContentBlockParam
-import com.dantech.skimbrowser.domain.tab.Tab
-import com.dantech.skimbrowser.domain.tab.TabsController
-import com.dantech.skimbrowser.domain.tab.isAskCandidate
-import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.tab.TabsController
 import java.security.MessageDigest
 
-/**
- * One open tab that an across-tabs request may include. [ref] is "1".."N" in the order the tabs
- * are sent, most recently used first. [text] is the page text when it was read from a WebView that
- * was already open, cut to [AiConfig.TAB_TEXT_CHARS]; null when the tab was not read.
- */
-data class TabContext(
-    val ref: String,
-    val tab: Tab,
-    val title: String,
-    val host: String,
-    val text: String?,
-)
+typealias TabContext = com.dantech.skimbrowser.domain.ai.TabContext
 
 /**
  * The normal web tabs an across-tabs action may send, most recently used first, at most
@@ -36,36 +22,7 @@ suspend fun collectTabsContext(
     sites: SitePermissionRepository,
     extractLive: Boolean,
     ungroupedOnly: Boolean = false,
-): List<TabContext> {
-    val candidates = tabs.state.value.tabs
-        .asSequence()
-        .filter { tab -> tab.isAskCandidate() }
-        .filter { tab -> !ungroupedOnly || tab.groupId == null }
-        .sortedByDescending { it.lastAccessedAt }
-        .toList()
-    val hosts = candidates.mapNotNull { hostOf(it.url.orEmpty()) }.toSet()
-    val states = sites.skimAiStates(hosts)
-    val eligible = candidates
-        .filter { tab ->
-            val host = hostOf(tab.url.orEmpty()) ?: return@filter false
-            states[host] != SkimAiState.ASK
-        }
-        .take(AiConfig.MAX_TABS)
-    return eligible.mapIndexed { index, tab ->
-        val page = if (extractLive) tabs.extractLivePage(tab.id) else null
-        val text = page?.blocks
-            ?.joinToString("\n") { it.text }
-            ?.take(AiConfig.TAB_TEXT_CHARS)
-            ?.ifBlank { null }
-        TabContext(
-            ref = (index + 1).toString(),
-            tab = tab,
-            title = page?.title?.ifBlank { null } ?: tab.title,
-            host = hostOf(tab.url.orEmpty()).orEmpty(),
-            text = text,
-        )
-    }
-}
+): List<TabContext> = CollectOpenTabs(tabs, sites).invoke(extractLive, ungroupedOnly)
 
 /** The sources [context] would send. Incognito is never among them. */
 internal fun List<TabContext>.toSources(): List<AiSource> =

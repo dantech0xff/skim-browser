@@ -3,11 +3,10 @@ package com.dantech.skimbrowser.ai
 import com.anthropic.models.messages.ContentBlockParam
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
-import com.dantech.skimbrowser.browser.page.PageContent
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.MessageStatus
+import com.dantech.skimbrowser.domain.ai.PageConversation
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.page.PageContent
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Job
@@ -15,18 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** One message as the sheet shows it and, when chat history is on, as it is saved. */
-data class ChatMessage(
-    val id: Long,
-    val role: MessageRole,
-    val kind: MessageKind,
-    val text: String,
-    val citations: List<Int> = emptyList(),
-    val feedback: MessageFeedback = MessageFeedback.NONE,
-    val status: MessageStatus,
-    /** Follow-up questions offered with an across-tabs overview. */
-    val suggestedQuestions: List<String> = emptyList(),
-)
+typealias ChatMessage = com.dantech.skimbrowser.domain.ai.ChatMessage
 
 /** A turn already sent, replayed on the next request. A live turn keeps the model's own message. */
 sealed interface HistoryTurn {
@@ -41,49 +29,66 @@ sealed interface HistoryTurn {
  * [chatId] is positive when the chat is saved and negative when it lives only in memory.
  * [opening] is the first user message, frozen the first time it is built, so a later request
  * repeats those bytes. [approvedHost] is the host the person allowed; [sources] carry the host
- * the page was actually read from.
+ * the page was actually read from. The model request itself stays on this class.
  */
 class ChatSession(
-    val chatId: Long,
-    val tabId: String,
-    val pageUrl: String,
+    override val chatId: Long,
+    override val tabId: String,
+    override val pageUrl: String,
     val approvedHost: String,
     sources: List<AiSource>,
-    val document: PageContent,
+    override val document: PageContent,
     val languageTag: String,
     /** How many tabs an across-tabs chat covers. A page chat leaves this at 0. */
-    val tabCount: Int = 0,
-) {
+    override val tabCount: Int = 0,
+) : PageConversation {
     private val sourcesRef = AtomicReference(sources)
     private val openingRef = AtomicReference<List<ContentBlockParam>?>(null)
+    private val pendingReply = AtomicReference<Message?>(null)
     private val turns = mutableListOf<HistoryTurn>()
     private val turnLock = Any()
     private val messagesState = MutableStateFlow<List<ChatMessage>>(emptyList())
     private val stopSaved = AtomicBoolean(false)
 
-    @Volatile var streaming: Boolean = false
+    @Volatile
+    override var streaming: Boolean = false
 
-    @Volatile var draft: String = ""
+    @Volatile
+    override var draft: String = ""
 
-    @Volatile var draftKind: MessageKind = MessageKind.SUMMARY
+    @Volatile
+    override var draftKind: MessageKind = MessageKind.SUMMARY
 
-    @Volatile var draftCitations: List<Int> = emptyList()
+    @Volatile
+    override var draftCitations: List<Int> = emptyList()
 
-    @Volatile var lastParams: MessageCreateParams? = null
+    /** The last request this chat built. Null until a summary or a question has been built. */
+    @Volatile
+    internal var lastParams: MessageCreateParams? = null
 
     private var streamJob: Job? = null
 
-    val messages: StateFlow<List<ChatMessage>> = messagesState.asStateFlow()
+    override val messages: StateFlow<List<ChatMessage>> = messagesState.asStateFlow()
+
+    override val canRetry: Boolean get() = lastParams != null
 
     /** The pages this chat may send. An across-tabs chat replaces them when the open tabs change. */
     val sources: List<AiSource> get() = sourcesRef.get()
+
+    override val hasSources: Boolean get() = sources.isNotEmpty()
 
     fun replaceSources(next: List<AiSource>) {
         sourcesRef.set(next)
     }
 
+    override fun replacePages(pages: List<TabContext>) {
+        replaceSources(pages.toSources())
+    }
+
     /** The first user message, once a summary or a first question has built it. */
     val opening: List<ContentBlockParam>? get() = openingRef.get()
+
+    override val hasOpening: Boolean get() = opening != null
 
     /**
      * Keeps [blocks] as the first user message when none is set yet, and returns the message that
@@ -98,6 +103,12 @@ class ChatSession(
     fun setOpening(blocks: List<ContentBlockParam>): List<ContentBlockParam> {
         openingRef.set(blocks)
         return blocks
+    }
+
+    override fun ensureOverviewOpening(pages: List<TabContext>, prompt: String) {
+        if (opening != null || pages.isEmpty()) return
+        val question = messages.value.firstOrNull { it.kind == MessageKind.QUESTION }?.text ?: prompt
+        freezeOpening(overviewBlocks(pages, question))
     }
 
     val history: List<HistoryTurn> get() = synchronized(turnLock) { turns.toList() }
@@ -126,11 +137,27 @@ class ChatSession(
         synchronized(turnLock) { turns += turn }
     }
 
+    /** Holds the model's message until the sheet decides the turn should be kept. */
+    internal fun stashReply(message: Message) {
+        pendingReply.set(message)
+    }
+
+    override fun commitPendingReply(keep: Boolean) {
+        val message = pendingReply.getAndSet(null)
+        if (keep && message != null) addTurn(HistoryTurn.Live(message))
+    }
+
+    override fun rememberAssistantText(text: String) {
+        addTurn(HistoryTurn.Text(MessageRole.ASSISTANT, text))
+    }
+
+    override fun stoppedMessage(): ChatMessage = com.dantech.skimbrowser.ai.stoppedMessage(this)
+
     fun replaceMessages(messages: List<ChatMessage>) {
         messagesState.value = messages
     }
 
-    fun beginStream(job: Job, kind: MessageKind) {
+    override fun beginStream(job: Job, kind: MessageKind) {
         stopSaved.set(false)
         draft = ""
         draftCitations = emptyList()
@@ -139,23 +166,23 @@ class ChatSession(
         streamJob = job
     }
 
-    fun noteText(delta: String) {
+    override fun noteText(delta: String) {
         draft += delta
     }
 
-    fun noteCite(start: Int) {
+    override fun noteCite(start: Int) {
         if (start !in draftCitations) draftCitations = draftCitations + start
     }
 
-    fun cancelStream() {
+    override fun cancelStream() {
         streamJob?.cancel()
         streamJob = null
     }
 
     /** True the first time a stop is saved, so a close and a navigation do not save it twice. */
-    fun takeStop(): Boolean = stopSaved.compareAndSet(false, true)
+    override fun takeStop(): Boolean = stopSaved.compareAndSet(false, true)
 
-    fun endStream() {
+    override fun endStream() {
         streaming = false
         streamJob = null
     }

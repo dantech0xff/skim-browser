@@ -11,6 +11,9 @@ import com.dantech.skimbrowser.ai.chatSessionsForTest
 import com.dantech.skimbrowser.ai.FakeClaudeServer
 import com.dantech.skimbrowser.ai.OverviewGroup
 import com.dantech.skimbrowser.ai.SkimAiService
+import com.dantech.skimbrowser.domain.ai.AskTabs
+import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
+import com.dantech.skimbrowser.domain.ai.OverviewTabs
 import com.dantech.skimbrowser.ai.TabsOverview
 import com.dantech.skimbrowser.ai.encodeOverview
 import com.dantech.skimbrowser.ai.provider
@@ -338,10 +341,10 @@ class AskTabsViewModelTest {
             initializer {
                 AskTabsViewModel(
                     key = key,
-                    ai = ai,
                     sessions = sessions,
-                    tabs = fixture.manager,
-                    sites = sites,
+                    overviewTabs = OverviewTabs(ai),
+                    askTabs = AskTabs(ai),
+                    collectOpenTabs = CollectOpenTabs(fixture.manager, sites),
                     network = fixture.network,
                     savedState = saved,
                     appScope = appScope,

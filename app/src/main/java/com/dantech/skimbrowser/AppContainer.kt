@@ -9,6 +9,12 @@ import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.ai.ChatSessionStore
 import com.dantech.skimbrowser.ai.ClaudeClientProvider
 import com.dantech.skimbrowser.ai.SkimAiService
+import com.dantech.skimbrowser.domain.ai.AskPage
+import com.dantech.skimbrowser.domain.ai.AskTabs
+import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
+import com.dantech.skimbrowser.domain.ai.OverviewTabs
+import com.dantech.skimbrowser.domain.ai.RetryAnswer
+import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.ai.TabGrouping
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.BrowserProfiles
@@ -309,6 +315,18 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** The only path that builds a model request and opens a connection. */
     val skimAi: SkimAiService by lazy { SkimAiService(claudeClients, sitePermissionRepository, settings) }
+
+    val summarizePage: SummarizePage by lazy { SummarizePage(skimAi) }
+
+    val askPage: AskPage by lazy { AskPage(skimAi) }
+
+    val retryAnswer: RetryAnswer by lazy { RetryAnswer(skimAi) }
+
+    val overviewTabs: OverviewTabs by lazy { OverviewTabs(skimAi) }
+
+    val askTabs: AskTabs by lazy { AskTabs(skimAi) }
+
+    val collectOpenTabs: CollectOpenTabs by lazy { CollectOpenTabs(tabManager, sitePermissionRepository) }
 
     /** Page chats for this process: saved while Keep chat history is on, otherwise memory only. */
     val chatSessions: ChatSessionStore by lazy {

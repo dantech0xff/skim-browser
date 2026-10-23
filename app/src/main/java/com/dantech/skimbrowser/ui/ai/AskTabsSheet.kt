@@ -84,10 +84,10 @@ fun AskTabsRoute(key: AskTabsKey, container: AppContainer, navigator: SkimNaviga
     val model = viewModel(key = "ask-tabs-${key.prompt}-${key.savedChatId}") {
         AskTabsViewModel(
             key = key,
-            ai = container.skimAi,
             sessions = container.chatSessions,
-            tabs = container.tabManager,
-            sites = container.sitePermissionRepository,
+            overviewTabs = container.overviewTabs,
+            askTabs = container.askTabs,
+            collectOpenTabs = container.collectOpenTabs,
             network = container.networkMonitor,
             savedState = createSavedStateHandle(),
             appScope = container.appScope,

@@ -4,31 +4,25 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.ai.AiEvent
-import com.dantech.skimbrowser.ai.AiFailure
-import com.dantech.skimbrowser.ai.ChatMessage
-import com.dantech.skimbrowser.ai.ChatSession
-import com.dantech.skimbrowser.ai.ChatSessionStore
-import com.dantech.skimbrowser.ai.HistoryTurn
-import com.dantech.skimbrowser.ai.SkimAiService
-import com.dantech.skimbrowser.ai.TabContext
-import com.dantech.skimbrowser.ai.TabsOverview
-import com.dantech.skimbrowser.ai.collectTabsContext
-import com.dantech.skimbrowser.ai.decodeStoredOverview
-import com.dantech.skimbrowser.ai.encodeOverview
-import com.dantech.skimbrowser.ai.overviewBlocks
-import com.dantech.skimbrowser.ai.overviewFromModel
-import com.dantech.skimbrowser.ai.stoppedMessage
-import com.dantech.skimbrowser.ai.toAiFailure
-import com.dantech.skimbrowser.ai.toSources
-import com.dantech.skimbrowser.ai.withRealTabIds
-import com.dantech.skimbrowser.browser.NetworkMonitor
-import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.ai.AiFailure
+import com.dantech.skimbrowser.domain.ai.AiReply
+import com.dantech.skimbrowser.domain.ai.AskTabs
+import com.dantech.skimbrowser.domain.ai.ChatMessage
+import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
+import com.dantech.skimbrowser.domain.ai.NetworkAvailability
+import com.dantech.skimbrowser.domain.ai.OverviewTabs
+import com.dantech.skimbrowser.domain.ai.PageChats
+import com.dantech.skimbrowser.domain.ai.PageConversation
+import com.dantech.skimbrowser.domain.ai.TabContext
+import com.dantech.skimbrowser.domain.ai.TabsOverview
+import com.dantech.skimbrowser.domain.ai.decodeStoredOverview
+import com.dantech.skimbrowser.domain.ai.encodeOverview
+import com.dantech.skimbrowser.domain.ai.overviewFromModel
+import com.dantech.skimbrowser.domain.ai.withRealTabIds
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
-import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
@@ -95,11 +89,11 @@ data class AskTabsUiState(
  */
 class AskTabsViewModel(
     private val key: AskTabsKey,
-    private val ai: SkimAiService,
-    private val sessions: ChatSessionStore,
-    private val tabs: TabsController,
-    private val sites: SitePermissionRepository,
-    private val network: NetworkMonitor,
+    private val sessions: PageChats,
+    private val overviewTabs: OverviewTabs,
+    private val askTabs: AskTabs,
+    private val collectOpenTabs: CollectOpenTabs,
+    private val network: NetworkAvailability,
     private val savedState: SavedStateHandle,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -107,7 +101,7 @@ class AskTabsViewModel(
     private val _state = MutableStateFlow(AskTabsUiState())
     val state: StateFlow<AskTabsUiState> = _state.asStateFlow()
 
-    private var session: ChatSession? = null
+    private var session: PageConversation? = null
     private var job: Job? = null
 
     init {
@@ -160,7 +154,7 @@ class AskTabsViewModel(
         current?.cancelStream()
         job?.cancel()
         if (current != null && saveAnswer) {
-            val message = stoppedMessage(current)
+            val message = current.stoppedMessage()
             current.endStream()
             viewModelScope.launch {
                 sessions.record(current, message)
@@ -197,7 +191,7 @@ class AskTabsViewModel(
             current.endStream()
             return
         }
-        val message = stoppedMessage(current)
+        val message = current.stoppedMessage()
         current.endStream()
         appScope.launch { sessions.record(current, message) }
     }
@@ -225,7 +219,7 @@ class AskTabsViewModel(
 
     private fun sendOverview(prompt: String) {
         launchRequest {
-            val context = collectTabsContext(tabs, sites, extractLive = true)
+            val context = collectOpenTabs(extractLive = true)
             if (context.isEmpty()) {
                 _state.value = AskTabsUiState(tabCount = 0, prompt = prompt, inputEnabled = network.hasActiveNetwork)
                 return@launchRequest
@@ -246,7 +240,7 @@ class AskTabsViewModel(
                 generating = true,
                 inputEnabled = true,
             )
-            val current = session ?: sessions.openTabs(prompt, context.size, context.toSources()).also { opened ->
+            val current = session ?: sessions.openTabs(prompt, context.size, context).also { opened ->
                 session = opened
                 if (opened.chatId > 0) savedState[CHAT_ID] = opened.chatId
             }
@@ -258,13 +252,10 @@ class AskTabsViewModel(
     private fun sendFollowUp(question: String, recordQuestion: Boolean = true) {
         launchRequest {
             val current = session ?: return@launchRequest
-            val context = collectTabsContext(tabs, sites, extractLive = true)
-            if (context.isNotEmpty()) current.replaceSources(context.toSources())
-            if (current.opening == null && context.isNotEmpty()) {
-                val original = current.messages.value.firstOrNull { it.kind == MessageKind.QUESTION }?.text ?: question
-                current.freezeOpening(overviewBlocks(context, original))
-            }
-            if (current.opening == null || current.sources.isEmpty()) return@launchRequest
+            val context = collectOpenTabs(extractLive = true)
+            if (context.isNotEmpty()) current.replacePages(context)
+            current.ensureOverviewOpening(context, question)
+            if (!current.hasOpening || !current.hasSources) return@launchRequest
             if (recordQuestion) {
                 sessions.record(
                     current,
@@ -282,18 +273,26 @@ class AskTabsViewModel(
         }
     }
 
-    private suspend fun collectOverview(current: ChatSession, context: List<TabContext>, prompt: String) {
+    private suspend fun collectOverview(current: PageConversation, context: List<TabContext>, prompt: String) {
         val stream = coroutineContext[Job] ?: return
         current.beginStream(stream, MessageKind.TABS_OVERVIEW)
         var stop = ""
+        var failed: AiFailure? = null
         try {
-            ai.overviewTabs(current, context, prompt).collect { event ->
+            overviewTabs(current, context, prompt).collect { event ->
                 when (event) {
-                    is AiEvent.Text -> current.noteText(event.delta)
-                    is AiEvent.Cite -> Unit
-                    is AiEvent.Done -> stop = event.stopReason
-                    is AiEvent.Final -> Unit
+                    is AiReply.Text -> current.noteText(event.delta)
+                    is AiReply.Cite -> Unit
+                    is AiReply.Done -> stop = event.stopReason
+                    is AiReply.Finished -> current.commitPendingReply(false)
+                    is AiReply.Failed -> failed = event.failure
                 }
+            }
+            val failure = failed
+            if (failure != null) {
+                current.endStream()
+                failOverview(current, failure)
+                return
             }
             current.endStream()
             if (stop.equals(REFUSAL, ignoreCase = true)) {
@@ -309,39 +308,37 @@ class AskTabsViewModel(
             val stored = parsed.withRealTabIds(context)
             sessions.record(current, questionMessage(prompt))
             sessions.record(current, overviewMessage(stored))
-            current.addTurn(HistoryTurn.Text(MessageRole.ASSISTANT, encodeOverview(stored)))
+            current.rememberAssistantText(encodeOverview(stored))
             publish(current, tabCount = context.size)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Throwable) {
-            current.endStream()
-            failOverview(current, e)
         }
     }
 
-    private suspend fun collectAnswer(current: ChatSession, question: String) {
+    private suspend fun collectAnswer(current: PageConversation, question: String) {
         val stream = coroutineContext[Job] ?: return
         current.beginStream(stream, MessageKind.ANSWER)
         var refused = false
         try {
-            ai.askTabs(current, question).collect { event ->
+            askTabs(current, question).collect { event ->
                 when (event) {
-                    is AiEvent.Text -> {
+                    is AiReply.Text -> {
                         current.noteText(event.delta)
                         publish(current, generating = true, streamingAnswer = true)
                     }
-                    is AiEvent.Cite -> Unit
-                    is AiEvent.Done -> if (event.stopReason.equals(REFUSAL, ignoreCase = true)) {
+                    is AiReply.Cite -> Unit
+                    is AiReply.Done -> if (event.stopReason.equals(REFUSAL, ignoreCase = true)) {
                         refused = true
                         current.draft = ""
                     }
-                    is AiEvent.Final -> {
+                    is AiReply.Finished -> {
                         current.endStream()
                         if (refused || current.draft.isEmpty()) {
+                            current.commitPendingReply(false)
                             publish(current, answerError = if (refused) AnswerError.Refused else AnswerError.Server)
                             return@collect
                         }
-                        current.addTurn(HistoryTurn.Live(event.message))
+                        current.commitPendingReply(true)
                         sessions.record(
                             current,
                             ChatMessage(
@@ -354,6 +351,10 @@ class AskTabsViewModel(
                         )
                         publish(current)
                     }
+                    is AiReply.Failed -> {
+                        current.endStream()
+                        failAnswer(current, event.failure)
+                    }
                 }
             }
             if (current.streaming) {
@@ -362,9 +363,6 @@ class AskTabsViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Throwable) {
-            current.endStream()
-            failAnswer(current, e)
         }
     }
 
@@ -374,11 +372,11 @@ class AskTabsViewModel(
     }
 
     private suspend fun showCount() {
-        val count = collectTabsContext(tabs, sites, extractLive = false).size
+        val count = collectOpenTabs(extractLive = false).size
         _state.value = AskTabsUiState(tabCount = count, inputEnabled = network.hasActiveNetwork)
     }
 
-    private fun adopt(opened: ChatSession) {
+    private fun adopt(opened: PageConversation) {
         session = opened
         publish(opened, tabCount = opened.tabCount.takeIf { it > 0 })
     }
@@ -386,8 +384,8 @@ class AskTabsViewModel(
     private fun hasOverview(): Boolean =
         session?.messages?.value?.any { it.kind == MessageKind.TABS_OVERVIEW && it.status == MessageStatus.COMPLETE } == true
 
-    private fun failOverview(current: ChatSession, error: Throwable) {
-        val overview = when (error.toAiFailure()) {
+    private fun failOverview(current: PageConversation, failure: AiFailure) {
+        val overview = when (failure) {
             AiFailure.Offline -> TabsOverviewState.Offline
             AiFailure.Refused -> TabsOverviewState.Refused
             AiFailure.Server, is AiFailure.NotAllowed -> TabsOverviewState.ServerError
@@ -395,8 +393,8 @@ class AskTabsViewModel(
         publish(current, overviewOverride = overview)
     }
 
-    private fun failAnswer(current: ChatSession, error: Throwable) {
-        val answer = when (error.toAiFailure()) {
+    private fun failAnswer(current: PageConversation, failure: AiFailure) {
+        val answer = when (failure) {
             AiFailure.Offline -> AnswerError.Offline
             AiFailure.Refused -> AnswerError.Refused
             AiFailure.Server, is AiFailure.NotAllowed -> AnswerError.Server
@@ -416,7 +414,7 @@ class AskTabsViewModel(
     }
 
     private fun publish(
-        opened: ChatSession,
+        opened: PageConversation,
         generating: Boolean = false,
         streamingAnswer: Boolean = false,
         overviewOverride: TabsOverviewState? = null,
