@@ -5,8 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.TabEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.tab.PersistedTab
 import com.dantech.skimbrowser.data.settings.SearchEngine
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import java.io.File
@@ -50,13 +50,13 @@ class AppContainerStorageTest {
 
         AppContainer(app, storage).use { container ->
             container.tabRepository.upsert(
-                TabEntity(id = "tab-1", url = URL, title = "Heat pumps", position = 0, createdAt = 1, lastAccessedAt = 2),
+                PersistedTab(id = "tab-1", url = URL, title = "Heat pumps", position = 0, createdAt = 1, lastAccessedAt = 2),
             )
             container.historyRepository.recordVisit(URL, "Heat pumps", at = 3)
             container.bookmarkRepository.addToMobile("Heat pumps", URL)
             container.shortcutRepository.add("Wikipedia", "wikipedia.org")
             container.chatRepository.createChat(
-                SkimChatEntity(kind = ChatKind.PAGE, url = URL, host = "daylightjournal.com", title = "Heat pumps", createdAt = 4, updatedAt = 4),
+                SavedChat(kind = ChatKind.PAGE, url = URL, host = "daylightjournal.com", title = "Heat pumps", createdAt = 4, updatedAt = 4),
             )
             container.sitePermissionRepository.setSkimAi("daylightjournal.com", SkimAiState.ALLOWED)
             container.settings.setTheme(ThemeSetting.Dark)

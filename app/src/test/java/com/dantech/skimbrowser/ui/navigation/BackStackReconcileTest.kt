@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.ui.navigation
 
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabsState
 import org.junit.Assert.assertEquals

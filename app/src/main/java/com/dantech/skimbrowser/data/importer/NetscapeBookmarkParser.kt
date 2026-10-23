@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.data.importer
 
-import com.dantech.skimbrowser.browser.cutTo
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.data.repo.ImportedNode
 import java.io.ByteArrayInputStream

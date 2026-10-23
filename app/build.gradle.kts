@@ -1,6 +1,10 @@
 import com.android.build.api.artifact.SingleArtifact
+import java.awt.image.BufferedImage
+import java.io.File
+import java.util.Locale
 import java.util.Properties
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
 
 plugins {
     // AGP 9 compiles Kotlin itself (built-in Kotlin): org.jetbrains.kotlin.android is not applied.
@@ -11,6 +15,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.aboutlibraries)
     alias(libs.plugins.roborazzi)
+    alias(libs.plugins.kover)
 }
 
 // The debug API key and the release proxy URL are never committed. They come from local.properties
@@ -68,7 +73,26 @@ android {
                 enable = true
             }
         }
+        // Minified like release, signed with the debug key, and pointed at a local stand-in.
+        // Instrumented smoke tests use this. It is not a build that ships.
+        create("releaseSmoke") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "AI_BASE_URL", javaString("http://127.0.0.1:8787"))
+            buildConfigField("String", "ANTHROPIC_API_KEY", "null")
+        }
     }
+    sourceSets {
+        getByName("test") {
+            resources.directories.add("src/sharedTest")
+        }
+        getByName("androidTest") {
+            assets.directories.add("src/sharedTest")
+        }
+    }
+    // `./gradlew :app:connectedReleaseSmokeAndroidTest -Pskim.testBuildType=releaseSmoke`
+    testBuildType = providers.gradleProperty("skim.testBuildType").orElse("debug").get()
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -110,6 +134,72 @@ aboutLibraries {
 
 roborazzi {
     outputDir.set(layout.projectDirectory.dir("src/test/screenshots"))
+}
+
+/**
+ * Pairs each recorded board with the design PNG of the same name and writes a red diff plus the
+ * share of pixels that differ. Review output only: it is not part of `check`.
+ */
+abstract class DesignParity : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val boards: DirectoryProperty
+
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val designs: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun compare() {
+        val out = outputDir.get().asFile.apply { mkdirs() }
+        val designDir = designs.get().asFile
+        val summary = StringBuilder()
+        boards.get().asFile.listFiles { file -> file.extension == "png" }
+            ?.sortedBy { it.name }
+            ?.forEach { board ->
+                val design = File(designDir, board.name)
+                val name = board.nameWithoutExtension
+                if (!design.isFile) {
+                    summary.append("$name: no design PNG\n")
+                    return@forEach
+                }
+                val left = ImageIO.read(board)
+                val right = ImageIO.read(design)
+                if (left.width != right.width || left.height != right.height) {
+                    summary.append("$name: size ${left.width}x${left.height} vs ${right.width}x${right.height}\n")
+                    return@forEach
+                }
+                var changed = 0
+                val diff = BufferedImage(left.width, left.height, BufferedImage.TYPE_INT_RGB)
+                for (y in 0 until left.height) {
+                    for (x in 0 until left.width) {
+                        val a = left.getRGB(x, y)
+                        val b = right.getRGB(x, y)
+                        if (a != b) {
+                            changed++
+                            diff.setRGB(x, y, 0xFFFF0000.toInt())
+                        } else {
+                            diff.setRGB(x, y, a)
+                        }
+                    }
+                }
+                ImageIO.write(diff, "png", File(out, "${name}_diff.png"))
+                val percent = changed * 100.0 / (left.width * left.height)
+                summary.append("$name: ${"%.2f".format(Locale.US, percent)}%\n")
+            }
+        File(out, "summary.txt").writeText(summary.toString())
+    }
+}
+
+val designParity = tasks.register<DesignParity>("designParity") {
+    group = "verification"
+    description = "Writes a pixel diff of each recorded board against design/screens."
+    boards.set(layout.projectDirectory.dir("src/test/screenshots/boards"))
+    designs.set(layout.settingsDirectory.dir("design/screens"))
+    outputDir.set(layout.buildDirectory.dir("design-parity"))
 }
 
 /**
@@ -277,4 +367,20 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.okhttp.mockwebserver)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                androidGeneratedClasses()
+                classes(
+                    "*Dao_Impl",
+                    "*Dao_Impl$*",
+                    "*Database_Impl",
+                    "*Database_Impl$*",
+                )
+            }
+        }
+    }
 }

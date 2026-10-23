@@ -6,14 +6,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.HitTarget
-import com.dantech.skimbrowser.browser.IncognitoSession
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.domain.ai.AskPageAccess
+import com.dantech.skimbrowser.domain.ai.AskPageDecision
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.IncognitoSupport
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.newTab
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.shell.INCOGNITO_SURFACE_OWNER
 import com.dantech.skimbrowser.ui.shell.secureTarget
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * Every move between destinations: the back stack the shell saves, the current tab and the
@@ -26,10 +33,12 @@ import com.dantech.skimbrowser.ui.text.UiText
 @MainThread
 class SkimNavigator(
     private val backStack: NavBackStack<NavKey>,
-    private val tabs: TabManager,
-    private val incognito: IncognitoSession,
-    private val secure: WindowSecureController,
+    private val tabs: TabsController,
+    private val incognito: IncognitoSupport,
+    private val secure: WindowPrivacy,
     private val snackbar: SnackbarController,
+    private val aiGate: AskPageAccess,
+    private val scope: CoroutineScope,
 ) {
     private val arming = mutableIntStateOf(0)
 
@@ -102,6 +111,15 @@ class SkimNavigator(
     }
 
     /**
+     * Opens a legal page from welcome in a normal tab. Back on its first page closes the tab and
+     * returns to welcome.
+     */
+    fun openLegal(url: String) {
+        tabs.newTab(incognito = false, url = url, closeOnBack = true)
+        push(BrowserKey)
+    }
+
+    /**
      * Opens [url] in a tab behind the current one and returns its id; null, with a snackbar, when an
      * incognito tab cannot open. Without a current tab the new tab is shown at once.
      */
@@ -128,7 +146,24 @@ class SkimNavigator(
 
     fun openSiteInfo(tabId: String) = push(SiteInfoKey(tabId))
 
-    fun openAskPage(tabId: String, fromReader: Boolean = false) = push(AskPageKey(tabId = tabId, fromReader = fromReader))
+    /**
+     * Ask Skim about [tabId]. Incognito does nothing. A site that has not been allowed opens the
+     * permission dialog; an allowed site opens the sheet with that host remembered.
+     */
+    fun openAskPage(tabId: String, fromReader: Boolean = false): Job = scope.launch {
+            val tab = tabs.state.value.tab(tabId) ?: return@launch
+            when (aiGate.decide(tab)) {
+                AskPageDecision.OffInIncognito -> Unit
+                AskPageDecision.NeedsPermission -> push(AiPermissionKey(tabId, fromReader))
+                AskPageDecision.Allowed -> push(
+                    AskPageKey(
+                        tabId = tabId,
+                        fromReader = fromReader,
+                        approvedHost = hostOf(tab.url.orEmpty()),
+                    ),
+                )
+            }
+    }
 
     fun openSavedChat(chatId: Long) = push(AskPageKey(savedChatId = chatId))
 

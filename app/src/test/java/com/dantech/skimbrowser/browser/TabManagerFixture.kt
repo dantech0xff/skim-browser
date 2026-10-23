@@ -4,7 +4,7 @@ import android.content.Context
 import android.webkit.WebView
 import androidx.test.core.app.ApplicationProvider
 import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
+import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.data.db.entity.TabEntity
 import com.dantech.skimbrowser.data.repo.HistoryRepository
 import com.dantech.skimbrowser.data.repo.TabRepository
@@ -101,7 +101,7 @@ class TabManagerFixture(
 
     fun rowCount(): Long = db.longQuery("SELECT COUNT(*) FROM tabs")
 
-    suspend fun historyEntries(): List<HistoryEntryEntity> = history.observe(null).first()
+    suspend fun historyEntries(): List<HistoryEntry> = history.observe(null).first()
 
     suspend fun lastTabId(): String? = settings.settings.first().lastTabId
 

@@ -39,7 +39,7 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.unit.Velocity
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.LoadError
+import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.components.SiteIndicator

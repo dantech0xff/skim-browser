@@ -300,7 +300,7 @@ private fun ScreenBehind() {
  * left blank here; with the floating toolbar for 06d.
  */
 @Composable
-private fun PageBehind(toolbar: Boolean = false) {
+internal fun PageBehind(toolbar: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     Box(
         Modifier

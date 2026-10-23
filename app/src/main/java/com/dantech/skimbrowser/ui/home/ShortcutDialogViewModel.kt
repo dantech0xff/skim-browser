@@ -7,8 +7,10 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.ShortcutRepository
+import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.usecase.AddShortcut
+import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.search.omniboxAddress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +48,8 @@ data class ShortcutDialogUiState(
 class ShortcutDialogViewModel(
     private val shortcutId: Long?,
     private val shortcuts: ShortcutRepository,
+    private val addShortcut: AddShortcut,
+    private val updateShortcut: UpdateShortcut,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -80,11 +84,12 @@ class ShortcutDialogViewModel(
         val address = omniboxAddress(url.text.toString()) ?: return
         val label = name.text.trim().ifEmpty { hostOf(address) ?: address }.toString()
         progress.update { it.copy(saving = true) }
-        val repository = shortcuts
+        val add = addShortcut
+        val update = updateShortcut
         val id = shortcutId
         appScope.launch {
             try {
-                if (id == null) repository.add(label, address) else repository.update(id, label, address)
+                if (id == null) add(label, address) else update(id, label, address)
                 progress.update { it.copy(saving = false, done = true) }
             } catch (e: CancellationException) {
                 throw e

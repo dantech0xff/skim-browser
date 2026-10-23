@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.PageEvent
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.RestoreResult
+
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
@@ -10,15 +16,21 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
-import com.dantech.skimbrowser.data.db.entity.TabEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
 import com.dantech.skimbrowser.data.isWebUrl
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.repo.TabPlacement
-import com.dantech.skimbrowser.data.repo.TabRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.tab.PersistedTab
+import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
+import com.dantech.skimbrowser.domain.tab.TabPlacement
+import com.dantech.skimbrowser.domain.tab.TabRepository
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.closesLastIncognitoTab
+import com.dantech.skimbrowser.domain.tab.currentAfterUndo
+import com.dantech.skimbrowser.domain.tab.partitionUndoClose
+import com.dantech.skimbrowser.domain.tab.placeRestoredTabs
+import com.dantech.skimbrowser.domain.tab.tabsToRestore
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -73,21 +85,21 @@ class TabManager(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
-) {
+) : TabsController {
     /** A close that can still be undone; [replacementId] is the tab the close made current. */
     private data class PendingClose(val tabs: List<Tab>, val previousCurrentId: String?, val replacementId: String?)
 
     private class Loaded(
-        val tabs: List<TabEntity>,
-        val groups: List<TabGroupEntity>,
+        val tabs: List<PersistedTab>,
+        val groups: List<PersistedTabGroup>,
         val lastTabId: String?,
-        val snapshot: TabGroupingSnapshotEntity?,
+        val snapshot: GroupingSnapshot?,
     )
 
     private val _state = MutableStateFlow(TabsState())
 
     /** Every open tab and group; see [TabsState]. */
-    val state: StateFlow<TabsState> = _state.asStateFlow()
+    override val state: StateFlow<TabsState> = _state.asStateFlow()
 
     private val _pageEvents = MutableSharedFlow<PageEvent>(
         extraBufferCapacity = EVENT_BUFFER,
@@ -150,7 +162,7 @@ class TabManager(
     }
 
     /** The live state of [tabId]'s page; a tab that is not open reads as idle. */
-    fun runtime(tabId: String): StateFlow<TabRuntime> =
+    override fun runtime(tabId: String): StateFlow<TabRuntime> =
         (runtimes[tabId] ?: MutableStateFlow(TabRuntime())).asStateFlow()
 
     /**
@@ -210,9 +222,18 @@ class TabManager(
         return id
     }
 
+    override fun openNewTab(
+        incognito: Boolean,
+        url: String?,
+        background: Boolean,
+        openedByExternalApp: Boolean,
+        closeOnBack: Boolean,
+        openerTabId: String?,
+    ): String = newTab(incognito, url, background, openedByExternalApp, closeOnBack, openerTabId)
+
     /** Makes [tabId] the current tab. A tab offline at its last load reloads if the network is back. */
     @MainThread
-    fun select(tabId: String) {
+    override fun select(tabId: String) {
         val tab = openTab(tabId) ?: return
         val now = clock()
         _state.update { s ->
@@ -229,7 +250,7 @@ class TabManager(
      * when it is next created.
      */
     @MainThread
-    fun load(tabId: String, url: String) {
+    override fun load(tabId: String, url: String) {
         val tab = openTab(tabId) ?: return
         val target = url.trim()
         if (!isWebUrl(target)) {
@@ -250,7 +271,7 @@ class TabManager(
 
     /** Back on the first page of a tab started from the New tab page: the tab shows it again. */
     @MainThread
-    fun returnToNewTabPage(tabId: String) {
+    override fun returnToNewTabPage(tabId: String) {
         openTab(tabId) ?: return
         forgetPendingWork(tabId)
         // The URL goes first, so the state the WebView hands over while it is destroyed is not kept.
@@ -263,20 +284,20 @@ class TabManager(
     }
 
     @MainThread
-    fun goBack(tabId: String): Boolean {
+    override fun goBack(tabId: String): Boolean {
         openTab(tabId) ?: return false
         return engine.value?.goBack(tabId) ?: false
     }
 
     @MainThread
-    fun goForward(tabId: String) {
+    override fun goForward(tabId: String) {
         openTab(tabId) ?: return
         engine.value?.goForward(tabId)
     }
 
     /** Reloads [tabId]; without an attached engine its WebView reloads when it is next created. */
     @MainThread
-    fun reload(tabId: String) {
+    override fun reload(tabId: String) {
         openTab(tabId) ?: return
         val current = engine.value
         if (current != null) {
@@ -288,7 +309,7 @@ class TabManager(
     }
 
     @MainThread
-    fun setDesktopSite(tabId: String, on: Boolean) {
+    override fun setDesktopSite(tabId: String, on: Boolean) {
         val tab = openTab(tabId) ?: return
         if (tab.desktopSite == on) return
         updateTab(tabId) { it.copy(desktopSite = on) }
@@ -298,21 +319,21 @@ class TabManager(
 
     /** Starts or updates Find in page; the counts arrive in [runtime]. */
     @MainThread
-    fun find(tabId: String, query: String) {
+    override fun find(tabId: String, query: String) {
         openTab(tabId) ?: return
         updateRuntime(tabId) { it.copy(find = FindState(query)) }
         engine.value?.find(tabId, query)
     }
 
     @MainThread
-    fun findNext(tabId: String, forward: Boolean) {
+    override fun findNext(tabId: String, forward: Boolean) {
         openTab(tabId) ?: return
         if (runtimeOf(tabId).find == null) return
         engine.value?.findNext(tabId, forward)
     }
 
     @MainThread
-    fun clearFind(tabId: String) {
+    override fun clearFind(tabId: String) {
         openTab(tabId) ?: return
         updateRuntime(tabId) { it.copy(find = null) }
         engine.value?.clearFind(tabId)
@@ -325,7 +346,7 @@ class TabManager(
      * Closing the last incognito tab makes the incognito session end once the close is final.
      */
     @MainThread
-    fun close(tabIds: List<String>): CloseToken {
+    override fun close(tabIds: List<String>): CloseToken {
         val token = CloseToken(++lastCloseTokenId)
         val before = _state.value
         val closing = tabIds.distinct().mapNotNull(before::tab)
@@ -347,7 +368,7 @@ class TabManager(
         }
         if (replacement?.id != before.currentTabId || lastNormalTabId in closingIds) currentChanged(replacement)
         engine.value?.let { live -> closing.forEach { live.saveAndDestroy(it.id) } }
-        if (closing.any { it.incognito } && remaining.none { it.incognito }) incognito.markEnding(token)
+        if (closesLastIncognitoTab(closing, remaining)) incognito.markEnding(token)
         return token
     }
 
@@ -358,26 +379,26 @@ class TabManager(
      * unknown, does nothing.
      */
     @MainThread
-    fun undoClose(token: CloseToken) {
+    override fun undoClose(token: CloseToken) {
         val pending = pendingCloses.remove(token.id) ?: return
         val before = _state.value
         val groupIds = before.groups.map { it.id }.toSet()
         // Incognito tabs only come back into the session they were closed in.
-        val (restorable, lost) = pending.tabs.partition { !it.incognito || incognito.state.value != IncognitoSession.State.None }
+        val sessionOpen = incognito.state.value != IncognitoSession.State.None
+        val (restorable, lost) = partitionUndoClose(pending.tabs, sessionOpen)
         finalizeTabs(lost)
         if (restorable.isEmpty()) return
 
-        var otherPosition = nextOtherPosition(incognito = false)
-        val restored = restorable.map { tab ->
-            if (tab.groupId == null || tab.groupId in groupIds) tab else tab.copy(groupId = null, position = otherPosition++)
-        }
+        val restored = placeRestoredTabs(restorable, groupIds, nextOtherPosition(incognito = false))
         restored.forEach { runtimes.getOrPut(it.id) { MutableStateFlow(TabRuntime()) } }
         val restoredIds = restored.map { it.id }.toSet()
-        val current = when {
-            pending.previousCurrentId in restoredIds && before.currentTabId == pending.replacementId -> pending.previousCurrentId
-            before.currentTabId == null -> restored.maxByOrNull { it.lastAccessedAt }?.id
-            else -> before.currentTabId
-        }
+        val current = currentAfterUndo(
+            restoredIds = restoredIds,
+            previousCurrentId = pending.previousCurrentId,
+            currentTabId = before.currentTabId,
+            replacementId = pending.replacementId,
+            restored = restored,
+        )
         _state.value = before.copy(tabs = sortTabs(before.tabs + restored, before.groups), currentTabId = current)
 
         val normalIds = restored.filterNot { it.incognito }.map { it.id }
@@ -394,7 +415,7 @@ class TabManager(
      * still waiting for Undo. A token already final or undone, or unknown, does nothing.
      */
     @MainThread
-    fun finalizeClose(token: CloseToken) {
+    override fun finalizeClose(token: CloseToken) {
         val pending = pendingCloses.remove(token.id) ?: return
         finalizeTabs(pending.tabs)
         val session = incognito.state.value
@@ -424,8 +445,11 @@ class TabManager(
      *
      * @throws IllegalArgumentException when a tab or a group is listed twice.
      */
+    override fun replaceLayout(layout: GroupLayout, expectedVersion: Long?, snapshot: GroupingSnapshot?): Boolean =
+        applyLayout(layout, expectedVersion, snapshot)
+
     @MainThread
-    fun applyLayout(layout: GroupLayout, expectedVersion: Long? = null, snapshot: TabGroupingSnapshotEntity? = null): Boolean {
+    fun applyLayout(layout: GroupLayout, expectedVersion: Long? = null, snapshot: GroupingSnapshot? = null): Boolean {
         val before = _state.value
         if (expectedVersion != null && expectedVersion != before.layoutVersion) return false
         val listedTabs = layout.groups.flatMap { it.tabIds } + layout.ungrouped
@@ -475,7 +499,7 @@ class TabManager(
         _state.value = before.copy(tabs = sortTabs(tabs, groups), groups = groups, layoutVersion = version)
 
         if (persistTabs) {
-            val entities = groups.map { TabGroupEntity(it.id, it.title, it.position, it.createdBySkim) }
+            val entities = groups.map { PersistedTabGroup(it.id, it.title, it.position, it.createdBySkim) }
             val indexOfGroup = groups.withIndex().associate { it.value.id to it.index }
             val placements = open.map { tab ->
                 val (groupId, position) = placement.getValue(tab.id)
@@ -520,7 +544,7 @@ class TabManager(
      * its load nonce. Null when it never gets ready, or when it navigated away while being read.
      */
     @AnyThread
-    suspend fun extractPage(tabId: String): PageContent? = withContext(mainDispatcher) {
+    override suspend fun extractPage(tabId: String): PageContent? = withContext(mainDispatcher) {
         if (!scripts.isSupported || !awaitPageReady(tabId)) return@withContext null
         val live = engine.value ?: return@withContext null
         val runtime = runtimes[tabId] ?: return@withContext null
@@ -533,13 +557,30 @@ class TabManager(
     }
 
     /**
+     * Reads the page of a tab that already has a live WebView. Does not create one. Null when the
+     * tab has no live page, the script cannot run, or the page moves while it is read.
+     */
+    @AnyThread
+    override suspend fun extractLivePage(tabId: String): PageContent? = withContext(mainDispatcher) {
+        if (!scripts.isSupported) return@withContext null
+        val live = engine.value ?: return@withContext null
+        val runtime = runtimes[tabId]?.value ?: return@withContext null
+        if (!runtime.pageLoaded || runtime.loadError != null) return@withContext null
+        val url = runtime.committedUrl ?: return@withContext null
+        val json = evaluateOrNull(live, tabId, scripts.extractScript()) ?: return@withContext null
+        val after = runtimes[tabId]?.value ?: return@withContext null
+        if (after.loadNonce != runtime.loadNonce || !samePage(after.committedUrl, url)) return@withContext null
+        parsePageContent(json, committedUrl = url, loadNonce = runtime.loadNonce)
+    }
+
+    /**
      * Highlights a cited block in [tabId]'s page. Nothing runs, and the answer is false, unless the
      * block id is digits only and the tab still shows the document the citation was read from: the
      * same committed URL (fragment aside) and the same load nonce. The arguments reach the script
      * as JSON, never as code.
      */
     @AnyThread
-    suspend fun highlightBlock(tabId: String, request: HighlightRequest): Boolean = withContext(mainDispatcher) {
+    override suspend fun highlightBlock(tabId: String, request: HighlightRequest): Boolean = withContext(mainDispatcher) {
         val args = highlightArgsJson(request) ?: return@withContext false
         if (openTab(tabId) == null) return@withContext false
         val live = engine.value ?: return@withContext false
@@ -623,7 +664,7 @@ class TabManager(
     }
 
     private fun applyRestored(loaded: Loaded): RestoreResult {
-        val restored = loaded.tabs.map { it.toTab() }
+        val restored = tabsToRestore(loaded.tabs.map { it.toTab() })
         val restoredIds = restored.map { it.id }.toSet()
         val restoredGroups = loaded.groups.map { TabGroup(it.id, it.title, it.position, it.createdBySkim) }
         val before = _state.value
@@ -999,7 +1040,7 @@ class TabManager(
                 ?: url.substringBefore('?').takeIf { it.length <= MAX_STORED_URL_LENGTH }
         }
 
-        private fun Tab.toEntity() = TabEntity(
+        private fun Tab.toEntity() = PersistedTab(
             id = id,
             url = storableUrl(url),
             title = title,
@@ -1014,7 +1055,7 @@ class TabManager(
             lastAccessedAt = lastAccessedAt,
         )
 
-        private fun TabEntity.toTab() = Tab(
+        private fun PersistedTab.toTab() = Tab(
             id = id,
             incognito = false,
             url = url,

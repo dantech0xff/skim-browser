@@ -5,9 +5,11 @@ import android.database.sqlite.SQLiteException
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
-import com.dantech.skimbrowser.browser.cutTo
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFiles
+import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -15,29 +17,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-/** How importing a bookmarks file ended. */
-sealed interface ImportResult {
-    /** A new Imported folder [folderId] holds [bookmarkCount] bookmarks, subfolders included. */
-    data class Imported(val folderId: Long, val bookmarkCount: Int) : ImportResult
-
-    /** Nothing was imported, for [reason]. */
-    data class Failed(val reason: Reason) : ImportResult
-
-    enum class Reason {
-        /** The file could not be opened or read. */
-        Unreadable,
-
-        /** The file is larger than [BookmarkImporter.MAX_FILE_BYTES], or has more tags than the parser will build. */
-        TooLarge,
-
-        /** The file is not a bookmark file. */
-        NotBookmarks,
-
-        /** The file is a bookmark file without a single http or https bookmark. */
-        NoBookmarks,
-    }
-}
 
 /**
  * Imports the bookmarks file a user picked (03): read once through [resolver] (at most
@@ -49,7 +28,10 @@ class BookmarkImporter(
     private val bookmarks: BookmarkRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parseDispatcher: CoroutineDispatcher = Dispatchers.Default,
-) {
+) : BookmarkFiles {
+
+    override suspend fun import(location: String): ImportResult = import(Uri.parse(location))
+
 
     /**
      * Imports the file [uri]; a file that cannot be read or holds no bookmark imports nothing and

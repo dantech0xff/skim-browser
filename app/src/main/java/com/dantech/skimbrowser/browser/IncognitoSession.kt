@@ -3,6 +3,8 @@ package com.dantech.skimbrowser.browser
 import android.util.Log
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
+import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
+import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.normalizeHost
@@ -38,7 +40,7 @@ class IncognitoSession(
     private val appScope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
-) {
+) : IncognitoSupport, IncognitoDecisions {
     sealed interface State {
         data object None : State
 
@@ -51,7 +53,7 @@ class IncognitoSession(
     private val _state = MutableStateFlow<State>(State.None)
     val state: StateFlow<State> = _state.asStateFlow()
 
-    val isSupported: Boolean get() = profiles.isMultiProfileSupported
+    override val isSupported: Boolean get() = profiles.isMultiProfileSupported
 
     val hasHttpCacheManager: Boolean get() = profiles.hasHttpCacheManager
 
@@ -137,17 +139,35 @@ class IncognitoSession(
         if (_state.value == State.None) deleteSharedFiles()
     }
 
+    /**
+     * Forgets the cookies and web storage this session's profile holds for [host]. Nothing happens
+     * without a session. The permission answers given in the session stay: the site information
+     * sheet changes those on their own.
+     */
+    fun clearSiteData(host: String) {
+        val key = normalizeHost(host)
+        if (key.isEmpty() || activeProfile() == null) return
+        val profile = activeProfile() ?: return
+        step("clear site data") {
+            profiles.get(profile)?.let { store ->
+                store.expireCookiesForHost(key)
+                store.deleteOriginsForHost(key)
+            }
+        }
+    }
+
     /** The answer given in this session to [host] for [kind]; UNSET when there is none. */
     @AnyThread
-    fun decision(host: String, kind: SitePermissionKind): PermissionState =
+    override fun decision(host: String, kind: SitePermissionKind): PermissionState =
         decisions[normalizeHost(host)]?.get(kind) ?: PermissionState.UNSET
 
     /**
-     * Keeps the answer [s] of [host] for [kind] until the session ends. Ignored without a session,
+     * Keeps the answer [state] of [host] for [kind] until the session ends. Ignored without a session,
      * so an answer can never carry over into the next one.
      */
     @AnyThread
-    fun setDecision(host: String, kind: SitePermissionKind, s: PermissionState) {
+    override fun setDecision(host: String, kind: SitePermissionKind, state: PermissionState) {
+        val s = state
         val key = normalizeHost(host)
         if (key.isEmpty() || _state.value == State.None) return
         decisions.compute(key) { _, old ->

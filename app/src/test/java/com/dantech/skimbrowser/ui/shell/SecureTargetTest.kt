@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.ui.shell
 
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.ui.navigation.AiPermissionKey

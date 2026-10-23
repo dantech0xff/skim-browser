@@ -92,5 +92,54 @@ class WebViewProfiles : BrowserProfiles {
         }
 
         override fun cookieHeader(url: String): String? = profile.cookieManager.getCookie(url)?.takeIf { it.isNotBlank() }
+
+        override fun expireCookiesForHost(host: String) {
+            val cookies = profile.cookieManager
+            expireHostCookies(
+                host,
+                read = { cookies.getCookie(it) },
+                write = { url, value -> cookies.setCookie(url, value) },
+                flush = { cookies.flush() },
+            )
+        }
+
+        override fun deleteOriginsForHost(host: String) {
+            val storage = profile.webStorage
+            storage.deleteOrigin("https://$host")
+            storage.deleteOrigin("http://$host")
+        }
     }
+}
+
+/**
+ * Expires every cookie [read] returns for http and https of [host]. [host] is already a site key
+ * (lowercase, no "www."). Names come from the `Cookie` header; each is cleared for `path=/` and
+ * for the host's domain, then [flush] runs once.
+ */
+internal fun expireHostCookies(
+    host: String,
+    read: (url: String) -> String?,
+    write: (url: String, value: String) -> Unit,
+    flush: () -> Unit,
+) {
+    if (host.isEmpty() || host.any { it.isWhitespace() || it == '/' }) return
+    for (url in listOf("https://$host", "http://$host")) {
+        cookieNames(read(url)).forEach { name ->
+            val cleared = "$name=; Max-Age=0; path=/"
+            write(url, cleared)
+            write(url, "$cleared; domain=.$host")
+        }
+    }
+    flush()
+}
+
+/** Cookie names in a `Cookie` header (`a=1; b=2`), in order, without blanks or duplicates. */
+internal fun cookieNames(header: String?): List<String> {
+    if (header.isNullOrBlank()) return emptyList()
+    val names = ArrayList<String>()
+    header.split(';').forEach { part ->
+        val name = part.substringBefore('=').trim()
+        if (name.isNotEmpty() && name !in names) names += name
+    }
+    return names
 }

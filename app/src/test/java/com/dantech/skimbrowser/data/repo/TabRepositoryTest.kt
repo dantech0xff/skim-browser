@@ -6,9 +6,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.TabEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.tab.PersistedTab
+import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
 import com.dantech.skimbrowser.testing.assertThrowsSuspending
 import com.dantech.skimbrowser.testing.execRaw
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -76,7 +76,7 @@ class TabRepositoryTest {
 
     @Test
     fun undoOfAClosedTabBringsItBackWithItsIdPositionAndGroup() = runTest {
-        val group = tabs.saveLayout(listOf(TabGroupEntity(title = "Heat pump research", position = 0)), emptyList()).single()
+        val group = tabs.saveLayout(listOf(PersistedTabGroup(title = "Heat pump research", position = 0)), emptyList()).single()
         tabs.upsert(tab("a", position = 0, groupId = group))
         tabs.upsert(tab("b", position = 1, groupId = group))
         tabs.upsert(tab("c", position = 2, groupId = group))
@@ -126,7 +126,7 @@ class TabRepositoryTest {
     fun loadOpenForgetsChatsThatWereDeletedAndGroupsLeftEmpty() = runTest {
         val chat = savedChat()
         val groups = tabs.saveLayout(
-            listOf(TabGroupEntity(title = "Kept", position = 0), TabGroupEntity(title = "Emptied", position = 1)),
+            listOf(PersistedTabGroup(title = "Kept", position = 0), PersistedTabGroup(title = "Emptied", position = 1)),
             emptyList(),
         )
         tabs.upsert(tab("a", position = 0, groupId = groups[0], chatId = chat))
@@ -146,8 +146,8 @@ class TabRepositoryTest {
 
         val ids = tabs.saveLayout(
             groups = listOf(
-                TabGroupEntity(title = "Heat pump research", position = 0, createdBySkim = true),
-                TabGroupEntity(title = "Osaka trip", position = 1, createdBySkim = true),
+                PersistedTabGroup(title = "Heat pump research", position = 0, createdBySkim = true),
+                PersistedTabGroup(title = "Osaka trip", position = 1, createdBySkim = true),
             ),
             placements = listOf(
                 TabPlacement("a", groupIndex = 0, position = 0),
@@ -174,14 +174,14 @@ class TabRepositoryTest {
     @Test
     fun saveLayoutUpdatesListedGroupsAndDeletesTheOthers() = runTest {
         val created = tabs.saveLayout(
-            listOf(TabGroupEntity(title = "Heat pump research", position = 0), TabGroupEntity(title = "Osaka", position = 1)),
+            listOf(PersistedTabGroup(title = "Heat pump research", position = 0), PersistedTabGroup(title = "Osaka", position = 1)),
             emptyList(),
         )
         tabs.upsert(tab("a", position = 0, groupId = created[0]))
         tabs.upsert(tab("b", position = 0, groupId = created[1]))
 
         val ids = tabs.saveLayout(
-            groups = listOf(TabGroupEntity(id = created[0], title = "Heat pumps", position = 0)),
+            groups = listOf(PersistedTabGroup(id = created[0], title = "Heat pumps", position = 0)),
             placements = listOf(TabPlacement("a", groupIndex = 0, position = 0)),
         )
 
@@ -196,7 +196,7 @@ class TabRepositoryTest {
         tabs.upsert(tab("a", position = 0))
 
         val ids = tabs.saveLayout(
-            groups = listOf(TabGroupEntity(id = 77, title = "Osaka", position = 0)),
+            groups = listOf(PersistedTabGroup(id = 77, title = "Osaka", position = 0)),
             placements = listOf(TabPlacement("a", groupIndex = 0, position = 0)),
         )
 
@@ -216,7 +216,7 @@ class TabRepositoryTest {
 
         assertThrowsSuspending<SQLiteConstraintException> {
             tabs.saveLayout(
-                groups = listOf(TabGroupEntity(title = "Heat pump research", position = 0, createdBySkim = true)),
+                groups = listOf(PersistedTabGroup(title = "Heat pump research", position = 0, createdBySkim = true)),
                 placements = listOf(TabPlacement("b", groupIndex = 0, position = 0), TabPlacement("a", groupIndex = 0, position = 1)),
                 snapshot = snapshot(),
             )
@@ -231,7 +231,7 @@ class TabRepositoryTest {
         tabs.upsert(tab("a", position = 0))
 
         tabs.saveLayout(
-            groups = listOf(TabGroupEntity(title = "Heat pump research", position = 0, createdBySkim = true)),
+            groups = listOf(PersistedTabGroup(title = "Heat pump research", position = 0, createdBySkim = true)),
             placements = listOf(TabPlacement("a", groupIndex = 0, position = 0)),
             snapshot = snapshot().copy(id = 9),
         )
@@ -245,7 +245,7 @@ class TabRepositoryTest {
     @Test
     fun anInvalidLayoutIsRejectedBeforeAnythingIsWritten() = runTest {
         tabs.upsert(tab("a", position = 0))
-        val group = TabGroupEntity(title = "Osaka", position = 0)
+        val group = PersistedTabGroup(title = "Osaka", position = 0)
 
         assertThrowsSuspending<IllegalArgumentException> {
             tabs.saveLayout(listOf(group), listOf(TabPlacement("a", 0, 0), TabPlacement("a", null, 1)))
@@ -261,14 +261,14 @@ class TabRepositoryTest {
         }
 
         val (open, groups) = tabs.loadOpen()
-        assertEquals(emptyList<TabGroupEntity>(), groups)
+        assertEquals(emptyList<PersistedTabGroup>(), groups)
         assertNull(open.single().groupId)
     }
 
     @Test
     fun placementsNeverStoreATabThatIsNotStored() = runTest {
         tabs.saveLayout(
-            groups = listOf(TabGroupEntity(title = "Osaka", position = 0)),
+            groups = listOf(PersistedTabGroup(title = "Osaka", position = 0)),
             placements = listOf(TabPlacement("incognito-tab", groupIndex = 0, position = 0)),
         )
 
@@ -278,7 +278,7 @@ class TabRepositoryTest {
     @Test
     fun closingMoreTabsThanOneStatementCanBindStillCloses() = runTest {
         val ids = (0 until 1200).map { "tab-$it" }
-        db.withTransaction { ids.forEachIndexed { index, id -> db.tabDao().insert(tab(id, position = index)) } }
+        db.withTransaction { ids.forEachIndexed { index, id -> db.tabDao().insert(tab(id, position = index).toEntity()) } }
 
         tabs.markClosed(ids, at = 50)
         assertEquals(1200L, db.longQuery("SELECT COUNT(*) FROM tabs WHERE closedAt = 50"))
@@ -293,7 +293,7 @@ class TabRepositoryTest {
         SkimChatEntity(kind = ChatKind.PAGE, url = "https://kotlinlang.org/", host = "kotlinlang.org", title = "Kotlin", createdAt = 1, updatedAt = 1),
     )
 
-    private fun tab(id: String, position: Int, groupId: Long? = null, chatId: Long? = null) = TabEntity(
+    private fun tab(id: String, position: Int, groupId: Long? = null, chatId: Long? = null) = PersistedTab(
         id = id,
         url = "https://example.com/$id",
         title = id,
@@ -304,7 +304,7 @@ class TabRepositoryTest {
         lastAccessedAt = 1,
     )
 
-    private fun snapshot() = TabGroupingSnapshotEntity(
+    private fun snapshot() = GroupingSnapshot(
         previousLayoutJson = "{\"groups\":[]}",
         tabSetKey = "a,b",
         appliedLayoutVersion = 3,

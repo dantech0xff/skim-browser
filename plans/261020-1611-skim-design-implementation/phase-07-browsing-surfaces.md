@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Browsing surfaces"
-status: pending
+status: done-with-concerns
 priority: P1
 effort: "29h"
 dependencies: [4, 5, 6]
@@ -141,20 +141,20 @@ Sửa:
 
 ## Todo list
 
-- [ ] BrowsingViewModel (địa chỉ, indicator, back/forward, find, desktop, bookmark) + test
-- [ ] BrowsingScreen/Route: address bar, WebView dưới toolbar, pull to refresh, toolbar, FAB, nhấn giữ → 05d
-- [ ] 05c FindInPageBar
-- [ ] 11 LoadErrorContent ba trạng thái + Crashed (D8) + Internet panel
-- [ ] 05b MoreMenuSheet (biến thể trang, New tab, tối)
-- [ ] 05d LinkOptionsSheet (Link, Image) + snackbar Switch dạng dữ liệu
-- [ ] Site information sheet (thường/incognito) + BrowsingDataCleaner (constructor tường minh, clearSite)
-- [ ] Site permission dialog từ LocalBrowserHost
-- [ ] Edit bookmark + Move to folder (một đường duy nhất qua MoveToFolderKey)
-- [ ] Share trang/link/ảnh (shared/incognito/), Clipboard (sensitive khi incognito, snackbar ≤ 32), DownloadSnackbarEffect (OpenDownload)
-- [ ] Thay slot page + đăng ký 5 entry
-- [ ] Ảnh Roborazzi + `assertA11y` + lệch ghi vào docs
-- [ ] Cổng thiết bị `skim_api36` + `skim_api28` (quyết định pull to refresh)
-- [ ] Commit cuối phase
+- [x] BrowsingViewModel (địa chỉ, indicator, back/forward, find, desktop, bookmark) + test
+- [x] BrowsingScreen/Route: address bar, WebView dưới toolbar, pull to refresh, toolbar, FAB, nhấn giữ → 05d
+- [x] 05c FindInPageBar
+- [x] 11 LoadErrorContent ba trạng thái + Crashed (D8) + Internet panel
+- [x] 05b MoreMenuSheet (biến thể trang, New tab, tối)
+- [x] 05d LinkOptionsSheet (Link, Image) + snackbar Switch dạng dữ liệu
+- [x] Site information sheet (thường/incognito) + BrowsingDataCleaner (constructor tường minh, clearSite)
+- [x] Site permission dialog từ LocalBrowserHost
+- [x] Edit bookmark + Move to folder (một đường duy nhất qua MoveToFolderKey)
+- [x] Share trang/link/ảnh (shared/incognito/), Clipboard (sensitive khi incognito, snackbar ≤ 32), DownloadSnackbarEffect (OpenDownload)
+- [x] Thay slot page + đăng ký 5 entry
+- [x] Ảnh Roborazzi + `assertA11y` + lệch ghi vào docs
+- [ ] Cổng thiết bị `skim_api36` + `skim_api28` (quyết định pull to refresh) — chưa chạy: máy này không có system image
+- [x] Commit cuối phase
 
 ## Success criteria
 

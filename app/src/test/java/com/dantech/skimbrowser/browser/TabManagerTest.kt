@@ -1,12 +1,15 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.RestoreResult
+
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.IncognitoSession.State
 import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.entity.TabEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.tab.PersistedTab
+import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
 import com.dantech.skimbrowser.data.repo.TabPlacement
 import com.dantech.skimbrowser.data.repo.TabRepository
 import com.dantech.skimbrowser.testing.execRaw
@@ -544,7 +547,7 @@ class TabManagerTest {
         val before = fixture(db = db)
         val (a, b) = (1..2).map { before.manager.newTab(incognito = false, url = "https://site$it.example/") }
         before.manager.applyLayout(GroupLayout(emptyList(), listOf(b, a)))
-        val snapshot = TabGroupingSnapshotEntity(previousLayoutJson = "{}", tabSetKey = "k", appliedLayoutVersion = 0, bannerVisible = true, createdAt = 1)
+        val snapshot = GroupingSnapshot(previousLayoutJson = "{}", tabSetKey = "k", appliedLayoutVersion = 0, bannerVisible = true, createdAt = 1)
         assertTrue(before.manager.applyLayout(GroupLayout(listOf(GroupLayout.Group(null, "Grouped", listOf(a, b), createdBySkim = true)), emptyList()), expectedVersion = 1, snapshot = snapshot))
         before.settle()
         assertEquals("stamped with the version the layout produced", 2L, before.tabRepo.snapshot()?.appliedLayoutVersion)
@@ -617,7 +620,7 @@ class TabManagerTest {
         val f = fixture()
 
         val first = f.manager.restore()
-        f.tabRepo.upsert(TabEntity(id = "late", url = "https://late.example/", title = "", position = 0, createdAt = 1, lastAccessedAt = 1))
+        f.tabRepo.upsert(PersistedTab(id = "late", url = "https://late.example/", title = "", position = 0, createdAt = 1, lastAccessedAt = 1))
         val second = f.manager.restore()
 
         assertEquals(RestoreResult.Restored(0), first)
@@ -654,7 +657,7 @@ class TabManagerTest {
         val f = fixture()
         val (a, b) = (1..2).map { f.manager.newTab(incognito = false, url = "https://site$it.example/") }
         val start = f.manager.state.value.layoutVersion
-        val snapshot = TabGroupingSnapshotEntity(previousLayoutJson = "{}", tabSetKey = "a,b", appliedLayoutVersion = 99, bannerVisible = true, createdAt = 1)
+        val snapshot = GroupingSnapshot(previousLayoutJson = "{}", tabSetKey = "a,b", appliedLayoutVersion = 99, bannerVisible = true, createdAt = 1)
 
         assertTrue(f.manager.applyLayout(GroupLayout(listOf(GroupLayout.Group(null, "Research", listOf(a, b), createdBySkim = true)), emptyList()), start, snapshot))
         val applied = f.manager.state.value
@@ -769,10 +772,10 @@ class TabManagerTest {
     private suspend fun seedGroups(db: SkimDatabase) {
         val repo = TabRepository(db)
         listOf("seed-1", "seed-2").forEachIndexed { index, id ->
-            repo.upsert(TabEntity(id = id, url = "https://seed$index.example/", title = "", position = 0, createdAt = 1, lastAccessedAt = 1))
+            repo.upsert(PersistedTab(id = id, url = "https://seed$index.example/", title = "", position = 0, createdAt = 1, lastAccessedAt = 1))
         }
         repo.saveLayout(
-            listOf(TabGroupEntity(id = 3, title = "Three", position = 0), TabGroupEntity(id = 7, title = "Seven", position = 1)),
+            listOf(PersistedTabGroup(id = 3, title = "Three", position = 0), PersistedTabGroup(id = 7, title = "Seven", position = 1)),
             listOf(TabPlacement("seed-1", 0, 0), TabPlacement("seed-2", 1, 0)),
         )
     }

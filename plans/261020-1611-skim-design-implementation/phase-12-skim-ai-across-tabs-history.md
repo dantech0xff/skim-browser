@@ -1,7 +1,7 @@
 ---
 phase: 12
 title: "Skim AI across tabs & Skim history"
-status: pending
+status: done-with-concerns
 priority: P2
 effort: "19h"
 dependencies: [6, 8, 9, 11]
@@ -124,15 +124,15 @@ Sửa:
 
 ## Todo list
 
-- [ ] TabsContext (tab sống lúc bấm, loại site ASK/incognito/New tab/chờ đóng, cắt 4k) + test
-- [ ] TabsOverview schema + parse + làm sạch; TabGrouping schema + policy D3 + tranh chấp + apply/Undo + test
-- [ ] SkimAiService overviewTabs/askTabs/groupTabs (mỗi tab một document, Consent.TABS_ACTION) + test request shape + IncognitoGuardTest mở rộng
-- [ ] AskTabsViewModel + AskTabsSheet 06b (prompt, đã lưu, hỏi tiếp, link nhóm, chip, copy cục bộ/feedback, lỗi, không gửi lại khi khôi phục)
-- [ ] Banner 09 nối TabGrouping (huỷ khi rời) + TabsViewModelTest
-- [ ] 04c Skim history (sections, phụ đề plural, search, Remove + Undo qua registry, rỗng, Delete all → dialog)
-- [ ] Đăng ký entry AskTabsKey, SkimHistoryKey, ClearSkimHistoryKey
-- [ ] Ảnh Roborazzi 06b, 04c, 04c rỗng, dialog (+ `assertA11y`, lệch ghi docs)
-- [ ] Commit cuối phase
+- [x] TabsContext (tab sống lúc bấm, loại site ASK/incognito/New tab/chờ đóng, cắt 4k) + test
+- [x] TabsOverview schema + parse + làm sạch; TabGrouping schema + policy D3 + tranh chấp + apply/Undo + test
+- [x] SkimAiService overviewTabs/askTabs/groupTabs (mỗi tab một document, Consent.TABS_ACTION) + test request shape + IncognitoGuardTest mở rộng
+- [x] AskTabsViewModel + AskTabsSheet 06b (prompt, đã lưu, hỏi tiếp, link nhóm, chip, copy cục bộ/feedback, lỗi, không gửi lại khi khôi phục)
+- [x] Banner 09 nối TabGrouping (huỷ khi rời) + TabsViewModelTest
+- [x] 04c Skim history (sections, phụ đề plural, search, Remove + Undo qua registry, rỗng, Delete all → dialog)
+- [x] Đăng ký entry AskTabsKey, SkimHistoryKey, ClearSkimHistoryKey
+- [x] Ảnh Roborazzi 06b, 04c, 04c rỗng, dialog (+ `assertA11y`, lệch ghi docs)
+- [x] Commit cuối phase
 
 ## Success criteria
 

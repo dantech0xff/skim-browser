@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,7 +20,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
@@ -76,10 +77,19 @@ fun SkimApp(
     val tabs = container.tabManager
     val tabsState by tabs.state.collectAsStateWithLifecycle()
     val backStack = rememberNavBackStack(skimNavConfig, if (started) BrowserKey else WelcomeKey)
-    val navigator = remember(backStack) {
+    val scope = rememberCoroutineScope()
+    val navigator = remember(backStack, scope) {
         // A restored back stack may point at tabs that did not come back; it is fixed once, before it shows.
         backStack.reconcileWith(tabsState)
-        SkimNavigator(backStack, tabs, container.incognitoSession, host.secure, container.snackbarController)
+        SkimNavigator(
+            backStack,
+            tabs,
+            container.incognitoSession,
+            host.secure,
+            container.snackbarController,
+            container.aiGate,
+            scope,
+        )
     }
     val keys = backStack.toList()
     val incognitoSurface = secureTarget(keys, tabsState)

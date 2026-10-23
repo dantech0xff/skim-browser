@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.HitTarget
+
 import android.os.Bundle
 import androidx.annotation.MainThread
 

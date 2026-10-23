@@ -2,7 +2,7 @@ package com.dantech.skimbrowser.ui.shell
 
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.onMain
 import com.dantech.skimbrowser.browser.waitUntil
 import com.dantech.skimbrowser.ui.navigation.AiPermissionKey

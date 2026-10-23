@@ -8,16 +8,14 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.dao.ShortcutDao
-import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
-import com.dantech.skimbrowser.data.repo.ShortcutRepository
+import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
+import com.dantech.skimbrowser.domain.shortcut.Shortcut
+import com.dantech.skimbrowser.domain.usecase.AddShortcut
+import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.testing.MainDispatcherRule
-import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
@@ -46,8 +44,7 @@ class ShortcutDialogViewModelTest {
     @get:Rule
     val main = MainDispatcherRule(StandardTestDispatcher())
 
-    private lateinit var db: SkimDatabase
-    private lateinit var shortcuts: ShortcutRepository
+    private lateinit var shortcuts: FakeShortcutRepository
     private val appJob = SupervisorJob()
 
     /** Every view model of the test, cleared after it so none of its work runs on into the next test. */
@@ -56,15 +53,13 @@ class ShortcutDialogViewModelTest {
 
     @Before
     fun setUp() {
-        db = inMemorySkimDatabase()
-        shortcuts = ShortcutRepository(db.shortcutDao())
+        shortcuts = FakeShortcutRepository()
     }
 
     @After
     fun tearDown() {
         viewModels.clear()
         appJob.cancel()
-        db.close()
     }
 
     // Add shortcut
@@ -229,7 +224,7 @@ class ShortcutDialogViewModelTest {
         dialog.save()
         dialog.state.first { it.done }
 
-        assertEquals(listOf(wikipedia, ShortcutEntity(github.id, "GitHub Mobile", "https://github.com/mobile", github.position)), shortcuts.observe().first())
+        assertEquals(listOf(wikipedia, Shortcut(github.id, "GitHub Mobile", "https://github.com/mobile", github.position)), shortcuts.observe().first())
     }
 
     @Test
@@ -249,14 +244,23 @@ class ShortcutDialogViewModelTest {
 
     @Test
     fun saveStaysOffUntilTheShortcutBeingEditedIsRead() = runTest {
-        val held = HeldShortcuts()
-        val dialog = kept { ShortcutDialogViewModel(7, ShortcutRepository(held), CoroutineScope(appJob + StandardTestDispatcher(testScheduler))) }
+        val reads = MutableSharedFlow<List<Shortcut>>()
+        val held = FakeShortcutRepository(reads)
+        val dialog = kept {
+            ShortcutDialogViewModel(
+                7,
+                held,
+                AddShortcut(held),
+                UpdateShortcut(held),
+                CoroutineScope(appJob + StandardTestDispatcher(testScheduler)),
+            )
+        }
 
         type(dialog, url = "example.com")
         assertFalse(dialog.state.value.loaded)
         assertFalse("a web address typed before the shortcut is read", dialog.state.value.canSave)
 
-        held.reads.emit(listOf(ShortcutEntity(7, "Wikipedia", "https://www.wikipedia.org", 0)))
+        reads.emit(listOf(Shortcut(7, "Wikipedia", "https://www.wikipedia.org", 0)))
         settle()
 
         assertTrue(dialog.state.value.loaded)
@@ -281,7 +285,13 @@ class ShortcutDialogViewModelTest {
 
     /** The dialog's view model, for a store of the caller's. */
     private fun TestScope.newDialog(shortcutId: Long? = null) =
-        ShortcutDialogViewModel(shortcutId, shortcuts, CoroutineScope(appJob + StandardTestDispatcher(testScheduler)))
+        ShortcutDialogViewModel(
+            shortcutId,
+            shortcuts,
+            AddShortcut(shortcuts),
+            UpdateShortcut(shortcuts),
+            CoroutineScope(appJob + StandardTestDispatcher(testScheduler)),
+        )
 
     private inline fun <reified T : ViewModel> kept(noinline make: () -> T): T =
         ViewModelProvider.create(viewModels, viewModelFactory { initializer { make() } })["view-model-${viewModelCount++}", T::class]
@@ -301,20 +311,4 @@ class ShortcutDialogViewModelTest {
 
     private suspend fun saved(): List<Pair<String, String>> = shortcuts.observe().first().map { it.name to it.url }
 
-    /** Shortcuts that are read only when the test lets them through; nothing is written here. */
-    private class HeldShortcuts : ShortcutDao() {
-        val reads = MutableSharedFlow<List<ShortcutEntity>>()
-
-        override fun observe(): Flow<List<ShortcutEntity>> = reads
-
-        override suspend fun byId(id: Long): ShortcutEntity? = null
-
-        override suspend fun nextPosition(): Int = 0
-
-        override suspend fun insert(shortcut: ShortcutEntity): Long = error("Nothing is saved in this test")
-
-        override suspend fun update(id: Long, name: String, url: String) = error("Nothing is saved in this test")
-
-        override suspend fun deleteById(id: Long) = error("Nothing is deleted in this test")
-    }
 }

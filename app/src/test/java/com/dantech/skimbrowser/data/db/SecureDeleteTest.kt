@@ -16,8 +16,8 @@ import com.dantech.skimbrowser.data.db.entity.MessageStatus
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.data.repo.ChatRepository
 import com.dantech.skimbrowser.data.repo.HistoryRepository
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
@@ -116,10 +116,10 @@ class SecureDeleteTest {
         val chats = ChatRepository(db.skimChatDao(), db)
         val marker = marker()
         val id = chats.createChat(
-            SkimChatEntity(kind = ChatKind.PAGE, url = "https://daylightjournal.com/$marker", host = "daylightjournal.com", title = "Chat $marker", createdAt = 1, updatedAt = 1),
+            SavedChat(kind = ChatKind.PAGE, url = "https://daylightjournal.com/$marker", host = "daylightjournal.com", title = "Chat $marker", createdAt = 1, updatedAt = 1),
         )
-        chats.addMessage(SkimMessageEntity(chatId = id, role = MessageRole.USER, kind = MessageKind.QUESTION, text = "Question $marker", status = MessageStatus.COMPLETE, createdAt = 1))
-        chats.addMessage(SkimMessageEntity(chatId = id, role = MessageRole.ASSISTANT, kind = MessageKind.ANSWER, text = "Answer $marker", status = MessageStatus.COMPLETE, createdAt = 2))
+        chats.addMessage(SavedMessage(chatId = id, role = MessageRole.USER, kind = MessageKind.QUESTION, text = "Question $marker", status = MessageStatus.COMPLETE, createdAt = 1))
+        chats.addMessage(SavedMessage(chatId = id, role = MessageRole.ASSISTANT, kind = MessageKind.ANSWER, text = "Answer $marker", status = MessageStatus.COMPLETE, createdAt = 2))
         assertTrue("the chat is in the log before the delete", walFile.holds(marker))
 
         chats.deleteAll()

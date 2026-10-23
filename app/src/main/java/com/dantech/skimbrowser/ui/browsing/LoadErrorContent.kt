@@ -31,7 +31,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.LoadError
+import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.ui.components.ShapeArt
 import com.dantech.skimbrowser.ui.components.SkimButton
 import com.dantech.skimbrowser.ui.components.SkimButtonSize

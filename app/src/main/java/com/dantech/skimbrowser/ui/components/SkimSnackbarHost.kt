@@ -130,7 +130,7 @@ private class SkimSnackbarVisuals(
  * region that interrupts, like role=alert.
  */
 @Composable
-private fun SkimSnackbar(
+internal fun SkimSnackbar(
     message: String,
     actionLabel: String?,
     isError: Boolean,

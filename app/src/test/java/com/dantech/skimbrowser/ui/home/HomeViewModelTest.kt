@@ -8,10 +8,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.TabManagerFixture
-import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.repo.ShortcutRepository
+import com.dantech.skimbrowser.domain.chat.ChatKind
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.fake.FakeChatRepository
+import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
+import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
+import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -93,7 +97,7 @@ class HomeViewModelTest {
         val page = home.tabs.manager.newTab(incognito = false, url = "https://daylightjournal.com/")
         home.tabs.manager.newTab(incognito = false)
         home.shortcuts.add("Wikipedia", "https://wikipedia.org")
-        val chat = home.chats.createChat(pageChat("daylightjournal.com", "Why heat pumps are winning", updatedAt = NOW - MINUTE))
+        val chat = home.chats.insert(pageChat("daylightjournal.com", "Why heat pumps are winning", updatedAt = NOW - MINUTE))
         val viewModel = home.viewModel()
         val full = viewModel.state.first { it.showsHero && it.showsContinue && it.shortcuts.isNotEmpty() }
         assertEquals(1, full.eligibleTabCount)
@@ -160,13 +164,13 @@ class HomeViewModelTest {
     @Test
     fun continueShowsTheTwoNewestPageChats() = runTest {
         val home = home()
-        val older = home.chats.createChat(pageChat("old.example", "An older page", updatedAt = NOW - DAY))
-        val daylight = home.chats.createChat(
+        val older = home.chats.insert(pageChat("old.example", "An older page", updatedAt = NOW - DAY))
+        val daylight = home.chats.insert(
             pageChat("daylightjournal.com", "Why heat pumps are winning in cold climates", updatedAt = NOW - 30 * MINUTE, snippet = "Cold-climate models now hold"),
         )
-        val tabi = home.chats.createChat(pageChat("tabi-note.jp", "Osaka night buses: a complete guide", updatedAt = NOW - 2 * HOUR, snippet = null))
-        home.chats.createChat(
-            SkimChatEntity(kind = ChatKind.TABS, url = null, host = null, title = "Heat pump research", tabCount = 4, createdAt = NOW, updatedAt = NOW),
+        val tabi = home.chats.insert(pageChat("tabi-note.jp", "Osaka night buses: a complete guide", updatedAt = NOW - 2 * HOUR, snippet = null))
+        home.chats.insert(
+            SavedChat(kind = ChatKind.TABS, url = null, host = null, title = "Heat pump research", tabCount = 4, createdAt = NOW, updatedAt = NOW),
         )
 
         val cards = home.viewModel().state.first { it.continueChats.size == 2 }.continueChats
@@ -322,8 +326,8 @@ class HomeViewModelTest {
 
     private class Home(
         val tabs: TabManagerFixture,
-        val shortcuts: ShortcutRepository,
-        val chats: ChatRepository,
+        val shortcuts: FakeShortcutRepository,
+        val chats: FakeChatRepository,
         val undo: UndoRegistry,
         val snackbar: SnackbarController,
         val appJob: Job,
@@ -340,6 +344,8 @@ class HomeViewModelTest {
         fun newViewModel(voiceAvailable: Boolean = true) = HomeViewModel(
             tabs = tabs.manager,
             shortcuts = shortcuts,
+            removeShortcut = RemoveShortcut(shortcuts),
+            restoreShortcut = RestoreShortcut(shortcuts),
             chats = chats,
             snackbar = snackbar,
             undo = undo,
@@ -357,8 +363,8 @@ class HomeViewModelTest {
         val undo = UndoRegistry(appScope)
         return Home(
             tabs = tabs,
-            shortcuts = ShortcutRepository(tabs.db.shortcutDao()),
-            chats = ChatRepository(tabs.db.skimChatDao(), tabs.db),
+            shortcuts = FakeShortcutRepository(),
+            chats = FakeChatRepository(),
             undo = undo,
             snackbar = SnackbarController(undo),
             appJob = appJob,
@@ -367,7 +373,7 @@ class HomeViewModelTest {
         ).also { homes += it }
     }
 
-    private fun pageChat(host: String, title: String, updatedAt: Long, snippet: String? = "A summary") = SkimChatEntity(
+    private fun pageChat(host: String, title: String, updatedAt: Long, snippet: String? = "A summary") = SavedChat(
         kind = ChatKind.PAGE,
         url = "https://$host/page",
         host = host,

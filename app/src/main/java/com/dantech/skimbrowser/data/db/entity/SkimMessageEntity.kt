@@ -5,34 +5,10 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class MessageRole { USER, ASSISTANT }
-
-enum class MessageKind {
-    /** A question typed or picked by the user. */
-    QUESTION,
-
-    /** The page summary (06). */
-    SUMMARY,
-
-    /** An answer to a question. */
-    ANSWER,
-
-    /** The overview of several tabs (06b); [SkimMessageEntity.text] holds its JSON. */
-    TABS_OVERVIEW,
-}
-
-enum class MessageFeedback { NONE, GOOD, POOR }
-
-enum class MessageStatus {
-    COMPLETE,
-
-    /** Interrupted (Stop, navigation or a closed sheet); [SkimMessageEntity.text] is the part received. */
-    STOPPED,
-
-    /** The model declined; no text is kept. */
-    REFUSED,
-    ERROR,
-}
+typealias MessageRole = com.dantech.skimbrowser.domain.chat.MessageRole
+typealias MessageKind = com.dantech.skimbrowser.domain.chat.MessageKind
+typealias MessageFeedback = com.dantech.skimbrowser.domain.chat.MessageFeedback
+typealias MessageStatus = com.dantech.skimbrowser.domain.chat.MessageStatus
 
 /**
  * One message of a saved chat, deleted with its chat. JSON columns stay strings and are parsed in

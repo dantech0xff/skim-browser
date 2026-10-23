@@ -1,7 +1,7 @@
 ---
 phase: 10
 title: "Reader view"
-status: pending
+status: done-with-concerns
 priority: P2
 effort: "11h"
 dependencies: [4, 7]
@@ -94,16 +94,17 @@ Sửa:
 
 ## Todo list
 
-- [ ] ReaderViewModel (trích bài, không phải bài viết → quay về)
-- [ ] ReaderBlocks + style thang 80–200 + test
-- [ ] ReaderScreen 08 (hàng Exit/Text size, nội dung, toolbar, FAB)
-- [ ] ReaderTextPanel 08b không scrim (slider, font, lưu, chạm trang đóng)
-- [ ] Back/Exit giữ vị trí cuộn 05; toolbar Back/Forward/Tabs/More
-- [ ] ReaderHighlights (cho citation từ Reader)
-- [ ] Đăng ký entry ReaderKey
-- [ ] Ảnh Roborazzi 08, 08b (+ `assertA11y`, lệch ghi docs)
-- [ ] Loading tới khi trang sẵn sàng; tự gỡ ReaderKey khi Unavailable
-- [ ] Commit cuối phase
+- [x] ReaderViewModel (trích bài, không phải bài viết → quay về)
+- [x] ReaderBlocks + style thang 80–200 + test
+- [x] ReaderScreen 08 (hàng Exit/Text size, nội dung, toolbar, FAB)
+- [x] ReaderTextPanel 08b không scrim (slider, font, lưu, chạm trang đóng)
+- [x] Back/Exit giữ vị trí cuộn 05; toolbar Back/Forward/Tabs/More
+- [x] ReaderHighlights (cho citation từ Reader)
+- [x] Đăng ký entry ReaderKey
+- [x] Ảnh Roborazzi 08, 08b (+ `assertA11y`, lệch ghi docs)
+- [x] Loading tới khi trang sẵn sàng; tự gỡ ReaderKey khi Unavailable
+- [ ] Thủ công: thoát reader, 05 vẫn đúng chỗ cuộn — chưa chạy: máy này không có system image
+- [x] Commit cuối phase
 
 ## Success criteria
 

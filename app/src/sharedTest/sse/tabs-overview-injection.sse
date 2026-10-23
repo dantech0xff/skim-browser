@@ -1,0 +1,18 @@
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_tabs","type":"message","role":"assistant","content":[],"model":"claude-haiku-5-5","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":20,"output_tokens":1}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"{\"intro\": \"Kept.\", \"groups\": [{\"name\": \"Good\\nbad\", \"summary\": \"dropped name\", \"tabIds\": [\"1\"]}, {\"name\": \"https://evil.example\", \"summary\": \"url\", \"tabIds\": [\"2\"]}, {\"name\": \"Call 555-0100\", \"summary\": \"phone\", \"tabIds\": [\"3\"]}, {\"name\": \"This name is definitely longer than sixty characters and must be dropped entirely\", \"summary\": \"long\", \"tabIds\": [\"4\"]}, {\"name\": \"\", \"summary\": \"blank becomes Other\", \"tabIds\": [\"5\"]}, {\"name\": \"Kept\", \"summary\": \"kept summary\", \"tabIds\": [\"6\", \"99\", \"6\"]}], \"followUps\": [\"https://x.example\", \"5551234567\", \"line\\nbreak\", \"this follow up is also longer than sixty characters so it is dropped now\", \"What changed?\"]}"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":10}}
+
+event: message_stop
+data: {"type":"message_stop"}
+

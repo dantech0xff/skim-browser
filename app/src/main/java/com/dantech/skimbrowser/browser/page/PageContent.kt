@@ -10,27 +10,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
-/**
- * The text of a page, as Reader view (08) shows it and Skim AI reads it: the leaf blocks of the
- * article (or of the whole page), in document order. [url] is the URL the page had committed and
- * [loadNonce] the document load it was read from, so a later highlight can check that the same
- * document is still there.
- */
-@Serializable
-data class PageContent(
-    val url: String,
-    val loadNonce: Long,
-    val title: String,
-    val byline: String?,
-    val siteName: String?,
-    val lang: String?,
-    val readerable: Boolean,
-    val blocks: List<PageBlock>,
-)
-
-/** One block of text; [id] is the block's `data-skim-i` number in the page, [tag] its element. */
-@Serializable
-data class PageBlock(val id: String, val tag: String, val text: String)
+typealias PageContent = com.dantech.skimbrowser.domain.page.PageContent
+typealias PageBlock = com.dantech.skimbrowser.domain.page.PageBlock
 
 /**
  * The [PageContent] in [json], the result of the extract script, for the page [committedUrl] at

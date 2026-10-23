@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent

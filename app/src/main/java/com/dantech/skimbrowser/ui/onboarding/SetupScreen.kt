@@ -152,8 +152,8 @@ fun SetupRoute(container: AppContainer, navigator: SkimNavigator) {
     val viewModel = viewModel {
         SetupViewModel(
             isDefaultBrowser = { DefaultBrowser.isDefault(appContext) },
-            importer = container.bookmarkImporter,
-            settings = container.settings,
+            importBookmarks = container.importBookmarks,
+            completeOnboarding = container.completeOnboarding,
             snackbar = container.snackbarController,
             appScope = container.appScope,
         )

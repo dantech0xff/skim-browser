@@ -1,7 +1,7 @@
 ---
 phase: 11
 title: "Skim AI core"
-status: pending
+status: done-with-concerns
 priority: P1
 effort: "33h"
 dependencies: [3, 4, 7, 10]
@@ -168,19 +168,20 @@ Sửa:
 
 ## Todo list
 
-- [ ] AiConfig (D7 Haiku 5.5), ClaudeClientProvider (D6, không fromEnv, lazy off-main)
-- [ ] ClaudeStreaming (endpoint GA, bỏ thinking delta) + Stop đóng kết nối; AiEvent; AiErrors
-- [ ] PageDocuments (citations + cache_control) + Prompts (system hằng, chống injection)
-- [ ] SkimAiService với chốt duy nhất (incognito + quyền site + host trích được)
-- [ ] ChatSessionStore (D4 cross-document, huỷ stream khi điều hướng, Keep chat history, không id âm xuống Room, removals)
-- [ ] AiGate + openAskPage qua cổng 06d + SkimNavigatorTest
-- [ ] AskPageViewModel (tóm tắt chỉ khi mở tường minh, Stop, lưu STOPPED khi đóng, lỗi, citation có kiểm, copy cục bộ, feedback)
-- [ ] AskPageSheet + AiStateCards (06, 06c ×3, D8 server error/refusal/gián đoạn)
-- [ ] AiPermissionDialog 06d
-- [ ] Đăng ký entry AskPageKey/AiPermissionKey
-- [ ] Test request/stream/guard/gate/session/ViewModel với FakeClaudeServer
-- [ ] Ảnh Roborazzi 06, 06c, 06d (+ `assertA11y`, lệch ghi docs)
-- [ ] Commit cuối phase
+- [x] AiConfig (D7 Haiku 5.5), ClaudeClientProvider (D6, không fromEnv, lazy off-main)
+- [x] ClaudeStreaming (endpoint GA, bỏ thinking delta) + Stop đóng kết nối; AiEvent; AiErrors
+- [x] PageDocuments (citations + cache_control) + Prompts (system hằng, chống injection)
+- [x] SkimAiService với chốt duy nhất (incognito + quyền site + host trích được)
+- [x] ChatSessionStore (D4 cross-document, huỷ stream khi điều hướng, Keep chat history, không id âm xuống Room, removals)
+- [x] AiGate + openAskPage qua cổng 06d + SkimNavigatorTest
+- [x] AskPageViewModel (tóm tắt chỉ khi mở tường minh, Stop, lưu STOPPED khi đóng, lỗi, citation có kiểm, copy cục bộ, feedback)
+- [x] AskPageSheet + AiStateCards (06, 06c ×3, D8 server error/refusal/gián đoạn)
+- [x] AiPermissionDialog 06d
+- [x] Đăng ký entry AskPageKey/AiPermissionKey
+- [x] Test request/stream/guard/gate/session/ViewModel với FakeClaudeServer
+- [x] Ảnh Roborazzi 06, 06c, 06d (+ `assertA11y`, lệch ghi docs)
+- [ ] Thủ công trên emulator (máy bay, trang ngắn, Stop, incognito, pushState) — chưa chạy: máy này không có system image; không có `skim.anthropicApiKey` để gọi Anthropic thật
+- [x] Commit cuối phase
 
 ## Success criteria
 

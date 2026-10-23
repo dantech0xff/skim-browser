@@ -3,12 +3,12 @@ package com.dantech.skimbrowser.data.repo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.MessageStatus
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
+import com.dantech.skimbrowser.domain.chat.ChatKind
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.testing.assertThrowsSuspending
 import com.dantech.skimbrowser.testing.awaitItemMatching
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -50,7 +50,7 @@ class ChatRepositoryTest {
     @Test
     fun deleteReturnsTheChatWithItsMessagesAndSignalsItsId() = runTest {
         val id = savedChatWithMessages("Why heat pumps are winning")
-        val chat = checkNotNull(chats.chat(id))
+        val chat = checkNotNull(chats.load(id))
         val messages = chats.messages(id)
 
         chats.removals.test {
@@ -59,7 +59,7 @@ class ChatRepositoryTest {
             assertEquals(DeletedChat(chat, messages), deleted)
             expectNoEvents()
         }
-        assertNull(chats.chat(id))
+        assertNull(chats.load(id))
         assertEquals(0L, db.longQuery("SELECT COUNT(*) FROM skim_messages"))
     }
 
@@ -81,12 +81,17 @@ class ChatRepositoryTest {
     @Test
     fun undoOfAChatThatIsStillSavedChangesNothing() = runTest {
         val id = savedChatWithMessages("Kept")
-        val chat = checkNotNull(chats.chat(id))
+        val chat = checkNotNull(chats.load(id))
         val messages = chats.messages(id)
 
-        chats.restore(DeletedChat(chat.copy(title = "Changed"), messages.map { it.copy(text = "Changed") }))
+        chats.restore(
+            DeletedChat(
+                chat.copy(title = "Changed"),
+                messages.map { it.copy(text = "Changed") },
+            ),
+        )
 
-        assertEquals(chat, chats.chat(id))
+        assertEquals(chat, chats.load(id))
         assertEquals(messages, chats.messages(id))
     }
 
@@ -158,8 +163,8 @@ class ChatRepositoryTest {
         val id = chats.createChat(chat("In memory first", updatedAt = 1).copy(id = -7))
 
         assertTrue(id > 0)
-        assertNull(chats.chat(-7))
-        assertEquals("In memory first", chats.chat(id)?.title)
+        assertNull(chats.load(-7))
+        assertEquals("In memory first", chats.load(id)?.title)
     }
 
     @Test
@@ -178,10 +183,10 @@ class ChatRepositoryTest {
         val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
         val messageId = chats.addMessage(message(chatId, MessageKind.ANSWER, MessageRole.ASSISTANT).copy(status = MessageStatus.STOPPED))
 
-        chats.updateChat(checkNotNull(chats.chat(chatId)).copy(snippet = "Kotlin 2.2 adds guard conditions", updatedAt = 9))
+        chats.updateChat(checkNotNull(chats.load(chatId)).copy(snippet = "Kotlin 2.2 adds guard conditions", updatedAt = 9))
         chats.updateMessage(chats.messages(chatId).single().copy(text = "Full answer", status = MessageStatus.COMPLETE))
 
-        assertEquals("Kotlin 2.2 adds guard conditions", chats.chat(chatId)?.snippet)
+        assertEquals("Kotlin 2.2 adds guard conditions", chats.load(chatId)?.snippet)
         val updated = chats.messages(chatId).single()
         assertEquals(messageId, updated.id)
         assertEquals("Full answer", updated.text)
@@ -211,7 +216,7 @@ class ChatRepositoryTest {
         chats.createChat(chat("Summarize my 7 open tabs", updatedAt = 2).copy(kind = ChatKind.TABS, url = null, host = null, tabCount = 7))
 
         assertEquals(listOf("Page"), chats.observeRecentPageChats(limit = 5).first().map { it.title })
-        assertEquals(emptyList<SkimChatEntity>(), chats.observeRecentPageChats(limit = -1).first())
+        assertEquals(emptyList<SavedChat>(), chats.observeRecentPageChats(limit = -1).first())
     }
 
     private suspend fun savedChatWithMessages(title: String, host: String = "daylightjournal.com", updatedAt: Long = 1): Long {
@@ -222,7 +227,7 @@ class ChatRepositoryTest {
         return id
     }
 
-    private fun chat(title: String, host: String = "daylightjournal.com", updatedAt: Long) = SkimChatEntity(
+    private fun chat(title: String, host: String = "daylightjournal.com", updatedAt: Long) = SavedChat(
         kind = ChatKind.PAGE,
         url = "https://$host/",
         host = host,
@@ -232,5 +237,5 @@ class ChatRepositoryTest {
     )
 
     private fun message(chatId: Long, kind: MessageKind, role: MessageRole) =
-        SkimMessageEntity(chatId = chatId, role = role, kind = kind, text = "$kind text", status = MessageStatus.COMPLETE, createdAt = 1)
+        SavedMessage(chatId = chatId, role = role, kind = kind, text = "$kind text", status = MessageStatus.COMPLETE, createdAt = 1)
 }

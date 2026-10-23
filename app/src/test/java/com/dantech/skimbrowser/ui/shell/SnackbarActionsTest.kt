@@ -7,10 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.browser.FakeActivityHost
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.ui.navigation.BookmarksKey
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.EditBookmarkKey
@@ -149,6 +151,8 @@ class SnackbarActionsTest {
             incognito = fixture.incognito,
             secure = WindowSecureController(activity.get().window, setRecentsScreenshotEnabled = null),
             snackbar = SnackbarController(undo),
+            aiGate = AiGate(SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db), fixture.settings),
+            scope = this,
         )
         return App(navigator, backStack, fixture)
     }

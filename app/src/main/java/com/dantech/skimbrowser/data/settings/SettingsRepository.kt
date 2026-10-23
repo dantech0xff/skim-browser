@@ -9,7 +9,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.domain.settings.SettingsRepository as SettingsStore
+import com.dantech.skimbrowser.domain.settings.ThemeSetting
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -25,40 +26,40 @@ import kotlinx.coroutines.flow.map
  * missing, of the wrong type or an unknown name reads as its default, and the reader text scale is
  * clamped to [SkimSettings.READER_TEXT_SCALE_RANGE].
  */
-class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+class SettingsRepository(private val dataStore: DataStore<Preferences>) : SettingsStore {
 
-    val settings: Flow<SkimSettings> = preferences().map { it.toSettings() }.distinctUntilChanged()
+    override val settings: Flow<SkimSettings> = preferences().map { it.toSettings() }.distinctUntilChanged()
 
-    suspend fun setSearchEngine(e: SearchEngine) {
+    override suspend fun setSearchEngine(e: SearchEngine) {
         dataStore.edit { it[Keys.SEARCH_ENGINE] = e.name }
     }
 
-    suspend fun setTheme(t: ThemeSetting) {
+    override suspend fun setTheme(t: ThemeSetting) {
         dataStore.edit { it[Keys.THEME] = t.name }
     }
 
-    suspend fun setAskBeforeSending(b: Boolean) {
+    override suspend fun setAskBeforeSending(b: Boolean) {
         dataStore.edit { it[Keys.ASK_BEFORE_SENDING] = b }
     }
 
-    suspend fun setKeepChatHistory(b: Boolean) {
+    override suspend fun setKeepChatHistory(b: Boolean) {
         dataStore.edit { it[Keys.KEEP_CHAT_HISTORY] = b }
     }
 
     /** Stores [p] clamped to [SkimSettings.READER_TEXT_SCALE_RANGE]. */
-    suspend fun setReaderTextScale(p: Int) {
+    override suspend fun setReaderTextScale(p: Int) {
         dataStore.edit { it[Keys.READER_TEXT_SCALE] = p.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE) }
     }
 
-    suspend fun setReaderFont(f: ReaderFont) {
+    override suspend fun setReaderFont(f: ReaderFont) {
         dataStore.edit { it[Keys.READER_FONT] = f.name }
     }
 
-    suspend fun setOnboardingCompleted() {
+    override suspend fun setOnboardingCompleted() {
         dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = true }
     }
 
-    suspend fun setLastTabId(id: String?) {
+    override suspend fun setLastTabId(id: String?) {
         dataStore.edit { if (id == null) it.remove(Keys.LAST_TAB_ID) else it[Keys.LAST_TAB_ID] = id }
     }
 
@@ -68,7 +69,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
      * racing on a fresh install all get the same id; a stored value that is not a UUID is replaced.
      * The id is never logged and is not part of [SkimSettings].
      */
-    suspend fun installId(): String {
+    override suspend fun installId(): String {
         preferences().first().read(Keys.INSTALL_ID)?.takeIf(::isInstallId)?.let { return it }
         val updated = dataStore.edit { prefs ->
             if (prefs.read(Keys.INSTALL_ID)?.let(::isInstallId) != true) {

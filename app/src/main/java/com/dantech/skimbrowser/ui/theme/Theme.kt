@@ -10,7 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-enum class ThemeSetting { System, Light, Dark }
+typealias ThemeSetting = com.dantech.skimbrowser.domain.settings.ThemeSetting
 
 /**
  * Whether Skim draws dark. Incognito (09b, 09c) is always dark; otherwise Theme in 12 decides.

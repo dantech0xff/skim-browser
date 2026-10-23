@@ -3,18 +3,9 @@ package com.dantech.skimbrowser.data.db.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/**
- * Whether Skim AI may read a site. [ASK] (Skim AI turned off in Site information) asks again on the
- * next use and keeps the site out of the open-tabs overview and grouping; [UNSET] asks only while
- * "Ask before sending" is on.
- */
-enum class SkimAiState { UNSET, ALLOWED, ASK }
-
-/** A site's decision for one browser permission. [UNSET] means the site has not been answered. */
-enum class PermissionState { UNSET, ALLOWED, BLOCKED }
-
-/** The browser permissions a site can ask for through the site permission dialog. */
-enum class SitePermissionKind { LOCATION, CAMERA, MICROPHONE }
+typealias SkimAiState = com.dantech.skimbrowser.domain.permission.SkimAiState
+typealias PermissionState = com.dantech.skimbrowser.domain.permission.PermissionState
+typealias SitePermissionKind = com.dantech.skimbrowser.domain.permission.SitePermissionKind
 
 /**
  * Per-site decisions, keyed by host (lowercase, without "www."): http and https of one host, and

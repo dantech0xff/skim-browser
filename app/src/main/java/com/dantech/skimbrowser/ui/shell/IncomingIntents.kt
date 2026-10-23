@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
 import android.content.Intent
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 
 /** Links other apps send to Skim. */
 object IncomingIntents {

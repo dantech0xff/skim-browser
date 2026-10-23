@@ -16,9 +16,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.dantech.skimbrowser.AppContainer
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabRuntime
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.newTab
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 
 /** What system Back does on the browser, by priority. */
@@ -53,7 +54,7 @@ fun browserBack(tab: Tab, runtime: TabRuntime): BrowserBack = when {
  * on a page. [activity] goes to the background when the tab another app opened closes.
  */
 @MainThread
-fun BrowserBack.perform(tab: Tab, tabs: TabManager, navigator: SkimNavigator, activity: Activity?) {
+fun BrowserBack.perform(tab: Tab, tabs: TabsController, navigator: SkimNavigator, activity: Activity?) {
     when (this) {
         BrowserBack.GoBack -> tabs.goBack(tab.id)
         BrowserBack.CloseAndLeave -> {
@@ -102,7 +103,7 @@ fun BrowserRoute(
 
 /** Opens a New tab while this screen is in the back stack and no tab is current. */
 @Composable
-private fun OpenTabWhenNone(tabs: TabManager) {
+private fun OpenTabWhenNone(tabs: TabsController) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
         // A screen leaving the back stack is held below STARTED: it waits here and opens nothing.

@@ -194,6 +194,37 @@ fun <T> ChoiceDialog(
 }
 
 /**
+ * [ChoiceDialog] drawn in the window a dialog destination already opened. The navigation scene goes
+ * back on Back and on a tap outside; Cancel calls [onDismiss].
+ */
+@Composable
+fun <T> ChoiceDialogContent(
+    title: String,
+    options: List<T>,
+    selected: T?,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    DialogSurface(
+        title = title,
+        modifier = modifier,
+        icon = null,
+        iconTint = Color.Unspecified,
+        body = {
+            Column(Modifier.padding(horizontal = DialogPadding - ChoiceRowOutset).selectableGroup()) {
+                options.forEach { option ->
+                    ChoiceRow(label(option), selected = option == selected, onClick = { onSelect(option) })
+                }
+            }
+        },
+    ) {
+        DialogButton(DialogAction(stringResource(R.string.action_cancel), onDismiss))
+    }
+}
+
+/**
  * An outlined text field of a dialog (Add shortcut, Rename group, Edit bookmark; 15): a 56 dp box
  * with radius 4, an outline border (2 dp primary while focused), [label] in the gap of the top
  * border, and the text on one line in bodyLarge.

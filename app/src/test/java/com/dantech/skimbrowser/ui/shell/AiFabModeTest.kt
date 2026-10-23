@@ -13,7 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.LoadError
+import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.testing.setSkimContent

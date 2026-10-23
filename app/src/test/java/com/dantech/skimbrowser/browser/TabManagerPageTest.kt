@@ -1,5 +1,9 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.PageEvent
+
 import android.os.Bundle
 import android.webkit.WebViewClient
 import androidx.test.ext.junit.runners.AndroidJUnit4
