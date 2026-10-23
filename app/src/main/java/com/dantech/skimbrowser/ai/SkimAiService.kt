@@ -64,8 +64,12 @@ class SkimAiService(
         approvedHost: String,
     ): Flow<AiEvent> = flow {
         require(sources.none { it.incognito }) { "Incognito pages are never sent" }
-        if (sources.isEmpty() || sources.any { it.host != approvedHost }) {
-            throw AiDenied(AiFailure.NotAllowed(hostChanged = true))
+        if (consent == Consent.SITE_APPROVED) {
+            if (sources.isEmpty() || sources.any { it.host != approvedHost }) {
+                throw AiDenied(AiFailure.NotAllowed(hostChanged = true))
+            }
+        } else if (sources.isEmpty()) {
+            throw AiDenied(AiFailure.NotAllowed(hostChanged = false))
         }
         val askBefore = settings.settings.first().askBeforeSending
         val states = sites.skimAiStates(sources.map { it.host }.toSet())

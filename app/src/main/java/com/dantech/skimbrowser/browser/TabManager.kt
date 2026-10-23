@@ -533,6 +533,23 @@ class TabManager(
     }
 
     /**
+     * Reads the page of a tab that already has a live WebView. Does not create one. Null when the
+     * tab has no live page, the script cannot run, or the page moves while it is read.
+     */
+    @AnyThread
+    suspend fun extractLivePage(tabId: String): PageContent? = withContext(mainDispatcher) {
+        if (!scripts.isSupported) return@withContext null
+        val live = engine.value ?: return@withContext null
+        val runtime = runtimes[tabId]?.value ?: return@withContext null
+        if (!runtime.pageLoaded || runtime.loadError != null) return@withContext null
+        val url = runtime.committedUrl ?: return@withContext null
+        val json = evaluateOrNull(live, tabId, scripts.extractScript()) ?: return@withContext null
+        val after = runtimes[tabId]?.value ?: return@withContext null
+        if (after.loadNonce != runtime.loadNonce || !samePage(after.committedUrl, url)) return@withContext null
+        parsePageContent(json, committedUrl = url, loadNonce = runtime.loadNonce)
+    }
+
+    /**
      * Highlights a cited block in [tabId]'s page. Nothing runs, and the answer is false, unless the
      * block id is digits only and the tab still shows the document the citation was read from: the
      * same committed URL (fragment aside) and the same load nonce. The arguments reach the script

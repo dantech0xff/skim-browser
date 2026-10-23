@@ -10,6 +10,20 @@ object AiConfig {
     /** Effort for a page summary and for questions about that page. */
     val EFFORT_PAGE: OutputConfig.Effort = OutputConfig.Effort.MEDIUM
 
+    /** Effort for an answer across open tabs. */
+    val EFFORT_TABS: OutputConfig.Effort = OutputConfig.Effort.MEDIUM
+
+    /** Effort for grouping tabs from their titles and hosts. */
+    val EFFORT_GROUPING: OutputConfig.Effort = OutputConfig.Effort.LOW
+
+    const val GROUPING_MAX_TOKENS = 2048L
+
+    /** The longest page text sent for one tab in an across-tabs answer. */
+    const val TAB_TEXT_CHARS = 4_000
+
+    /** The most tabs one across-tabs request includes. */
+    const val MAX_TABS = 40
+
     /** Below this many characters of page text, Skim does not ask for a summary. */
     const val NOT_ENOUGH_TEXT_CHARS = 300
 
