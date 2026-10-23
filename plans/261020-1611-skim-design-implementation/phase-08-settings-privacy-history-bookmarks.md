@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Settings, AI & privacy, History, Bookmarks"
-status: pending
+status: done-with-concerns
 priority: P2
 effort: "20h"
 dependencies: [5, 7]
@@ -121,17 +121,18 @@ Sửa:
 
 ## Todo list
 
-- [ ] 12 Settings + ViewModel (engine, default browser, theme, AI & privacy, clear data, About, Version)
-- [ ] Dialog Search engine, Theme (ChoiceDialog)
-- [ ] Dialog Clear browsing data + BrowsingDataCleaner.clearAll (tabstate, thumbs, snapshot, clearHistory, flush + reload, cache qua WebView tạm, huỷ Undo HISTORY)
-- [ ] AiDataEraser (huỷ Undo SKIM_CHAT, một cơ chế xoá chat) + test
-- [ ] 10 AI & privacy + dialog Delete all AI data
-- [ ] 13 History (sections, search, remove + Undo qua registry, mở ở tab hiện tại, rỗng D8)
-- [ ] 14 Bookmarks (gốc, thư mục, search, menu, delete + Undo qua registry, rỗng D8)
-- [ ] Licenses (AboutLibraries)
-- [ ] Đăng ký 9 entry
-- [ ] Test ViewModel/cleaner + ảnh Roborazzi 12/10/13/14 + dialog/menu (+ `assertA11y`, lệch ghi docs)
-- [ ] Commit cuối phase
+- [x] 12 Settings + ViewModel (engine, default browser, theme, AI & privacy, clear data, About, Version)
+- [x] Dialog Search engine, Theme (ChoiceDialog)
+- [x] Dialog Clear browsing data + BrowsingDataCleaner.clearAll (tabstate, thumbs, snapshot, clearHistory, flush + reload, cache qua WebView tạm, huỷ Undo HISTORY)
+- [x] AiDataEraser (huỷ Undo SKIM_CHAT, một cơ chế xoá chat) + test
+- [x] 10 AI & privacy + dialog Delete all AI data
+- [x] 13 History (sections, search, remove + Undo qua registry, mở ở tab hiện tại, rỗng D8)
+- [x] 14 Bookmarks (gốc, thư mục, search, menu, delete + Undo qua registry, rỗng D8)
+- [x] Licenses (AboutLibraries)
+- [x] Đăng ký 9 entry
+- [x] Test ViewModel/cleaner + ảnh Roborazzi 12/10/13/14 + dialog/menu (+ `assertA11y`, lệch ghi docs)
+- [ ] Cổng thiết bị (cookies đăng xuất, Licenses) — chưa chạy: máy này không có system image
+- [x] Commit cuối phase
 
 ## Success criteria
 
