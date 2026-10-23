@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.ai
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
+import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -41,6 +42,40 @@ class IncognitoGuardTest {
             }
             assertThrows(IllegalArgumentException::class.java) {
                 runBlocking { service.ask(session, "Key numbers").collect() }
+            }
+            assertEquals(0, server.requestCount)
+        }
+    }
+
+    @Test
+    fun overviewAndGroupingRefuseAnIncognitoTabAndAnAskSite() = runBlocking {
+        FakeClaudeServer().use { server ->
+            val db = inMemorySkimDatabase().also { databases += it }
+            val settings = SettingsRepository(
+                SettingsRepository.createDataStore(CoroutineScope(Dispatchers.IO)) {
+                    folder.newFile("guard-settings.preferences_pb")
+                },
+            )
+            val sites = SitePermissionRepository(db.sitePermissionDao(), db)
+            val service = SkimAiService(
+                ClaudeClientProvider(server.baseUrl, "test-key") { "install" },
+                sites,
+                settings,
+            )
+            val hidden = tabContext("1", "secret.example", incognito = true)
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { service.overviewTabs(allowedSession(), listOf(hidden), "Summarize").collect() }
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { service.groupTabs(listOf(hidden)) }
+            }
+            sites.setSkimAi(PAGE_HOST, SkimAiState.ASK)
+            val asked = tabContext("1", PAGE_HOST)
+            assertThrows(AiDenied::class.java) {
+                runBlocking { service.overviewTabs(allowedSession(), listOf(asked), "Summarize").collect() }
+            }
+            assertThrows(AiDenied::class.java) {
+                runBlocking { service.groupTabs(listOf(asked)) }
             }
             assertEquals(0, server.requestCount)
         }

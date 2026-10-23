@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ai
 
+import com.anthropic.models.messages.JsonOutputFormat
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.OutputConfig
 import com.dantech.skimbrowser.data.db.entity.MessageRole
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
 
 /**
  * The only builder of model requests, and the only place a request is allowed to open a connection.
@@ -51,6 +53,56 @@ class SkimAiService(
         return send(params, session.sources, Consent.SITE_APPROVED, session.approvedHost)
     }
 
+    /**
+     * Asks for one answer across [context]. The first user message is one document per tab, then
+     * [prompt]. A later call replaces that message, so a failed overview can be asked again.
+     */
+    fun overviewTabs(session: ChatSession, context: List<TabContext>, prompt: String): Flow<AiEvent> {
+        val opening = session.setOpening(overviewBlocks(context, prompt))
+        session.replaceSources(context.toSources())
+        val params = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, TABS_OVERVIEW_FORMAT)
+            .addUserMessageOfBlockParams(opening)
+            .build()
+        session.lastParams = params
+        return send(params, session.sources, Consent.TABS_ACTION, session.approvedHost)
+    }
+
+    /**
+     * Asks [question] about the tabs already sent. The documents stay on the first user message.
+     * The answer is plain text: no JSON schema and no citations. Nothing is sent when that first
+     * message has not been built.
+     */
+    fun askTabs(session: ChatSession, question: String): Flow<AiEvent> {
+        val opening = session.opening ?: return flow { }
+        val wrapped = Prompts.question(question)
+        val turns = session.history
+        val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
+        val builder = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, format = null)
+            .addUserMessageOfBlockParams(opening)
+        replay(builder, if (already) turns.dropLast(1) else turns)
+        builder.addUserMessage(wrapped)
+        if (!already) session.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
+        val params = builder.build()
+        session.lastParams = params
+        return send(params, session.sources, Consent.TABS_ACTION, session.approvedHost)
+    }
+
+    /**
+     * Groups [context] from titles and hosts. Null when the model does not finish an answer that
+     * parses into at least one group of two tabs. A refusal and a reply cut off at the token limit
+     * are null. [CancellationException] is rethrown; any other failure is thrown for the caller to
+     * ignore, so a grouping request that is not allowed never becomes a layout.
+     */
+    suspend fun groupTabs(context: List<TabContext>): GroupingResult? {
+        val params = configured(AiConfig.EFFORT_GROUPING, AiConfig.GROUPING_MAX_TOKENS, GROUPING_FORMAT)
+            .addUserMessageOfBlockParams(groupingBlocks(context))
+            .build()
+        val events = send(params, context.toSources(), Consent.TABS_ACTION, approvedHost = "").toList()
+        val stop = events.filterIsInstance<AiEvent.Done>().lastOrNull()?.stopReason.orEmpty()
+        val text = events.filterIsInstance<AiEvent.Text>().joinToString("") { it.delta }
+        return groupingFromModel(stop, text, context.map { it.ref }.toSet())
+    }
+
     /** Sends the last summary or question again, without adding a turn. */
     fun retry(session: ChatSession): Flow<AiEvent> {
         val params = session.lastParams ?: return flow { }
@@ -85,11 +137,21 @@ class SkimAiService(
     }
 
     private fun base(): MessageCreateParams.Builder =
-        MessageCreateParams.builder()
+        configured(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null)
+
+    private fun configured(
+        effort: OutputConfig.Effort,
+        maxTokens: Long,
+        format: JsonOutputFormat?,
+    ): MessageCreateParams.Builder {
+        val output = OutputConfig.builder().effort(effort)
+        if (format != null) output.format(format)
+        return MessageCreateParams.builder()
             .model(AiConfig.MODEL_ID)
-            .maxTokens(AiConfig.MAX_TOKENS)
-            .outputConfig(OutputConfig.builder().effort(AiConfig.EFFORT_PAGE).build())
+            .maxTokens(maxTokens)
+            .outputConfig(output.build())
             .system(Prompts.SYSTEM)
+    }
 
     private fun replay(builder: MessageCreateParams.Builder, turns: List<HistoryTurn>) {
         for (turn in turns) {

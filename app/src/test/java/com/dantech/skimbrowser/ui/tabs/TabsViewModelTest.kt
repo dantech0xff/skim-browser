@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.ai.GroupingBannerState
 import com.dantech.skimbrowser.browser.GroupLayout
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManagerFixture
@@ -16,7 +17,10 @@ import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -25,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -209,6 +214,24 @@ class TabsViewModelTest {
         assertTrue(fixture.incognito.state.value is IncognitoSession.State.None)
     }
 
+    @Test
+    fun theGroupingBannerFollowsTheFlowAndStaysOffInIncognito() = runTest(main.testDispatcher) {
+        val fixture = fixture(this)
+        fixture.manager.newTab(incognito = false, url = "https://example.com/a")
+        val banner = MutableStateFlow<GroupingBannerState?>(GroupingBannerState(undoEnabled = true))
+        val model = model(fixture, grouping = banner)
+
+        val shown = model.state.first { it.grouping?.undoEnabled == true }
+        assertTrue(shown.grouping!!.undoEnabled)
+        banner.value = null
+        assertNull(model.state.first { it.grouping == null }.grouping)
+
+        val privateBanner = MutableStateFlow<GroupingBannerState?>(GroupingBannerState(undoEnabled = true))
+        val hidden = model(fixture, grouping = privateBanner, incognito = true)
+        advanceUntilIdle()
+        assertNull(hidden.state.value.grouping)
+    }
+
     private fun fixture(scope: TestScope): TabManagerFixture =
         TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
 
@@ -217,6 +240,7 @@ class TabsViewModelTest {
         undo: UndoRegistry = UndoRegistry(TestScope().backgroundScope),
         snackbar: SnackbarController = SnackbarController(undo),
         incognito: Boolean = false,
+        grouping: Flow<GroupingBannerState?> = flowOf(null),
     ): TabsViewModel {
         val store = ViewModelStore().also { stores += it }
         val factory = viewModelFactory {
@@ -226,6 +250,7 @@ class TabsViewModelTest {
                     fixture.manager,
                     snackbar,
                     undo,
+                    grouping = grouping,
                     mainDispatcher = fixture.main,
                 )
             }

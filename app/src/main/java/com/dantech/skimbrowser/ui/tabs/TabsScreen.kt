@@ -66,9 +66,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
+import com.dantech.skimbrowser.ai.GroupingBannerState
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.ui.components.CompactIconButton
@@ -80,8 +82,10 @@ import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.navigation.RenameGroupKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.TabsKey
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /** What the grid asks the screen's owner to do. Navigation stays with the route. */
 class TabsActions(
@@ -110,9 +114,21 @@ fun TabsRoute(key: TabsKey, container: AppContainer, navigator: SkimNavigator) {
             tabs = container.tabManager,
             snackbar = container.snackbarController,
             undo = container.undoRegistry,
+            grouping = container.tabGrouping.banner,
         )
     }
     val state by model.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(key.incognito) {
+        if (key.incognito) return@LaunchedEffect
+        val job = container.tabGrouping.start()
+        try {
+            awaitCancellation()
+        } finally {
+            job.cancel()
+            container.tabGrouping.hideBanner()
+        }
+    }
     var searching by rememberSaveable { mutableStateOf(false) }
     val query = rememberTextFieldState()
     val gridState = rememberLazyGridState()
@@ -149,7 +165,7 @@ fun TabsRoute(key: TabsKey, container: AppContainer, navigator: SkimNavigator) {
             onRename = { groupId -> navigator.openDialog(RenameGroupKey(groupId)) },
             onUngroup = model::ungroup,
             onCloseGroup = model::closeGroup,
-            onUndoGrouping = {},
+            onUndoGrouping = { scope.launch { container.tabGrouping.undo() } },
             onAskSkim = navigator::openAskTabs,
             onNewIncognitoTab = if (key.incognito) null else ({ navigator.openNewTab(incognito = true) }),
             onCloseAll = {

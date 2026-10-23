@@ -9,6 +9,7 @@ import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.ai.ChatSessionStore
 import com.dantech.skimbrowser.ai.ClaudeClientProvider
 import com.dantech.skimbrowser.ai.SkimAiService
+import com.dantech.skimbrowser.ai.TabGrouping
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
@@ -219,6 +220,18 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     /** Page chats for this process: saved while Keep chat history is on, otherwise memory only. */
     val chatSessions: ChatSessionStore by lazy {
         ChatSessionStore(chatRepository, tabManager, settings, appScope)
+    }
+
+    /** Groups ungrouped normal tabs once per set, and keeps the Undo for the tabs screen. */
+    val tabGrouping: TabGrouping by lazy {
+        TabGrouping(
+            ai = skimAi,
+            tabs = tabManager,
+            tabRepo = tabRepository,
+            sites = sitePermissionRepository,
+            network = networkMonitor,
+            appScope = appScope,
+        )
     }
 
     /** Whether Ask Skim may read a tab's page, and the record of a site the person allowed. */

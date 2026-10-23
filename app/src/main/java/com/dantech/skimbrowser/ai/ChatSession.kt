@@ -24,6 +24,8 @@ data class ChatMessage(
     val citations: List<Int> = emptyList(),
     val feedback: MessageFeedback = MessageFeedback.NONE,
     val status: MessageStatus,
+    /** Follow-up questions offered with an across-tabs overview. */
+    val suggestedQuestions: List<String> = emptyList(),
 )
 
 /** A turn already sent, replayed on the next request. A live turn keeps the model's own message. */
@@ -46,10 +48,13 @@ class ChatSession(
     val tabId: String,
     val pageUrl: String,
     val approvedHost: String,
-    val sources: List<AiSource>,
+    sources: List<AiSource>,
     val document: PageContent,
     val languageTag: String,
+    /** How many tabs an across-tabs chat covers. A page chat leaves this at 0. */
+    val tabCount: Int = 0,
 ) {
+    private val sourcesRef = AtomicReference(sources)
     private val openingRef = AtomicReference<List<ContentBlockParam>?>(null)
     private val turns = mutableListOf<HistoryTurn>()
     private val turnLock = Any()
@@ -70,8 +75,30 @@ class ChatSession(
 
     val messages: StateFlow<List<ChatMessage>> = messagesState.asStateFlow()
 
+    /** The pages this chat may send. An across-tabs chat replaces them when the open tabs change. */
+    val sources: List<AiSource> get() = sourcesRef.get()
+
+    fun replaceSources(next: List<AiSource>) {
+        sourcesRef.set(next)
+    }
+
     /** The first user message, once a summary or a first question has built it. */
     val opening: List<ContentBlockParam>? get() = openingRef.get()
+
+    /**
+     * Keeps [blocks] as the first user message when none is set yet, and returns the message that
+     * stays. A later call does not replace it, so a follow-up repeats the same documents.
+     */
+    fun freezeOpening(blocks: List<ContentBlockParam>): List<ContentBlockParam> {
+        openingRef.compareAndSet(null, blocks)
+        return openingRef.get()!!
+    }
+
+    /** Replaces the first user message. An across-tabs overview does this, because that message is the request. */
+    fun setOpening(blocks: List<ContentBlockParam>): List<ContentBlockParam> {
+        openingRef.set(blocks)
+        return blocks
+    }
 
     val history: List<HistoryTurn> get() = synchronized(turnLock) { turns.toList() }
 

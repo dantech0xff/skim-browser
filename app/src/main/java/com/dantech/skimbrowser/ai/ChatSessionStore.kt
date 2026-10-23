@@ -37,6 +37,7 @@ class ChatSessionStore(
     private val languageTag: () -> String = { Locale.getDefault().toLanguageTag() },
 ) {
     private val byTab = ConcurrentHashMap<String, ChatSession>()
+    private val byChat = ConcurrentHashMap<Long, ChatSession>()
     private val nextMemoryId = AtomicLong(-1)
 
     init {
@@ -51,6 +52,9 @@ class ChatSessionStore(
     }
 
     fun sessionFor(tabId: String): ChatSession? = byTab[tabId]
+
+    /** The across-tabs chat [chatId], when this process already has it open. */
+    fun sessionForChat(chatId: Long): ChatSession? = byChat[chatId]
 
     /** Starts the chat for [tab] about [content]. [approvedHost] is the host the person allowed. */
     suspend fun openForTab(tab: Tab, content: PageContent, approvedHost: String): ChatSession {
@@ -90,6 +94,47 @@ class ChatSessionStore(
         return session
     }
 
+    /**
+     * Starts an across-tabs chat. It is saved while Keep chat history is on, and it is never tied
+     * to a tab. [title] is the question the person asked.
+     */
+    suspend fun openTabs(title: String, tabCount: Int, sources: List<AiSource>): ChatSession {
+        val keep = settings.settings.first().keepChatHistory
+        val id = if (keep) {
+            val now = clock()
+            chats.createChat(
+                SkimChatEntity(
+                    kind = ChatKind.TABS,
+                    url = null,
+                    host = null,
+                    title = title,
+                    tabCount = tabCount,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+            )
+        } else {
+            nextMemoryId.getAndDecrement()
+        }
+        return tabsSession(id, title, tabCount, sources).also { byChat[id] = it }
+    }
+
+    /**
+     * Opens the saved across-tabs chat [chatId] and fills it with the messages already stored.
+     * Nothing is sent. Null when the chat is gone or it is about one page.
+     */
+    suspend fun openSavedTabs(chatId: Long): ChatSession? {
+        byChat[chatId]?.let { return it }
+        val chat = chats.chat(chatId) ?: return null
+        if (chat.kind != ChatKind.TABS) return null
+        val saved = chats.messages(chatId).map { it.toMessage() }
+        val session = tabsSession(chat.id, chat.title, chat.tabCount, emptyList())
+        restoreTabs(session, saved)
+        session.replaceMessages(saved)
+        byChat[chat.id] = session
+        return session
+    }
+
     /** Appends [message]. A memory-only chat is not written, and the tab's chat id is left alone. */
     suspend fun record(session: ChatSession, message: ChatMessage) {
         val stored = if (session.chatId <= 0) {
@@ -98,10 +143,14 @@ class ChatSessionStore(
             val now = clock()
             val id = chats.addMessage(message.toEntity(session.chatId, now))
             val chat = chats.chat(session.chatId)
-            if (chat != null && message.kind == MessageKind.SUMMARY) {
-                chats.updateChat(
-                    chat.copy(snippet = summarySnippet(message.text) ?: chat.snippet, updatedAt = now),
-                )
+            if (chat != null) {
+                val snippet = when (message.kind) {
+                    MessageKind.SUMMARY -> summarySnippet(message.text) ?: chat.snippet
+                    MessageKind.TABS_OVERVIEW -> overviewSnippet(message.text) ?: chat.snippet
+                    else -> chat.snippet
+                }
+                val count = if (session.tabCount > 0) session.tabCount else chat.tabCount
+                chats.updateChat(chat.copy(snippet = snippet, tabCount = count, updatedAt = now))
             }
             message.copy(id = id)
         }
@@ -127,8 +176,12 @@ class ChatSessionStore(
     }
 
     private suspend fun onRemoval(id: Long?) {
-        val gone = if (id == null) byTab.values.toList() else byTab.values.filter { it.chatId == id }
-        gone.forEach { session ->
+        val gone = if (id == null) {
+            (byTab.values + byChat.values).distinct()
+        } else {
+            byTab.values.filter { it.chatId == id } + listOfNotNull(byChat[id])
+        }
+        gone.distinct().forEach { session ->
             session.cancelStream()
             session.endStream()
             detach(session)
@@ -136,8 +189,11 @@ class ChatSessionStore(
     }
 
     private suspend fun detach(session: ChatSession) {
-        if (session.chatId > 0) withContext(mainDispatcher) { tabs.bindChat(session.tabId, null) }
-        byTab.remove(session.tabId)
+        if (session.chatId > 0 && session.tabId.isNotEmpty()) {
+            withContext(mainDispatcher) { tabs.bindChat(session.tabId, null) }
+        }
+        if (session.tabId.isNotEmpty()) byTab.remove(session.tabId, session)
+        byChat.remove(session.chatId, session)
     }
 
     private fun session(id: Long, tab: Tab, content: PageContent, approvedHost: String, pageUrl: String) = ChatSession(
@@ -160,4 +216,33 @@ class ChatSessionStore(
             historyTurn(message)?.let(session::addTurn)
         }
     }
+
+    /** The first question is the opening text, added again when a follow-up is asked. The rest is replayed. */
+    private fun restoreTabs(session: ChatSession, saved: List<ChatMessage>) {
+        val openingQuestion = saved.firstOrNull { it.kind == MessageKind.QUESTION }
+        saved.forEach { message ->
+            if (message == openingQuestion) return@forEach
+            historyTurn(message)?.let(session::addTurn)
+        }
+    }
+
+    private fun tabsSession(id: Long, title: String, tabCount: Int, sources: List<AiSource>) = ChatSession(
+        chatId = id,
+        tabId = "",
+        pageUrl = "",
+        approvedHost = "",
+        sources = sources,
+        document = PageContent(
+            url = "",
+            loadNonce = 0,
+            title = title,
+            byline = null,
+            siteName = null,
+            lang = null,
+            readerable = false,
+            blocks = emptyList(),
+        ),
+        languageTag = languageTag(),
+        tabCount = tabCount,
+    )
 }

@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ai
 
 import com.anthropic.models.messages.MessageCreateParams
+import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.page.PageBlock
 import com.dantech.skimbrowser.browser.page.PageContent
 
@@ -33,3 +34,28 @@ internal fun articlePage(): PageContent = page(
 
 internal const val PAGE_URL = "https://daylightjournal.com/cold"
 internal const val PAGE_HOST = "daylightjournal.com"
+
+/** One tab an across-tabs test can put in a request. */
+internal fun tabContext(
+    ref: String,
+    host: String,
+    title: String = host,
+    text: String? = null,
+    incognito: Boolean = false,
+    id: String = "tab-$ref",
+) = TabContext(
+    ref = ref,
+    tab = Tab(
+        id = id,
+        incognito = incognito,
+        url = "https://$host/page",
+        title = title,
+        groupId = null,
+        position = 0,
+        createdAt = 1,
+        lastAccessedAt = 1,
+    ),
+    title = title,
+    host = host,
+    text = text,
+)

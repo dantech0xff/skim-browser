@@ -7,6 +7,7 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.GroupLayout
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabGroup
+import com.dantech.skimbrowser.ai.GroupingBannerState
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.browser.layout
@@ -49,10 +50,6 @@ data class TabSection(
     val showHeader: Boolean,
 )
 
-/** The "Skim grouped your tabs" banner. Null hides it. Phase 12 fills this in. */
-@Immutable
-data class GroupingBannerState(val undoEnabled: Boolean)
-
 /** What Tabs (09) or Incognito tabs (09b) shows. [count] is every tab of the mode, search included. */
 @Immutable
 data class TabsUiState(
@@ -72,7 +69,7 @@ data class TabsUiState(
  * empty. Closing offers Undo through [undo], which still runs after this screen is gone; closing
  * every incognito tab ends that session at once and cannot be undone.
  *
- * [grouping] is the banner phase 12 shows after it groups tabs. This screen only draws it.
+ * [grouping] is the banner shown after tabs were grouped. This screen only draws it.
  */
 class TabsViewModel(
     private val incognito: Boolean,

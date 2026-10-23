@@ -18,6 +18,7 @@ internal fun ChatMessage.toEntity(chatId: Long, createdAt: Long) = SkimMessageEn
     citationsJson = citationsJson(citations),
     feedback = feedback,
     status = status,
+    suggestedQuestionsJson = questionsJson(suggestedQuestions),
     createdAt = createdAt,
 )
 
@@ -29,6 +30,7 @@ internal fun SkimMessageEntity.toMessage() = ChatMessage(
     citations = citationsOf(citationsJson),
     feedback = feedback,
     status = status,
+    suggestedQuestions = questionsOf(suggestedQuestionsJson),
 )
 
 /** The first summary line, without its bullet, for the Continue card. */
@@ -39,8 +41,8 @@ internal fun summarySnippet(text: String): String? {
 
 internal fun historyTurn(message: ChatMessage): HistoryTurn? = when (message.kind) {
     MessageKind.QUESTION -> HistoryTurn.Text(MessageRole.USER, Prompts.question(message.text))
-    MessageKind.SUMMARY, MessageKind.ANSWER -> HistoryTurn.Text(MessageRole.ASSISTANT, message.text)
-    MessageKind.TABS_OVERVIEW -> null
+    MessageKind.SUMMARY, MessageKind.ANSWER, MessageKind.TABS_OVERVIEW ->
+        HistoryTurn.Text(MessageRole.ASSISTANT, message.text)
 }
 
 private fun citationsJson(indexes: List<Int>): String? =
@@ -50,6 +52,18 @@ private fun citationsOf(json: String?): List<Int> {
     if (json.isNullOrBlank()) return emptyList()
     return try {
         JSON.decodeFromString(ListSerializer(Int.serializer()), json)
+    } catch (_: IllegalArgumentException) {
+        emptyList()
+    }
+}
+
+private fun questionsJson(questions: List<String>): String? =
+    questions.takeIf { it.isNotEmpty() }?.let { JSON.encodeToString(ListSerializer(String.serializer()), it) }
+
+private fun questionsOf(json: String?): List<String> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        JSON.decodeFromString(ListSerializer(String.serializer()), json)
     } catch (_: IllegalArgumentException) {
         emptyList()
     }
