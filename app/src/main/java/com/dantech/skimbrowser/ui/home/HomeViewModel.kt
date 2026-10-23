@@ -7,11 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
-import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
-import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
-import com.dantech.skimbrowser.data.isWebUrl
-import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.repo.ShortcutRepository
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.shortcut.Shortcut
+import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.url.isWebUrl
+import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
+import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -53,7 +55,7 @@ data class HomeUiState(
     /** The N of "Summarize my N open tabs": normal tabs showing a web page; New tab pages and incognito tabs don't count. */
     val eligibleTabCount: Int = 0,
     /** In tile order. */
-    val shortcuts: List<ShortcutEntity> = emptyList(),
+    val shortcuts: List<Shortcut> = emptyList(),
     /** The newest page chats, newest first, at most two. */
     val continueChats: List<ContinueCard> = emptyList(),
     /** False hides the mic: no app takes speech input. */
@@ -78,6 +80,8 @@ data class HomeUiState(
 class HomeViewModel(
     private val tabs: TabManager,
     private val shortcuts: ShortcutRepository,
+    private val removeShortcut: RemoveShortcut,
+    private val restoreShortcut: RestoreShortcut,
     chats: ChatRepository,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
@@ -116,17 +120,18 @@ class HomeViewModel(
     /** Remove in the shortcut menu: deletes the shortcut at once and shows "Shortcut removed" with Undo. */
     fun removeShortcut(id: Long) {
         // Only process-wide objects go into the Undo block: it may run after this view model is gone.
-        val repository = shortcuts
+        val remove = removeShortcut
+        val restore = restoreShortcut
         val registry = undo
         val messages = snackbar
         appScope.launch {
-            val removed = repository.remove(id) ?: return@launch
-            val token = registry.register(UndoKind.SHORTCUT, undo = { repository.restore(removed) })
+            val removed = remove(id) ?: return@launch
+            val token = registry.register(UndoKind.SHORTCUT, undo = { restore(removed) })
             messages.show(UiText.Res(R.string.snackbar_shortcut_removed), SnackbarAction.Undo(token))
         }
     }
 
-    private fun continueCard(chat: SkimChatEntity): ContinueCard {
+    private fun continueCard(chat: SavedChat): ContinueCard {
         val host = chat.host.orEmpty()
         return ContinueCard(
             chatId = chat.id,

@@ -14,7 +14,7 @@ import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

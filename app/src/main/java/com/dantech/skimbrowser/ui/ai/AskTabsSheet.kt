@@ -49,7 +49,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.system.Clipboard
 import com.dantech.skimbrowser.ui.components.AiLoadingIndicator
 import com.dantech.skimbrowser.ui.components.AiSuggestionChip

@@ -5,9 +5,9 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.importer.BookmarkImporter
-import com.dantech.skimbrowser.data.importer.ImportResult
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.bookmark.ImportResult
+import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
+import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
@@ -32,8 +32,8 @@ data class SetupUiState(val isDefault: Boolean)
  */
 class SetupViewModel(
     private val isDefaultBrowser: () -> Boolean,
-    private val importer: BookmarkImporter,
-    private val settings: SettingsRepository,
+    private val importBookmarks: ImportBookmarks,
+    private val completeOnboarding: CompleteOnboarding,
     private val snackbar: SnackbarController,
     private val appScope: CoroutineScope,
 ) : ViewModel(), DefaultLifecycleObserver {
@@ -56,7 +56,7 @@ class SetupViewModel(
      */
     fun import(uri: Uri) {
         appScope.launch {
-            when (val result = importer.import(uri)) {
+            when (val result = importBookmarks(uri.toString())) {
                 is ImportResult.Imported -> snackbar.show(
                     UiText.Plural(R.plurals.snackbar_imported_bookmarks, result.bookmarkCount),
                     SnackbarAction.ViewImported(result.folderId),
@@ -68,6 +68,6 @@ class SetupViewModel(
 
     /** Start browsing: onboarding is done for good, so later launches open on the last tab. */
     fun finishOnboarding() {
-        appScope.launch { settings.setOnboardingCompleted() }
+        appScope.launch { completeOnboarding() }
     }
 }

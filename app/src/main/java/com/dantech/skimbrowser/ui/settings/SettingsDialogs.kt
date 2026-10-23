@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.settings.SearchEngine
+import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.ui.components.ChoiceDialogContent
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
 

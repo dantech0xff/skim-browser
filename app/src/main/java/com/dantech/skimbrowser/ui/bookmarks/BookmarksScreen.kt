@@ -34,7 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.FolderKind
+import com.dantech.skimbrowser.domain.bookmark.FolderKind
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
@@ -52,7 +52,14 @@ import kotlinx.coroutines.flow.map
 @Composable
 fun BookmarksRoute(key: BookmarksKey, container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel(key = "bookmarks-${key.folderId}") {
-        BookmarksViewModel(key.folderId, container.bookmarkRepository, container.snackbarController, container.undoRegistry)
+        BookmarksViewModel(
+            key.folderId,
+            container.bookmarkRepository,
+            container.deleteBookmark,
+            container.restoreBookmark,
+            container.snackbarController,
+            container.undoRegistry,
+        )
     }
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }

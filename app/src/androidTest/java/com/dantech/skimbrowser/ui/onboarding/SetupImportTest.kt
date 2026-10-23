@@ -10,6 +10,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.dantech.skimbrowser.MainActivity
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
+import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
 import com.dantech.skimbrowser.browser.awaitValue
 import com.dantech.skimbrowser.browser.onMain
 import com.dantech.skimbrowser.browser.waitUntil
@@ -132,8 +134,8 @@ class SetupImportTest {
     /** Setup's view model as Setup makes it, over the app's own importer, settings and snackbar. */
     private fun setupViewModel() = SetupViewModel(
         isDefaultBrowser = { DefaultBrowser.isDefault(skim.app) },
-        importer = skim.container.bookmarkImporter,
-        settings = skim.container.settings,
+        importBookmarks = ImportBookmarks(skim.container.bookmarkImporter),
+        completeOnboarding = CompleteOnboarding(skim.container.settings),
         snackbar = snackbar,
         appScope = skim.container.appScope,
     )

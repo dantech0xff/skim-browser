@@ -3,8 +3,10 @@ package com.dantech.skimbrowser.ui.settings
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
+import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -27,6 +29,8 @@ data class AiPrivacyUiState(
  */
 class AiPrivacyViewModel(
     private val settings: SettingsRepository,
+    private val saveAskBeforeSending: SetAskBeforeSending,
+    private val saveKeepChatHistory: SetKeepChatHistory,
     chats: ChatRepository,
 ) : ViewModel() {
 
@@ -40,10 +44,10 @@ class AiPrivacyViewModel(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AiPrivacyUiState())
 
     fun setAskBeforeSending(enabled: Boolean) {
-        viewModelScope.launch { settings.setAskBeforeSending(enabled) }
+        viewModelScope.launch { saveAskBeforeSending(enabled) }
     }
 
     fun setKeepChatHistory(enabled: Boolean) {
-        viewModelScope.launch { settings.setKeepChatHistory(enabled) }
+        viewModelScope.launch { saveKeepChatHistory(enabled) }
     }
 }

@@ -12,7 +12,7 @@ import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WindowSecureController
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.shell.INCOGNITO_SURFACE_OWNER
 import com.dantech.skimbrowser.ui.shell.secureTarget
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController

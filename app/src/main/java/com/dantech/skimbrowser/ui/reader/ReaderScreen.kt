@@ -40,7 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.page.PageBlock
-import com.dantech.skimbrowser.data.settings.ReaderFont
+import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.components.TextSizeToggle
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics

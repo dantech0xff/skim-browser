@@ -24,11 +24,11 @@ import com.dantech.skimbrowser.ai.toSources
 import com.dantech.skimbrowser.ai.withRealTabIds
 import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.MessageStatus
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException

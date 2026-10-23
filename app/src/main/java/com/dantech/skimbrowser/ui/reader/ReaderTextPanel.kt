@@ -19,7 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.settings.ReaderFont
+import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.ui.components.ConnectedToggleGroup
 import com.dantech.skimbrowser.ui.components.ReaderSizeSlider
 import com.dantech.skimbrowser.ui.components.SheetHandle

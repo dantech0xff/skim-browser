@@ -47,7 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
+import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.ui.components.AddShortcutTile
 import com.dantech.skimbrowser.ui.components.AiHeroCard
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
@@ -70,13 +70,13 @@ data class HomeActions(
     val onVoice: () -> Unit,
     /** "Summarize my N open tabs", with that text as the prompt. */
     val onSummarizeTabs: (prompt: String) -> Unit,
-    val onOpenShortcut: (ShortcutEntity) -> Unit,
+    val onOpenShortcut: (Shortcut) -> Unit,
     /** The Add tile after the shortcuts. */
     val onAddShortcut: () -> Unit,
     /** Edit shortcut in a shortcut's menu. */
-    val onEditShortcut: (ShortcutEntity) -> Unit,
+    val onEditShortcut: (Shortcut) -> Unit,
     /** Remove in a shortcut's menu. */
-    val onRemoveShortcut: (ShortcutEntity) -> Unit,
+    val onRemoveShortcut: (Shortcut) -> Unit,
     /** A Continue with Skim card. */
     val onOpenChat: (chatId: Long) -> Unit,
     /** See all, beside Continue with Skim. */
@@ -174,14 +174,14 @@ fun HomeScreen(
  */
 @Composable
 internal fun ShortcutGrid(
-    shortcuts: List<ShortcutEntity>,
-    onOpen: (ShortcutEntity) -> Unit,
-    onEdit: (ShortcutEntity) -> Unit,
-    onRemove: (ShortcutEntity) -> Unit,
+    shortcuts: List<Shortcut>,
+    onOpen: (Shortcut) -> Unit,
+    onEdit: (Shortcut) -> Unit,
+    onRemove: (Shortcut) -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cells: List<ShortcutEntity?> = shortcuts + null
+    val cells: List<Shortcut?> = shortcuts + null
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GridRowGap)) {
         cells.chunked(GridColumns).forEachIndexed { row, rowCells ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(GridColumnGap)) {
@@ -213,7 +213,7 @@ internal fun ShortcutGrid(
 /** A shortcut: its tile and name. A tap opens it; a long press opens its menu under the tile. */
 @Composable
 private fun ShortcutCell(
-    shortcut: ShortcutEntity,
+    shortcut: Shortcut,
     position: Int,
     onOpen: () -> Unit,
     onEdit: () -> Unit,

@@ -34,7 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.ChatKind
+import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
 import com.dantech.skimbrowser.ui.components.SectionLabel
@@ -51,7 +51,13 @@ import kotlinx.coroutines.flow.map
 @Composable
 fun SkimHistoryRoute(container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel {
-        SkimHistoryViewModel(container.chatRepository, container.snackbarController, container.undoRegistry)
+        SkimHistoryViewModel(
+            container.chatRepository,
+            container.removeSkimChat,
+            container.restoreSkimChat,
+            container.snackbarController,
+            container.undoRegistry,
+        )
     }
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }

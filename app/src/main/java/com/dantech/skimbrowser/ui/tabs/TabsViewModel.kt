@@ -11,7 +11,7 @@ import com.dantech.skimbrowser.ai.GroupingBannerState
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.browser.layout
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController

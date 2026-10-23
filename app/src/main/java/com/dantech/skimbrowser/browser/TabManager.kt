@@ -10,15 +10,15 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
-import com.dantech.skimbrowser.data.db.entity.TabEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupEntity
-import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
 import com.dantech.skimbrowser.data.isWebUrl
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.repo.TabPlacement
-import com.dantech.skimbrowser.data.repo.TabRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.tab.PersistedTab
+import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
+import com.dantech.skimbrowser.domain.tab.TabPlacement
+import com.dantech.skimbrowser.domain.tab.TabRepository
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -78,10 +78,10 @@ class TabManager(
     private data class PendingClose(val tabs: List<Tab>, val previousCurrentId: String?, val replacementId: String?)
 
     private class Loaded(
-        val tabs: List<TabEntity>,
-        val groups: List<TabGroupEntity>,
+        val tabs: List<PersistedTab>,
+        val groups: List<PersistedTabGroup>,
         val lastTabId: String?,
-        val snapshot: TabGroupingSnapshotEntity?,
+        val snapshot: GroupingSnapshot?,
     )
 
     private val _state = MutableStateFlow(TabsState())
@@ -425,7 +425,7 @@ class TabManager(
      * @throws IllegalArgumentException when a tab or a group is listed twice.
      */
     @MainThread
-    fun applyLayout(layout: GroupLayout, expectedVersion: Long? = null, snapshot: TabGroupingSnapshotEntity? = null): Boolean {
+    fun applyLayout(layout: GroupLayout, expectedVersion: Long? = null, snapshot: GroupingSnapshot? = null): Boolean {
         val before = _state.value
         if (expectedVersion != null && expectedVersion != before.layoutVersion) return false
         val listedTabs = layout.groups.flatMap { it.tabIds } + layout.ungrouped
@@ -475,7 +475,7 @@ class TabManager(
         _state.value = before.copy(tabs = sortTabs(tabs, groups), groups = groups, layoutVersion = version)
 
         if (persistTabs) {
-            val entities = groups.map { TabGroupEntity(it.id, it.title, it.position, it.createdBySkim) }
+            val entities = groups.map { PersistedTabGroup(it.id, it.title, it.position, it.createdBySkim) }
             val indexOfGroup = groups.withIndex().associate { it.value.id to it.index }
             val placements = open.map { tab ->
                 val (groupId, position) = placement.getValue(tab.id)
@@ -1016,7 +1016,7 @@ class TabManager(
                 ?: url.substringBefore('?').takeIf { it.length <= MAX_STORED_URL_LENGTH }
         }
 
-        private fun Tab.toEntity() = TabEntity(
+        private fun Tab.toEntity() = PersistedTab(
             id = id,
             url = storableUrl(url),
             title = title,
@@ -1031,7 +1031,7 @@ class TabManager(
             lastAccessedAt = lastAccessedAt,
         )
 
-        private fun TabEntity.toTab() = Tab(
+        private fun PersistedTab.toTab() = Tab(
             id = id,
             incognito = false,
             url = url,

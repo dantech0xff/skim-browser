@@ -4,10 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
-import com.dantech.skimbrowser.data.db.entity.FolderKind
-import com.dantech.skimbrowser.data.repo.BookmarkFolderSummary
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.Bookmark
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFolderSummary
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.FolderKind
+import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
+import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -79,6 +81,8 @@ data class BookmarksUiState(
 class BookmarksViewModel(
     private val folderId: Long?,
     private val bookmarks: BookmarkRepository,
+    private val deleteBookmark: DeleteBookmark,
+    private val restoreBookmark: RestoreBookmark,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
 ) : ViewModel() {
@@ -122,14 +126,14 @@ class BookmarksViewModel(
     fun delete(id: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                val removed = bookmarks.delete(id) ?: return@withContext
-                val token = undo.register(UndoKind.BOOKMARK, undo = { bookmarks.restore(removed) })
+                val removed = deleteBookmark(id) ?: return@withContext
+                val token = undo.register(UndoKind.BOOKMARK, undo = { restoreBookmark(removed) })
                 snackbar.show(UiText.Res(R.string.snackbar_bookmark_deleted), SnackbarAction.Undo(token))
             }
         }
     }
 
-    private fun rootState(folders: List<BookmarkFolderSummary>, recent: List<BookmarkEntity>): BookmarksUiState {
+    private fun rootState(folders: List<BookmarkFolderSummary>, recent: List<Bookmark>): BookmarksUiState {
         val any = folders.any { it.bookmarkCount > 0 }
         if (!any) return BookmarksUiState(loaded = true)
         return BookmarksUiState(
@@ -149,7 +153,7 @@ private fun folderRow(summary: BookmarkFolderSummary) = BookmarkFolderRow(
     bookmarkCount = summary.bookmarkCount,
 )
 
-private fun bookmarkRow(bookmark: BookmarkEntity) = BookmarkRow(
+private fun bookmarkRow(bookmark: Bookmark) = BookmarkRow(
     id = bookmark.id,
     title = bookmark.title.ifBlank { bookmark.host },
     url = bookmark.url,

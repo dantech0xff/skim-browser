@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.ui.components.AiLoadingIndicator
 import com.dantech.skimbrowser.ui.components.AiSuggestionChip
 import com.dantech.skimbrowser.ui.components.AnswerCard

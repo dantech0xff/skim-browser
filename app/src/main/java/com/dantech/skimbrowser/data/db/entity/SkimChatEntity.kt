@@ -4,13 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class ChatKind {
-    /** About one page (06). */
-    PAGE,
-
-    /** About several open tabs (06b). */
-    TABS,
-}
+typealias ChatKind = com.dantech.skimbrowser.domain.chat.ChatKind
 
 /**
  * A saved Skim chat (Skim history, 04c). Only chats of normal tabs are stored, and only while

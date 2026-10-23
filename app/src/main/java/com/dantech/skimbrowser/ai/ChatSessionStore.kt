@@ -10,7 +10,7 @@ import com.dantech.skimbrowser.data.db.entity.MessageKind
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
 import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.data.withoutFragment
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap

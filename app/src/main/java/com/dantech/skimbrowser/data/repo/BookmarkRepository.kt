@@ -4,25 +4,18 @@ import com.dantech.skimbrowser.data.db.containsPattern
 import com.dantech.skimbrowser.data.db.dao.BookmarkDao
 import com.dantech.skimbrowser.data.db.dao.FolderBookmarkCount
 import com.dantech.skimbrowser.data.db.dao.ImportRow
-import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.bookmark.Bookmark
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository as BookmarkStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
-/** A folder row with its bookmark count, which includes every subfolder ("24 bookmarks"). */
-data class BookmarkFolderSummary(val folder: BookmarkFolderEntity, val bookmarkCount: Int)
-
-/** Bookmarks (14): the top-level folders, then the newest bookmarks of every folder. */
-data class BookmarksRoot(val folders: List<BookmarkFolderSummary>, val recentlyAdded: List<BookmarkEntity>)
-
-/** An opened folder: [folder] is null once it no longer exists. */
-data class FolderContent(
-    val folder: BookmarkFolderEntity?,
-    val subfolders: List<BookmarkFolderSummary>,
-    val bookmarks: List<BookmarkEntity>,
-)
+typealias BookmarkFolderSummary = com.dantech.skimbrowser.domain.bookmark.BookmarkFolderSummary
+typealias BookmarksRoot = com.dantech.skimbrowser.domain.bookmark.BookmarksRoot
+typealias FolderContent = com.dantech.skimbrowser.domain.bookmark.FolderContent
 
 /** One entry of a bookmarks file: a bookmark when [url] is set, otherwise a folder of [children]. */
 data class ImportedNode(val title: String, val url: String?, val children: List<ImportedNode> = emptyList())
@@ -33,65 +26,67 @@ data class ImportOutcome(val folderId: Long, val bookmarkCount: Int)
 class BookmarkRepository(
     private val dao: BookmarkDao,
     private val clock: () -> Long = System::currentTimeMillis,
-) {
+) : BookmarkStore {
 
     /** The top-level folders (Mobile bookmarks first) with recursive counts, and "Recently added". */
-    fun observeRoot(): Flow<BookmarksRoot> =
+    override fun observeRoot(): Flow<BookmarksRoot> =
         combine(dao.observeFolders(), dao.observeCountsByFolder(), dao.observeRecent(RECENTLY_ADDED_LIMIT)) { folders, counts, recent ->
             val totals = recursiveCounts(folders, counts)
             BookmarksRoot(
-                folders = folders.filter { it.parentId == null }.map { BookmarkFolderSummary(it, totals[it.id] ?: 0) },
-                recentlyAdded = recent,
+                folders = folders.filter { it.parentId == null }.map { BookmarkFolderSummary(it.toDomain(), totals[it.id] ?: 0) },
+                recentlyAdded = recent.map { it.toDomain() },
             )
         }
 
     /** Folder [id]'s subfolders (with recursive counts) and its own bookmarks in order. */
-    fun observeFolder(id: Long): Flow<FolderContent> =
+    override fun observeFolder(id: Long): Flow<FolderContent> =
         combine(dao.observeFolders(), dao.observeCountsByFolder(), dao.observeInFolder(id)) { folders, counts, bookmarks ->
             val totals = recursiveCounts(folders, counts)
             FolderContent(
-                folder = folders.firstOrNull { it.id == id },
-                subfolders = folders.filter { it.parentId == id }.map { BookmarkFolderSummary(it, totals[it.id] ?: 0) },
-                bookmarks = bookmarks,
+                folder = folders.firstOrNull { it.id == id }?.toDomain(),
+                subfolders = folders.filter { it.parentId == id }.map { BookmarkFolderSummary(it.toDomain(), totals[it.id] ?: 0) },
+                bookmarks = bookmarks.map { it.toDomain() },
             )
         }
 
-    fun observe(id: Long): Flow<BookmarkEntity?> = dao.observe(id)
+    override fun observe(id: Long): Flow<Bookmark?> = dao.observe(id).map { it?.toDomain() }
 
     /** Bookmarks of every folder whose title or URL contains [query], newest first; none for blank. */
-    fun search(query: String): Flow<List<BookmarkEntity>> {
+    override fun search(query: String): Flow<List<Bookmark>> {
         val text = query.trim()
-        return if (text.isEmpty()) flowOf(emptyList()) else dao.search(containsPattern(text))
+        return if (text.isEmpty()) flowOf(emptyList()) else dao.search(containsPattern(text)).map { rows -> rows.map { it.toDomain() } }
     }
 
     /** Every folder, top-level and nested, in display order. */
-    fun observeFolders(): Flow<List<BookmarkFolderEntity>> = dao.observeFolders()
+    override fun observeFolders(): Flow<List<com.dantech.skimbrowser.domain.bookmark.BookmarkFolder>> =
+        dao.observeFolders().map { rows -> rows.map { it.toDomain() } }
 
     /** The newest bookmark of exactly [url], or null when the page is not bookmarked. */
-    fun observeByUrl(url: String): Flow<BookmarkEntity?> = dao.observeByUrl(url)
+    override fun observeByUrl(url: String): Flow<Bookmark?> = dao.observeByUrl(url).map { it?.toDomain() }
 
     /** Adds a bookmark at the end of Mobile bookmarks and returns its id. */
-    suspend fun addToMobile(title: String, url: String): Long {
+    override suspend fun addToMobile(title: String, url: String): Long {
         require(url.isNotBlank()) { "A bookmark needs a URL" }
         return dao.addToFolder(BookmarkFolderEntity.MOBILE_ID, title, url, hostOf(url).orEmpty(), clock())
     }
 
-    suspend fun update(id: Long, title: String, url: String) {
+    override suspend fun update(id: Long, title: String, url: String) {
         require(url.isNotBlank()) { "A bookmark needs a URL" }
         dao.update(id, title, url, hostOf(url).orEmpty())
     }
 
     /** Moves bookmark [id] to the end of [folderId]; false when either no longer exists. */
-    suspend fun move(id: Long, folderId: Long): Boolean = dao.move(id, folderId)
+    override suspend fun move(id: Long, folderId: Long): Boolean = dao.move(id, folderId)
 
     /** Mobile bookmarks and every top-level Imported folder, for Move to folder (15). */
-    suspend fun topLevelFolders(): List<BookmarkFolderEntity> = dao.topLevelFolders()
+    override suspend fun topLevelFolders(): List<com.dantech.skimbrowser.domain.bookmark.BookmarkFolder> =
+        dao.topLevelFolders().map { it.toDomain() }
 
     /** Deletes bookmark [id] and returns it for Undo. */
-    suspend fun delete(id: Long): BookmarkEntity? = dao.remove(id)
+    override suspend fun delete(id: Long): Bookmark? = dao.remove(id)?.toDomain()
 
     /** The Undo of [delete]: same id and position, or the end of Mobile bookmarks if its folder is gone. */
-    suspend fun restore(b: BookmarkEntity) = dao.restore(b)
+    override suspend fun restore(bookmark: Bookmark) = dao.restore(bookmark.toEntity())
 
     /**
      * Imports [nodes] from [fileName] into a new Imported folder, keeping the file's subfolders, in
@@ -109,15 +104,15 @@ class BookmarkRepository(
     }
 
     /** Up to [limit] bookmarks whose title or URL contains [text], newest first; none for blank text. */
-    suspend fun matches(text: String, limit: Int): List<BookmarkEntity> {
+    override suspend fun matches(text: String, limit: Int): List<Bookmark> {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || limit <= 0) return emptyList()
-        return dao.matching(containsPattern(trimmed), limit)
+        return dao.matching(containsPattern(trimmed), limit).map { it.toDomain() }
     }
 
     companion object {
         /** "Recently added" in Bookmarks (14) shows this many bookmarks. */
-        const val RECENTLY_ADDED_LIMIT = 10
+        const val RECENTLY_ADDED_LIMIT = BookmarkStore.RECENTLY_ADDED_LIMIT
     }
 }
 

@@ -48,7 +48,13 @@ import kotlinx.coroutines.flow.map
 @Composable
 fun HistoryRoute(container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel {
-        HistoryViewModel(container.historyRepository, container.snackbarController, container.undoRegistry)
+        HistoryViewModel(
+            container.historyRepository,
+            container.removeHistoryEntry,
+            container.restoreHistoryEntry,
+            container.snackbarController,
+            container.undoRegistry,
+        )
     }
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }

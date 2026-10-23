@@ -26,7 +26,14 @@ import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 @Composable
 fun ReaderRoute(key: ReaderKey, container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel(key = "reader-${key.tabId}") {
-        ReaderViewModel(key.tabId, container.tabManager, container.settings, container.appScope)
+        ReaderViewModel(
+            key.tabId,
+            container.tabManager,
+            container.settings,
+            container.setReaderTextScale,
+            container.setReaderFont,
+            container.appScope,
+        )
     }
     val state by model.state.collectAsStateWithLifecycle()
     val tabs by container.tabManager.state.collectAsStateWithLifecycle()

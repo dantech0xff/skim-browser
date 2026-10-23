@@ -13,7 +13,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.system.Clipboard
 import com.dantech.skimbrowser.ui.navigation.AiPermissionKey
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
@@ -32,7 +32,7 @@ fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNaviga
             ai = container.skimAi,
             network = container.networkMonitor,
             readerHighlights = container.readerHighlights,
-            chats = container.chatRepository,
+            loadSavedChat = container.loadSavedChat,
             savedState = createSavedStateHandle(),
             appScope = container.appScope,
         )

@@ -19,13 +19,13 @@ import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.browser.page.HighlightRequest
 import com.dantech.skimbrowser.browser.page.PageContent
-import com.dantech.skimbrowser.data.db.entity.MessageFeedback
-import com.dantech.skimbrowser.data.db.entity.MessageKind
-import com.dantech.skimbrowser.data.db.entity.MessageRole
-import com.dantech.skimbrowser.data.db.entity.MessageStatus
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
+import com.dantech.skimbrowser.domain.chat.MessageKind
+import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageStatus
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.withoutFragment
+import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import kotlin.coroutines.coroutineContext
@@ -114,7 +114,7 @@ class AskPageViewModel(
     private val ai: SkimAiService,
     private val network: NetworkMonitor,
     private val readerHighlights: ReaderHighlights,
-    private val chats: ChatRepository,
+    private val loadSavedChat: LoadSavedChat,
     private val savedState: SavedStateHandle,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -305,7 +305,7 @@ class AskPageViewModel(
     }
 
     private suspend fun openSaved(chatId: Long) {
-        val chat = chats.chat(chatId) ?: return
+        val chat = loadSavedChat(chatId) ?: return
         val url = chat.url ?: return
         val current = tabs.state.value.currentTabId?.let { tabs.state.value.tab(it) }
         val tabId = if (current != null && !current.incognito) {

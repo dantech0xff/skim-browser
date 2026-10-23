@@ -85,8 +85,8 @@ fun searchViewModel(container: AppContainer): SearchViewModel = viewModel(key = 
     SearchViewModel(
         engine = container.settings.settings.map { it.searchEngine },
         suggestions = container.suggestionService::suggestions,
-        history = container.historyRepository,
-        bookmarks = container.bookmarkRepository,
+        matchHistory = container.matchHistory,
+        matchBookmarks = container.matchBookmarks,
     )
 }
 

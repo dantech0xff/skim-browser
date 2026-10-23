@@ -6,9 +6,9 @@ import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.browser.layout
-import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
-import com.dantech.skimbrowser.data.repo.TabRepository
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.tab.TabRepository
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,7 +43,7 @@ class TabGrouping(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val shown = MutableStateFlow<Long?>(null)
-    private val undoSnapshot = AtomicReference<TabGroupingSnapshotEntity?>(null)
+    private val undoSnapshot = AtomicReference<GroupingSnapshot?>(null)
     private val knownKey = AtomicReference<String?>(null)
 
     /** The banner, or null when it is hidden. Undo is enabled only while the grouped layout is still current. */
@@ -93,7 +93,7 @@ class TabGrouping(
         )
         if (state.layoutVersion != attemptedVersion || nowKey != key) return@launch
         val layout = layoutAfterGrouping(state, result, context) ?: return@launch
-        val snapshot = TabGroupingSnapshotEntity(
+        val snapshot = GroupingSnapshot(
             previousLayoutJson = LAYOUT_JSON.encodeToString(GroupLayout.serializer(), state.layout()),
             tabSetKey = key,
             appliedLayoutVersion = attemptedVersion + 1,

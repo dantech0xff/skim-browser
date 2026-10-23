@@ -3,9 +3,11 @@ package com.dantech.skimbrowser.ui.settings
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.data.settings.SearchEngine
-import com.dantech.skimbrowser.data.settings.SettingsRepository
-import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.domain.settings.SearchEngine
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.settings.ThemeSetting
+import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
+import com.dantech.skimbrowser.domain.usecase.SetTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +33,8 @@ data class SettingsUiState(
  */
 class SettingsViewModel(
     private val settings: SettingsRepository,
+    private val saveSearchEngine: SetSearchEngine,
+    private val saveTheme: SetTheme,
     versionName: String,
     versionCode: Int,
 ) : ViewModel() {
@@ -58,10 +62,10 @@ class SettingsViewModel(
     }
 
     fun setSearchEngine(engine: SearchEngine) {
-        viewModelScope.launch { settings.setSearchEngine(engine) }
+        viewModelScope.launch { saveSearchEngine(engine) }
     }
 
     fun setTheme(theme: ThemeSetting) {
-        viewModelScope.launch { settings.setTheme(theme) }
+        viewModelScope.launch { saveTheme(theme) }
     }
 }

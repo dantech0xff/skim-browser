@@ -40,7 +40,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun AiPrivacyRoute(container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel {
-        AiPrivacyViewModel(container.settings, container.chatRepository)
+        AiPrivacyViewModel(
+            container.settings,
+            container.setAskBeforeSending,
+            container.setKeepChatHistory,
+            container.chatRepository,
+        )
     }
     val state by model.state.collectAsStateWithLifecycle()
     AiPrivacyScreen(

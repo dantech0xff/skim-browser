@@ -38,13 +38,15 @@ import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabRuntime
-import com.dantech.skimbrowser.data.db.entity.PermissionState
-import com.dantech.skimbrowser.data.db.entity.SitePermissionEntity
-import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
-import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.permission.PermissionState
+import com.dantech.skimbrowser.domain.permission.SitePermission
+import com.dantech.skimbrowser.domain.permission.SitePermissionKind
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiState
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.usecase.SetSitePermission
+import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -108,6 +110,8 @@ class SiteInfoViewModel(
     private val tabs: TabManager,
     private val permissions: SitePermissionRepository,
     private val settings: SettingsRepository,
+    private val saveSkimAi: SetSkimAi,
+    private val savePermission: SetSitePermission,
     private val incognito: IncognitoSession,
     private val cleaner: BrowsingDataCleaner,
     private val appScope: CoroutineScope,
@@ -136,7 +140,7 @@ class SiteInfoViewModel(
         val host = state.value.siteKey
         if (host.isEmpty() || state.value.incognito) return
         viewModelScope.launch {
-            permissions.setSkimAi(host, if (on) SkimAiState.ALLOWED else SkimAiState.ASK)
+            saveSkimAi(host, if (on) SkimAiState.ALLOWED else SkimAiState.ASK)
         }
     }
 
@@ -149,7 +153,7 @@ class SiteInfoViewModel(
             incognito.setDecision(host, kind, next)
             revision.update { it + 1 }
         } else {
-            viewModelScope.launch { permissions.setPermission(host, kind, next) }
+            viewModelScope.launch { savePermission(host, kind, next) }
         }
     }
 
@@ -180,7 +184,7 @@ class SiteInfoViewModel(
         )
     }
 
-    private fun normalState(tab: Tab, page: TabRuntime, entity: SitePermissionEntity?, askBeforeSending: Boolean): SiteInfoUiState {
+    private fun normalState(tab: Tab, page: TabRuntime, entity: SitePermission?, askBeforeSending: Boolean): SiteInfoUiState {
         val host = tab.url?.let(::hostOf).orEmpty()
         val skim = entity?.skimAi ?: SkimAiState.UNSET
         return sheetState(
@@ -241,6 +245,8 @@ fun SiteInfoRoute(key: SiteInfoKey, container: AppContainer, navigator: SkimNavi
             container.tabManager,
             container.sitePermissionRepository,
             container.settings,
+            container.setSkimAi,
+            container.setSitePermission,
             container.incognitoSession,
             container.browsingDataCleaner,
             container.appScope,

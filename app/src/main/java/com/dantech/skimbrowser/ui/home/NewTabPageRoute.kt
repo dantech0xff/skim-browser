@@ -83,6 +83,8 @@ fun NewTabPageRoute(tab: Tab, container: AppContainer, navigator: SkimNavigator)
             HomeViewModel(
                 tabs = tabs,
                 shortcuts = container.shortcutRepository,
+                removeShortcut = container.removeShortcut,
+                restoreShortcut = container.restoreShortcut,
                 chats = container.chatRepository,
                 snackbar = container.snackbarController,
                 undo = container.undoRegistry,

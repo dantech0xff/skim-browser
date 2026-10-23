@@ -5,8 +5,8 @@ import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.OutputConfig
 import com.dantech.skimbrowser.data.db.entity.MessageRole
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first

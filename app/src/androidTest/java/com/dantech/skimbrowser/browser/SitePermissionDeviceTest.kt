@@ -7,8 +7,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.dantech.skimbrowser.browser.permissions.PendingSitePermission
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.data.db.entity.PermissionState
-import com.dantech.skimbrowser.data.db.entity.SitePermissionEntity
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
+import com.dantech.skimbrowser.domain.permission.SitePermission
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -217,7 +217,7 @@ class SitePermissionDeviceTest {
     }
 
     /** Waits until the normal tabs' decisions for [host] satisfy [check]. */
-    private fun awaitStored(host: String, check: (SitePermissionEntity) -> Boolean) {
+    private fun awaitStored(host: String, check: (SitePermission) -> Boolean) {
         waitUntil("the site's decisions to be kept") {
             runBlocking { rig.container.sitePermissionRepository.get(host) }?.let(check) == true
         }

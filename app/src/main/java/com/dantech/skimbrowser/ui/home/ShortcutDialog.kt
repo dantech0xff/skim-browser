@@ -37,7 +37,15 @@ val ShortcutDialogProperties = DialogProperties(usePlatformDefaultWidth = false)
  */
 @Composable
 fun ShortcutDialogRoute(key: ShortcutDialogKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel { ShortcutDialogViewModel(key.shortcutId, container.shortcutRepository, container.appScope) }
+    val dialog = viewModel {
+        ShortcutDialogViewModel(
+            key.shortcutId,
+            container.shortcutRepository,
+            container.addShortcut,
+            container.updateShortcut,
+            container.appScope,
+        )
+    }
     ShortcutDialog(dialog, onClose = { navigator.remove(key) })
 }
 

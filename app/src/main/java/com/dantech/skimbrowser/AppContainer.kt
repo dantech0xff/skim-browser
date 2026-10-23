@@ -25,13 +25,47 @@ import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.PageScripts
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.importer.BookmarkImporter
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
-import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.repo.ShortcutRepository
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
-import com.dantech.skimbrowser.data.repo.TabRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.data.repo.BookmarkRepository as BookmarkStore
+import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore
+import com.dantech.skimbrowser.data.repo.HistoryRepository as HistoryStore
+import com.dantech.skimbrowser.data.repo.ShortcutRepository as ShortcutStore
+import com.dantech.skimbrowser.data.repo.SitePermissionRepository as SitePermissionStore
+import com.dantech.skimbrowser.data.repo.TabRepository as TabStore
+import com.dantech.skimbrowser.data.settings.SettingsRepository as SettingsStore
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFiles
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.tab.TabRepository
+import com.dantech.skimbrowser.domain.usecase.AddBookmark
+import com.dantech.skimbrowser.domain.usecase.AddShortcut
+import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
+import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
+import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
+import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
+import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
+import com.dantech.skimbrowser.domain.usecase.MatchHistory
+import com.dantech.skimbrowser.domain.usecase.MoveBookmark
+import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
+import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
+import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
+import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
+import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
+import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
+import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
+import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
+import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
+import com.dantech.skimbrowser.domain.usecase.SetReaderFont
+import com.dantech.skimbrowser.domain.usecase.SetReaderTextScale
+import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
+import com.dantech.skimbrowser.domain.usecase.SetSitePermission
+import com.dantech.skimbrowser.domain.usecase.SetSkimAi
+import com.dantech.skimbrowser.domain.usecase.SetTheme
+import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
+import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.system.ShareImage
 import com.dantech.skimbrowser.system.purgeOldShares
@@ -86,7 +120,7 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     private val databaseHolder = lazy { SkimDatabase.open(app, storage.databaseName) }
     private val dataStoreHolder = lazy {
-        SettingsRepository.createDataStore(
+        SettingsStore.createDataStore(
             scope = CoroutineScope(appScope.coroutineContext + settingsJob + Dispatchers.IO),
             produceFile = { storage.settingsFile(app) },
         )
@@ -104,21 +138,66 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     val dataStore: DataStore<Preferences> by dataStoreHolder
 
-    val settings: SettingsRepository by lazy { SettingsRepository(dataStore) }
+    private val settingsStore: SettingsStore by lazy { SettingsStore(dataStore) }
 
-    val tabRepository: TabRepository by lazy { TabRepository(database) }
+    /** User settings. Screens read this; writes from a screen go through a use case below. */
+    val settings: SettingsRepository get() = settingsStore
 
-    val historyRepository: HistoryRepository by lazy { HistoryRepository(database.historyDao(), database) }
+    private val tabStore: TabStore by lazy { TabStore(database) }
 
-    val bookmarkRepository: BookmarkRepository by lazy { BookmarkRepository(database.bookmarkDao()) }
+    val tabRepository: TabRepository get() = tabStore
 
-    val shortcutRepository: ShortcutRepository by lazy { ShortcutRepository(database.shortcutDao()) }
+    private val historyStore: HistoryStore by lazy { HistoryStore(database.historyDao(), database) }
 
-    val chatRepository: ChatRepository by lazy { ChatRepository(database.skimChatDao(), database) }
+    val historyRepository: HistoryRepository get() = historyStore
 
-    val sitePermissionRepository: SitePermissionRepository by lazy {
-        SitePermissionRepository(database.sitePermissionDao(), database)
+    private val bookmarkStore: BookmarkStore by lazy { BookmarkStore(database.bookmarkDao()) }
+
+    val bookmarkRepository: BookmarkRepository get() = bookmarkStore
+
+    private val shortcutStore: ShortcutStore by lazy { ShortcutStore(database.shortcutDao()) }
+
+    val shortcutRepository: ShortcutRepository get() = shortcutStore
+
+    /**
+     * The chat table, including the transcript writes [chatSessions] makes. Screens see
+     * [chatRepository].
+     */
+    internal val chatStore: ChatStore by lazy { ChatStore(database.skimChatDao(), database) }
+
+    val chatRepository: ChatRepository get() = chatStore
+
+    private val siteStore: SitePermissionStore by lazy {
+        SitePermissionStore(database.sitePermissionDao(), database)
     }
+
+    val sitePermissionRepository: SitePermissionRepository get() = siteStore
+
+    val removeHistoryEntry: RemoveHistoryEntry by lazy { RemoveHistoryEntry(historyRepository) }
+    val restoreHistoryEntry: RestoreHistoryEntry by lazy { RestoreHistoryEntry(historyRepository) }
+    val matchHistory: MatchHistory by lazy { MatchHistory(historyRepository) }
+    val addBookmark: AddBookmark by lazy { AddBookmark(bookmarkRepository) }
+    val updateBookmark: UpdateBookmark by lazy { UpdateBookmark(bookmarkRepository) }
+    val moveBookmark: MoveBookmark by lazy { MoveBookmark(bookmarkRepository) }
+    val deleteBookmark: DeleteBookmark by lazy { DeleteBookmark(bookmarkRepository) }
+    val restoreBookmark: RestoreBookmark by lazy { RestoreBookmark(bookmarkRepository) }
+    val matchBookmarks: MatchBookmarks by lazy { MatchBookmarks(bookmarkRepository) }
+    val addShortcut: AddShortcut by lazy { AddShortcut(shortcutRepository) }
+    val updateShortcut: UpdateShortcut by lazy { UpdateShortcut(shortcutRepository) }
+    val removeShortcut: RemoveShortcut by lazy { RemoveShortcut(shortcutRepository) }
+    val restoreShortcut: RestoreShortcut by lazy { RestoreShortcut(shortcutRepository) }
+    val setSearchEngine: SetSearchEngine by lazy { SetSearchEngine(settings) }
+    val setTheme: SetTheme by lazy { SetTheme(settings) }
+    val setAskBeforeSending: SetAskBeforeSending by lazy { SetAskBeforeSending(settings) }
+    val setKeepChatHistory: SetKeepChatHistory by lazy { SetKeepChatHistory(settings) }
+    val setReaderTextScale: SetReaderTextScale by lazy { SetReaderTextScale(settings) }
+    val setReaderFont: SetReaderFont by lazy { SetReaderFont(settings) }
+    val completeOnboarding: CompleteOnboarding by lazy { CompleteOnboarding(settings) }
+    val loadSavedChat: LoadSavedChat by lazy { LoadSavedChat(chatRepository) }
+    val removeSkimChat: RemoveSkimChat by lazy { RemoveSkimChat(chatRepository) }
+    val restoreSkimChat: RestoreSkimChat by lazy { RestoreSkimChat(chatRepository) }
+    val setSkimAi: SetSkimAi by lazy { SetSkimAi(sitePermissionRepository) }
+    val setSitePermission: SetSitePermission by lazy { SetSitePermission(sitePermissionRepository) }
 
     /**
      * The app's one HTTP client, shared so that every caller pools connections and threads: 15 s to
@@ -173,7 +252,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     val readerHighlights: ReaderHighlights by lazy { ReaderHighlights() }
 
     /** Imports a picked bookmarks file into a new Imported folder. */
-    val bookmarkImporter: BookmarkImporter by lazy { BookmarkImporter(app.contentResolver, bookmarkRepository) }
+    val bookmarkImporter: BookmarkFiles by lazy { BookmarkImporter(app.contentResolver, bookmarkStore) }
+
+    val importBookmarks: ImportBookmarks by lazy { ImportBookmarks(bookmarkImporter) }
 
     /** The search engine's suggestions for the search field, over the connections of [httpClient]. */
     val suggestionService: SuggestionService by lazy { SuggestionService(httpClient) }
@@ -219,7 +300,7 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** Page chats for this process: saved while Keep chat history is on, otherwise memory only. */
     val chatSessions: ChatSessionStore by lazy {
-        ChatSessionStore(chatRepository, tabManager, settings, appScope)
+        ChatSessionStore(chatStore, tabManager, settings, appScope)
     }
 
     /** Groups ungrouped normal tabs once per set, and keeps the Undo for the tabs screen. */
@@ -240,8 +321,8 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     /** Deletes saved Skim chats, and every site's Skim AI decision when all AI data is deleted. */
     val aiDataEraser: AiDataEraser by lazy {
         AiDataEraser(
-            chats = chatRepository,
-            sites = sitePermissionRepository,
+            chats = chatStore,
+            sites = siteStore,
             undo = undoRegistry,
             snackbar = snackbarController,
         )

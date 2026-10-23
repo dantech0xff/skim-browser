@@ -38,7 +38,7 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.system.Clipboard
 import com.dantech.skimbrowser.system.ShareSheet
 import com.dantech.skimbrowser.ui.components.IconTile

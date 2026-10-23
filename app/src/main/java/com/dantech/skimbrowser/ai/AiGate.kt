@@ -3,8 +3,8 @@ package com.dantech.skimbrowser.ai
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
-import com.dantech.skimbrowser.data.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 /** What Ask Skim does with a tab before any page text is read. */

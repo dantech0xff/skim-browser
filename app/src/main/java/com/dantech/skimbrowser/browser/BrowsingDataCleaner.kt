@@ -4,8 +4,8 @@ import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebStorage
 import com.dantech.skimbrowser.data.normalizeHost
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.repo.TabRepository
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry

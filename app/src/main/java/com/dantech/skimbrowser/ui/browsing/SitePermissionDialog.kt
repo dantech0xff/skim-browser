@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.permissions.PendingSitePermission
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
-import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
+import com.dantech.skimbrowser.domain.permission.SitePermissionKind
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimAlertDialog
 import com.dantech.skimbrowser.ui.theme.SkimTheme

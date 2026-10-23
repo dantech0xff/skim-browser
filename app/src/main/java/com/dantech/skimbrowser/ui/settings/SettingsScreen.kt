@@ -27,7 +27,7 @@ import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.data.settings.SkimSettings
+import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.system.DefaultBrowser
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
@@ -49,6 +49,8 @@ fun SettingsRoute(container: AppContainer, navigator: SkimNavigator) {
     val model = viewModel {
         SettingsViewModel(
             settings = container.settings,
+            saveSearchEngine = container.setSearchEngine,
+            saveTheme = container.setTheme,
             versionName = BuildConfig.VERSION_NAME,
             versionCode = BuildConfig.VERSION_CODE,
         )
@@ -90,7 +92,7 @@ fun SearchEngineRoute(container: AppContainer, navigator: SkimNavigator) {
     SearchEngineDialog(
         selected = settings.searchEngine,
         onSelect = { engine ->
-            container.appScope.launch { container.settings.setSearchEngine(engine) }
+            container.appScope.launch { container.setSearchEngine(engine) }
             navigator.back()
         },
         onDismiss = navigator::back,
@@ -104,7 +106,7 @@ fun ThemeRoute(container: AppContainer, navigator: SkimNavigator) {
     ThemeDialog(
         selected = settings.theme,
         onSelect = { theme ->
-            container.appScope.launch { container.settings.setTheme(theme) }
+            container.appScope.launch { container.setTheme(theme) }
             navigator.back()
         },
         onDismiss = navigator::back,

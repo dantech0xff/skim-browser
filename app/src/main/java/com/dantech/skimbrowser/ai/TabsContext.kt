@@ -6,7 +6,7 @@ import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.data.isWebUrl
-import com.dantech.skimbrowser.data.repo.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import java.security.MessageDigest
 
 /**

@@ -10,9 +10,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.dantech.skimbrowser.browser.page.PageBlock
 import com.dantech.skimbrowser.browser.page.PageContent
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.settings.ReaderFont
-import com.dantech.skimbrowser.data.settings.SkimSettings
+import com.dantech.skimbrowser.domain.settings.ReaderFont
+import com.dantech.skimbrowser.domain.settings.SkimSettings
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.theme.GoogleSansFlex
 
 /** The article Reader view shows. [blocks] is what a citation indexes. */

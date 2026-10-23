@@ -4,9 +4,11 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.dao.ChatListItem
-import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.data.repo.ChatRepository
+import com.dantech.skimbrowser.domain.chat.ChatKind
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.chat.ChatSummary
+import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
+import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -58,6 +60,8 @@ data class SkimHistoryUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class SkimHistoryViewModel(
     private val chats: ChatRepository,
+    private val removeSkimChat: RemoveSkimChat,
+    private val restoreSkimChat: RestoreSkimChat,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -89,8 +93,8 @@ class SkimHistoryViewModel(
     fun remove(id: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                val deleted = chats.delete(id) ?: return@withContext
-                val token = undo.register(UndoKind.SKIM_CHAT, undo = { chats.restore(deleted) })
+                val deleted = removeSkimChat(id) ?: return@withContext
+                val token = undo.register(UndoKind.SKIM_CHAT, undo = { restoreSkimChat(deleted) })
                 snackbar.show(UiText.Res(R.string.snackbar_removed_from_history), SnackbarAction.Undo(token))
             }
         }
@@ -98,7 +102,7 @@ class SkimHistoryViewModel(
 }
 
 /** Groups [items] into the day sections, dropping empty ones. [items] is newest first. */
-internal fun sectionsOf(items: List<ChatListItem>, now: Long, zone: ZoneId): List<SkimHistorySection> {
+internal fun sectionsOf(items: List<ChatSummary>, now: Long, zone: ZoneId): List<SkimHistorySection> {
     if (items.isEmpty()) return emptyList()
     val grouped = items.groupBy { bucketOf(it.chat.updatedAt, now, zone) }
     return DateBucket.entries.mapNotNull { bucket ->
@@ -106,7 +110,7 @@ internal fun sectionsOf(items: List<ChatListItem>, now: Long, zone: ZoneId): Lis
     }
 }
 
-private fun rowOf(item: ChatListItem): SkimHistoryRow {
+private fun rowOf(item: ChatSummary): SkimHistoryRow {
     val chat = item.chat
     val subtitle = when (chat.kind) {
         ChatKind.PAGE -> if (item.questionCount > 0) {

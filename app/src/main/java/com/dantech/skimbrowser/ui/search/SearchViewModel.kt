@@ -13,11 +13,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.browser.toVisibleText
-import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
-import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
-import com.dantech.skimbrowser.data.repo.HistoryRepository
-import com.dantech.skimbrowser.data.settings.SearchEngine
+import com.dantech.skimbrowser.domain.bookmark.Bookmark
+import com.dantech.skimbrowser.domain.history.HistoryEntry
+import com.dantech.skimbrowser.domain.settings.SearchEngine
+import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
+import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.search.omniboxAddress
 import com.dantech.skimbrowser.search.resolveOmnibox
 import kotlinx.coroutines.CancellationException
@@ -76,8 +76,8 @@ data class SearchUiState(
 class SearchViewModel(
     engine: Flow<SearchEngine>,
     private val suggestions: suspend (SearchEngine, String) -> List<String>,
-    private val history: HistoryRepository,
-    private val bookmarks: BookmarkRepository,
+    private val matchHistory: MatchHistory,
+    private val matchBookmarks: MatchBookmarks,
 ) : ViewModel() {
 
     private data class Session(val id: Int, val incognito: Boolean)
@@ -187,8 +187,8 @@ class SearchViewModel(
 
     /** History first, then bookmarks, one row per URL, at most three in all. */
     private suspend fun pageMatchesFor(text: String): List<PageMatch> {
-        val visited = orNothing { history.matches(text, MAX_ROWS) }.map { pageMatch(it) }
-        val bookmarked = orNothing { bookmarks.matches(text, MAX_ROWS) }.map { pageMatch(it) }
+        val visited = orNothing { matchHistory(text, MAX_ROWS) }.map { pageMatch(it) }
+        val bookmarked = orNothing { matchBookmarks(text, MAX_ROWS) }.map { pageMatch(it) }
         return (visited + bookmarked).distinctBy { it.url }.take(MAX_ROWS)
     }
 
@@ -209,9 +209,9 @@ class SearchViewModel(
         /** Rows of each group: engine suggestions, and history with bookmarks. */
         const val MAX_ROWS = 3
 
-        fun pageMatch(entry: HistoryEntryEntity) = PageMatch(titleOf(entry.title, entry.url), entry.host, entry.url, isBookmark = false)
+        fun pageMatch(entry: HistoryEntry) = PageMatch(titleOf(entry.title, entry.url), entry.host, entry.url, isBookmark = false)
 
-        fun pageMatch(bookmark: BookmarkEntity) = PageMatch(titleOf(bookmark.title, bookmark.url), bookmark.host, bookmark.url, isBookmark = true)
+        fun pageMatch(bookmark: Bookmark) = PageMatch(titleOf(bookmark.title, bookmark.url), bookmark.host, bookmark.url, isBookmark = true)
 
         fun titleOf(title: String, url: String): String = title.toVisibleText().ifEmpty { url.toVisibleText() }
     }

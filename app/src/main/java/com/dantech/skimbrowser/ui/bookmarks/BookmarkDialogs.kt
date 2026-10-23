@@ -44,10 +44,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
-import com.dantech.skimbrowser.data.db.entity.FolderKind
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.FolderKind
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.usecase.MoveBookmark
+import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.search.omniboxAddress
 import com.dantech.skimbrowser.ui.components.ChoiceDialogContent
 import com.dantech.skimbrowser.ui.components.DialogAction
@@ -99,7 +101,7 @@ data class MoveToFolderUiState(
     val done: Boolean = false,
 )
 
-internal fun folderLabel(folder: BookmarkFolderEntity): FolderLabel = when (folder.kind) {
+internal fun folderLabel(folder: BookmarkFolder): FolderLabel = when (folder.kind) {
     FolderKind.MOBILE -> FolderLabel.Mobile
     FolderKind.IMPORTED -> FolderLabel.Imported
     FolderKind.FOLDER -> FolderLabel.Named(folder.name.orEmpty())
@@ -113,6 +115,7 @@ internal fun folderLabel(folder: BookmarkFolderEntity): FolderLabel = when (fold
 class EditBookmarkViewModel(
     private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
+    private val updateBookmark: UpdateBookmark,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -138,11 +141,11 @@ class EditBookmarkViewModel(
         val address = omniboxAddress(url.text.toString()) ?: return
         val label = name.text.trim().ifEmpty { hostOf(address) ?: address }.toString()
         progress.update { it.copy(saving = true) }
-        val repository = bookmarks
+        val save = updateBookmark
         val id = bookmarkId
         appScope.launch {
             try {
-                repository.update(id, label, address)
+                save(id, label, address)
                 progress.update { it.copy(saving = false, done = true) }
             } catch (e: CancellationException) {
                 throw e
@@ -192,6 +195,7 @@ class EditBookmarkViewModel(
 class MoveToFolderViewModel(
     private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
+    private val moveBookmark: MoveBookmark,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -214,11 +218,11 @@ class MoveToFolderViewModel(
     fun moveTo(folderId: Long) {
         if (moving || done.value) return
         moving = true
-        val repository = bookmarks
+        val move = moveBookmark
         val id = bookmarkId
         appScope.launch {
             try {
-                repository.move(id, folderId)
+                move(id, folderId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -247,7 +251,9 @@ class MoveToFolderViewModel(
 /** The [EditBookmarkKey] destination. */
 @Composable
 fun EditBookmarkRoute(key: EditBookmarkKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel { EditBookmarkViewModel(key.bookmarkId, container.bookmarkRepository, container.appScope) }
+    val dialog = viewModel {
+        EditBookmarkViewModel(key.bookmarkId, container.bookmarkRepository, container.updateBookmark, container.appScope)
+    }
     EditBookmarkDialog(
         dialog = dialog,
         onClose = { navigator.remove(key) },
@@ -258,7 +264,9 @@ fun EditBookmarkRoute(key: EditBookmarkKey, container: AppContainer, navigator: 
 /** The [MoveToFolderKey] destination. Edit bookmark stays under it. */
 @Composable
 fun MoveToFolderRoute(key: MoveToFolderKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel { MoveToFolderViewModel(key.bookmarkId, container.bookmarkRepository, container.appScope) }
+    val dialog = viewModel {
+        MoveToFolderViewModel(key.bookmarkId, container.bookmarkRepository, container.moveBookmark, container.appScope)
+    }
     MoveToFolderDialog(dialog, onClose = { navigator.remove(key) })
 }
 

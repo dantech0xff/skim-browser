@@ -6,7 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.AppStorage
-import com.dantech.skimbrowser.data.db.entity.TabEntity
+import com.dantech.skimbrowser.domain.tab.PersistedTab
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -96,7 +96,7 @@ class DeviceSqliteDataTest {
             val ids = List(TABS) { "tab-$it" }
             container.database.withTransaction {
                 ids.forEachIndexed { index, id ->
-                    tabs.upsert(TabEntity(id = id, url = "https://daylightjournal.com/$index", title = "Tab $index", position = index, createdAt = 1, lastAccessedAt = 1))
+                    tabs.upsert(PersistedTab(id = id, url = "https://daylightjournal.com/$index", title = "Tab $index", position = index, createdAt = 1, lastAccessedAt = 1))
                 }
             }
 

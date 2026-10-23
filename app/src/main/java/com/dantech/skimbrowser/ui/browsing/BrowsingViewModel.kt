@@ -15,7 +15,7 @@ import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.browser.cutTo
 import com.dantech.skimbrowser.browser.toVisibleText
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.browser.BrowserBack
 import com.dantech.skimbrowser.ui.browser.browserBack
 import com.dantech.skimbrowser.ui.components.SiteIndicator

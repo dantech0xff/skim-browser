@@ -33,9 +33,10 @@ import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.repo.BookmarkRepository
+import com.dantech.skimbrowser.domain.bookmark.Bookmark
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.system.ShareSheet
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.SegmentedColumn
@@ -103,6 +104,7 @@ class MoreMenuViewModel(
     private val tabId: String,
     private val tabs: TabManager,
     private val bookmarks: BookmarkRepository,
+    private val addBookmark: AddBookmark,
     private val snackbar: SnackbarController,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -122,7 +124,7 @@ class MoreMenuViewModel(
             if (url == null) {
                 flowOf(null to true)
             } else {
-                bookmarks.observeByUrl(url).map<BookmarkEntity?, Pair<BookmarkEntity?, Boolean>> { it to true }
+                bookmarks.observeByUrl(url).map<Bookmark?, Pair<Bookmark?, Boolean>> { it to true }
                     .onStart { emit(null to false) }
             }
         }
@@ -154,11 +156,11 @@ class MoreMenuViewModel(
         if (url == null || !current.bookmarkKnown || current.bookmarkedId != null) return
         if (!adding.compareAndSet(false, true)) return
         val title = current.title.ifBlank { current.host }.ifBlank { url }
-        val repository = bookmarks
+        val add = addBookmark
         val bar = snackbar
         appScope.launch {
             try {
-                val id = repository.addToMobile(title, url)
+                val id = add(title, url)
                 bar.show(UiText.Res(R.string.snackbar_bookmark_added), SnackbarAction.EditBookmark(id))
                 closedRequests.emit(Unit)
             } catch (e: CancellationException) {
@@ -182,7 +184,7 @@ class MoreMenuViewModel(
     }
 }
 
-private fun menuState(tab: Tab, bookmark: BookmarkEntity?, known: Boolean): MoreMenuUiState {
+private fun menuState(tab: Tab, bookmark: Bookmark?, known: Boolean): MoreMenuUiState {
     val url = tab.url?.takeIf { it.isNotBlank() }
     val host = if (url == null) "" else pageAddressOf(url)
     return MoreMenuUiState(
@@ -206,6 +208,7 @@ fun MoreMenuRoute(key: MoreMenuKey, container: AppContainer, navigator: SkimNavi
             key.tabId,
             container.tabManager,
             container.bookmarkRepository,
+            container.addBookmark,
             container.snackbarController,
             container.appScope,
         )

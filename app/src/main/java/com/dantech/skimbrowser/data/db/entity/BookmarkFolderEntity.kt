@@ -5,16 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class FolderKind {
-    /** "Mobile bookmarks": created with the database, always id [BookmarkFolderEntity.MOBILE_ID]. */
-    MOBILE,
-
-    /** The top folder of one import from a bookmarks file. */
-    IMPORTED,
-
-    /** A subfolder kept from an imported file. */
-    FOLDER,
-}
+typealias FolderKind = com.dantech.skimbrowser.domain.bookmark.FolderKind
 
 /**
  * A bookmark folder. [name] is null for the folders Skim names itself (Mobile bookmarks and each
