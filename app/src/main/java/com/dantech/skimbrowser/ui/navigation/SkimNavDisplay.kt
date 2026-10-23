@@ -29,6 +29,8 @@ import com.dantech.skimbrowser.ui.settings.LicensesRoute
 import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
 import com.dantech.skimbrowser.ui.settings.SettingsRoute
 import com.dantech.skimbrowser.ui.settings.ThemeRoute
+import com.dantech.skimbrowser.ui.tabs.RenameGroupRoute
+import com.dantech.skimbrowser.ui.tabs.TabsRoute
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
 import com.dantech.skimbrowser.ui.browsing.BrowsingRoute
 import com.dantech.skimbrowser.ui.browsing.LinkOptionsRoute
@@ -126,6 +128,7 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         entry<MoveToFolderKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
             MoveToFolderRoute(key, container, navigator)
         }
+        entry<TabsKey> { key -> TabsRoute(key, container, navigator) }
         entry<SettingsKey> { SettingsRoute(container, navigator) }
         entry<AiPrivacyKey> { AiPrivacyRoute(container, navigator) }
         entry<HistoryKey> { HistoryRoute(container, navigator) }
@@ -142,5 +145,8 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         }
         entry<DeleteAiDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             DeleteAiDataRoute(container, navigator)
+        }
+        entry<RenameGroupKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
+            RenameGroupRoute(key, container, navigator)
         }
     }
