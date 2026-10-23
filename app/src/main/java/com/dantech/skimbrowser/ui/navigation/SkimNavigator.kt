@@ -6,12 +6,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.ai.AiGate
-import com.dantech.skimbrowser.ai.AiGateDecision
+import com.dantech.skimbrowser.domain.ai.AskPageAccess
+import com.dantech.skimbrowser.domain.ai.AskPageDecision
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.tab.HitTarget
-import com.dantech.skimbrowser.browser.IncognitoSession
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.domain.tab.IncognitoSupport
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.newTab
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.shell.INCOGNITO_SURFACE_OWNER
 import com.dantech.skimbrowser.ui.shell.secureTarget
@@ -32,11 +33,11 @@ import kotlinx.coroutines.launch
 @MainThread
 class SkimNavigator(
     private val backStack: NavBackStack<NavKey>,
-    private val tabs: TabManager,
-    private val incognito: IncognitoSession,
-    private val secure: WindowSecureController,
+    private val tabs: TabsController,
+    private val incognito: IncognitoSupport,
+    private val secure: WindowPrivacy,
     private val snackbar: SnackbarController,
-    private val aiGate: AiGate,
+    private val aiGate: AskPageAccess,
     private val scope: CoroutineScope,
 ) {
     private val arming = mutableIntStateOf(0)
@@ -152,9 +153,9 @@ class SkimNavigator(
     fun openAskPage(tabId: String, fromReader: Boolean = false): Job = scope.launch {
             val tab = tabs.state.value.tab(tabId) ?: return@launch
             when (aiGate.decide(tab)) {
-                AiGateDecision.OffInIncognito -> Unit
-                AiGateDecision.NeedsPermission -> push(AiPermissionKey(tabId, fromReader))
-                AiGateDecision.Allowed -> push(
+                AskPageDecision.OffInIncognito -> Unit
+                AskPageDecision.NeedsPermission -> push(AiPermissionKey(tabId, fromReader))
+                AskPageDecision.Allowed -> push(
                     AskPageKey(
                         tabId = tabId,
                         fromReader = fromReader,

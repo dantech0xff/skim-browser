@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.search
 
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive

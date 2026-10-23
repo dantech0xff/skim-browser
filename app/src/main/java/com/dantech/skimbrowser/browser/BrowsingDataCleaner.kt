@@ -5,6 +5,7 @@ import android.webkit.GeolocationPermissions
 import android.webkit.WebStorage
 import com.dantech.skimbrowser.data.normalizeHost
 import com.dantech.skimbrowser.domain.browsing.OpenPages
+import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.undo.PendingUndo
@@ -34,11 +35,11 @@ class BrowsingDataCleaner(
     private val pendingUndo: PendingUndo,
     private val siteData: DefaultProfileSiteData = AndroidDefaultProfileSiteData(),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
-) {
+) : SiteDataCleaner {
     private val pendingCacheClear = AtomicBoolean(false)
 
     /** Cookies and web storage of [host]. An incognito tab uses the session's profile. */
-    suspend fun clearSite(host: String, incognitoTab: Boolean) {
+    override suspend fun clearSite(host: String, incognitoTab: Boolean) {
         val key = normalizeHost(host)
         if (key.isEmpty()) return
         withContext(mainDispatcher) {

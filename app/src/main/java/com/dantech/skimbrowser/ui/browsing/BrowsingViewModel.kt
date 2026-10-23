@@ -13,8 +13,8 @@ import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.TabsState
-import com.dantech.skimbrowser.browser.cutTo
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.browser.BrowserBack
 import com.dantech.skimbrowser.ui.browser.browserBack

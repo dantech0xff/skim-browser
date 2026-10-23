@@ -5,8 +5,8 @@ import android.database.sqlite.SQLiteException
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
-import com.dantech.skimbrowser.browser.cutTo
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.data.repo.BookmarkRepository
 import com.dantech.skimbrowser.domain.bookmark.BookmarkFiles
 import com.dantech.skimbrowser.domain.bookmark.ImportResult

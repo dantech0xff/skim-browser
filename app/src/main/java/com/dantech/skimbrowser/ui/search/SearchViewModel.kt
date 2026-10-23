@@ -12,7 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.settings.SearchEngine

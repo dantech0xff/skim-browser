@@ -33,8 +33,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.BrowsingDataCleaner
-import com.dantech.skimbrowser.browser.IncognitoSession
+import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
+import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -115,8 +115,8 @@ class SiteInfoViewModel(
     private val settings: SettingsRepository,
     private val saveSkimAi: SetSkimAi,
     private val savePermission: SetSitePermission,
-    private val incognito: IncognitoSession,
-    private val cleaner: BrowsingDataCleaner,
+    private val incognito: IncognitoDecisions,
+    private val cleaner: SiteDataCleaner,
     private val appScope: CoroutineScope,
 ) : ViewModel() {
 

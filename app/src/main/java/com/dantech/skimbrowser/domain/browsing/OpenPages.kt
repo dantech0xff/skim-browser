@@ -9,3 +9,8 @@ interface OpenPages {
 
     fun clearCache()
 }
+
+/** Forgets one site's cookies and web storage. An incognito tab uses that session's profile. */
+interface SiteDataCleaner {
+    suspend fun clearSite(host: String, incognitoTab: Boolean)
+}

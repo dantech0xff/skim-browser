@@ -20,7 +20,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey

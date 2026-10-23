@@ -1,54 +1,32 @@
 package com.dantech.skimbrowser.domain
 
 import java.io.File
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Domain is pure Kotlin: screens depend on it, and data implements it. Neither Android nor the
- * data layer may be imported from domain, and the UI sources do not import data.
+ * Dependencies point inward. The check reads every source line, so a fully qualified name fails
+ * the same way an import does. Route files that attach the Activity's browser host are the only
+ * `ui` files that may name `browser`.
  */
 class DomainBoundaryTest {
 
     @Test
     fun domainImportsNeitherAndroidNorOuterLayers() {
-        val domain = sourceRoot().resolve("domain")
-        assertTrue("domain sources", domain.isDirectory)
-        val forbidden = listOf(
-            "import android.",
-            "import androidx.",
-            "import okhttp3.",
-            "import com.dantech.skimbrowser.data",
-            "import com.dantech.skimbrowser.ui",
-            "import com.dantech.skimbrowser.browser",
-            "import com.dantech.skimbrowser.ai",
-            "import com.dantech.skimbrowser.system",
-            "import com.dantech.skimbrowser.search",
-        )
-        val violations = kotlinFiles(domain).flatMap { file ->
-            file.readLines().mapIndexedNotNull { index, line ->
-                val trimmed = line.trim()
-                forbidden.firstOrNull { prefix -> trimmed.startsWith(prefix) }?.let { hit ->
-                    "${file.path}:${index + 1} $hit"
-                }
-            }
-        }
+        val violations = violationsIn("domain")
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
     }
 
     @Test
     fun uiSourcesDoNotImportTheDataLayer() {
-        val ui = sourceRoot().resolve("ui")
-        assertTrue("ui sources", ui.isDirectory)
-        val violations = kotlinFiles(ui).flatMap { file ->
-            file.readLines().mapIndexedNotNull { index, line ->
-                if (line.trim().startsWith("import com.dantech.skimbrowser.data")) {
-                    "${file.path}:${index + 1}"
-                } else {
-                    null
-                }
-            }
-        }
+        val violations = violationsIn("ui").filter { it.contains(DATA) }
+        assertTrue(violations.joinToString("\n"), violations.isEmpty())
+    }
+
+    @Test
+    fun layersStayInward() {
+        val violations = listOf("domain", "ui", "ai", "browser", "data").flatMap { violationsIn(it) }
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
     }
 
@@ -70,6 +48,64 @@ class DomainBoundaryTest {
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
     }
 
+    @Test
+    fun browserWiringAllowlistNamesRealFiles() {
+        val root = sourceRoot()
+        BROWSER_WIRING.forEach { relative ->
+            assertTrue(relative, root.resolve(relative).isFile)
+        }
+    }
+
+    @Test
+    fun oldLayerViolationsAreRejected() {
+        val rejected = listOf(
+            "ui/tabs/TabsViewModel.kt" to "import com.dantech.skimbrowser.browser.TabManager",
+            "ui/ai/AskPageViewModel.kt" to "import com.dantech.skimbrowser.ai.SkimAiService",
+            "ui/history/HistoryViewModel.kt" to "import com.dantech.skimbrowser.data.repo.HistoryRepository",
+            "ui/tabs/TabsViewModel.kt" to "val tabs: com.dantech.skimbrowser.browser.TabManager",
+            "ai/AiDataEraser.kt" to "import com.dantech.skimbrowser.ui.snackbar.SnackbarController",
+            "browser/BrowsingDataCleaner.kt" to "import com.dantech.skimbrowser.ui.snackbar.UndoRegistry",
+            "data/repo/ChatRepository.kt" to "import com.dantech.skimbrowser.ui.snackbar.SnackbarController",
+            "ai/TabsContext.kt" to "import com.dantech.skimbrowser.data.db.entity.SkimAiState",
+            "ai/AiGate.kt" to "import com.dantech.skimbrowser.data.hostOf",
+            "ai/AiGate.kt" to "val state = com.dantech.skimbrowser.data.db.entity.SkimAiState.ASK",
+            "domain/tab/Tab.kt" to "import android.os.Bundle",
+            "domain/tab/Tab.kt" to "import androidx.compose.runtime.Composable",
+            "domain/tab/Tab.kt" to "import okhttp3.OkHttpClient",
+            "domain/tab/TabsController.kt" to "import com.dantech.skimbrowser.browser.TabManager",
+            "domain/tab/TabsController.kt" to "val clock = android.os.SystemClock.uptimeMillis()",
+            "domain/ai/AskPageAccess.kt" to "import com.dantech.skimbrowser.ui.navigation.SkimNavigator",
+            "domain/ai/AskPageAccess.kt" to "import com.dantech.skimbrowser.data.repo.ChatRepository",
+            "domain/ai/AskPageAccess.kt" to "import com.dantech.skimbrowser.ai.SkimAiService",
+            "domain/ai/AskPageAccess.kt" to "import com.dantech.skimbrowser.system.VoiceInput",
+            "domain/ai/AskPageAccess.kt" to "import com.dantech.skimbrowser.search.SuggestionParser",
+            "ui/settings/SettingsScreen.kt" to "import com.dantech.skimbrowser.ai.SkimAiService",
+            "ui/settings/SettingsScreen.kt" to "import com.dantech.skimbrowser.data.repo.HistoryRepository",
+        )
+        rejected.forEach { (path, line) ->
+            assertTrue("$path should reject: $line", violation(path, line) != null)
+        }
+
+        assertNull(violation("ui/settings/SettingsScreen.kt", "import com.dantech.skimbrowser.browser.LocalBrowserHost"))
+        assertNull(violation("browser/BrowsingDataCleaner.kt", "import com.dantech.skimbrowser.data.normalizeHost"))
+        assertNull(violation("domain/ai/AskPageAccess.kt", "package com.dantech.skimbrowser.domain.ai"))
+        assertNull(violation("domain/ai/AskPageAccess.kt", "import com.dantech.skimbrowser.domain.tab.Tab"))
+        assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
+        assertNull(violation("AppContainer.kt", "import com.dantech.skimbrowser.browser.TabManager"))
+    }
+
+    private fun violationsIn(layer: String): List<String> {
+        val root = sourceRoot()
+        val layerRoot = root.resolve(layer)
+        assertTrue("$layer sources", layerRoot.isDirectory)
+        return kotlinFiles(layerRoot).flatMap { file ->
+            val relative = file.relativeTo(root).invariantSeparatorsPath
+            file.readLines().mapIndexedNotNull { index, line ->
+                violation(relative, line)?.let { "$it:${index + 1}" }
+            }
+        }
+    }
+
     private fun sourceRoot(): File {
         val candidates = listOf(
             File("src/main/java/com/dantech/skimbrowser"),
@@ -79,5 +115,67 @@ class DomainBoundaryTest {
             ?: error("Main sources were not found from ${File(".").absolutePath}")
     }
 
-    private fun kotlinFiles(root: File): List<File> = root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    private fun kotlinFiles(root: File): List<File> =
+        root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+
+    private companion object {
+        const val DATA = "com.dantech.skimbrowser.data"
+        const val UI = "com.dantech.skimbrowser.ui"
+        const val BROWSER = "com.dantech.skimbrowser.browser"
+        const val AI = "com.dantech.skimbrowser.ai"
+        const val DATA_ENTITY = "com.dantech.skimbrowser.data.db.entity"
+        const val DATA_HOST_OF = "com.dantech.skimbrowser.data.hostOf"
+
+        val DOMAIN_FORBIDDEN = listOf(
+            "android.",
+            "androidx.",
+            "okhttp3.",
+            DATA,
+            UI,
+            BROWSER,
+            AI,
+            "com.dantech.skimbrowser.system",
+            "com.dantech.skimbrowser.search",
+        )
+
+        /**
+         * Routes and the shell attach the Activity host, a WebView, downloads, or a thumbnail
+         * bitmap. Screens and ViewModels are not on this list.
+         */
+        val BROWSER_WIRING = setOf(
+            "ui/browsing/DownloadSnackbarEffect.kt",
+            "ui/browsing/BrowsingRoute.kt",
+            "ui/settings/SettingsScreen.kt",
+            "ui/tabs/TabsScreen.kt",
+            "ui/navigation/SkimNavDisplay.kt",
+            "ui/browsing/LinkOptionsSheet.kt",
+            "ui/browsing/SitePermissionDialog.kt",
+            "ui/shell/SkimApp.kt",
+            "ui/shell/SnackbarActions.kt",
+        )
+
+        fun violation(relativePath: String, line: String): String? {
+            val layer = relativePath.substringBefore('/', missingDelimiterValue = "")
+            val token = forbiddenToken(layer, relativePath, line) ?: return null
+            return "$relativePath contains $token"
+        }
+
+        fun forbiddenToken(layer: String, relativePath: String, line: String): String? = when (layer) {
+            "domain" -> DOMAIN_FORBIDDEN.firstOrNull { line.contains(it) }
+            "ui" -> when {
+                line.contains(DATA) -> DATA
+                line.contains(AI) -> AI
+                line.contains(BROWSER) && relativePath !in BROWSER_WIRING -> BROWSER
+                else -> null
+            }
+            "ai" -> when {
+                line.contains(UI) -> UI
+                line.contains(DATA_ENTITY) -> DATA_ENTITY
+                line.contains(DATA_HOST_OF) -> DATA_HOST_OF
+                else -> null
+            }
+            "browser", "data" -> if (line.contains(UI)) UI else null
+            else -> null
+        }
+    }
 }

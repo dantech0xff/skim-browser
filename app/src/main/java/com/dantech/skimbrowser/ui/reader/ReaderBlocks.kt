@@ -8,8 +8,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.dantech.skimbrowser.browser.page.PageBlock
-import com.dantech.skimbrowser.browser.page.PageContent
+import com.dantech.skimbrowser.domain.page.PageBlock
+import com.dantech.skimbrowser.domain.page.PageContent
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.domain.url.hostOf

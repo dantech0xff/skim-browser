@@ -5,8 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabRuntime
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.ui.components.AiFab
 
 /** What the AI FAB of a tab's toolbar can do. */

@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ai
 
+import com.dantech.skimbrowser.domain.ai.AskPageAccess
 import com.dantech.skimbrowser.domain.permission.ResolveSkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.permission.SkimAiAudience
@@ -11,17 +12,7 @@ import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import kotlinx.coroutines.flow.first
 
-/** What Ask Skim does with a tab before any page text is read. */
-enum class AiGateDecision {
-    /** Incognito never asks and never sends. */
-    OffInIncognito,
-
-    /** The site has not been allowed, so the permission dialog comes first. */
-    NeedsPermission,
-
-    /** The site is allowed. The sheet may open. */
-    Allowed,
-}
+typealias AiGateDecision = com.dantech.skimbrowser.domain.ai.AskPageDecision
 
 /**
  * The door in front of Ask Skim. [decide] reads the site's saved choice. [allow] records that
@@ -32,8 +23,8 @@ class AiGate(
     private val settings: SettingsRepository,
     private val setSkimAi: SetSkimAi = SetSkimAi(sites),
     private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
-) {
-    suspend fun decide(tab: Tab): AiGateDecision {
+) : AskPageAccess {
+    override suspend fun decide(tab: Tab): AiGateDecision {
         if (tab.incognito) return AiGateDecision.OffInIncognito
         val host = hostOf(tab.url.orEmpty()) ?: return AiGateDecision.NeedsPermission
         val state = sites.get(host)?.skimAi ?: SkimAiState.UNSET

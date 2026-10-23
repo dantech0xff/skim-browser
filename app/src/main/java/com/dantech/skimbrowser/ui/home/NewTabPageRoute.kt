@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
-import com.dantech.skimbrowser.browser.Tab
+import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.system.VoiceInput
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.incognito.IncognitoNewTabScreen

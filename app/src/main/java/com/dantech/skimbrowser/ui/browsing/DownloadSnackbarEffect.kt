@@ -5,12 +5,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.WindowSecureController
-import com.dantech.skimbrowser.browser.cutTo
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent
 import com.dantech.skimbrowser.browser.downloads.DownloadNames
 import com.dantech.skimbrowser.browser.downloads.DownloadTracker
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 fun DownloadSnackbarEffect(
     tracker: DownloadTracker,
     snackbar: SnackbarController,
-    secure: WindowSecureController = LocalBrowserHost.current.secure,
+    secure: WindowPrivacy = LocalBrowserHost.current.secure,
 ) {
     LaunchedEffect(tracker, snackbar, secure) {
         val guard = IncognitoSnackbarGuard(secure, scope = this)
@@ -86,7 +86,7 @@ internal fun shownFileName(name: String?): String {
  */
 @MainThread
 private class IncognitoSnackbarGuard(
-    private val secure: WindowSecureController,
+    private val secure: WindowPrivacy,
     private val scope: CoroutineScope,
 ) {
     private var held = false

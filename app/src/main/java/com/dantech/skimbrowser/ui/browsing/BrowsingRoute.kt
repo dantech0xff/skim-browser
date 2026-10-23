@@ -15,8 +15,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabRuntime
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.system.InternetPanel
 import com.dantech.skimbrowser.ui.browser.browserBack

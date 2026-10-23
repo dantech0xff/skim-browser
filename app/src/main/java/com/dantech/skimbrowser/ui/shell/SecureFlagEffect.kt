@@ -8,8 +8,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
-import com.dantech.skimbrowser.browser.TabsState
-import com.dantech.skimbrowser.browser.WindowSecureController
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.SkimKey
 import com.dantech.skimbrowser.ui.navigation.TabsKey
@@ -59,7 +59,7 @@ fun secureTarget(keys: List<NavKey>, tabs: TabsState): Boolean = visibleKeys(key
  * current frame is done.
  */
 @Composable
-fun SecureFlagEffect(target: Boolean, hasIncognitoTabs: Boolean, armed: Int, secure: WindowSecureController) {
+fun SecureFlagEffect(target: Boolean, hasIncognitoTabs: Boolean, armed: Int, secure: WindowPrivacy) {
     DisposableEffect(secure, target, armed) {
         secure.setSecure(INCOGNITO_SURFACE_OWNER, target)
         onDispose { }
@@ -92,7 +92,7 @@ fun rememberSecureEntryDecorator(
     keys: List<NavKey>,
     contentKeyOf: (NavKey) -> Any,
     tabs: TabsState,
-    secure: WindowSecureController,
+    secure: WindowPrivacy,
 ): NavEntryDecorator<NavKey> {
     val inBackStack = keys.mapTo(HashSet(), contentKeyOf)
     val incognito = keys.filter { it is SkimKey && showsIncognito(it, tabs) }.mapTo(HashSet(), contentKeyOf)
@@ -114,7 +114,7 @@ fun rememberSecureEntryDecorator(
 private class ShownEntries(val inBackStack: Set<Any>, val incognito: Set<Any>)
 
 /** One entry's hold on FLAG_SECURE, let go when the entry's content leaves the composition. */
-private class SecureHold(private val secure: WindowSecureController) : RememberObserver {
+private class SecureHold(private val secure: WindowPrivacy) : RememberObserver {
     private val owner = "incognito-entry-${nextHold.incrementAndGet()}"
     private var held = false
 

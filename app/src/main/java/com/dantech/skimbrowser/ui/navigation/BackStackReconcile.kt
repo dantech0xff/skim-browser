@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ui.navigation
 
 import androidx.navigation3.runtime.NavKey
-import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.domain.tab.TabsState
 
 /**
  * [keys] as they can still be shown with the open [tabs], for a back stack restored after the

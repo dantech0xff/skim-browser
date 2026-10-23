@@ -5,6 +5,7 @@ import android.os.Build
 import android.view.Window
 import android.view.WindowManager
 import androidx.annotation.MainThread
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 
 /**
  * The window's two privacy switches, each held by any number of owners (the surfaces that need it
@@ -24,7 +25,7 @@ class WindowSecureController internal constructor(
     private val window: Window,
     /** `Activity.setRecentsScreenshotEnabled`; null before API 33. */
     private val setRecentsScreenshotEnabled: ((Boolean) -> Unit)?,
-) {
+) : WindowPrivacy {
     constructor(activity: Activity) : this(
         activity.window,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -43,7 +44,7 @@ class WindowSecureController internal constructor(
         get() = (window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
 
     /** Holds `FLAG_SECURE` on for [owner] while [secure], or lets go of it. */
-    fun setSecure(owner: String, secure: Boolean) {
+    override fun setSecure(owner: String, secure: Boolean) {
         if (secure) {
             secureOwners += owner
             if (!isSecure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -55,7 +56,7 @@ class WindowSecureController internal constructor(
     }
 
     /** Keeps the Recents preview hidden for [owner] while [hidden], or lets go of it; nothing before API 33. */
-    fun setRecentsHidden(owner: String, hidden: Boolean) {
+    override fun setRecentsHidden(owner: String, hidden: Boolean) {
         val setEnabled = setRecentsScreenshotEnabled ?: return
         if (hidden) {
             recentsOwners += owner

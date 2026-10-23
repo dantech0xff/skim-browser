@@ -7,8 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.speech.RecognizerIntent
 import androidx.activity.result.contract.ActivityResultContract
-import com.dantech.skimbrowser.browser.cutTo
-import com.dantech.skimbrowser.browser.toVisibleText
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.text.toVisibleText
 
 /**
  * Voice search (04, 09c): Android's own speech input, asked for a web search. The mic shows only
