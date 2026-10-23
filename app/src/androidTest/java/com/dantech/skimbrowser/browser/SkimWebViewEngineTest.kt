@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.tab.PageEvent
+
 import android.annotation.SuppressLint
 import android.content.ComponentCallbacks2
 import android.graphics.Bitmap

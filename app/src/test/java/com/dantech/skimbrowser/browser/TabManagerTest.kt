@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.RestoreResult
+
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.IncognitoSession.State

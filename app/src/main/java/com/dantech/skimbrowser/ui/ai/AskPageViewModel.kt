@@ -14,11 +14,12 @@ import com.dantech.skimbrowser.ai.SkimAiService
 import com.dantech.skimbrowser.ai.stoppedMessage
 import com.dantech.skimbrowser.ai.toAiFailure
 import com.dantech.skimbrowser.browser.NetworkMonitor
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabRuntime
-import com.dantech.skimbrowser.browser.page.HighlightRequest
-import com.dantech.skimbrowser.browser.page.PageContent
+import com.dantech.skimbrowser.domain.page.HighlightRequest
+import com.dantech.skimbrowser.domain.page.PageContent
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.newTab
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
@@ -109,7 +110,7 @@ sealed interface AskPageEffect {
  */
 class AskPageViewModel(
     private val key: AskPageKey,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val sessions: ChatSessionStore,
     private val ai: SkimAiService,
     private val network: NetworkMonitor,

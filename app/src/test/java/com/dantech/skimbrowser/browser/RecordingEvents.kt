@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.tab.HitTarget
+
 import android.os.Bundle
 
 /** A [TabEventSink] that records every report in order and answers as a test sets it up. */

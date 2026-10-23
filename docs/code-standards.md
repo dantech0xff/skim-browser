@@ -4,7 +4,7 @@
 
 Kotlin. UI is Jetpack Compose. Strings and content descriptions live in `app/src/main/res/values/strings.xml`. Plurals are real plural resources. UI copy is English. Do not concatenate sentences in code.
 
-A composable reads state and sends events. It does not decide whether a page may be sent to the model, whether a tab is incognito, or how a layout is stored. Those decisions sit in `AiGate`, `SkimAiService`, `TabManager`, and the repositories.
+A composable reads state and sends events. It does not decide whether a page may be sent to the model, whether a tab is incognito, or how a layout is stored. Those decisions sit in domain use cases and tab rules, applied by `AiGate`, `SkimAiService`, and `TabManager`.
 
 ## ViewModels
 
@@ -14,7 +14,7 @@ ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens co
 
 `domain/` is pure Kotlin. It holds the models the screens use, the repository interfaces, and the use cases. A use case is one action with `operator fun invoke`. `kotlinx.coroutines` (`Flow`) is allowed there. Android, OkHttp, Room, and the `data` package are not.
 
-Concrete repositories in `data/repo` implement those interfaces. Mapping between a Room entity and a domain model happens in `data`, at the DAO boundary. DAOs stay inside the repository. A repository does not know about Compose. `TabManager` is the browser-facing API for tabs; screens do not write tab rows themselves.
+Concrete repositories in `data/repo` implement those interfaces. Mapping between a Room entity and a domain model happens in `data`, at the DAO boundary. DAOs stay inside the repository. A repository does not know about Compose. `TabsController` is the API ViewModels use for tabs. `TabManager` implements it. Screens do not write tab rows themselves.
 
 Settings go through `domain.settings.SettingsRepository`. Do not read the DataStore file from a screen. `ui` sources do not import `com.dantech.skimbrowser.data`.
 

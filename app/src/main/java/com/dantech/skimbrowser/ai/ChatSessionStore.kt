@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.ai
 
-import com.dantech.skimbrowser.browser.PageEvent
+import com.dantech.skimbrowser.domain.tab.PageEvent
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.page.PageContent

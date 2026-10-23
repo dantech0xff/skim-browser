@@ -3,7 +3,7 @@ package com.dantech.skimbrowser.ui.reader
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.usecase.SetReaderFont
@@ -40,7 +40,7 @@ sealed interface ReaderUiState {
  */
 class ReaderViewModel(
     tabId: String,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val settings: SettingsRepository,
     private val saveScale: SetReaderTextScale,
     private val saveFont: SetReaderFont,

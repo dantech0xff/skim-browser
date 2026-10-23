@@ -4,17 +4,7 @@ import com.dantech.skimbrowser.browser.cutTo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/**
- * A citation to highlight in a tab's page: block [blockId] of the [PageContent] read from
- * [expectedUrl] at [expectedNonce], or failing that the first block containing [citedText]. The
- * page must still be that document, or nothing runs.
- */
-data class HighlightRequest(
-    val expectedUrl: String,
-    val expectedNonce: Long,
-    val blockId: String,
-    val citedText: String?,
-)
+typealias HighlightRequest = com.dantech.skimbrowser.domain.page.HighlightRequest
 
 /**
  * The one argument of the highlight script. [url] is the page the citation was read from: the

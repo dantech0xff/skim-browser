@@ -1,11 +1,11 @@
 package com.dantech.skimbrowser.ai
 
 import androidx.compose.runtime.Immutable
-import com.dantech.skimbrowser.browser.GroupLayout
+import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
-import com.dantech.skimbrowser.browser.layout
+import com.dantech.skimbrowser.domain.tab.layout
 import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.tab.TabRepository

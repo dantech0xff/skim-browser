@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+
 import android.webkit.WebViewClient
 import org.junit.Assert.assertEquals
 import org.junit.Test

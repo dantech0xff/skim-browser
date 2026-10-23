@@ -29,7 +29,7 @@ A ViewModel reads through a repository interface when the call is a pass-through
 
 ## Tabs and WebViews
 
-`TabManager` owns the tab list, groups, the current tab, and the restore path. It is created once per process. It does not hold WebViews.
+Tab models (`Tab`, `TabsState`, `TabRuntime`, `GroupLayout`) live in `domain/tab`. ViewModels depend on `TabsController`, and `TabManager` implements it. Incognito restore and undo-close decisions are pure functions in `domain/tab/TabRules.kt`. `TabManager` owns the live tab list and the restore path. It is created once per process. It does not hold WebViews. Android types (`Bundle`, `SystemClock`, `Log`, WebView) stay in `browser/`.
 
 `WebViewPool` is created with the Activity (`BrowserHost`). It keeps a small number of live WebViews and rebinds them when the current tab changes. `MainActivity.browserHostForTests` exposes the host to instrumented tests. `pool.destroyAll()` is what a process-death test uses to drop every WebView before `Activity.recreate()`.
 

@@ -8,11 +8,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.browser.LoadError
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabRuntime
-import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.browser.cutTo
 import com.dantech.skimbrowser.browser.toVisibleText
 import com.dantech.skimbrowser.domain.url.hostOf
@@ -94,7 +94,7 @@ data class FindUiState(
  */
 class BrowsingViewModel(
     private val tabId: String,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
 ) : ViewModel() {
 
     /** The text of the Find in page field; the bar's input field edits it. */

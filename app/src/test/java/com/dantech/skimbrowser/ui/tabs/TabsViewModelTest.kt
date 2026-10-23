@@ -6,10 +6,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.ai.GroupingBannerState
-import com.dantech.skimbrowser.browser.GroupLayout
+import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManagerFixture
-import com.dantech.skimbrowser.browser.layout
+import com.dantech.skimbrowser.domain.tab.layout
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController

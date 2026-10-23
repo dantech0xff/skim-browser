@@ -9,7 +9,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.browser.FakeActivityHost
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.browser.WindowSecureController
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository

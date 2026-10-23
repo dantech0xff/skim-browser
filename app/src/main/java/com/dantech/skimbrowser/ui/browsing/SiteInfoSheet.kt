@@ -35,9 +35,9 @@ import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.IncognitoSession
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabRuntime
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabRuntime
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.permission.PermissionState
 import com.dantech.skimbrowser.domain.permission.SitePermission
 import com.dantech.skimbrowser.domain.permission.SitePermissionKind
@@ -107,7 +107,7 @@ data class SiteInfoUiState(
  */
 class SiteInfoViewModel(
     private val tabId: String,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val permissions: SitePermissionRepository,
     private val settings: SettingsRepository,
     private val saveSkimAi: SetSkimAi,

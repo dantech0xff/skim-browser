@@ -45,7 +45,7 @@ import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.FakeActivityHost
 import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.browser.Tab

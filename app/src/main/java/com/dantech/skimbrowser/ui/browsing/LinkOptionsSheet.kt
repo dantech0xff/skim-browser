@@ -35,9 +35,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.HitTarget
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.system.Clipboard
 import com.dantech.skimbrowser.system.ShareSheet
@@ -128,7 +128,7 @@ internal fun linkHeader(target: HitTarget): Pair<String, String> {
 class LinkOptionsViewModel(
     private val tabId: String,
     private val target: HitTarget,
-    tabs: TabManager,
+    tabs: TabsController,
 ) : ViewModel() {
 
     private val header = linkHeader(target)
@@ -151,7 +151,7 @@ class LinkOptionsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), initial(tabs))
 
-    private fun initial(tabs: TabManager): LinkOptionsUiState {
+    private fun initial(tabs: TabsController): LinkOptionsUiState {
         val tab = tabs.state.value.tab(tabId) ?: return LinkOptionsUiState(tabMissing = true)
         return LinkOptionsUiState(
             incognito = tab.incognito,

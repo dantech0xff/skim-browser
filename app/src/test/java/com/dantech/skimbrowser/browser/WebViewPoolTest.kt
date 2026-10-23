@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.LoadError
+
 import android.content.ComponentCallbacks2
 import android.graphics.Bitmap
 import android.os.Bundle

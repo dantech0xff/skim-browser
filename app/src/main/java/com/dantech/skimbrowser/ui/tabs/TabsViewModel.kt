@@ -4,13 +4,14 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.GroupLayout
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabGroup
 import com.dantech.skimbrowser.ai.GroupingBannerState
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabsState
-import com.dantech.skimbrowser.browser.layout
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabGroup
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.TabsState
+import com.dantech.skimbrowser.domain.tab.applyLayout
+import com.dantech.skimbrowser.domain.tab.layout
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
@@ -73,7 +74,7 @@ data class TabsUiState(
  */
 class TabsViewModel(
     private val incognito: Boolean,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     grouping: Flow<GroupingBannerState?> = flowOf(null),

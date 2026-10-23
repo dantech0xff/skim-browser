@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.HitTarget
+
 import android.webkit.WebView.HitTestResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

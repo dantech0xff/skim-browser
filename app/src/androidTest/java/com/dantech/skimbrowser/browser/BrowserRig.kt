@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.PageEvent
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle

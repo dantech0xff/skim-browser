@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.onMain
 import com.dantech.skimbrowser.ui.navigation.LinkOptionsKey
 import com.dantech.skimbrowser.ui.navigation.ReaderKey

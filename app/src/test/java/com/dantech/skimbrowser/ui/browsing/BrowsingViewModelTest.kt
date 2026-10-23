@@ -10,7 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
-import com.dantech.skimbrowser.browser.LoadError
+import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.ui.components.SiteIndicator
 import com.dantech.skimbrowser.ui.shell.AiFabMode

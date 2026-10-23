@@ -23,7 +23,7 @@ import com.dantech.skimbrowser.ai.toAiFailure
 import com.dantech.skimbrowser.ai.toSources
 import com.dantech.skimbrowser.ai.withRealTabIds
 import com.dantech.skimbrowser.browser.NetworkMonitor
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
@@ -97,7 +97,7 @@ class AskTabsViewModel(
     private val key: AskTabsKey,
     private val ai: SkimAiService,
     private val sessions: ChatSessionStore,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val sites: SitePermissionRepository,
     private val network: NetworkMonitor,
     private val savedState: SavedStateHandle,

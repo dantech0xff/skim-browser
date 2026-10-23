@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ui.navigation
 
 import androidx.navigation3.runtime.NavKey
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import kotlinx.serialization.Serializable
 

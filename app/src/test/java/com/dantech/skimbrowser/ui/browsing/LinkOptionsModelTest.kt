@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.ui.browsing
 
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -8,7 +8,7 @@ import androidx.navigation3.runtime.NavKey
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.ai.AiGateDecision
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WindowSecureController

@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ai
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.GroupLayout
+import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository

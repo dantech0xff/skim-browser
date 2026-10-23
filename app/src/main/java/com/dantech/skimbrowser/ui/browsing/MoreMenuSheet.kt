@@ -31,8 +31,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.url.hostOf
@@ -102,7 +102,7 @@ data class MoreMenuUiState(
  */
 class MoreMenuViewModel(
     private val tabId: String,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val bookmarks: BookmarkRepository,
     private val addBookmark: AddBookmark,
     private val snackbar: SnackbarController,

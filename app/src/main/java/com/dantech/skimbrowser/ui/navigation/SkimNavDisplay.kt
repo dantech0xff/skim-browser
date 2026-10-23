@@ -17,7 +17,7 @@ import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
 import com.dantech.skimbrowser.ui.ai.AskPageRoute
 import com.dantech.skimbrowser.ui.ai.AskTabsRoute

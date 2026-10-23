@@ -1,11 +1,11 @@
 package com.dantech.skimbrowser.ai
 
 import com.anthropic.models.messages.ContentBlockParam
-import com.dantech.skimbrowser.browser.Tab
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.isAskCandidate
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.isWebUrl
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import java.security.MessageDigest
 
@@ -32,14 +32,14 @@ data class TabContext(
  * This never creates one. Grouping passes false, so it sends titles and hosts only.
  */
 suspend fun collectTabsContext(
-    tabs: TabManager,
+    tabs: TabsController,
     sites: SitePermissionRepository,
     extractLive: Boolean,
     ungroupedOnly: Boolean = false,
 ): List<TabContext> {
     val candidates = tabs.state.value.tabs
         .asSequence()
-        .filter { tab -> !tab.incognito && tab.url?.let(::isWebUrl) == true }
+        .filter { tab -> tab.isAskCandidate() }
         .filter { tab -> !ungroupedOnly || tab.groupId == null }
         .sortedByDescending { it.lastAccessedAt }
         .toList()

@@ -5,13 +5,12 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.TabManager
-import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.tab.pagesEligibleForAsk
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
-import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
 import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.ui.components.siteLetter
@@ -78,7 +77,7 @@ data class HomeUiState(
  * @param zone the time zone their calendar days are counted in.
  */
 class HomeViewModel(
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val shortcuts: ShortcutRepository,
     private val removeShortcut: RemoveShortcut,
     private val restoreShortcut: RestoreShortcut,
@@ -92,7 +91,7 @@ class HomeViewModel(
 ) : ViewModel() {
 
     val state: StateFlow<HomeUiState> = combine(
-        tabs.state.map { eligibleTabCount(it) }.distinctUntilChanged(),
+        tabs.state.map { pagesEligibleForAsk(it) }.distinctUntilChanged(),
         shortcuts.observe(),
         chats.observeRecentPageChats(CONTINUE_CARDS).map { recent -> recent.map(::continueCard) },
     ) { tabCount, shortcutList, cards ->
@@ -102,7 +101,7 @@ class HomeViewModel(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            HomeUiState(eligibleTabCount = eligibleTabCount(tabs.state.value), voiceAvailable = voiceAvailable),
+            HomeUiState(eligibleTabCount = pagesEligibleForAsk(tabs.state.value), voiceAvailable = voiceAvailable),
         )
 
     /**
@@ -151,8 +150,5 @@ class HomeViewModel(
         private const val STOP_TIMEOUT_MS = 5_000L
 
         private const val TAG = "HomeViewModel"
-
-        /** Normal tabs showing a web page: not those on the New tab page, never incognito tabs. */
-        fun eligibleTabCount(state: TabsState): Int = state.tabs.count { tab -> !tab.incognito && tab.url?.let(::isWebUrl) == true }
     }
 }

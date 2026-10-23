@@ -3,8 +3,8 @@ package com.dantech.skimbrowser
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.GroupLayout
-import com.dantech.skimbrowser.browser.RestoreResult
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.RestoreResult
 import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.testing.MainDispatcherRule

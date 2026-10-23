@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.browser.LoadError
+import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.captureBoard

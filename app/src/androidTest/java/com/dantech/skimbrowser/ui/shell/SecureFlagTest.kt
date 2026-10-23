@@ -14,7 +14,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.webkit.Profile
 import androidx.webkit.WebViewCompat
-import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.WebViewSupport
 import com.dantech.skimbrowser.browser.holdsFor
