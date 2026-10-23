@@ -138,7 +138,6 @@ class TabsViewModel(
 
     override fun onCleared() {
         detachGrouping()
-        super.onCleared()
     }
 
     /** Closes one tab and offers Undo. Nothing happens when it is already gone. */
