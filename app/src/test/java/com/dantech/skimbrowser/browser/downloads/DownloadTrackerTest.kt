@@ -155,6 +155,25 @@ class DownloadTrackerTest {
     }
 
     @Test
+    fun downloadManagerOnlyReportsNormalTabsDownloadsAndAnIncognitoReportKeepsItsMark() = runTest {
+        val tracker = tracker()
+        tracker.enqueue(request("one.pdf"))
+        val done = system.lastEnqueuedId()
+        tracker.enqueue(request("two.pdf"))
+        val failed = system.lastEnqueuedId()
+        system.statuses[done] = DownloadManager.STATUS_SUCCESSFUL
+        system.uris[done] = FILE
+        system.statuses[failed] = DownloadManager.STATUS_FAILED
+
+        tracker.refresh()
+        runCurrent()
+        tracker.report(DownloadCompleted("photo.jpg", FILE, "image/jpeg", incognito = true))
+        tracker.report(DownloadFailed("clip.mp4", incognito = true))
+
+        assertEquals(listOf(false, false, true, true), events.map { it.incognito })
+    }
+
+    @Test
     fun theSystemRequestCarriesTheCookiesTheUserAgentAndANotification() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val downloads = AndroidSystemDownloads(context)

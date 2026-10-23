@@ -21,13 +21,24 @@ import kotlinx.coroutines.launch
 /** How a download ended, for the snackbar that reports it. */
 sealed interface DownloadEvent {
     /**
+     * True when an incognito tab started the download, or when its tab is unknown: the snackbar that
+     * names the file must not show up in a screenshot of a screen that is not incognito.
+     */
+    val incognito: Boolean
+
+    /**
      * The file [fileName] is in the shared Downloads folder at [uri]. [mime] is the type Android
      * keeps for the file (MediaStore's or DownloadManager's), the one to open it with.
      */
-    data class DownloadCompleted(val fileName: String, val uri: Uri, val mime: String) : DownloadEvent
+    data class DownloadCompleted(
+        val fileName: String,
+        val uri: Uri,
+        val mime: String,
+        override val incognito: Boolean = false,
+    ) : DownloadEvent
 
     /** The download of [fileName] (null when it never had a name) failed or was refused. */
-    data class DownloadFailed(val fileName: String?) : DownloadEvent
+    data class DownloadFailed(val fileName: String?, override val incognito: Boolean = false) : DownloadEvent
 }
 
 /**
@@ -114,8 +125,9 @@ class AndroidSystemDownloads(context: Context) : SystemDownloads {
  * reported once, when DownloadManager says it succeeded (with the URI and type DownloadManager
  * gives) or failed. A download removed meanwhile (cancelled from its notification) is dropped
  * without a word. The completion broadcast only arrives while the Activity listens, so [refresh]
- * asks again for every download still followed. Downloads Skim saves itself are reported through
- * [report].
+ * asks again for every download still followed. DownloadManager only ever gets the downloads of
+ * normal tabs (an incognito tab's never leave the process), so its reports are never incognito
+ * ones. Downloads Skim saves itself are reported through [report], as their router marks them.
  *
  * Events are not replayed: they go to whoever collects [events] when they happen.
  */
@@ -180,7 +192,7 @@ class DownloadTracker(
         when (status) {
             null -> followed.remove(id)
             DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(id) != null) report(completed(id, name))
-            DownloadManager.STATUS_FAILED -> if (followed.remove(id) != null) report(DownloadEvent.DownloadFailed(name))
+            DownloadManager.STATUS_FAILED -> if (followed.remove(id) != null) report(DownloadEvent.DownloadFailed(name, incognito = false))
             // Pending, running or paused: still followed.
             else -> Unit
         }
@@ -189,13 +201,14 @@ class DownloadTracker(
     private fun completed(id: Long, name: String): DownloadEvent = try {
         val uri = system.uriFor(id)
         if (uri == null) {
-            DownloadEvent.DownloadFailed(name)
+            DownloadEvent.DownloadFailed(name, incognito = false)
         } else {
-            DownloadEvent.DownloadCompleted(name, uri, system.mimeTypeFor(id)?.takeIf { it.isNotBlank() } ?: OCTET_STREAM)
+            val mime = system.mimeTypeFor(id)?.takeIf { it.isNotBlank() } ?: OCTET_STREAM
+            DownloadEvent.DownloadCompleted(name, uri, mime, incognito = false)
         }
     } catch (e: RuntimeException) {
         Log.w(TAG, "A finished download could not be read: ${e.javaClass.simpleName}")
-        DownloadEvent.DownloadFailed(name)
+        DownloadEvent.DownloadFailed(name, incognito = false)
     }
 
     private companion object {

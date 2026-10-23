@@ -63,6 +63,7 @@ class DownloadDeviceTest {
         assertEquals(SAFE_REPORT_NAME, completed.fileName)
         assertEquals("the type DownloadManager keeps for the file", download.mediaType, completed.mime)
         assertEquals("application/pdf", completed.mime)
+        assertFalse("a normal tab's", completed.incognito)
         assertArrayEquals("the file opens and holds what the server sent", TestPages.REPORT_BYTES, downloads.read(completed.uri))
     }
 
@@ -98,6 +99,7 @@ class DownloadDeviceTest {
         assertEquals("Download/", row.relativePath)
         assertEquals(SAFE_REPORT_NAME, completed.fileName)
         assertEquals("the type MediaStore keeps for the file", row.mime, completed.mime)
+        assertTrue("reported as the incognito tab's", completed.incognito)
         assertArrayEquals(TestPages.REPORT_BYTES, downloads.read(completed.uri))
         assertTrue("MediaStore told of the new file", saved.count > 0)
     }
@@ -136,7 +138,7 @@ class DownloadDeviceTest {
         val tookMs = try {
             val tapped = SystemClock.elapsedRealtime()
             Finger.tap(rig.shownWebView(), fractionY = LINK_Y)
-            assertEquals(DownloadEvent.DownloadFailed("huge.bin"), rig.awaitDownloadEvents(1).single())
+            assertEquals(DownloadEvent.DownloadFailed("huge.bin", incognito = true), rig.awaitDownloadEvents(1).single())
             SystemClock.elapsedRealtime() - tapped
         } finally {
             saved.close()

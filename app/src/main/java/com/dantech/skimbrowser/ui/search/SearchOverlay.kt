@@ -375,7 +375,7 @@ private fun EdgeToEdgeLayerWindow() {
  * in an incognito tab must not come back as a suggestion elsewhere.
  */
 @Composable
-private fun NoKeyboardLearning(enabled: Boolean, content: @Composable () -> Unit) {
+internal fun NoKeyboardLearning(enabled: Boolean, content: @Composable () -> Unit) {
     InterceptPlatformTextInput(
         interceptor = { request, nextHandler ->
             if (!enabled) {

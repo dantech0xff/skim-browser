@@ -20,6 +20,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
@@ -90,6 +91,8 @@ fun SkimApp(
         secure = host.secure,
     )
     SystemBarsEffect(theme.isDark(isSystemInDarkTheme(), incognitoSurface))
+    // A download that ends is told on whatever screen is up, with the one snackbar host below.
+    DownloadSnackbarEffect(container.downloadTracker, container.snackbarController, host.secure)
     LaunchedEffect(navigator) {
         // The channel belongs to the Activity, so each link is received here exactly once.
         for (url in pendingLinks) {

@@ -1,7 +1,5 @@
 package com.dantech.skimbrowser.ui.navigation
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -17,11 +15,9 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
-import com.dantech.skimbrowser.browser.LoadError
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
-import com.dantech.skimbrowser.ui.browser.PageStoppedWorking
+import com.dantech.skimbrowser.ui.browsing.BrowsingRoute
 import com.dantech.skimbrowser.ui.home.NewTabPageRoute
 import com.dantech.skimbrowser.ui.home.ShortcutDialogProperties
 import com.dantech.skimbrowser.ui.home.ShortcutDialogRoute
@@ -87,14 +83,7 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
                 container = container,
                 navigator = navigator,
                 newTabPage = { tab -> NewTabPageRoute(tab, container, navigator) },
-                page = { tab, runtime ->
-                    val error = runtime.loadError
-                    if (error is LoadError.Crashed) {
-                        PageStoppedWorking(tab, error, onTryAgain = { container.tabManager.reload(tab.id) })
-                    } else {
-                        WebViewHost(tab.id, Modifier.fillMaxSize().safeDrawingPadding())
-                    }
-                },
+                page = { tab, runtime -> BrowsingRoute(tab, runtime, container, navigator) },
             )
         }
         entry<ShortcutDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->

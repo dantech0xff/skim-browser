@@ -57,8 +57,10 @@ import kotlinx.coroutines.withContext
  * has one through Content-Disposition) and is made safe by [DownloadNames] for the type read from
  * the file's first bytes ([downloadMimeOf]); a DownloadManager download, whose bytes Skim never
  * sees, uses the server's type. Before scoped storage (API 26–28) Android's storage permission is
- * asked for first. How each download ends reaches [DownloadTracker.events]; downloads run in
- * [scope], so one that started finishes even when the Activity goes away ([destroy]).
+ * asked for first. How each download ends reaches [DownloadTracker.events], marked as an incognito
+ * tab's when such a tab started it (or when the tab is no longer open, which leaves its kind
+ * unknown); downloads run in [scope], so one that started finishes even when the Activity goes
+ * away ([destroy]).
  */
 @MainThread
 class DownloadRouter(
@@ -121,30 +123,34 @@ class DownloadRouter(
         }
         val shownName = DownloadNames.sanitize(rawName, declared)
         val tab = tabs.state.value.tab(tabId)
+        // A tab that is no longer open may have been an incognito one: its report says so.
+        val incognito = tab?.incognito ?: true
         if (source == null || tab == null) {
             Log.w(TAG, "A download of an unsupported kind was refused")
-            fail(shownName)
+            fail(shownName, incognito)
             return
         }
         if (!userInitiated && !consumeGesture(webView) && !allowAutomatic(tabId)) {
             Log.w(TAG, "A page started another download on its own; it was dropped")
-            fail(shownName)
+            fail(shownName, incognito)
             return
         }
         if ((source == Source.DATA || source == Source.BLOB) && !inlineDownloads.tryAcquire()) {
             Log.w(TAG, "Too many downloads held in memory at once; one was dropped")
-            fail(shownName)
+            fail(shownName, incognito)
             return
         }
         val agent = userAgent?.takeIf { it.isNotBlank() } ?: webView.settings.userAgentString
         when (source) {
-            Source.WEB -> if (tab.incognito) {
+            Source.WEB -> if (incognito) {
                 startInProcess(url, agent, rawName, declared, shownName)
             } else {
                 startSystem(url, agent, rawName, declared, pageStarted = !userInitiated)
             }
-            Source.DATA -> launchDownload(shownName, inlineDownloads::release) { saveData(url, rawName, shownName) }
-            Source.BLOB -> launchDownload(shownName, inlineDownloads::release) { saveBlob(webView, url, rawName, declared, shownName) }
+            Source.DATA -> launchDownload(shownName, incognito, inlineDownloads::release) { saveData(url, rawName, shownName) }
+            Source.BLOB -> launchDownload(shownName, incognito, inlineDownloads::release) {
+                saveBlob(webView, url, rawName, declared, shownName)
+            }
         }
     }
 
@@ -165,7 +171,7 @@ class DownloadRouter(
                 null
             }
         }
-        launchDownload(name) {
+        launchDownload(name, incognito = false) {
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(name)
             val request = SystemDownloadRequest(url, name, declared, userAgent, cookie)
             val enqueued = withContext(ioDispatcher) { tracker.enqueue(request) }
@@ -179,10 +185,10 @@ class DownloadRouter(
         val profile = incognitoProfile()
         if (profile == null) {
             Log.w(TAG, "An incognito download has no incognito session")
-            fail(shownName)
+            fail(shownName, incognito = true)
             return
         }
-        launchDownload(shownName) {
+        launchDownload(shownName, incognito = true) {
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(shownName)
             inProcess.download(
                 url = url,
@@ -214,10 +220,11 @@ class DownloadRouter(
     }
 
     /**
-     * Runs a download in [scope] and reports how it ended; an unexpected failure reports [name]
-     * failed. [ended] runs once it is over, also when it never ran.
+     * Runs a download in [scope] and reports how it ended, marked [incognito] when an incognito tab
+     * started it; an unexpected failure reports [name] failed. [ended] runs once it is over, also
+     * when it never ran.
      */
-    private fun launchDownload(name: String, ended: () -> Unit = {}, download: suspend () -> DownloadEvent?) {
+    private fun launchDownload(name: String, incognito: Boolean, ended: () -> Unit = {}, download: suspend () -> DownloadEvent?) {
         scope.launch(mainDispatcher) {
             val event = try {
                 download()
@@ -227,12 +234,12 @@ class DownloadRouter(
                 Log.w(TAG, "A download failed: ${e.javaClass.simpleName}")
                 DownloadEvent.DownloadFailed(name)
             }
-            event?.let(tracker::report)
+            event?.let { tracker.report(it.startedBy(incognito)) }
         }.invokeOnCompletion { ended() }
     }
 
-    private fun fail(name: String?) {
-        tracker.report(DownloadEvent.DownloadFailed(name))
+    private fun fail(name: String?, incognito: Boolean) {
+        tracker.report(DownloadEvent.DownloadFailed(name, incognito))
     }
 
     /** True when Skim may write to the shared Downloads folder, after asking Android when it must. */
@@ -291,6 +298,12 @@ class DownloadRouter(
             "data" -> Source.DATA
             "blob" -> Source.BLOB
             else -> null
+        }
+
+        /** [this] as the report of a download that an incognito tab started, or a normal one. */
+        fun DownloadEvent.startedBy(incognito: Boolean): DownloadEvent = when (this) {
+            is DownloadEvent.DownloadCompleted -> copy(incognito = incognito)
+            is DownloadEvent.DownloadFailed -> copy(incognito = incognito)
         }
 
         /** The file name a Content-Disposition header gives, or null when it gives none. */
