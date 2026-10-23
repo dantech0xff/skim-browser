@@ -27,7 +27,7 @@ Listed in `design/README.md` under "Not designed yet", and repeated in `docs/pro
 
 - The debug app builds with `assembleDebug` and the main flows are implemented: browse, tabs, reader, settings, and Ask Skim against a configured endpoint.
 - Screens observe ViewModels. ViewModels hold UI state. Navigation and side effects go through `SkimNavigator` and the container, not through composables deciding policy.
-- Data access is repositories in `data/`, created by `AppContainer`. There is no `domain/` package and no use-case types. That gap is an open question in `docs/project-roadmap.md`.
+- Data access goes through repository interfaces and use cases in `domain/`. Concrete repositories in `data/` implement the interfaces and map Room and DataStore types there. `AppContainer` constructs both. ViewModels do not depend on concrete `data` classes. `DomainBoundaryTest` keeps `domain` free of Android and `data` imports.
 - Unit tests cover ViewModels, repositories, and the AI and browser logic. Coverage is measured with Kover on `:app` (the only module). Generated classes are excluded. Composables are not excluded to inflate the number. The measured figure is reported with the build, not asserted as a failing Gradle rule.
 - UI follows `design/` (layout, color, type, spacing, icons). Remaining differences are listed in `docs/design-guidelines.md`.
 

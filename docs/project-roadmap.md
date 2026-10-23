@@ -31,43 +31,21 @@ From `design/README.md`. The app does not invent screens for these:
 
 ## Open questions
 
-1. **Clean Architecture.** The original brief asked for a `domain/` layer, use cases, and repository interfaces. The plan and the code use `AppContainer` and concrete repositories. Rewriting phases 1–12 into that shape would touch every ViewModel.
-   - Option A: keep the current graph.
-   - Option B: add interfaces and use cases around the existing repositories without moving screens.
-   - Option C: rewrite the graph into presentation / domain / data.
-   - Recommendation: A. The plan's architecture is what the tests and screens are written against.
+1. **Clean Architecture.** Closed as option B. `domain/` holds models, repository interfaces, and use cases. `data/` implements the interfaces and maps entities. ViewModels take use cases or those interfaces. `AppContainer` wires them. The transcript engine still calls the concrete chat repository for `createChat`, messages, and `deleteAll`. A full presentation / domain / data rewrite (option C) was not done.
 
-2. **D2 on a device.** Incognito tabs are omitted from Room and from `TabManager.restore()`. `ProcessDeathRestoreTest` recreates the Activity after `pool.destroyAll()`. It has not been run on `skim_api36`.
-   - Option A: run the instrumented test and the adb checklist before any beta.
-   - Option B: treat the unit test as enough.
-   - Recommendation: A.
+2. **D2 on a device.** Owner kept option A. Incognito tabs are omitted from Room and from `TabManager.restore()`. `ProcessDeathRestoreTest` recreates the Activity after `pool.destroyAll()`. It has not been run on `skim_api36`. Run the instrumented test and the adb checklist before any beta.
 
-3. **D8 copy.** Server error, refusal, and interrupted answers use the strings marked default in the plan. There is no board for them.
-   - Option A: keep the strings until design reviews them.
-   - Option B: hide those states.
-   - Recommendation: A. The strings are already what the cards show.
+3. **D8 copy.** Owner kept option A. Server error, refusal, and interrupted answers use the strings marked default in the plan. There is no board for them. Keep the strings until design reviews them.
 
-4. **Image options tile color.** The design HTML uses `#DCE2E8` / `#4A5560`. The app uses `surfaceContainerHighest` / `onSurfaceVariant` so dark theme has a token.
-   - Option A: keep the token.
-   - Option B: hard-code the gray.
-   - Recommendation: A.
+4. **Image options tile color.** Owner kept option A. The design HTML uses `#DCE2E8` / `#4A5560`. The app uses `surfaceContainerHighest` / `onSurfaceVariant` so dark theme has a token.
 
-5. **History favicon letters.** `siteLetter` uses the first character of the host. The history board draws R and N for two hosts that do not start with those letters.
-   - Option A: keep `siteLetter`.
-   - Option B: special-case the board.
-   - Recommendation: A. The same helper is used for history, bookmarks, and tabs.
+5. **History favicon letters.** Owner kept option A. `siteLetter` uses the first character of the host. The history board draws R and N for two hosts that do not start with those letters. The same helper is used for history, bookmarks, and tabs.
 
-6. **06b sheet height.** The board is 760 dp tall. The shared bottom sheet opens at full height.
-   - Option A: keep the shared sheet.
-   - Option B: a custom shorter sheet for this one screen.
-   - Recommendation: A. It is recorded under known deviations.
+6. **06b sheet height.** Owner kept option A. The board is 760 dp tall. The shared bottom sheet opens at full height. It is recorded under known deviations.
 
-7. **Live API key.** Debug calls Anthropic only when `skim.anthropicApiKey` is set. No key is committed. Live answers were not exercised.
-   - Option A: the developer adds their own spend-limited key locally.
-   - Option B: commit a key.
-   - Recommendation: A.
+7. **Live API key.** Owner kept option A. Debug calls Anthropic only when `skim.anthropicApiKey` is set. No key is committed. The developer adds their own spend-limited key locally. Live answers were not exercised.
 
-8. **Device coverage number.** Kover measures the JVM unit tests. It does not include `androidTest`. The 80% bar is the unit-test number for `:app`.
+8. **Device coverage number.** Kover measures the JVM unit tests. It does not include `androidTest`. The 80% bar is the unit-test line-coverage number for `:app`. Composables are included in that number.
 
 ## Known limits
 

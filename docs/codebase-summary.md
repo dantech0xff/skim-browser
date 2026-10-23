@@ -8,10 +8,11 @@ One Gradle module, `:app`. Kotlin is compiled by the Android Gradle Plugin (buil
 
 | Package | Role |
 |---|---|
-| `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. |
-| `browser/` | `TabManager` (process-wide tab list), `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. |
-| `data/` | Room (`data/db`), repositories (`data/repo`), settings DataStore (`data/settings`), bookmark import. |
-| `ai/` | `AiGate`, `SkimAiService`, Claude streaming, chat sessions, tab grouping. The only request builder is `SkimAiService`. |
+| `domain/` | Pure Kotlin. Models, repository interfaces, and use cases (`domain/usecase`). Subpackages: `history`, `bookmark`, `shortcut`, `chat`, `permission`, `tab`, `settings`, `url`. |
+| `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. ViewModels take use cases or domain interfaces. |
+| `browser/` | `TabManager` (process-wide tab list), `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. |
+| `data/` | Room (`data/db`), concrete repositories (`data/repo`) that implement the domain interfaces and map entities, settings DataStore (`data/settings`), bookmark import (`BookmarkFiles`). |
+| `ai/` | `AiGate`, `SkimAiService`, Claude streaming, chat sessions, tab grouping. The only request builder is `SkimAiService`. Site and settings reads use domain interfaces. The live transcript still uses the concrete chat repository. |
 | `search/` | Suggestion fetches for the search field. |
 | `system/` | Share sheet, clipboard, share-image files. |
 

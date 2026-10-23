@@ -8,13 +8,15 @@ A composable reads state and sends events. It does not decide whether a page may
 
 ## ViewModels
 
-ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with the `viewModel { }` factory and receives what it needs from `AppContainer` or `SavedStateHandle`. `onCleared` is where a chat in progress is saved or dropped.
+ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with the `viewModel { }` factory and receives use cases, or a domain repository interface for a read that does nothing but forward the call, from `AppContainer` or `SavedStateHandle`. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.
 
-## Data
+## Domain and data
 
-Repositories are concrete classes in `data/repo`. DAOs stay inside the repository. A repository does not know about Compose. `TabManager` is the browser-facing API for tabs; screens do not write tab rows themselves.
+`domain/` is pure Kotlin. It holds the models the screens use, the repository interfaces, and the use cases. A use case is one action with `operator fun invoke`. `kotlinx.coroutines` (`Flow`) is allowed there. Android, OkHttp, Room, and the `data` package are not.
 
-Settings go through `SettingsRepository`. Do not read the DataStore file from a screen.
+Concrete repositories in `data/repo` implement those interfaces. Mapping between a Room entity and a domain model happens in `data`, at the DAO boundary. DAOs stay inside the repository. A repository does not know about Compose. `TabManager` is the browser-facing API for tabs; screens do not write tab rows themselves.
+
+Settings go through `domain.settings.SettingsRepository`. Do not read the DataStore file from a screen. `ui` sources do not import `com.dantech.skimbrowser.data`.
 
 ## Dependencies
 
@@ -37,5 +39,7 @@ No API keys, proxy URLs, or machine paths in source, tests, docs, or `gradle.pro
 ## Tests
 
 Unit tests use JUnit 4, Robolectric (`AndroidJUnit4`), and `runTest`. Flows are asserted with Turbine where a test collects more than one value. Screenshot tests call `assertA11y()` and `captureBoard` when a `design/screens` PNG exists. Do not lower a timeout or delete an assertion to make a red test pass.
+
+Every use case has a unit test against a fake of its repository interface (`domain/fake`). ViewModel tests use those fakes. `DomainBoundaryTest` fails if `domain` imports Android or an outer layer, or if `ui` imports `data`.
 
 Kover excludes Android generated classes and Room `*Dao_Impl` / `*Database_Impl` only.

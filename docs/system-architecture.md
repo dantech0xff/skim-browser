@@ -6,15 +6,26 @@ MainActivity
   SkimNavigator (back stack)
         |
         v
+ui/  screens and ViewModels
+        |
+        v
+domain/  models, repository interfaces, use cases     pure Kotlin
+        ^
+        |
+data/  Room, DataStore, concrete repositories, mappers
+        ^
+        |
 AppContainer                         lives with the process
-  TabManager  ---- TabRepository, HistoryRepository, SettingsRepository
-  IncognitoSession ---- BrowserProfiles
-  SkimAiService ---- ClaudeClientProvider, SitePermissionRepository
-  AiGate, ChatSessionStore, TabGrouping
-  Room + DataStore
+  wires data implementations into domain interfaces and use cases
+  TabManager, IncognitoSession, SkimAiService, AiGate, TabGrouping
+  ChatSessionStore and AiDataEraser still call the concrete chat store
 ```
 
-Dependencies point inward toward `data/` and `browser/`. `ui/` calls those types. `data/` does not call `ui/` or `browser/`.
+Dependencies point inward: `ui` depends on `domain`, and `data` depends on `domain`. `domain` does not import Android, `data`, `ui`, `browser`, or `ai`. `DomainBoundaryTest` checks that, and also checks that `ui` sources do not import `data`. `AppContainer` is the composition root, so it sees both sides. `browser` and `ai` take domain repository interfaces. `data` does not call `ui` or `browser`.
+
+A ViewModel reads through a repository interface when the call is a pass-through (`observe`, `load`). A write goes through a use case in `domain/usecase`: one action, `operator fun invoke`. The concrete repositories in `data/repo` implement the interfaces and map entities to domain models in `data/repo/DomainMappers.kt`. Settings types (`SearchEngine`, `ThemeSetting`, `ReaderFont`, `SkimSettings`) live in `domain/settings`. The old `data` and `ui.theme` names are typealiases so Room and existing call sites keep compiling.
+
+The chat transcript is the exception. `ChatSessionStore` writes messages through the concrete `data.repo.ChatRepository` (`createChat`, `messages`, `addMessage`). `AiDataEraser` calls `deleteAll` on that same class. Those methods are not on `domain.chat.ChatRepository`, which is the surface Home, Skim history, and Ask page use.
 
 ## Tabs and WebViews
 
