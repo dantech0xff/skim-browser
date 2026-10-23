@@ -64,6 +64,9 @@ class BookmarkRepository(
         return if (text.isEmpty()) flowOf(emptyList()) else dao.search(containsPattern(text))
     }
 
+    /** Every folder, top-level and nested, in display order. */
+    fun observeFolders(): Flow<List<BookmarkFolderEntity>> = dao.observeFolders()
+
     /** The newest bookmark of exactly [url], or null when the page is not bookmarked. */
     fun observeByUrl(url: String): Flow<BookmarkEntity?> = dao.observeByUrl(url)
 

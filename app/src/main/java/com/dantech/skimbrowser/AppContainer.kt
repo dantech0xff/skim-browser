@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
 import com.dantech.skimbrowser.browser.IncognitoSession
@@ -26,6 +27,8 @@ import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.repo.TabRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
 import com.dantech.skimbrowser.search.SuggestionService
+import com.dantech.skimbrowser.system.ShareImage
+import com.dantech.skimbrowser.system.purgeOldShares
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import java.io.Closeable
@@ -38,6 +41,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 
@@ -163,6 +167,35 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
 
     /** The search engine's suggestions for the search field, over the connections of [httpClient]. */
     val suggestionService: SuggestionService by lazy { SuggestionService(httpClient) }
+
+    /** Images prepared for the share sheet, written under the cache and shared through the file provider. */
+    val shareImage: ShareImage by lazy {
+        ShareImage(
+            httpClient = httpClient,
+            cacheDir = app.cacheDir,
+            incognito = incognitoSession,
+            profiles = browserProfiles,
+        )
+    }
+
+    /** Deletes one site's data, and all browsing data when Settings asks. */
+    val browsingDataCleaner: BrowsingDataCleaner by lazy {
+        BrowsingDataCleaner(
+            history = historyRepository,
+            tabRepo = tabRepository,
+            tabs = tabManager,
+            stateStore = tabStateStore,
+            thumbnails = thumbnails,
+            incognito = incognitoSession,
+            undo = undoRegistry,
+            snackbar = snackbarController,
+        )
+    }
+
+    init {
+        // Incognito shares are removed entirely; a normal share older than a day is too.
+        appScope.launch(Dispatchers.IO) { purgeOldShares(app.cacheDir) }
+    }
 
     /**
      * Stops watching the network, lets the HTTP client's connections and threads go, closes the

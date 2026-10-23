@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
         activityHost = ActivityResultHost(this)
         browserHost = createBrowserHost(this, container, activityHost)
         container.tabManager.attach(browserHost.pool)
+        container.browsingDataCleaner.applyPendingCacheClear(browserHost.pool)
         // Deleting old incognito profiles needs the main thread; it waits until the first frame is drawn.
         window.decorView.post { container.incognitoSession.purgeStale() }
         // A recreated Activity gets the intent that started the first one again: that link was opened.
