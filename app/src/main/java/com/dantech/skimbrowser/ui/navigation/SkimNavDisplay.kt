@@ -18,8 +18,17 @@ import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.HitTarget
+import com.dantech.skimbrowser.ui.bookmarks.BookmarksRoute
 import com.dantech.skimbrowser.ui.bookmarks.EditBookmarkRoute
 import com.dantech.skimbrowser.ui.bookmarks.MoveToFolderRoute
+import com.dantech.skimbrowser.ui.history.HistoryRoute
+import com.dantech.skimbrowser.ui.settings.AiPrivacyRoute
+import com.dantech.skimbrowser.ui.settings.ClearBrowsingDataRoute
+import com.dantech.skimbrowser.ui.settings.DeleteAiDataRoute
+import com.dantech.skimbrowser.ui.settings.LicensesRoute
+import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
+import com.dantech.skimbrowser.ui.settings.SettingsRoute
+import com.dantech.skimbrowser.ui.settings.ThemeRoute
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
 import com.dantech.skimbrowser.ui.browsing.BrowsingRoute
 import com.dantech.skimbrowser.ui.browsing.LinkOptionsRoute
@@ -116,5 +125,22 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         }
         entry<MoveToFolderKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
             MoveToFolderRoute(key, container, navigator)
+        }
+        entry<SettingsKey> { SettingsRoute(container, navigator) }
+        entry<AiPrivacyKey> { AiPrivacyRoute(container, navigator) }
+        entry<HistoryKey> { HistoryRoute(container, navigator) }
+        entry<BookmarksKey> { key -> BookmarksRoute(key, container, navigator) }
+        entry<LicensesKey> { LicensesRoute(navigator) }
+        entry<SearchEngineDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            SearchEngineRoute(container, navigator)
+        }
+        entry<ThemeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            ThemeRoute(container, navigator)
+        }
+        entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            ClearBrowsingDataRoute(container, navigator)
+        }
+        entry<DeleteAiDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            DeleteAiDataRoute(container, navigator)
         }
     }
