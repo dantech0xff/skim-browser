@@ -5,8 +5,9 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.ai.GroupingBannerState
+import com.dantech.skimbrowser.domain.tab.GroupingBannerState
 import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.domain.tab.layout
@@ -16,7 +17,9 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -232,6 +235,35 @@ class TabsViewModelTest {
         assertNull(hidden.state.value.grouping)
     }
 
+    @Test
+    fun groupingStartsWithTheNormalScreenAndHidesWhenItLeaves() = runTest(main.testDispatcher) {
+        val fixture = fixture(this)
+        val grouper = FakeGrouper()
+        val model = model(fixture, grouper = grouper, appScope = this)
+        model.attachGrouping()
+        model.attachGrouping()
+        assertEquals(1, grouper.starts)
+
+        model.undoGrouping()
+        advanceUntilIdle()
+        assertEquals(1, grouper.undos)
+
+        model.detachGrouping()
+        advanceUntilIdle()
+        assertTrue(grouper.cancelled)
+        assertEquals(1, grouper.hides)
+        model.detachGrouping()
+        advanceUntilIdle()
+        assertEquals(1, grouper.hides)
+
+        val again = FakeGrouper()
+        val privateTabs = model(fixture, incognito = true, grouper = again, appScope = this)
+        privateTabs.attachGrouping()
+        privateTabs.detachGrouping()
+        assertEquals(0, again.starts)
+        assertEquals(0, again.hides)
+    }
+
     private fun fixture(scope: TestScope): TabManagerFixture =
         TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
 
@@ -241,6 +273,8 @@ class TabsViewModelTest {
         snackbar: SnackbarController = SnackbarController(undo),
         incognito: Boolean = false,
         grouping: Flow<GroupingBannerState?> = flowOf(null),
+        grouper: TabGrouper? = null,
+        appScope: CoroutineScope? = null,
     ): TabsViewModel {
         val store = ViewModelStore().also { stores += it }
         val factory = viewModelFactory {
@@ -251,10 +285,35 @@ class TabsViewModelTest {
                     snackbar,
                     undo,
                     grouping = grouping,
+                    grouper = grouper,
+                    appScope = appScope,
                     mainDispatcher = fixture.main,
                 )
             }
         }
         return ViewModelProvider(store, factory)[TabsViewModel::class.java]
+    }
+
+    private class FakeGrouper : TabGrouper {
+        var starts = 0
+        var undos = 0
+        var hides = 0
+        var cancelled = false
+        override val banner = flowOf<GroupingBannerState?>(null)
+
+        override fun start(): Job {
+            starts += 1
+            return Job().also { started ->
+                started.invokeOnCompletion { cancelled = started.isCancelled }
+            }
+        }
+
+        override suspend fun undo() {
+            undos += 1
+        }
+
+        override suspend fun hideBanner() {
+            hides += 1
+        }
     }
 }

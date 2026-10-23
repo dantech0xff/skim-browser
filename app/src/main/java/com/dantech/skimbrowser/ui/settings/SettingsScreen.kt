@@ -27,6 +27,7 @@ import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
+import com.dantech.skimbrowser.browser.toOpenPages
 import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.system.DefaultBrowser
 import com.dantech.skimbrowser.ui.components.IconTile
@@ -119,12 +120,13 @@ fun ThemeRoute(container: AppContainer, navigator: SkimNavigator) {
  */
 @Composable
 fun ClearBrowsingDataRoute(container: AppContainer, navigator: SkimNavigator) {
-    val pool = LocalBrowserHost.current.pool
+    val pages = LocalBrowserHost.current.pool.toOpenPages()
+    val model = viewModel {
+        ClearBrowsingDataViewModel(container.clearBrowsingData, container.appScope)
+    }
     ClearBrowsingDataDialog(
         onClear = { history, cookies, cache ->
-            container.appScope.launch {
-                container.browsingDataCleaner.clearAll(history, cookies, cache, pool)
-            }
+            model.clear(history, cookies, cache, pages)
             navigator.back()
         },
         onDismiss = navigator::back,

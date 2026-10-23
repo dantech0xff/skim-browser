@@ -54,6 +54,7 @@ fun HistoryRoute(container: AppContainer, navigator: SkimNavigator) {
             container.restoreHistoryEntry,
             container.snackbarController,
             container.undoRegistry,
+            container.openUrlInCurrentTab,
         )
     }
     val state by model.state.collectAsStateWithLifecycle()
@@ -77,7 +78,10 @@ fun HistoryRoute(container: AppContainer, navigator: SkimNavigator) {
             model.setQuery("")
         },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
-        onOpen = { url -> openInCurrentTab(container, navigator, url) },
+        onOpen = { url ->
+            model.open(url)
+            navigator.showBrowser()
+        },
         onRemove = model::remove,
     )
 }
@@ -180,15 +184,4 @@ private fun RemoveButton(onClick: () -> Unit) {
 private fun LazyListScope.section(@StringRes label: Int, content: @Composable ColumnScope.() -> Unit) {
     item { SectionLabel(stringResource(label), first = false) }
     item { SegmentedColumn(content = content) }
-}
-
-/** Opens [url] in the current tab, or a new normal tab when none is current, and shows it. */
-private fun openInCurrentTab(container: AppContainer, navigator: SkimNavigator, url: String) {
-    val current = container.tabManager.state.value.currentTabId
-    if (current == null) {
-        container.tabManager.newTab(incognito = false, url = url)
-    } else {
-        container.tabManager.load(current, url)
-    }
-    navigator.showBrowser()
 }

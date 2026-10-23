@@ -24,8 +24,8 @@ data class AiPrivacyUiState(
 
 /**
  * AI & privacy (10). The switches write [settings]. [conversationCount] is the number of saved
- * Skim chats. Deleting all AI data is the dialog's job: it calls [com.dantech.skimbrowser.ai.AiDataEraser]
- * on the app scope so the delete finishes after the dialog closes.
+ * Skim chats. Deleting all AI data is [DeleteAiDataViewModel], on the app scope, so the delete
+ * finishes after the dialog closes.
  */
 class AiPrivacyViewModel(
     private val settings: SettingsRepository,

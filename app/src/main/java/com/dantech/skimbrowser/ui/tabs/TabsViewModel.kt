@@ -4,10 +4,11 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.ai.GroupingBannerState
 import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.GroupingBannerState
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabGroup
+import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.domain.tab.applyLayout
@@ -20,8 +21,11 @@ import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +75,7 @@ data class TabsUiState(
  * every incognito tab ends that session at once and cannot be undone.
  *
  * [grouping] is the banner shown after tabs were grouped. This screen only draws it.
+ * [grouper] runs while the normal tabs screen is open. Rename and incognito do not pass one.
  */
 class TabsViewModel(
     private val incognito: Boolean,
@@ -78,10 +83,14 @@ class TabsViewModel(
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     grouping: Flow<GroupingBannerState?> = flowOf(null),
+    private val grouper: TabGrouper? = null,
+    private val appScope: CoroutineScope? = null,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : ViewModel() {
 
     private val query = MutableStateFlow<String?>(null)
+    private var groupingJob: Job? = null
+    private var groupingAttached = false
 
     val state: StateFlow<TabsUiState> = combine(tabs.state, query, grouping) { tabsState, rawQuery, banner ->
         val (count, sections) = sectionsOf(tabsState, incognito, rawQuery)
@@ -98,6 +107,38 @@ class TabsViewModel(
     /** Filters the grid in place. Blank text shows every tab of this mode again. */
     fun setQuery(value: String?) {
         query.value = value?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Starts grouping for the normal tabs screen. A second call while it is already running does
+     * nothing, so the screen can attach once per visit.
+     */
+    fun attachGrouping() {
+        if (incognito || grouper == null || groupingAttached) return
+        groupingAttached = true
+        groupingJob = grouper.start()
+    }
+
+    /** Cancels a grouping request that is still running and hides the banner. */
+    fun detachGrouping() {
+        if (!groupingAttached) return
+        groupingAttached = false
+        val job = groupingJob
+        groupingJob = null
+        job?.cancel()
+        val active = grouper ?: return
+        appScope?.launch { active.hideBanner() }
+    }
+
+    /** Puts the tabs back as they were before this grouping, when that layout is still current. */
+    fun undoGrouping() {
+        val active = grouper ?: return
+        appScope?.launch { active.undo() }
+    }
+
+    override fun onCleared() {
+        detachGrouping()
+        super.onCleared()
     }
 
     /** Closes one tab and offers Undo. Nothing happens when it is already gone. */

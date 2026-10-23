@@ -4,6 +4,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
+import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
+import com.dantech.skimbrowser.domain.tab.RecordingTabs
 import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
 import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
@@ -88,10 +90,22 @@ class BookmarksViewModelTest {
 
     private fun bookmarks(): FakeBookmarkRepository = FakeBookmarkRepository()
 
+    @Test
+    fun openingABookmarkWithNoCurrentTabOpensANormalTab() {
+        val tabs = RecordingTabs()
+        val model = model(null, bookmarks(), openUrl = OpenUrlInCurrentTab(tabs))
+
+        model.open("https://daylightjournal.com/cold")
+
+        assertEquals(listOf(RecordingTabs.Opened(incognito = false, url = "https://daylightjournal.com/cold")), tabs.opened)
+        assertTrue(tabs.loads.isEmpty())
+    }
+
     private fun model(
         folderId: Long?,
         bookmarks: BookmarkRepository,
         snackbar: SnackbarController = SnackbarController(UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope)),
         undo: UndoRegistry = UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope),
-    ) = BookmarksViewModel(folderId, bookmarks, DeleteBookmark(bookmarks), RestoreBookmark(bookmarks), snackbar, undo)
+        openUrl: OpenUrlInCurrentTab = OpenUrlInCurrentTab(RecordingTabs()),
+    ) = BookmarksViewModel(folderId, bookmarks, DeleteBookmark(bookmarks), RestoreBookmark(bookmarks), snackbar, undo, openUrl)
 }

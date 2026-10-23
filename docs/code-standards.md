@@ -6,6 +6,8 @@ Kotlin. UI is Jetpack Compose. Strings and content descriptions live in `app/src
 
 A composable reads state and sends events. It does not decide whether a page may be sent to the model, whether a tab is incognito, or how a layout is stored. Those decisions sit in domain use cases and tab rules. `AiGate`, `SkimAiService`, and `TabManager` apply them. ViewModels call `TabsController`, `AiAssistant` use cases, and `PageChats`.
 
+A composable does not open a tab, allow a site, group tabs, or delete browsing or Skim data. It calls a ViewModel or `SkimNavigator`. `OpenUrlInCurrentTab` opens a URL in the current tab, or a new normal tab when none is current. Clear browsing data, delete all AI data, and clear Skim history run on `appScope`. Clear Skim history closes its dialog after that delete finishes. The other two close at once.
+
 ## ViewModels
 
 ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with the `viewModel { }` factory and receives use cases, or a domain repository interface for a read that does nothing but forward the call, from `AppContainer` or `SavedStateHandle`. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.

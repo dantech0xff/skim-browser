@@ -85,11 +85,11 @@ fun ReaderRoute(key: ReaderKey, container: AppContainer, navigator: SkimNavigato
                     onFont = model::setFont,
                     onBack = {
                         navigator.remove(key)
-                        container.tabManager.goBack(key.tabId)
+                        model.goBack()
                     },
                     onForward = {
                         navigator.remove(key)
-                        container.tabManager.goForward(key.tabId)
+                        model.goForward()
                     },
                     onTabs = { navigator.openTabs(tab?.incognito == true) },
                     onMore = { navigator.openMoreMenu(key.tabId) },

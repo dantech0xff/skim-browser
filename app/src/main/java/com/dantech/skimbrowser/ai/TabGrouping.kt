@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ai
 
-import androidx.compose.runtime.Immutable
 import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
@@ -23,9 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-/** The "Skim grouped your tabs" banner. Null hides it. Undo stays enabled only while that layout is current. */
-@Immutable
-data class GroupingBannerState(val undoEnabled: Boolean)
+typealias GroupingBannerState = com.dantech.skimbrowser.domain.tab.GroupingBannerState
 
 /**
  * Groups the ungrouped normal tabs once per set of tabs, and offers Undo while the tabs screen is
@@ -41,13 +39,13 @@ class TabGrouping(
     private val appScope: CoroutineScope,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val clock: () -> Long = System::currentTimeMillis,
-) {
+) : TabGrouper {
     private val shown = MutableStateFlow<Long?>(null)
     private val undoSnapshot = AtomicReference<GroupingSnapshot?>(null)
     private val knownKey = AtomicReference<String?>(null)
 
     /** The banner, or null when it is hidden. Undo is enabled only while the grouped layout is still current. */
-    val banner: Flow<GroupingBannerState?> = combine(tabs.state, shown) { state, version ->
+    override val banner: Flow<GroupingBannerState?> = combine(tabs.state, shown) { state, version ->
         version?.let { GroupingBannerState(undoEnabled = state.layoutVersion == it) }
     }
 
@@ -66,7 +64,7 @@ class TabGrouping(
      * grouped before. No network means nothing is sent, and a later open can try again. The result
      * is dropped when the tabs change while the model is answering.
      */
-    fun start(): Job = appScope.launch {
+    override fun start(): Job = appScope.launch {
         if (!network.hasActiveNetwork) return@launch
         val context = collectTabsContext(tabs, sites, extractLive = false, ungroupedOnly = true)
         if (context.size < MIN_UNGROUPED) return@launch
@@ -110,7 +108,7 @@ class TabGrouping(
     }
 
     /** Puts the tabs back as they were before this grouping, when that layout is still current. */
-    suspend fun undo() {
+    override suspend fun undo() {
         val snapshot = undoSnapshot.get() ?: return
         if (tabs.state.value.layoutVersion != snapshot.appliedLayoutVersion) return
         val previous = LAYOUT_JSON.decodeFromString(GroupLayout.serializer(), snapshot.previousLayoutJson)
@@ -127,7 +125,7 @@ class TabGrouping(
     }
 
     /** Hides the banner and keeps the set of tabs, so opening the screen again does not group them again. */
-    suspend fun hideBanner() {
+    override suspend fun hideBanner() {
         shown.value = null
         undoSnapshot.set(null)
         tabRepo.setSnapshotBanner(false)

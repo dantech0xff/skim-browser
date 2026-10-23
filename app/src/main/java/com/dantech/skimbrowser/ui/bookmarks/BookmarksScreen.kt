@@ -59,6 +59,7 @@ fun BookmarksRoute(key: BookmarksKey, container: AppContainer, navigator: SkimNa
             container.restoreBookmark,
             container.snackbarController,
             container.undoRegistry,
+            container.openUrlInCurrentTab,
         )
     }
     val state by model.state.collectAsStateWithLifecycle()
@@ -91,7 +92,10 @@ fun BookmarksRoute(key: BookmarksKey, container: AppContainer, navigator: SkimNa
             model.setQuery("")
         },
         onOpenFolder = { navigator.openBookmarks(it) },
-        onOpenBookmark = { url -> openInCurrentTab(container, navigator, url) },
+        onOpenBookmark = { url ->
+            model.open(url)
+            navigator.showBrowser()
+        },
         onOpenMenu = { menuBookmarkId = it },
         onDismissMenu = { menuBookmarkId = null },
         onEdit = { navigator.push(EditBookmarkKey(it)) },
@@ -326,15 +330,4 @@ private fun LazyListScope.section(
 ) {
     item { SectionLabel(stringResource(label), first) }
     item { SegmentedColumn(content = content) }
-}
-
-/** Opens [url] in the current tab, or a new normal tab when none is current, and shows it. */
-private fun openInCurrentTab(container: AppContainer, navigator: SkimNavigator, url: String) {
-    val current = container.tabManager.state.value.currentTabId
-    if (current == null) {
-        container.tabManager.newTab(incognito = false, url = url)
-    } else {
-        container.tabManager.load(current, url)
-    }
-    navigator.showBrowser()
 }

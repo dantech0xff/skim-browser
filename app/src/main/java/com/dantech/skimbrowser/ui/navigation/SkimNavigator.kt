@@ -110,6 +110,15 @@ class SkimNavigator(
     }
 
     /**
+     * Opens a legal page from welcome in a normal tab. Back on its first page closes the tab and
+     * returns to welcome.
+     */
+    fun openLegal(url: String) {
+        tabs.newTab(incognito = false, url = url, closeOnBack = true)
+        push(BrowserKey)
+    }
+
+    /**
      * Opens [url] in a tab behind the current one and returns its id; null, with a snackbar, when an
      * incognito tab cannot open. Without a current tab the new tab is shown at once.
      */

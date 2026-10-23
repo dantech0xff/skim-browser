@@ -8,6 +8,7 @@ import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkFolderSummary
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.bookmark.FolderKind
+import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
 import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.ui.components.siteLetter
@@ -85,6 +86,7 @@ class BookmarksViewModel(
     private val restoreBookmark: RestoreBookmark,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
+    private val openUrl: OpenUrlInCurrentTab,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
@@ -117,6 +119,11 @@ class BookmarksViewModel(
     /** Filters every folder. Blank text shows the root or the open folder again. */
     fun setQuery(value: String) {
         query.value = value
+    }
+
+    /** Opens [url] in the current tab, or a new normal tab when none is current. */
+    fun open(url: String) {
+        openUrl(url)
     }
 
     /**

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakePageScripts
+import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
 import com.dantech.skimbrowser.domain.settings.ReaderFont
@@ -95,6 +96,18 @@ class ReaderViewModelTest {
         advanceTimeBy(400)
         assertTrue(model.state.value is ReaderUiState.Loading)
         assertTrue(model.state.first { it is ReaderUiState.Ready } is ReaderUiState.Ready)
+    }
+
+    @Test
+    fun backAndForwardMoveThatTab() = runTest(main.testDispatcher) {
+        val fixture = readyPage(this, readerable = true)
+        val model = model(fixture, this)
+
+        model.goBack()
+        model.goForward()
+
+        assertTrue(fixture.engine.calls.contains(FakeTabEngine.Call.GoBack("tab-1")))
+        assertTrue(fixture.engine.calls.contains(FakeTabEngine.Call.GoForward("tab-1")))
     }
 
     private fun readyPage(scope: TestScope, readerable: Boolean): TabManagerFixture {

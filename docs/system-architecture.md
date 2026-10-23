@@ -59,7 +59,7 @@ Streams are `callbackFlow` over the Anthropic SDK. The collector can cancel, whi
 
 Chats are stored when "Keep chat history" is on. A chat id stays negative until Room assigns one. Restoring a sheet shows the saved messages and does not send a new request.
 
-`TabGrouping` runs when the normal tabs screen opens, skips fewer than four eligible tabs, skips when offline, and skips a set it already grouped. Undo restores the previous layout.
+`TabGrouping` runs when the normal tabs screen's ViewModel attaches, skips fewer than four eligible tabs, skips when offline, and skips a set it already grouped. Leaving that screen cancels the request and hides the banner. Undo restores the previous layout. Incognito and rename do not start it.
 
 ## Storage and deletion
 
@@ -74,7 +74,7 @@ Chats are stored when "Keep chat history" is on. A chat id stays negative until 
 | Tab state, thumbnails | Files | Purged for tabs that are gone |
 | Incognito profile | WebView profile directory | `IncognitoSession.end` |
 
-Clear browsing data and the two Skim chat deletes finalize a waiting undo, and dismiss its snackbar, before the rows are removed. `AiDataEraser` and `BrowsingDataCleaner` call `PendingUndo`. `SnackbarUndo` is the implementation and is the type that knows the snackbar.
+Clear browsing data and the two Skim chat deletes finalize a waiting undo, and dismiss its snackbar, before the rows are removed. `AiDataEraser` and `BrowsingDataCleaner` call `PendingUndo`. `SnackbarUndo` is the implementation and is the type that knows the snackbar. ViewModels start those deletes on `appScope`. Clear Skim history closes its dialog after that job finishes. The other two close at once. `OpenUrlInCurrentTab` is how History and Bookmarks open a row. A legal page from welcome is `SkimNavigator.openLegal`, which closes that tab on Back. Allowing a site is `SetSkimAi`.
 
 Backup and device transfer are off (`allowBackup=false` and `data_extraction_rules.xml`).
 

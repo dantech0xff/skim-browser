@@ -46,12 +46,16 @@ import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
 import com.dantech.skimbrowser.domain.usecase.AddShortcut
+import com.dantech.skimbrowser.domain.usecase.ClearBrowsingData
+import com.dantech.skimbrowser.domain.usecase.ClearSkimHistory
 import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
 import com.dantech.skimbrowser.domain.usecase.CreateSavedChat
+import com.dantech.skimbrowser.domain.usecase.DeleteAllAiData
 import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
 import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
@@ -262,6 +266,9 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
         )
     }
 
+    /** Opens a URL in the current tab, or a new normal tab when none is current. */
+    val openUrlInCurrentTab: OpenUrlInCurrentTab by lazy { OpenUrlInCurrentTab(tabManager) }
+
     /** Deletions that can still be undone; their blocks run on [appScope]. */
     val undoRegistry: UndoRegistry by lazy { UndoRegistry(appScope) }
 
@@ -360,7 +367,14 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
     }
 
     /** Whether Ask Skim may read a tab's page, and the record of a site the person allowed. */
-    val aiGate: AiGate by lazy { AiGate(sitePermissionRepository, settings) }
+    val aiGate: AiGate by lazy { AiGate(sitePermissionRepository, settings, setSkimAi) }
+
+    /** Clear browsing data. The Activity's pages are passed per call. */
+    val clearBrowsingData: ClearBrowsingData by lazy {
+        ClearBrowsingData { history, cookies, cache, pages ->
+            browsingDataCleaner.clearAll(history, cookies, cache, pages)
+        }
+    }
 
     /** Deletes saved Skim chats, and every site's Skim AI decision when all AI data is deleted. */
     val aiDataEraser: AiDataEraser by lazy {
@@ -370,6 +384,12 @@ class AppContainer(val app: Application, storage: AppStorage = AppStorage()) : C
             pendingUndo = pendingUndo,
         )
     }
+
+    /** Deletes every saved chat and every site's Skim AI decision. */
+    val deleteAllAiData: DeleteAllAiData by lazy { DeleteAllAiData(aiDataEraser) }
+
+    /** Deletes every saved chat and leaves site decisions untouched. */
+    val clearSkimHistory: ClearSkimHistory by lazy { ClearSkimHistory(aiDataEraser) }
 
     init {
         // Incognito shares are removed entirely; a normal share older than a day is too.

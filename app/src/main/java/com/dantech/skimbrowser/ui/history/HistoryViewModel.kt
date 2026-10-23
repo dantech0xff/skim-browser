@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
 import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
@@ -52,6 +53,7 @@ class HistoryViewModel(
     private val restoreHistoryEntry: RestoreHistoryEntry,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
+    private val openUrl: OpenUrlInCurrentTab,
     private val clock: () -> Long = System::currentTimeMillis,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
@@ -72,6 +74,11 @@ class HistoryViewModel(
     /** Filters the list in place. Blank text shows the newest visits again. */
     fun setQuery(value: String) {
         query.value = value
+    }
+
+    /** Opens [url] in the current tab, or a new normal tab when none is current. */
+    fun open(url: String) {
+        openUrl(url)
     }
 
     /**

@@ -8,6 +8,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
 import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
+import com.dantech.skimbrowser.domain.tab.RecordingTabs
 import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
 import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
 import com.dantech.skimbrowser.testing.MainDispatcherRule
@@ -123,10 +125,22 @@ class HistoryViewModelTest {
 
     private fun history(): HistoryRepository = FakeHistoryRepository()
 
+    @Test
+    fun openingAVisitLoadsItInTheCurrentTab() {
+        val tabs = RecordingTabs(currentTabId = "tab-1")
+        val model = model(history(), openUrl = OpenUrlInCurrentTab(tabs))
+
+        model.open(TODAY)
+
+        assertEquals(listOf("tab-1" to TODAY), tabs.loads)
+        assertTrue(tabs.opened.isEmpty())
+    }
+
     private fun model(
         history: HistoryRepository,
         undo: UndoRegistry = UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope),
         snackbar: SnackbarController = SnackbarController(undo),
+        openUrl: OpenUrlInCurrentTab = OpenUrlInCurrentTab(RecordingTabs()),
     ): HistoryViewModel {
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(
@@ -139,6 +153,7 @@ class HistoryViewModelTest {
                         RestoreHistoryEntry(history),
                         snackbar,
                         undo,
+                        openUrl,
                         clock = { NOW },
                         zone = ZoneId.of("UTC"),
                     )

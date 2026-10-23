@@ -39,7 +39,7 @@ sealed interface ReaderUiState {
  * outlives this screen, and the new value comes back through [settings].
  */
 class ReaderViewModel(
-    tabId: String,
+    private val tabId: String,
     private val tabs: TabsController,
     private val settings: SettingsRepository,
     private val saveScale: SetReaderTextScale,
@@ -77,6 +77,16 @@ class ReaderViewModel(
     /** Saves [font] as the reader typeface. */
     fun setFont(font: ReaderFont) {
         writes.launch { saveFont(font) }
+    }
+
+    /** Goes back in this tab's page history. The route leaves reader first. */
+    fun goBack() {
+        tabs.goBack(tabId)
+    }
+
+    /** Goes forward in this tab's page history. The route leaves reader first. */
+    fun goForward() {
+        tabs.goForward(tabId)
     }
 
     private sealed interface Load {

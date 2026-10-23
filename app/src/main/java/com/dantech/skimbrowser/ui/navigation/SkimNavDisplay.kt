@@ -90,11 +90,7 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
         entry<WelcomeKey> {
             WelcomeScreen(
                 onGetStarted = { navigator.push(SetupKey) },
-                onOpenLegal = { url ->
-                    // Back on the tab's first page closes it and returns here.
-                    container.tabManager.newTab(incognito = false, url = url, closeOnBack = true)
-                    navigator.push(BrowserKey)
-                },
+                onOpenLegal = navigator::openLegal,
                 termsUrl = BuildConfig.TERMS_URL,
                 privacyUrl = BuildConfig.PRIVACY_URL,
             )

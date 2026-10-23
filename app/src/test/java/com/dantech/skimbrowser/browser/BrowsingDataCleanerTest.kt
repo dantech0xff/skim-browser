@@ -80,7 +80,7 @@ class BrowsingDataCleanerTest {
             }
         }
 
-        cleaner(f, pending, site).clearAll(history = true, cookies = false, cache = true, engine = f.engine)
+        cleaner(f, pending, site).clearAll(history = true, cookies = false, cache = true, pages = f.engine.toOpenPages())
         runCurrent()
         f.settle()
 
@@ -106,7 +106,7 @@ class BrowsingDataCleanerTest {
         val idle = UndoRegistry(backgroundScope)
         val cleaner = cleaner(f, SnackbarUndo(idle, SnackbarController(idle)), site)
 
-        cleaner.clearAll(history = false, cookies = true, cache = true, engine = null)
+        cleaner.clearAll(history = false, cookies = true, cache = true, pages = null)
         runCurrent()
 
         assertTrue(site.clearedAll)

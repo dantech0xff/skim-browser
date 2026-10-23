@@ -34,7 +34,6 @@ import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.toggleableRow
 import com.dantech.skimbrowser.ui.navigation.DeleteAiDataKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
-import kotlinx.coroutines.launch
 
 /** AI & privacy (10). */
 @Composable
@@ -64,9 +63,10 @@ fun AiPrivacyRoute(container: AppContainer, navigator: SkimNavigator) {
 /** Delete all AI data (15). The delete runs on the app scope and the dialog closes at once. */
 @Composable
 fun DeleteAiDataRoute(container: AppContainer, navigator: SkimNavigator) {
+    val model = viewModel { DeleteAiDataViewModel(container.deleteAllAiData, container.appScope) }
     DeleteAiDataDialog(
         onDelete = {
-            container.appScope.launch { container.aiDataEraser.deleteAllAiData() }
+            model.deleteAll()
             navigator.back()
         },
         onDismiss = navigator::back,

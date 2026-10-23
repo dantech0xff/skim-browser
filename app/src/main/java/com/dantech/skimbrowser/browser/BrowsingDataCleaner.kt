@@ -4,6 +4,7 @@ import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebStorage
 import com.dantech.skimbrowser.data.normalizeHost
+import com.dantech.skimbrowser.domain.browsing.OpenPages
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.undo.PendingUndo
@@ -20,7 +21,7 @@ import kotlinx.coroutines.withContext
  * information sheet). [clearAll] is Clear browsing data and touches only the default profile:
  * an incognito session has its own end.
  *
- * The Activity's [TabEngine] is passed per call and never kept. Cache asked for while no Activity
+ * The Activity's live pages are passed per call and never kept. Cache asked for while no Activity
  * is up waits for the next one ([applyPendingCacheClear]).
  */
 class BrowsingDataCleaner(
@@ -54,11 +55,11 @@ class BrowsingDataCleaner(
      * back. Cookies are flushed, then normal tabs reload so a page still open cannot write the
      * old cookies out again.
      */
-    suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, engine: TabEngine?) {
+    suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
         val failures = mutableListOf<String>()
-        if (history) step("history", failures) { clearHistory(engine) }
+        if (history) step("history", failures) { clearHistory(pages) }
         if (cookies) step("cookies", failures) { clearCookies() }
-        if (cache) step("cache", failures) { clearCache(engine) }
+        if (cache) step("cache", failures) { clearCache(pages) }
         if (failures.isNotEmpty()) {
             android.util.Log.w(TAG, "Clear browsing data left ${failures.joinToString()} unfinished")
         }
@@ -71,13 +72,13 @@ class BrowsingDataCleaner(
         }
     }
 
-    private suspend fun clearHistory(engine: TabEngine?) {
+    private suspend fun clearHistory(pages: OpenPages?) {
         pendingUndo.cancel(UndoSubject.HISTORY)
         history.clearAll()
         val open = tabs.state.value.tabs
         val normal = open.filterNot { it.incognito }
         withContext(mainDispatcher) {
-            if (engine != null) normal.forEach { engine.clearHistory(it.id) }
+            if (pages != null) normal.forEach { pages.clearHistory(it.id) }
         }
         stateStore.purgeExcept(open.filter { it.incognito }.map { it.id }.toSet())
         stateStore.awaitIdle()
@@ -92,14 +93,12 @@ class BrowsingDataCleaner(
         withContext(mainDispatcher) { normal.forEach { tabs.reload(it.id) } }
     }
 
-    private suspend fun clearCache(engine: TabEngine?) {
-        if (engine == null) {
+    private suspend fun clearCache(pages: OpenPages?) {
+        if (pages == null) {
             pendingCacheClear.set(true)
             return
         }
-        withContext(mainDispatcher) {
-            engine.withTemporaryWebView(profile = null) { view -> view.clearCache(true) }
-        }
+        withContext(mainDispatcher) { pages.clearCache() }
     }
 
     private suspend fun step(name: String, failures: MutableList<String>, block: suspend () -> Unit) {
@@ -150,5 +149,14 @@ class AndroidDefaultProfileSiteData : DefaultProfileSiteData {
         }
         WebStorage.getInstance().deleteAllData()
         GeolocationPermissions.getInstance().clearAll()
+    }
+}
+
+/** The page commands [BrowsingDataCleaner] runs on the Activity's pool. */
+fun TabEngine.toOpenPages(): OpenPages = object : OpenPages {
+    override fun clearHistory(tabId: String) = this@toOpenPages.clearHistory(tabId)
+
+    override fun clearCache() {
+        withTemporaryWebView(profile = null) { view -> view.clearCache(true) }
     }
 }

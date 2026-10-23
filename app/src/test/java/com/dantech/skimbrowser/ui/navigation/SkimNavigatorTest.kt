@@ -155,6 +155,19 @@ class SkimNavigatorTest {
     }
 
     @Test
+    fun aLegalPageOpensOverWelcomeAndClosesOnBack() = runTest {
+        val app = app(WelcomeKey)
+
+        app.navigator.openLegal("https://example.invalid/terms")
+
+        assertEquals(listOf(WelcomeKey, BrowserKey), app.keys())
+        val tab = app.tabs.state.value.currentTab
+        assertEquals("https://example.invalid/terms", tab?.url)
+        assertTrue(tab!!.closeOnBack)
+        assertFalse(tab.incognito)
+    }
+
+    @Test
     fun showingTheBrowserFromOnboardingPutsItOnTop() = runTest {
         val app = app(WelcomeKey, SetupKey)
 

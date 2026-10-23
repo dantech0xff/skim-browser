@@ -82,15 +82,16 @@ fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNaviga
 fun AiPermissionRoute(key: AiPermissionKey, container: AppContainer, navigator: SkimNavigator) {
     val tabs by container.tabManager.state.collectAsStateWithLifecycle()
     val host = hostOf(tabs.tab(key.tabId)?.url.orEmpty()).orEmpty()
-    val scope = rememberCoroutineScope()
+    val model = viewModel(key = "allow-${key.tabId}") {
+        AiPermissionViewModel(container.setSkimAi)
+    }
     AiPermissionDialog(
         host = host,
         onAllow = {
             if (host.isEmpty()) {
                 navigator.back()
             } else {
-                scope.launch {
-                    container.aiGate.allow(host)
+                model.allow(host) {
                     navigator.replaceTop(
                         AskPageKey(tabId = key.tabId, fromReader = key.fromReader, approvedHost = host),
                     )

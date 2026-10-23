@@ -8,6 +8,7 @@ import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import kotlinx.coroutines.flow.first
 
 /** What Ask Skim does with a tab before any page text is read. */
@@ -29,6 +30,7 @@ enum class AiGateDecision {
 class AiGate(
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
+    private val setSkimAi: SetSkimAi = SetSkimAi(sites),
     private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
 ) {
     suspend fun decide(tab: Tab): AiGateDecision {
@@ -43,6 +45,6 @@ class AiGate(
     }
 
     suspend fun allow(host: String) {
-        sites.setSkimAi(host, SkimAiState.ALLOWED)
+        setSkimAi(host, SkimAiState.ALLOWED)
     }
 }
