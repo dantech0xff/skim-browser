@@ -116,7 +116,7 @@ class WebViewProfiles : BrowserProfiles {
  * (lowercase, no "www."). Names come from the `Cookie` header; each is cleared for `path=/` and
  * for the host's domain, then [flush] runs once.
  */
-internal fun expireHostCookies(
+fun expireHostCookies(
     host: String,
     read: (url: String) -> String?,
     write: (url: String, value: String) -> Unit,
@@ -134,7 +134,7 @@ internal fun expireHostCookies(
 }
 
 /** Cookie names in a `Cookie` header (`a=1; b=2`), in order, without blanks or duplicates. */
-internal fun cookieNames(header: String?): List<String> {
+fun cookieNames(header: String?): List<String> {
     if (header.isNullOrBlank()) return emptyList()
     val names = ArrayList<String>()
     header.split(';').forEach { part ->

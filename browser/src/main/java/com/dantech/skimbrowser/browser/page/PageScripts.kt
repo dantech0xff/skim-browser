@@ -13,7 +13,7 @@ import java.io.InputStream
  * they declare reaches the page's global object. That scope also declares an empty `module`, so
  * Readability's CommonJS export never writes into a `module` object the page may define.
  */
-class PageScripts internal constructor(
+class PageScripts(
     private val open: (path: String) -> InputStream,
     /** Whether this WebView can run the scripts, asked once, on first use. */
     supported: () -> Boolean = { true },

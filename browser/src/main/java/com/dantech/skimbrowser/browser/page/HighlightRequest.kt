@@ -12,7 +12,7 @@ typealias HighlightRequest = com.dantech.skimbrowser.domain.page.HighlightReques
  * that commits after the tab manager's check still stops it.
  */
 @Serializable
-internal data class HighlightArgs(val id: String, val cited: String?, val url: String)
+data class HighlightArgs(val id: String, val cited: String?, val url: String)
 
 /**
  * The highlight script's argument for [request] as a JSON object, or null when its block id is not
@@ -34,7 +34,7 @@ fun highlightArgsJson(request: HighlightRequest): String? {
  * [json] with U+2028, U+2029, `<`, `>` and `&` escaped, so that it stays one JSON value in any
  * script context; every page script argument goes through it.
  */
-internal fun escapeForScript(json: String): String = buildString(json.length + 16) {
+fun escapeForScript(json: String): String = buildString(json.length + 16) {
     json.forEach { char ->
         when (char) {
             '\u2028' -> append("\\u2028")

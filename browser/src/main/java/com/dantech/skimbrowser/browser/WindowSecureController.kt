@@ -21,7 +21,7 @@ import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
  * the screen changes is never captured. Which surfaces need them is the caller's decision.
  */
 @MainThread
-class WindowSecureController internal constructor(
+class WindowSecureController(
     private val window: Window,
     /** `Activity.setRecentsScreenshotEnabled`; null before API 33. */
     private val setRecentsScreenshotEnabled: ((Boolean) -> Unit)?,

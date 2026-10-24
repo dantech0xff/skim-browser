@@ -172,7 +172,7 @@ class SitePermissionBridge(
      * `onGeolocationPermissionsShowPrompt` of tab [tabId]'s WebView for a frame of [origin]: only
      * an https frame (with a host) of an https page gets location.
      */
-    internal fun requestLocation(tabId: String, incognito: Boolean, origin: String, callback: GeolocationPermissions.Callback) {
+    fun requestLocation(tabId: String, incognito: Boolean, origin: String, callback: GeolocationPermissions.Callback) {
         val page = pageOf(tabId)
         val secureFrame = isHttps(origin) && hostOf(origin) != null
         val host = if (secureFrame && page != null && isHttps(page)) hostOf(page) else null
@@ -180,7 +180,7 @@ class SitePermissionBridge(
     }
 
     /** `onGeolocationPermissionsHidePrompt`: the WebView withdrew its location request, which needs no answer. */
-    internal fun locationRequestWithdrawn(tabId: String) {
+    fun locationRequestWithdrawn(tabId: String) {
         requests.firstOrNull { it.tabId == tabId && it.answer is Answer.Location }?.let { request ->
             settle(request, Outcome.WITHDRAWN)
             advance()
@@ -188,7 +188,7 @@ class SitePermissionBridge(
     }
 
     /** `onPermissionRequest` of tab [tabId]'s WebView: only the camera and the microphone can be granted. */
-    internal fun requestMedia(tabId: String, incognito: Boolean, request: PermissionRequest) {
+    fun requestMedia(tabId: String, incognito: Boolean, request: PermissionRequest) {
         val resources = request.resources.orEmpty()
         val onlyMedia = resources.isNotEmpty() && resources.all { mediaKindOf(it) != null }
         val webFrame = hostOf(request.origin?.toString().orEmpty()) != null
@@ -197,7 +197,7 @@ class SitePermissionBridge(
     }
 
     /** `onPermissionRequestCanceled`: the WebView withdrew [request], which needs no answer. */
-    internal fun mediaRequestWithdrawn(request: PermissionRequest) {
+    fun mediaRequestWithdrawn(request: PermissionRequest) {
         requests.firstOrNull { (it.answer as? Answer.Media)?.request === request }?.let { waiting ->
             settle(waiting, Outcome.WITHDRAWN)
             advance()
@@ -205,7 +205,7 @@ class SitePermissionBridge(
     }
 
     /** Tab [tabId]'s WebView goes away: its requests still waiting are denied. */
-    internal fun cancelTab(tabId: String) {
+    fun cancelTab(tabId: String) {
         val waiting = requests.filter { it.tabId == tabId }
         if (waiting.isEmpty()) return
         waiting.forEach { settle(it, Outcome.DENY) }

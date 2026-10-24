@@ -99,6 +99,7 @@ class DomainBoundaryTest {
         val roots = when (layer) {
             "domain" -> listOf(domainSourceRoot())
             "data" -> listOf(dataSourceRoot(), sourceRoot())
+            "browser" -> listOf(browserSourceRoot(), sourceRoot())
             else -> listOf(sourceRoot())
         }
         val found = roots.mapNotNull { root ->
@@ -130,6 +131,9 @@ class DomainBoundaryTest {
 
     /** `:data` sources. The Hilt bindings stay under `:app` and are scanned from [sourceRoot]. */
     private fun dataSourceRoot(): File = moduleSourceRoot("data", "java")
+
+    /** `:browser` sources. The Hilt bindings stay under `:app` and are scanned from [sourceRoot]. */
+    private fun browserSourceRoot(): File = moduleSourceRoot("browser", "java")
 
     private fun moduleSourceRoot(module: String, language: String): File {
         val candidates = listOf(

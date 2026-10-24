@@ -367,7 +367,7 @@ class WebViewPool(
     }
 
     /** The tab's WebView for its host: shown, so it resumes. Null when it cannot have one. */
-    internal fun showInHost(tabId: String): WebView? {
+    fun showInHost(tabId: String): WebView? {
         if (destroyed || tabId in blocked) return null
         val tab = tabs.state.value.tab(tabId) ?: return null
         val view = try {
@@ -392,7 +392,7 @@ class WebViewPool(
      * taken, it pauses and leaves the window; a host that still shows it keeps it. A WebView that
      * was replaced meanwhile only leaves its old host.
      */
-    internal fun releaseFromHost(tabId: String, view: View) {
+    fun releaseFromHost(tabId: String, view: View) {
         val entry = live[tabId]?.takeIf { it.view === view && !it.destroyed }
         if (entry == null) {
             (view.parent as? ViewGroup)?.removeView(view)

@@ -22,7 +22,7 @@ private const val TAG = "SkimThumbnail"
  * [THUMBNAIL_SCALE], cut at the preview frame's aspect ratio from the top (or the whole view when
  * it is shorter). Null for a view that has no size yet.
  */
-internal fun thumbnailSize(width: Int, height: Int): Pair<Int, Int>? {
+fun thumbnailSize(width: Int, height: Int): Pair<Int, Int>? {
     if (width <= 0 || height <= 0) return null
     val thumbnailWidth = (width * THUMBNAIL_SCALE).roundToInt().coerceAtLeast(1)
     val thumbnailHeight = min((thumbnailWidth / PREVIEW_ASPECT).roundToInt(), (height * THUMBNAIL_SCALE).roundToInt())
@@ -36,7 +36,7 @@ internal fun thumbnailSize(width: Int, height: Int): Pair<Int, Int>? {
  * has not been laid out, or when drawing fails.
  */
 @MainThread
-internal fun captureThumbnail(view: View): Bitmap? {
+fun captureThumbnail(view: View): Bitmap? {
     if (!view.isAttachedToWindow || !view.isLaidOut) return null
     val (width, height) = thumbnailSize(view.width, view.height) ?: return null
     return try {

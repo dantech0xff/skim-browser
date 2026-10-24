@@ -55,7 +55,7 @@ class InProcessDownloader(
 ) {
 
     /** The app client's settings and threads, with connections of its own that are never kept idle. */
-    internal val client: OkHttpClient by lazy {
+    val client: OkHttpClient by lazy {
         httpClient().newBuilder()
             .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
             .followRedirects(false)
@@ -158,7 +158,7 @@ class InProcessDownloader(
         return source.buffer.snapshot(available).toByteArray()
     }
 
-    internal companion object {
+    companion object {
         /** Free space a download must leave on the phone. */
         const val MIN_FREE_BYTES = 256L * 1024 * 1024
         const val FREE_SPACE_CHECK_BYTES = 8L * 1024 * 1024

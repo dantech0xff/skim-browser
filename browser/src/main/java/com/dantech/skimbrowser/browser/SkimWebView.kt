@@ -265,7 +265,7 @@ class SkimWebView @JvmOverloads constructor(
 }
 
 /** What a long-press hit, from the WebView's hit test. */
-internal sealed interface LongPressHit {
+sealed interface LongPressHit {
     /** An image outside any link: complete as it is. */
     data class Ready(val target: HitTarget) : LongPressHit
 
@@ -288,7 +288,7 @@ internal sealed interface LongPressHit {
  * link. Null for anything else (text, a phone number, an address, an editable field), which the
  * WebView handles itself.
  */
-internal fun longPressHitOf(type: Int, extra: String?): LongPressHit? {
+fun longPressHitOf(type: Int, extra: String?): LongPressHit? {
     val value = extra?.takeIf { it.isNotBlank() } ?: return null
     return when (type) {
         WebView.HitTestResult.SRC_ANCHOR_TYPE, WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE ->

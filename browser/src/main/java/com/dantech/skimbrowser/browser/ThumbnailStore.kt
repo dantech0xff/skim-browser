@@ -124,7 +124,7 @@ class ThumbnailStore(
     }
 
     /** Returns once the file work requested so far is done. */
-    internal suspend fun awaitIdle() = writer.awaitIdle()
+    suspend fun awaitIdle() = writer.awaitIdle()
 
     private fun forget(tabIds: Set<String>) {
         synchronized(lock) {

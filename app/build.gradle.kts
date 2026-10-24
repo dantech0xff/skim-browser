@@ -326,8 +326,10 @@ androidComponents {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":data"))
+    implementation(project(":browser"))
     kover(project(":domain"))
     kover(project(":data"))
+    kover(project(":browser"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -351,6 +353,9 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
+    testImplementation(testFixtures(project(":domain")))
+    testImplementation(testFixtures(project(":data")))
+    testImplementation(testFixtures(project(":browser")))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
@@ -374,6 +379,13 @@ dependencies {
     androidTestImplementation(libs.hilt.android.testing)
     kspAndroidTest(libs.hilt.compiler)
     kspAndroidTest(libs.kotlin.metadata.jvm)
+}
+
+tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
+    dependsOn(":domain:test", ":data:testDebugUnitTest", ":browser:testDebugUnitTest")
+}
+tasks.matching { it.name == "koverHtmlReportDebug" || it.name == "koverXmlReportDebug" }.configureEach {
+    dependsOn(":domain:test", ":data:testDebugUnitTest", ":browser:testDebugUnitTest")
 }
 
 kover {

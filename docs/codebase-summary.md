@@ -1,6 +1,6 @@
 # Codebase summary
 
-Three Gradle modules. `:domain` is a Kotlin JVM library (`org.jetbrains.kotlin.jvm`, Java 11 bytecode) and holds the `domain` package. `:data` is an Android library: Room, DataStore, concrete repositories, bookmark import, and `AppStorage`. `:app` is the Android application; the Android Gradle Plugin compiles its Kotlin. Entry points are `SkimApplication` and `MainActivity`. Hilt modules that read `ProcessGraph` stay in `:app`, including `data/di`.
+Four Gradle modules. `:domain` is a Kotlin JVM library (`org.jetbrains.kotlin.jvm`, Java 11 bytecode) and holds the `domain` package. `:data` is an Android library: Room, DataStore, concrete repositories, bookmark import, and `AppStorage`. `:browser` is an Android library: the tab engine, WebView pool, downloads, site permissions, and page scripts. `:app` is the Android application; the Android Gradle Plugin compiles its Kotlin. Entry points are `SkimApplication` and `MainActivity`. Hilt modules that read `ProcessGraph` stay in `:app`, including `data/di` and `browser/di`.
 
 Hilt (`SingletonComponent`) is the process-wide graph. `SkimApplication` is `@HiltAndroidApp`. Tests install a temporary `AppStorage` before the graph opens, so Room, DataStore, tab state, and thumbnails land in a temporary directory. `ProcessGraph.close()` drops the database and cancels the process scope so the next graph can open the same files.
 
@@ -10,7 +10,7 @@ Hilt (`SingletonComponent`) is the process-wide graph. `SkimApplication` is `@Hi
 |---|---|
 | `domain/` | The `:domain` module. Pure Kotlin. Models, repository interfaces, and use cases (`domain/usecase`, `domain/ai`). Subpackages: `history`, `bookmark`, `shortcut`, `chat`, `permission`, `tab`, `page`, `settings`, `url`, `ai`, `text`, `browsing`, `undo`. |
 | `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. ViewModels take use cases or domain interfaces. |
-| `browser/` | `TabManager` implements `domain.tab.TabsController` (process-wide tab list). `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. Tab models live in `domain/tab`. |
+| `browser/` | The `:browser` module, except `browser/di`, which stays in `:app` because those Hilt bindings read `ProcessGraph`. `TabManager` implements `domain.tab.TabsController` (process-wide tab list). `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. Tab models live in `domain/tab`. |
 | `data/` | The `:data` module, except `data/di`, which stays in `:app` because those Hilt bindings read `ProcessGraph`. Room (`data/db`), concrete repositories (`data/repo`) that implement the domain interfaces and map entities, settings DataStore (`data/settings`), bookmark import (`BookmarkFiles`). `AppStorage` lives in this module. |
 | `ai/` | `AiGate`, `SkimAiService` (`AiAssistant`), Claude streaming, chat sessions (`PageChats`), tab grouping. The only request builder is `SkimAiService`. SDK types stay in this package. Site, settings, and chat reads and writes use domain interfaces and use cases. |
 | `search/` | Suggestion fetches for the search field. |
@@ -34,8 +34,13 @@ SSE fixtures used by unit tests and the release smoke test are in `app/src/share
 
 | Tree | Runs |
 |---|---|
-| `app/src/test` | JVM unit tests: Robolectric, Turbine, Roborazzi. |
+| `domain/src/test` | Use cases and pure model rules. |
+| `data/src/test` | Room, DataStore, repositories, and bookmark import. |
+| `browser/src/test` | The tab engine, WebView, downloads, and page scripts. |
+| `app/src/test` | Screens, ViewModels, AI, search, system, and the process graph. Robolectric, Turbine, Roborazzi. `DomainBoundaryTest` and `BrowsingDataCleanerTest` stay here because they name `ui`. |
 | `app/src/androidTest` | Instrumented tests, including `ProcessDeathRestoreTest` and `ReleaseSmokeTest`. |
 | `app/src/test/screenshots` | Recorded goldens. Board images share names with `design/screens/`. |
+
+Fakes shared with `:app` tests live in each module's test fixtures: `domain/src/testFixtures` (repository fakes, `RecordingTabs`, and `MainDispatcherRule`), `data/src/testFixtures` (the in-memory database), and `browser/src/testFixtures` (`TabManagerFixture` and the WebView fakes). `:app:testDebugUnitTest` runs the three module suites first.
 
 `RestoreAcrossContainersTest` opens the process graph, closes it, and restores with a second graph on the same directory.

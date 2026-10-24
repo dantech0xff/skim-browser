@@ -104,7 +104,7 @@ class TabStateStore(
     }
 
     /** Returns once the file work requested so far is done. */
-    internal suspend fun awaitIdle() = writer.awaitIdle()
+    suspend fun awaitIdle() = writer.awaitIdle()
 
     private fun fileOf(tabId: String) = File(dir, tabId + STATE_SUFFIX)
 

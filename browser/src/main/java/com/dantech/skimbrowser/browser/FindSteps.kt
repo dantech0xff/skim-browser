@@ -8,7 +8,7 @@ import androidx.annotation.MainThread
  * not move: steps asked for meanwhile wait, and go out in order once the count is done.
  */
 @MainThread
-internal class FindSteps {
+class FindSteps {
     private var counting = false
     private val waiting = ArrayDeque<Boolean>()
 

@@ -40,7 +40,7 @@ class BlobData(val mimeType: String?, val bytes: ByteArray)
  * What the blob bridge needs of a WebView: running a script in its page, behind an interface so
  * the bridge can be tested without Chromium.
  */
-internal interface ScriptRunner {
+interface ScriptRunner {
     /** Runs [script] in [webView]'s page and returns its result as JSON; null when there is none. */
     suspend fun evaluate(webView: WebView, script: String): String?
 
@@ -81,7 +81,7 @@ internal object WebViewScriptRunner : ScriptRunner {
  * over; the read fails.
  */
 @MainThread
-class BlobBridge internal constructor(
+class BlobBridge(
     private val runner: ScriptRunner,
     /** The script, `assets/js/skim-blob-fetch.js`: one function expression. */
     private val readScript: () -> String,
@@ -197,7 +197,7 @@ class BlobBridge internal constructor(
         }
     }
 
-    internal companion object {
+    companion object {
         const val SCRIPT = "js/skim-blob-fetch.js"
         const val FETCH_TIMEOUT_MS = 30_000L
 
@@ -215,7 +215,7 @@ class BlobBridge internal constructor(
 
 /** The blob script's one argument; what an operation does not use is left out. */
 @Serializable
-internal data class BlobScriptArgs(
+data class BlobScriptArgs(
     val op: String,
     val nonce: String,
     val url: String? = null,
@@ -230,7 +230,7 @@ internal data class BlobScriptArgs(
  * URL of an http or https origin, so an opaque `blob:null/…` blob (a sandboxed frame, a `data:`
  * page) is never read.
  */
-internal fun blobOriginOf(blobUrl: String): String? {
+fun blobOriginOf(blobUrl: String): String? {
     val trimmed = blobUrl.trim()
     if (!trimmed.startsWith(BLOB_SCHEME, ignoreCase = true)) return null
     return webOriginOf(trimmed.substring(BLOB_SCHEME.length))

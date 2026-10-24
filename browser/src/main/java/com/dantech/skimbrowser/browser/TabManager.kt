@@ -628,7 +628,7 @@ class TabManager(
     fun isAttached(engine: TabEngine): Boolean = this.engine.value === engine
 
     /** Returns once every write queued so far has reached Room and the settings. */
-    internal suspend fun awaitWrites() = writer.awaitIdle()
+    suspend fun awaitWrites() = writer.awaitIdle()
 
     /** No WebView of the attached engine, if any, shows a page yet: none is loading, loaded or searched. */
     private fun forgetLivePages() {

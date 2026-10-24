@@ -19,6 +19,27 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    testFixtures {
+        enable = true
+    }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                // Robolectric reflects into these JDK packages; JDK 17+ (the daemon runs JDK 25) needs them opened.
+                it.jvmArgs(
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                    "--add-opens=java.base/java.util=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                    "--add-opens=java.base/java.net=ALL-UNNAMED",
+                    "--add-opens=java.base/java.security=ALL-UNNAMED",
+                    "--add-opens=java.base/java.text=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                )
+            }
+        }
+    }
 }
 
 room {
@@ -32,4 +53,16 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.jsoup)
     ksp(libs.androidx.room.compiler)
+
+    testFixturesApi(libs.turbine)
+    testFixturesImplementation(libs.androidx.test.core)
+    testFixturesImplementation(libs.kotlinx.coroutines.test)
+
+    testImplementation(testFixtures(project(":domain")))
+    testImplementation(libs.junit)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

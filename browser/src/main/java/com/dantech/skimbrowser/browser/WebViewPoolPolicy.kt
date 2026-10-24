@@ -17,7 +17,7 @@ import android.content.ComponentCallbacks2
  * A memory warning that the app is hidden or in the background only saves the WebViews' state:
  * evicting there would destroy the opener of a sign-in popup while the user fetches a code.
  */
-internal class WebViewPoolPolicy(private val isLowRamDevice: Boolean) {
+class WebViewPoolPolicy(private val isLowRamDevice: Boolean) {
 
     /** What a memory warning asks of the pool. */
     enum class TrimResponse {

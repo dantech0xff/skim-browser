@@ -45,7 +45,7 @@ From `design/README.md`. The app does not invent screens for these:
 
 7. **Live API key.** Owner kept option A. Debug calls Anthropic only when `skim.anthropicApiKey` is set. No key is committed. The developer adds their own spend-limited key locally. Live answers were not exercised.
 
-8. **Device coverage number.** Kover measures the JVM unit tests. It does not include `androidTest`. The 80% bar is the unit-test line-coverage number from `:app:koverHtmlReportDebug`, which aggregates `:domain` and `:data`. Composables are included in that number.
+8. **Device coverage number.** Kover measures the JVM unit tests. It does not include `androidTest`. The 80% bar is the unit-test line-coverage number from `:app:koverHtmlReportDebug`, which aggregates `:domain`, `:data`, and `:browser`. Composables are included in that number.
 
 ## Known limits
 
