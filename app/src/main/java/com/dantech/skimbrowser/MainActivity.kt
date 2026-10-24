@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
 import com.dantech.skimbrowser.browser.BrowserHost
@@ -53,10 +52,6 @@ class MainActivity : ComponentActivity() {
      * opens an earlier one again.
      */
     private val pendingLinks = Channel<String>(Channel.BUFFERED)
-
-    /** The Activity's browser host, for the device tests of its life cycle. */
-    @get:VisibleForTesting
-    internal val browserHostForTests: BrowserHost get() = browserHost
 
     private val downloadFinished = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {

@@ -196,7 +196,7 @@ class MainActivityLifecycleTest {
                 }
                 val newer = onMain { instances.resumed.single() }
                 try {
-                    val host = onMain { newer.browserHostForTests }
+                    val host = onMain { newer.browserHost }
                     assertTrue("the newer instance's pool drives the tabs", onMain { tabs.isAttached(host.pool) })
                     assertTrue(runBlocking { tabs.awaitPageReady(id) })
                     val started = ticks(host, id)
@@ -306,7 +306,7 @@ class MainActivityLifecycleTest {
 
     private fun hostOf(scenario: ActivityScenario<MainActivity>): BrowserHost {
         var host: BrowserHost? = null
-        scenario.onActivity { host = it.browserHostForTests }
+        scenario.onActivity { host = it.browserHost }
         return checkNotNull(host)
     }
 
