@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.browser.di
+package com.dantech.skimbrowser.di.browser
 
 import android.app.Activity
 import androidx.activity.ComponentActivity

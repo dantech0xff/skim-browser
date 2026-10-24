@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.browser.di
+package com.dantech.skimbrowser.di.browser
 
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner

@@ -91,7 +91,7 @@ class DomainBoundaryTest {
         assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
         assertNull(violation("SkimApplication.kt", "import com.dantech.skimbrowser.browser.TabManager"))
         assertTrue(chatRepositoryOutsideData("di/ProcessGraph.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository"))
-        assertTrue(!chatRepositoryOutsideData("data/di/DataGeneration.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
+        assertTrue(!chatRepositoryOutsideData("di/data/DataGeneration.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
         assertTrue(chatRepositoryOutsideData("SkimApplication.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
     }
 
@@ -102,9 +102,10 @@ class DomainBoundaryTest {
             "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"), sourceRoot())
             else -> listOf(sourceRoot())
         }
-        val found = roots.mapNotNull { root ->
-            val layerRoot = root.resolve(layer)
-            if (layerRoot.isDirectory) root to layerRoot else null
+        val found = roots.flatMap { root ->
+            listOf(root.resolve(layer), root.resolve("di").resolve(layer))
+                .filter { it.isDirectory }
+                .map { root to it }
         }
         assertTrue("$layer sources", found.isNotEmpty())
         return found.flatMap { (root, layerRoot) ->
@@ -185,9 +186,16 @@ class DomainBoundaryTest {
         }
 
         fun violation(relativePath: String, line: String): String? {
-            val layer = relativePath.substringBefore('/', missingDelimiterValue = "")
-            val token = forbiddenToken(layer, relativePath, line) ?: return null
+            val token = forbiddenToken(layerOf(relativePath), relativePath, line) ?: return null
             return "$relativePath contains $token"
+        }
+
+        /** `di/data`, `di/browser`, and `di/ai` are the Hilt bindings for those layers. */
+        fun layerOf(relativePath: String): String {
+            val head = relativePath.substringBefore('/', missingDelimiterValue = "")
+            if (head != "di") return head
+            val binding = relativePath.removePrefix("di/").substringBefore('/', missingDelimiterValue = "")
+            return if (binding == "data" || binding == "browser" || binding == "ai") binding else head
         }
 
         fun forbiddenToken(layer: String, relativePath: String, line: String): String? = when (layer) {

@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.ai.di
+package com.dantech.skimbrowser.di.ai
 
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.ai.AiDataEraser

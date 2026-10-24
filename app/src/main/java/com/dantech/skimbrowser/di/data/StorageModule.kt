@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.data.di
+package com.dantech.skimbrowser.di.data
 
 import com.dantech.skimbrowser.AppStorage
 import dagger.Module

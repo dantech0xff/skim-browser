@@ -11,7 +11,7 @@ import com.dantech.skimbrowser.ai.ChatSessionStore
 import com.dantech.skimbrowser.ai.ClaudeClientProvider
 import com.dantech.skimbrowser.ai.SkimAiService
 import com.dantech.skimbrowser.ai.TabGrouping
-import com.dantech.skimbrowser.ai.di.ClaudeClientFactory
+import com.dantech.skimbrowser.di.ai.ClaudeClientFactory
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
@@ -26,7 +26,7 @@ import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.PageScripts
 import com.dantech.skimbrowser.data.db.SkimDatabase
-import com.dantech.skimbrowser.data.di.DataGeneration
+import com.dantech.skimbrowser.di.data.DataGeneration
 import com.dantech.skimbrowser.domain.ai.AskPage
 import com.dantech.skimbrowser.domain.ai.AskTabs
 import com.dantech.skimbrowser.domain.ai.CollectOpenTabs

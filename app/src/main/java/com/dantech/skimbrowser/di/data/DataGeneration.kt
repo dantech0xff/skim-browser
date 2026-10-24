@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.data.di
+package com.dantech.skimbrowser.di.data
 
 import android.app.Application
 import androidx.datastore.core.DataStore
