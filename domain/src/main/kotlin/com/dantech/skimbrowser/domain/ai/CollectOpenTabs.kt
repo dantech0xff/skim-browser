@@ -5,33 +5,6 @@ import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.isAskCandidate
 import com.dantech.skimbrowser.domain.url.hostOf
-import kotlinx.coroutines.flow.Flow
-
-/** Asks for a summary of the page the chat was opened on. */
-class SummarizePage(private val assistant: AiAssistant) {
-    operator fun invoke(session: PageConversation): Flow<AiReply> = assistant.summarize(session)
-}
-
-/** Asks [question] about the page the chat was opened on. */
-class AskPage(private val assistant: AiAssistant) {
-    operator fun invoke(session: PageConversation, question: String): Flow<AiReply> = assistant.ask(session, question)
-}
-
-/** Sends the last summary or question again, without adding a turn. */
-class RetryAnswer(private val assistant: AiAssistant) {
-    operator fun invoke(session: PageConversation): Flow<AiReply> = assistant.retry(session)
-}
-
-/** Asks for one answer across the open tabs. */
-class OverviewTabs(private val assistant: AiAssistant) {
-    operator fun invoke(session: PageConversation, context: List<TabContext>, prompt: String): Flow<AiReply> =
-        assistant.overviewTabs(session, context, prompt)
-}
-
-/** Asks [question] about the tabs already sent. */
-class AskTabs(private val assistant: AiAssistant) {
-    operator fun invoke(session: PageConversation, question: String): Flow<AiReply> = assistant.askTabs(session, question)
-}
 
 /**
  * The normal web tabs an across-tabs action may send, most recently used first, at most

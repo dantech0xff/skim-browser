@@ -1,6 +1,5 @@
 package com.dantech.skimbrowser.domain.ai
 
-import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
 import com.dantech.skimbrowser.domain.page.HighlightRequest
 import com.dantech.skimbrowser.domain.page.PageBlock
@@ -13,42 +12,15 @@ import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.TabsState
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Test
 
-/** The assistant use cases forward one action, and open-tab collection keeps the send rules. */
-class AiUseCasesTest {
-
-    @Test
-    fun eachAssistantUseCaseForwardsToTheMatchingCall() {
-        val assistant = RecordingAssistant()
-        val session = UnusedConversation()
-        val pages = emptyList<TabContext>()
-        assertSame(assistant.replies, SummarizePage(assistant)(session))
-        assertSame(assistant.replies, AskPage(assistant)(session, "Key numbers"))
-        assertSame(assistant.replies, RetryAnswer(assistant)(session))
-        assertSame(assistant.replies, OverviewTabs(assistant)(session, pages, "Summarize"))
-        assertSame(assistant.replies, AskTabs(assistant)(session, "What changed?"))
-        assertEquals(
-            listOf(
-                "summarize",
-                "ask:Key numbers",
-                "retry",
-                "overview:Summarize",
-                "askTabs:What changed?",
-            ),
-            assistant.calls,
-        )
-        assertEquals(listOf(session, session, session, session, session), assistant.sessions)
-    }
+/** Open-tab collection keeps the send rules. */
+class CollectOpenTabsTest {
 
     @Test
     fun openTabsLeaveOutIncognitoAskSitesAndPagesThatAreNotWeb() = runTest {
@@ -90,30 +62,6 @@ class AiUseCasesTest {
         assertEquals(OpenTabLimits.MAX_TABS, collected.size)
         assertEquals("t${OpenTabLimits.MAX_TABS}", collected.first().tab.id)
         assertEquals("t1", collected.last().tab.id)
-    }
-
-    private class RecordingAssistant : AiAssistant {
-        val calls = mutableListOf<String>()
-        val sessions = mutableListOf<PageConversation>()
-        val replies: Flow<AiReply> = flowOf(AiReply.Finished)
-
-        override fun summarize(session: PageConversation): Flow<AiReply> = record("summarize", session)
-
-        override fun ask(session: PageConversation, question: String): Flow<AiReply> = record("ask:$question", session)
-
-        override fun retry(session: PageConversation): Flow<AiReply> = record("retry", session)
-
-        override fun overviewTabs(session: PageConversation, context: List<TabContext>, prompt: String): Flow<AiReply> =
-            record("overview:$prompt", session)
-
-        override fun askTabs(session: PageConversation, question: String): Flow<AiReply> =
-            record("askTabs:$question", session)
-
-        private fun record(name: String, session: PageConversation): Flow<AiReply> {
-            calls += name
-            sessions += session
-            return replies
-        }
     }
 
     private class ScriptedTabs(
@@ -189,30 +137,3 @@ private fun page(url: String, text: String) = PageContent(
     readerable = false,
     blocks = listOf(PageBlock(id = "0", tag = "p", text = text)),
 )
-
-private class UnusedConversation : PageConversation {
-    override val chatId = 0L
-    override val tabId = ""
-    override val pageUrl = ""
-    override val document = page("", "")
-    override val tabCount = 0
-    override val messages = MutableStateFlow<List<ChatMessage>>(emptyList())
-    override var streaming = false
-    override var draft = ""
-    override var draftKind = MessageKind.SUMMARY
-    override var draftCitations = emptyList<Int>()
-    override val canRetry = false
-    override val hasOpening = false
-    override val hasSources = false
-    override fun cancelStream() = Unit
-    override fun takeStop() = false
-    override fun beginStream(job: Job, kind: MessageKind) = Unit
-    override fun noteText(delta: String) = Unit
-    override fun noteCite(start: Int) = Unit
-    override fun endStream() = Unit
-    override fun commitPendingReply(keep: Boolean) = Unit
-    override fun replacePages(pages: List<TabContext>) = Unit
-    override fun ensureOverviewOpening(pages: List<TabContext>, prompt: String) = Unit
-    override fun rememberAssistantText(text: String) = Unit
-    override fun stoppedMessage(): ChatMessage = error("unused")
-}

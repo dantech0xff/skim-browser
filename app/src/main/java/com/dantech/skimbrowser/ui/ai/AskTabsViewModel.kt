@@ -9,13 +9,12 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
-import com.dantech.skimbrowser.domain.ai.AskTabs
 import com.dantech.skimbrowser.domain.ai.ChatMessage
 import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
-import com.dantech.skimbrowser.domain.ai.OverviewTabs
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.PageConversation
 import com.dantech.skimbrowser.domain.ai.TabContext
@@ -99,8 +98,7 @@ data class AskTabsUiState(
 class AskTabsViewModel @AssistedInject constructor(
     @Assisted private val key: AskTabsKey,
     private val sessions: PageChats,
-    private val overviewTabs: OverviewTabs,
-    private val askTabs: AskTabs,
+    private val assistant: AiAssistant,
     private val collectOpenTabs: CollectOpenTabs,
     private val network: NetworkAvailability,
     private val savedState: SavedStateHandle,
@@ -293,7 +291,7 @@ class AskTabsViewModel @AssistedInject constructor(
         var stop = ""
         var failed: AiFailure? = null
         try {
-            overviewTabs(current, context, prompt).collect { event ->
+            assistant.overviewTabs(current, context, prompt).collect { event ->
                 when (event) {
                     is AiReply.Text -> current.noteText(event.delta)
                     is AiReply.Cite -> Unit
@@ -334,7 +332,7 @@ class AskTabsViewModel @AssistedInject constructor(
         current.beginStream(stream, MessageKind.ANSWER)
         var refused = false
         try {
-            askTabs(current, question).collect { event ->
+            assistant.askTabs(current, question).collect { event ->
                 when (event) {
                     is AiReply.Text -> {
                         current.noteText(event.delta)

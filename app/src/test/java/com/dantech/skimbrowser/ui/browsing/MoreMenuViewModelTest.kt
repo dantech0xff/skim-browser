@@ -11,7 +11,6 @@ import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
-import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -143,7 +142,7 @@ class MoreMenuViewModelTest {
         bookmarks: FakeBookmarkRepository,
         snackbar: SnackbarController,
     ): MoreMenuViewModel {
-        val menu = kept { MoreMenuViewModel(tabId, f.manager, bookmarks, AddBookmark(bookmarks), snackbar, backgroundScope) }
+        val menu = kept { MoreMenuViewModel(tabId, f.manager, bookmarks, snackbar, backgroundScope) }
         backgroundScope.launch { menu.state.collect {} }
         runCurrent()
         return menu

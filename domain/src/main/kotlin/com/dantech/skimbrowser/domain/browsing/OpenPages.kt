@@ -10,7 +10,13 @@ interface OpenPages {
     fun clearCache()
 }
 
-/** Forgets one site's cookies and web storage. An incognito tab uses that session's profile. */
+/** Forgets site data. An incognito tab uses that session's profile for one site. */
 interface SiteDataCleaner {
     suspend fun clearSite(host: String, incognitoTab: Boolean)
+
+    /**
+     * Clear browsing data for the default profile. [pages] is the Activity's live pages, or null
+     * when no Activity is up.
+     */
+    suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?)
 }

@@ -52,8 +52,6 @@ import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.usecase.SetSitePermission
-import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -121,8 +119,6 @@ class SiteInfoViewModel @AssistedInject constructor(
     private val tabs: TabsController,
     private val permissions: SitePermissionRepository,
     private val settings: SettingsRepository,
-    private val saveSkimAi: SetSkimAi,
-    private val savePermission: SetSitePermission,
     private val incognito: IncognitoDecisions,
     private val cleaner: SiteDataCleaner,
     @AppScope private val appScope: CoroutineScope,
@@ -157,7 +153,7 @@ class SiteInfoViewModel @AssistedInject constructor(
         val host = state.value.siteKey
         if (host.isEmpty() || state.value.incognito) return
         viewModelScope.launch {
-            saveSkimAi(host, if (on) SkimAiState.ALLOWED else SkimAiState.ASK)
+            permissions.setSkimAi(host, if (on) SkimAiState.ALLOWED else SkimAiState.ASK)
         }
     }
 
@@ -170,7 +166,7 @@ class SiteInfoViewModel @AssistedInject constructor(
             incognito.setDecision(host, kind, next)
             revision.update { it + 1 }
         } else {
-            viewModelScope.launch { savePermission(host, kind, next) }
+            viewModelScope.launch { permissions.setPermission(host, kind, next) }
         }
     }
 

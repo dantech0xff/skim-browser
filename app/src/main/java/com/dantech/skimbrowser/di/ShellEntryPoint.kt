@@ -8,8 +8,6 @@ import com.dantech.skimbrowser.domain.ai.AskPageAccess
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.domain.tab.TabsController
-import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
-import com.dantech.skimbrowser.domain.usecase.SetTheme
 import com.dantech.skimbrowser.system.ShareImage
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -28,8 +26,6 @@ interface ShellEntryPoint {
     fun tabs(): TabsController
     fun tabManager(): TabManager
     fun settings(): SettingsRepository
-    fun setSearchEngine(): SetSearchEngine
-    fun setTheme(): SetTheme
     @AppScope fun appScope(): CoroutineScope
     fun snackbar(): SnackbarController
     fun undo(): UndoRegistry

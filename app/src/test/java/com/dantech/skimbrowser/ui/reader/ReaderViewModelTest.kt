@@ -10,8 +10,6 @@ import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
 import com.dantech.skimbrowser.domain.settings.ReaderFont
-import com.dantech.skimbrowser.domain.usecase.SetReaderFont
-import com.dantech.skimbrowser.domain.usecase.SetReaderTextScale
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -128,8 +126,6 @@ class ReaderViewModelTest {
                     tabId,
                     fixture.manager,
                     settings,
-                    SetReaderTextScale(settings),
-                    SetReaderFont(settings),
                     scope,
                 )
             }

@@ -10,8 +10,6 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.ChatSummary
-import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
-import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -67,8 +65,6 @@ data class SkimHistoryUiState(
 @HiltViewModel
 class SkimHistoryViewModel @Inject constructor(
     private val chats: ChatRepository,
-    private val removeSkimChat: RemoveSkimChat,
-    private val restoreSkimChat: RestoreSkimChat,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     @WallClock private val clock: () -> Long = System::currentTimeMillis,
@@ -100,8 +96,8 @@ class SkimHistoryViewModel @Inject constructor(
     fun remove(id: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                val deleted = removeSkimChat(id) ?: return@withContext
-                val token = undo.register(UndoKind.SKIM_CHAT, undo = { restoreSkimChat(deleted) })
+                val deleted = chats.delete(id) ?: return@withContext
+                val token = undo.register(UndoKind.SKIM_CHAT, undo = { chats.restore(deleted) })
                 snackbar.show(UiText.Res(R.string.snackbar_removed_from_history), SnackbarAction.Undo(token))
             }
         }

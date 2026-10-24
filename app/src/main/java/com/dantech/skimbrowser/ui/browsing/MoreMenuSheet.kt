@@ -40,7 +40,6 @@ import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.system.ShareSheet
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.SegmentedColumn
@@ -109,7 +108,6 @@ class MoreMenuViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val bookmarks: BookmarkRepository,
-    private val addBookmark: AddBookmark,
     private val snackbar: SnackbarController,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -166,11 +164,11 @@ class MoreMenuViewModel @AssistedInject constructor(
         if (url == null || !current.bookmarkKnown || current.bookmarkedId != null) return
         if (!adding.compareAndSet(false, true)) return
         val title = current.title.ifBlank { current.host }.ifBlank { url }
-        val add = addBookmark
+        val store = bookmarks
         val bar = snackbar
         appScope.launch {
             try {
-                val id = add(title, url)
+                val id = store.addToMobile(title, url)
                 bar.show(UiText.Res(R.string.snackbar_bookmark_added), SnackbarAction.EditBookmark(id))
                 closedRequests.emit(Unit)
             } catch (e: CancellationException) {

@@ -11,8 +11,6 @@ import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
-import com.dantech.skimbrowser.domain.usecase.SetReaderFont
-import com.dantech.skimbrowser.domain.usecase.SetReaderTextScale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,8 +46,6 @@ class ReaderViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val settings: SettingsRepository,
-    private val saveScale: SetReaderTextScale,
-    private val saveFont: SetReaderFont,
     @AppScope private val writes: CoroutineScope,
 ) : ViewModel() {
 
@@ -82,12 +78,12 @@ class ReaderViewModel @AssistedInject constructor(
 
     /** Saves [percent] as the reader text size. The slider follows the stored value. */
     fun setScale(percent: Int) {
-        writes.launch { saveScale(percent) }
+        writes.launch { settings.setReaderTextScale(percent) }
     }
 
     /** Saves [font] as the reader typeface. */
     fun setFont(font: ReaderFont) {
-        writes.launch { saveFont(font) }
+        writes.launch { settings.setReaderFont(font) }
     }
 
     /** Goes back in this tab's page history. The route leaves reader first. */

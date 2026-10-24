@@ -1,10 +1,10 @@
 package com.dantech.skimbrowser.ai
 
 import com.dantech.skimbrowser.domain.ai.SkimDataEraser
+import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.undo.PendingUndo
 import com.dantech.skimbrowser.domain.undo.UndoSubject
-import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +20,7 @@ typealias AiDataCleared = com.dantech.skimbrowser.domain.ai.AiDataCleared
  */
 @Singleton
 class AiDataEraser @Inject constructor(
-    private val deleteAllChats: DeleteAllSkimChats,
+    private val chats: ChatRepository,
     private val sites: SitePermissionRepository,
     private val pendingUndo: PendingUndo,
 ) : SkimDataEraser {
@@ -40,6 +40,6 @@ class AiDataEraser @Inject constructor(
 
     private suspend fun dropChats() {
         pendingUndo.cancel(UndoSubject.SKIM_CHAT)
-        deleteAllChats()
+        chats.deleteAll()
     }
 }

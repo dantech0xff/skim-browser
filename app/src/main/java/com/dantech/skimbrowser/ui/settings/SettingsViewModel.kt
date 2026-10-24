@@ -9,8 +9,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
-import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
-import com.dantech.skimbrowser.domain.usecase.SetTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +35,6 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
-    private val saveSearchEngine: SetSearchEngine,
-    private val saveTheme: SetTheme,
     version: AppVersion,
 ) : ViewModel() {
 
@@ -65,10 +61,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setSearchEngine(engine: SearchEngine) {
-        viewModelScope.launch { saveSearchEngine(engine) }
+        viewModelScope.launch { settings.setSearchEngine(engine) }
     }
 
     fun setTheme(theme: ThemeSetting) {
-        viewModelScope.launch { saveTheme(theme) }
+        viewModelScope.launch { settings.setTheme(theme) }
     }
 }

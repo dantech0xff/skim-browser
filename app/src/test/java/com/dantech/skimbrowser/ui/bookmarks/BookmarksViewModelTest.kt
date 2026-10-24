@@ -6,8 +6,6 @@ import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.tab.RecordingTabs
-import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
-import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -107,5 +105,5 @@ class BookmarksViewModelTest {
         snackbar: SnackbarController = SnackbarController(UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope)),
         undo: UndoRegistry = UndoRegistry(kotlinx.coroutines.test.TestScope().backgroundScope),
         openUrl: OpenUrlInCurrentTab = OpenUrlInCurrentTab(RecordingTabs()),
-    ) = BookmarksViewModel(folderId, bookmarks, DeleteBookmark(bookmarks), RestoreBookmark(bookmarks), snackbar, undo, openUrl)
+    ) = BookmarksViewModel(folderId, bookmarks, snackbar, undo, openUrl)
 }

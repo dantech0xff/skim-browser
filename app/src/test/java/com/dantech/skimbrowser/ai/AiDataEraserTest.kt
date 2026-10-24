@@ -7,7 +7,6 @@ import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.domain.undo.PendingUndo
@@ -59,7 +58,7 @@ class AiDataEraserTest {
         }
 
         chats.removals.test {
-            assertEquals(AiDataCleared.CHATS_AND_SITE_CHOICES, AiDataEraser(DeleteAllSkimChats(chats), sites, pending).deleteAllAiData())
+            assertEquals(AiDataCleared.CHATS_AND_SITE_CHOICES, AiDataEraser(chats, sites, pending).deleteAllAiData())
             assertNull(awaitItem())
         }
 
@@ -82,7 +81,7 @@ class AiDataEraserTest {
 
         assertEquals(
             AiDataCleared.CHATS,
-            AiDataEraser(DeleteAllSkimChats(chats), sites, SnackbarUndo(undo, SnackbarController(undo))).clearSkimHistory(),
+            AiDataEraser(chats, sites, SnackbarUndo(undo, SnackbarController(undo))).clearSkimHistory(),
         )
 
         assertEquals(0, chats.observeCount().first())

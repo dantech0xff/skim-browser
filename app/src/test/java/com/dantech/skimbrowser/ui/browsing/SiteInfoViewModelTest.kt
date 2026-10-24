@@ -16,8 +16,6 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.HistoryRepository
 import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
-import com.dantech.skimbrowser.domain.usecase.SetSitePermission
-import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.SnackbarUndo
@@ -146,8 +144,6 @@ class SiteInfoViewModelTest {
                 f.manager,
                 permissions,
                 f.settings,
-                SetSkimAi(permissions),
-                SetSitePermission(permissions),
                 f.incognito,
                 cleaner,
                 backgroundScope,

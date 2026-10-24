@@ -86,7 +86,7 @@ fun SearchEngineRoute(navigator: SkimNavigator) {
     SearchEngineDialog(
         selected = settings.searchEngine,
         onSelect = { engine ->
-            shell.appScope().launch { shell.setSearchEngine()(engine) }
+            shell.appScope().launch { shell.settings().setSearchEngine(engine) }
             navigator.back()
         },
         onDismiss = navigator::back,
@@ -101,7 +101,7 @@ fun ThemeRoute(navigator: SkimNavigator) {
     ThemeDialog(
         selected = settings.theme,
         onSelect = { theme ->
-            shell.appScope().launch { shell.setTheme()(theme) }
+            shell.appScope().launch { shell.settings().setTheme(theme) }
             navigator.back()
         },
         onDismiss = navigator::back,

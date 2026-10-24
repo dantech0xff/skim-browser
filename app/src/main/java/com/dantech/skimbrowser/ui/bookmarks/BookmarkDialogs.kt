@@ -52,8 +52,6 @@ import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.bookmark.FolderKind
 import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.usecase.MoveBookmark
-import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.search.omniboxAddress
 import com.dantech.skimbrowser.ui.components.ChoiceDialogContent
 import com.dantech.skimbrowser.ui.components.DialogAction
@@ -123,7 +121,6 @@ internal fun folderLabel(folder: BookmarkFolder): FolderLabel = when (folder.kin
 class EditBookmarkViewModel @AssistedInject constructor(
     @Assisted private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
-    private val updateBookmark: UpdateBookmark,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -154,11 +151,11 @@ class EditBookmarkViewModel @AssistedInject constructor(
         val address = omniboxAddress(url.text.toString()) ?: return
         val label = name.text.trim().ifEmpty { hostOf(address) ?: address }.toString()
         progress.update { it.copy(saving = true) }
-        val save = updateBookmark
+        val store = bookmarks
         val id = bookmarkId
         appScope.launch {
             try {
-                save(id, label, address)
+                store.update(id, label, address)
                 progress.update { it.copy(saving = false, done = true) }
             } catch (e: CancellationException) {
                 throw e
@@ -209,7 +206,6 @@ class EditBookmarkViewModel @AssistedInject constructor(
 class MoveToFolderViewModel @AssistedInject constructor(
     @Assisted private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
-    private val moveBookmark: MoveBookmark,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -237,11 +233,11 @@ class MoveToFolderViewModel @AssistedInject constructor(
     fun moveTo(folderId: Long) {
         if (moving || done.value) return
         moving = true
-        val move = moveBookmark
+        val store = bookmarks
         val id = bookmarkId
         appScope.launch {
             try {
-                move(id, folderId)
+                store.move(id, folderId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

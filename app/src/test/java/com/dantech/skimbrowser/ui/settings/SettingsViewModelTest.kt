@@ -5,8 +5,6 @@ import com.dantech.skimbrowser.di.AppVersion
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
-import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
-import com.dantech.skimbrowser.domain.usecase.SetTheme
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -28,7 +26,7 @@ class SettingsViewModelTest {
     @Test
     fun themeAndSearchEngineAreStoredAndTheDefaultBrowserFlagUpdates() = runTest {
         val settings = FakeSettingsRepository()
-        val model = SettingsViewModel(settings, SetSearchEngine(settings), SetTheme(settings), AppVersion("1.0", 1))
+        val model = SettingsViewModel(settings, AppVersion("1.0", 1))
         model.state.first { it.searchEngine == SearchEngine.GOOGLE }
 
         assertFalse(model.state.value.isDefaultBrowser)

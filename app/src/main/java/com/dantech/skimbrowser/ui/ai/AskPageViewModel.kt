@@ -9,28 +9,26 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
-import com.dantech.skimbrowser.domain.ai.AskPage
 import com.dantech.skimbrowser.domain.ai.ChatMessage
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.PageConversation
-import com.dantech.skimbrowser.domain.ai.RetryAnswer
-import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.domain.page.HighlightRequest
 import com.dantech.skimbrowser.domain.page.PageContent
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.newTab
+import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.withoutFragment
-import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import kotlin.coroutines.coroutineContext
@@ -120,12 +118,10 @@ class AskPageViewModel @AssistedInject constructor(
     @Assisted private val key: AskPageKey,
     private val tabs: TabsController,
     private val sessions: PageChats,
-    private val summarizePage: SummarizePage,
-    private val askPage: AskPage,
-    private val retryAnswer: RetryAnswer,
+    private val assistant: AiAssistant,
     private val network: NetworkAvailability,
     private val readerHighlights: ReaderHighlights,
-    private val loadSavedChat: LoadSavedChat,
+    private val chats: ChatRepository,
     private val savedState: SavedStateHandle,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -168,7 +164,7 @@ class AskPageViewModel @AssistedInject constructor(
                 ),
             )
             publish(current, generating = true, waiting = true, streamingKind = MessageKind.ANSWER)
-            collect(current, askPage(current, text), MessageKind.ANSWER)
+            collect(current, assistant.ask(current, text), MessageKind.ANSWER)
         }
     }
 
@@ -230,7 +226,7 @@ class AskPageViewModel @AssistedInject constructor(
                 streamingKind = kind,
                 summaryOverride = SummaryState.Generating.takeIf { kind == MessageKind.SUMMARY },
             )
-            val flow = if (current.canRetry) retryAnswer(current) else summarizePage(current)
+            val flow = if (current.canRetry) assistant.retry(current) else assistant.summarize(current)
             collect(current, flow, kind)
         }
     }
@@ -321,7 +317,7 @@ class AskPageViewModel @AssistedInject constructor(
     }
 
     private suspend fun openSaved(chatId: Long) {
-        val chat = loadSavedChat(chatId) ?: return
+        val chat = chats.load(chatId) ?: return
         val url = chat.url ?: return
         val current = tabs.state.value.currentTabId?.let { tabs.state.value.tab(it) }
         val tabId = if (current != null && !current.incognito) {
@@ -366,7 +362,7 @@ class AskPageViewModel @AssistedInject constructor(
             return
         }
         publish(opened, generating = true, streamingKind = MessageKind.SUMMARY, summaryOverride = SummaryState.Generating)
-        collect(opened, summarizePage(opened), MessageKind.SUMMARY)
+        collect(opened, assistant.summarize(opened), MessageKind.SUMMARY)
     }
 
     private suspend fun collect(opened: PageConversation, events: Flow<AiReply>, kind: MessageKind) {

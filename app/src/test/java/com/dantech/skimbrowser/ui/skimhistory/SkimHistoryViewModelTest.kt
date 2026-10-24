@@ -21,9 +21,6 @@ import com.dantech.skimbrowser.domain.chat.MessageStatus as DomainMessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
-import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
-import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
-import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -125,7 +122,7 @@ class SkimHistoryViewModelTest {
         val id = chat(chats, ChatKind.PAGE, "Why heat pumps are winning", NOW, host = "daylightjournal.com")
         val undo = UndoRegistry(backgroundScope)
         val snackbar = SnackbarController(undo)
-        val eraser = AiDataEraser(DeleteAllSkimChats(chats), sites, SnackbarUndo(undo, snackbar))
+        val eraser = AiDataEraser(chats, sites, SnackbarUndo(undo, snackbar))
         val model = model(chats, undo, snackbar)
         model.state.first { it.sections.isNotEmpty() }
 
@@ -214,8 +211,6 @@ class SkimHistoryViewModelTest {
                 initializer {
                     SkimHistoryViewModel(
                         chats,
-                        RemoveSkimChat(chats),
-                        RestoreSkimChat(chats),
                         snackbar,
                         undo,
                         clock = { NOW },

@@ -15,11 +15,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.history.HistoryEntry
+import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
-import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
-import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.search.SuggestionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -88,21 +88,21 @@ data class SearchUiState(
 class SearchViewModel(
     engine: Flow<SearchEngine>,
     private val suggestions: suspend (SearchEngine, String) -> List<String>,
-    private val matchHistory: MatchHistory,
-    private val matchBookmarks: MatchBookmarks,
+    private val history: HistoryRepository,
+    private val bookmarks: BookmarkRepository,
 ) : ViewModel() {
 
     @Inject
     constructor(
         settings: SettingsRepository,
         suggestionService: SuggestionService,
-        matchHistory: MatchHistory,
-        matchBookmarks: MatchBookmarks,
+        history: HistoryRepository,
+        bookmarks: BookmarkRepository,
     ) : this(
         settings.settings.map { it.searchEngine },
         suggestionService::suggestions,
-        matchHistory,
-        matchBookmarks,
+        history,
+        bookmarks,
     )
 
     private data class Session(val id: Int, val incognito: Boolean)
@@ -213,8 +213,8 @@ class SearchViewModel(
 
     /** History first, then bookmarks, one row per URL, at most three in all. */
     private suspend fun pageMatchesFor(text: String): ImmutableList<PageMatch> {
-        val visited = orNothing { matchHistory(text, MAX_ROWS) }.map { pageMatch(it) }
-        val bookmarked = orNothing { matchBookmarks(text, MAX_ROWS) }.map { pageMatch(it) }
+        val visited = orNothing { history.matches(text, MAX_ROWS) }.map { pageMatch(it) }
+        val bookmarked = orNothing { bookmarks.matches(text, MAX_ROWS) }.map { pageMatch(it) }
         return (visited + bookmarked).distinctBy { it.url }.take(MAX_ROWS).toImmutableList()
     }
 

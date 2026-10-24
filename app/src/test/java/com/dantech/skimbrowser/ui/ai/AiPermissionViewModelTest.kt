@@ -3,7 +3,6 @@ package com.dantech.skimbrowser.ui.ai
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
 import com.dantech.skimbrowser.domain.permission.SkimAiState
-import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -26,7 +25,7 @@ class AiPermissionViewModelTest {
     @Test
     fun allowRecordsTheSiteThenContinues() = runTest(main.testDispatcher) {
         val sites = FakeSitePermissionRepository()
-        val model = AiPermissionViewModel(SetSkimAi(sites))
+        val model = AiPermissionViewModel(sites)
         var continued = false
 
         model.allow("daylightjournal.com") { continued = true }

@@ -9,7 +9,6 @@ import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.usecase.SetSkimAi
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -24,12 +23,11 @@ typealias AiGateDecision = com.dantech.skimbrowser.domain.ai.AskPageDecision
 class AiGate(
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
-    private val setSkimAi: SetSkimAi = SetSkimAi(sites),
     private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
 ) : AskPageAccess {
 
     @Inject constructor(sites: SitePermissionRepository, settings: SettingsRepository) :
-        this(sites, settings, SetSkimAi(sites))
+        this(sites, settings, ResolveSkimAiConsent())
 
     override suspend fun decide(tab: Tab): AiGateDecision {
         if (tab.incognito) return AiGateDecision.OffInIncognito
@@ -43,6 +41,6 @@ class AiGate(
     }
 
     suspend fun allow(host: String) {
-        setSkimAi(host, SkimAiState.ALLOWED)
+        sites.setSkimAi(host, SkimAiState.ALLOWED)
     }
 }

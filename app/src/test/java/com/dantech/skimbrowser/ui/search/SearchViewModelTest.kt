@@ -15,8 +15,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
 import com.dantech.skimbrowser.domain.settings.SearchEngine
-import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
-import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import java.io.IOException
@@ -475,7 +473,7 @@ class SearchViewModelTest {
         server.start()
         server.enqueue(MockResponse().setHeader("Content-Type", "text/javascript; charset=UTF-8").setBody(fixture("google")))
         val service = SuggestionService(clientTo(server))
-        val search = kept { SearchViewModel(engine, service::suggestions, MatchHistory(history), MatchBookmarks(bookmarks)) }
+        val search = kept { SearchViewModel(engine, service::suggestions, history, bookmarks) }
 
         search.open("https://bank.example/reset?token=secret", selectAll = true, incognito = false)
         settle()
@@ -496,7 +494,7 @@ class SearchViewModelTest {
     // Helpers
 
     private fun search(engineSetting: Flow<SearchEngine> = engine) =
-        kept { SearchViewModel(engineSetting, fakeEngine, MatchHistory(history), MatchBookmarks(bookmarks)) }
+        kept { SearchViewModel(engineSetting, fakeEngine, history, bookmarks) }
 
     private inline fun <reified T : ViewModel> kept(noinline make: () -> T): T =
         ViewModelProvider.create(viewModels, viewModelFactory { initializer { make() } })["view-model-${viewModelCount++}", T::class]

@@ -10,8 +10,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
-import com.dantech.skimbrowser.domain.usecase.MoveBookmark
-import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -113,12 +111,12 @@ class BookmarkDialogViewModelTest {
     }
 
     private fun TestScope.edit(id: Long): EditBookmarkViewModel {
-        val dialog = kept { EditBookmarkViewModel(id, bookmarks, UpdateBookmark(bookmarks), appScope()) }
+        val dialog = kept { EditBookmarkViewModel(id, bookmarks, appScope()) }
         return dialog
     }
 
     private fun TestScope.move(id: Long): MoveToFolderViewModel =
-        kept { MoveToFolderViewModel(id, bookmarks, MoveBookmark(bookmarks), appScope()) }
+        kept { MoveToFolderViewModel(id, bookmarks, appScope()) }
 
     private fun TestScope.appScope(): CoroutineScope = CoroutineScope(appJob + StandardTestDispatcher(testScheduler))
 

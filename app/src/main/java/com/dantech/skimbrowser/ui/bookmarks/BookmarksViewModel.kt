@@ -13,8 +13,6 @@ import com.dantech.skimbrowser.domain.bookmark.BookmarkFolderSummary
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
 import com.dantech.skimbrowser.domain.bookmark.FolderKind
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
-import com.dantech.skimbrowser.domain.usecase.DeleteBookmark
-import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -90,8 +88,6 @@ data class BookmarksUiState(
 class BookmarksViewModel @AssistedInject constructor(
     @Assisted private val folderId: Long?,
     private val bookmarks: BookmarkRepository,
-    private val deleteBookmark: DeleteBookmark,
-    private val restoreBookmark: RestoreBookmark,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     private val openUrl: OpenUrlInCurrentTab,
@@ -146,8 +142,8 @@ class BookmarksViewModel @AssistedInject constructor(
     fun delete(id: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                val removed = deleteBookmark(id) ?: return@withContext
-                val token = undo.register(UndoKind.BOOKMARK, undo = { restoreBookmark(removed) })
+                val removed = bookmarks.delete(id) ?: return@withContext
+                val token = undo.register(UndoKind.BOOKMARK, undo = { bookmarks.restore(removed) })
                 snackbar.show(UiText.Res(R.string.snackbar_bookmark_deleted), SnackbarAction.Undo(token))
             }
         }

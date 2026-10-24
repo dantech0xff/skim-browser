@@ -7,8 +7,6 @@ import com.dantech.skimbrowser.domain.chat.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
-import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
-import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -32,8 +30,6 @@ data class AiPrivacyUiState(
 @HiltViewModel
 class AiPrivacyViewModel @Inject constructor(
     private val settings: SettingsRepository,
-    private val saveAskBeforeSending: SetAskBeforeSending,
-    private val saveKeepChatHistory: SetKeepChatHistory,
     chats: ChatRepository,
 ) : ViewModel() {
 
@@ -47,10 +43,10 @@ class AiPrivacyViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AiPrivacyUiState())
 
     fun setAskBeforeSending(enabled: Boolean) {
-        viewModelScope.launch { saveAskBeforeSending(enabled) }
+        viewModelScope.launch { settings.setAskBeforeSending(enabled) }
     }
 
     fun setKeepChatHistory(enabled: Boolean) {
-        viewModelScope.launch { saveKeepChatHistory(enabled) }
+        viewModelScope.launch { settings.setKeepChatHistory(enabled) }
     }
 }

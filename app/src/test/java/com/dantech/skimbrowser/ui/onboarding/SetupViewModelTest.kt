@@ -9,8 +9,6 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import com.dantech.skimbrowser.domain.fake.FakeBookmarkFiles
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
-import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
-import com.dantech.skimbrowser.domain.usecase.ImportBookmarks
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
@@ -139,8 +137,8 @@ class SetupViewModelTest {
     /** The view model as 03 makes it, with work that outlives the screen on the test's scope. */
     private fun TestScope.viewModel() = SetupViewModel(
         isDefaultBrowser = { skimIsDefault },
-        importBookmarks = ImportBookmarks(files),
-        completeOnboarding = CompleteOnboarding(settings),
+        files = files,
+        settings = settings,
         snackbar = snackbar,
         appScope = backgroundScope,
     )

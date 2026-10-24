@@ -4,9 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.ai.AiDataCleared
 import com.dantech.skimbrowser.domain.ai.SkimDataEraser
 import com.dantech.skimbrowser.domain.browsing.OpenPages
-import com.dantech.skimbrowser.domain.usecase.ClearBrowsingData
-import com.dantech.skimbrowser.domain.usecase.ClearSkimHistory
-import com.dantech.skimbrowser.domain.usecase.DeleteAllAiData
+import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.skimhistory.ClearSkimHistoryViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,7 +29,17 @@ class BulkDeleteViewModelTest {
     fun clearBrowsingDataRunsOnTheAppScope() = runTest(main.testDispatcher) {
         var calls = 0
         val model = ClearBrowsingDataViewModel(
-            ClearBrowsingData { _, _, _, _ -> calls += 1 },
+            object : SiteDataCleaner {
+                override suspend fun clearSite(host: String, incognitoTab: Boolean) = Unit
+                override suspend fun clearAll(
+                    history: Boolean,
+                    cookies: Boolean,
+                    cache: Boolean,
+                    pages: OpenPages?,
+                ) {
+                    calls += 1
+                }
+            },
             appScope = this,
         )
         val pages = object : OpenPages {
@@ -48,7 +56,7 @@ class BulkDeleteViewModelTest {
     @Test
     fun deleteAllAiDataRunsOnTheAppScope() = runTest(main.testDispatcher) {
         val eraser = RecordingEraser()
-        val model = DeleteAiDataViewModel(DeleteAllAiData(eraser), appScope = this)
+        val model = DeleteAiDataViewModel(eraser, appScope = this)
 
         model.deleteAll()
         assertEquals(emptyList<String>(), eraser.calls)
@@ -59,7 +67,7 @@ class BulkDeleteViewModelTest {
     @Test
     fun clearSkimHistoryFinishesOnTheAppScope() = runTest(main.testDispatcher) {
         val eraser = RecordingEraser()
-        val model = ClearSkimHistoryViewModel(ClearSkimHistory(eraser), appScope = this)
+        val model = ClearSkimHistoryViewModel(eraser, appScope = this)
 
         val deleting = model.clear()
         assertFalse(deleting.isCompleted)

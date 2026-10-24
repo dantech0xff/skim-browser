@@ -10,8 +10,6 @@ import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.tab.RecordingTabs
-import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -149,8 +147,6 @@ class HistoryViewModelTest {
                 initializer {
                     HistoryViewModel(
                         history,
-                        RemoveHistoryEntry(history),
-                        RestoreHistoryEntry(history),
                         snackbar,
                         undo,
                         openUrl,

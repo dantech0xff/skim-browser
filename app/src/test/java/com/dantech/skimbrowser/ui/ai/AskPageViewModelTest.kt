@@ -12,9 +12,6 @@ import com.dantech.skimbrowser.ai.FakeClaudeServer
 import com.dantech.skimbrowser.ai.PAGE_HOST
 import com.dantech.skimbrowser.ai.PAGE_URL
 import com.dantech.skimbrowser.ai.SkimAiService
-import com.dantech.skimbrowser.domain.ai.AskPage
-import com.dantech.skimbrowser.domain.ai.RetryAnswer
-import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.ai.articlePage
 import com.dantech.skimbrowser.ai.provider
 import com.dantech.skimbrowser.browser.FakePageScripts
@@ -29,7 +26,6 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
 import com.dantech.skimbrowser.data.repo.ChatRepository
-import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
@@ -335,12 +331,10 @@ class AskPageViewModelTest {
                     key = key,
                     tabs = fixture.manager,
                     sessions = sessions,
-                    summarizePage = SummarizePage(ai),
-                    askPage = AskPage(ai),
-                    retryAnswer = RetryAnswer(ai),
+                    assistant = ai,
                     network = fixture.network,
                     readerHighlights = ReaderHighlights(),
-                    loadSavedChat = LoadSavedChat(chats),
+                    chats = chats,
                     savedState = saved,
                     appScope = appScope,
                 )

@@ -2,7 +2,7 @@ package com.dantech.skimbrowser.ui.skimhistory
 
 import androidx.lifecycle.ViewModel
 import com.dantech.skimbrowser.di.AppScope
-import com.dantech.skimbrowser.domain.usecase.ClearSkimHistory
+import com.dantech.skimbrowser.domain.ai.SkimDataEraser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -15,8 +15,8 @@ import kotlinx.coroutines.launch
  */
 @HiltViewModel
 class ClearSkimHistoryViewModel @Inject constructor(
-    private val clearSkimHistory: ClearSkimHistory,
+    private val eraser: SkimDataEraser,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
-    fun clear(): Job = appScope.launch { clearSkimHistory() }
+    fun clear(): Job = appScope.launch { eraser.clearSkimHistory() }
 }

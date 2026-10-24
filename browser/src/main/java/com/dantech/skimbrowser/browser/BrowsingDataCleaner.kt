@@ -73,7 +73,7 @@ class BrowsingDataCleaner(
      * back. Cookies are flushed, then normal tabs reload so a page still open cannot write the
      * old cookies out again.
      */
-    suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
+    override suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
         val failures = mutableListOf<String>()
         if (history) step("history", failures) { clearHistory(pages) }
         if (cookies) step("cookies", failures) { clearCookies() }

@@ -10,8 +10,6 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
-import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
@@ -56,8 +54,6 @@ data class HistoryUiState(
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val history: HistoryRepository,
-    private val removeHistoryEntry: RemoveHistoryEntry,
-    private val restoreHistoryEntry: RestoreHistoryEntry,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     private val openUrl: OpenUrlInCurrentTab,
@@ -95,8 +91,8 @@ class HistoryViewModel @Inject constructor(
     fun remove(id: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                val entry = removeHistoryEntry(id) ?: return@withContext
-                val token = undo.register(UndoKind.HISTORY, undo = { restoreHistoryEntry(entry) })
+                val entry = history.remove(id) ?: return@withContext
+                val token = undo.register(UndoKind.HISTORY, undo = { history.restore(entry) })
                 snackbar.show(UiText.Res(R.string.snackbar_removed_from_history), SnackbarAction.Undo(token))
             }
         }
