@@ -23,4 +23,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "skim browser"
+include(":domain")
+include(":data")
 include(":app")

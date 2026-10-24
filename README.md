@@ -2,7 +2,7 @@
 
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude (`claude-haiku-5-5`). The UI is Jetpack Compose and Material 3 Expressive.
 
-The app module is `:app` (`com.dantech.skimbrowser`). minSdk 26, targetSdk 37. Screens and ViewModels depend on `domain/` (models, repository interfaces, and one use case per write). `data/` implements those interfaces and maps Room and DataStore types at the boundary. Hilt wires the two. See `docs/system-architecture.md`.
+`:domain` is a Kotlin JVM module: models, repository interfaces, and one use case per write. `:data` is an Android library: Room, DataStore, the concrete repositories, and bookmark import. `:app` (`com.dantech.skimbrowser`, minSdk 26, targetSdk 37) is the Android application. Its screens and ViewModels depend on `:domain`. Hilt in `:app` binds the `:data` implementations to those interfaces. See `docs/system-architecture.md`.
 
 ## What you need
 
@@ -56,7 +56,7 @@ Record a golden after a deliberate UI change:
 
 Screenshots use Robolectric at `w412dp-h915dp-xhdpi` (824×1830). WebView does not paint, so the page area of boards 05–06d is empty in the goldens.
 
-Kover reports are under `app/build/reports/kover/`. Generated Android classes and Room `*Dao_Impl` / `*Database_Impl` are excluded. Composables are not excluded.
+Kover reports are under `app/build/reports/kover/`. `:app` aggregates `:domain` and `:data`. Generated Android classes and Room `*Dao_Impl` / `*Database_Impl` are excluded. Composables are not excluded.
 
 ## Device checks
 

@@ -9,10 +9,10 @@ MainActivity
 ui/  screens and ViewModels
         |
         v
-domain/  models, repository interfaces, use cases     pure Kotlin
+domain/  models, repository interfaces, use cases     pure Kotlin, Gradle module :domain
         ^
         |
-data/  Room, DataStore, concrete repositories, mappers
+data/  Room, DataStore, concrete repositories     Android library :data
         ^
         |
 Hilt SingletonComponent                lives with the process

@@ -121,7 +121,7 @@ class BookmarkRepository(
  * deeply nested import cannot overflow the call stack, and visits each folder once even if the
  * parent links ever formed a loop.
  */
-internal fun recursiveCounts(folders: List<BookmarkFolderEntity>, direct: List<FolderBookmarkCount>): Map<Long, Int> {
+fun recursiveCounts(folders: List<BookmarkFolderEntity>, direct: List<FolderBookmarkCount>): Map<Long, Int> {
     val own = direct.associate { it.folderId to it.bookmarkCount }
     val children = folders.groupBy { it.parentId }
     val totals = HashMap<Long, Int>(folders.size)

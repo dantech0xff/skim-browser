@@ -15,4 +15,4 @@ fun hostOf(url: String): String? = domainHostOf(url)
 fun withoutFragment(url: String): String = domainWithoutFragment(url)
 
 /** Lowercases [host] and drops a leading "www.", the form every host-keyed table stores. */
-internal fun normalizeHost(host: String): String = domainNormalizeHost(host)
+fun normalizeHost(host: String): String = domainNormalizeHost(host)

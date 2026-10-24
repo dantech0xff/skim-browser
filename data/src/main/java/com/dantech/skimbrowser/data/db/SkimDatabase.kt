@@ -27,7 +27,7 @@ import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
 /**
  * Skim's database (`skim.db`). Every query must also run on the SQLite of Android 8 to 10
  * (3.18 to 3.22): no upsert clause, window functions, RETURNING or JSON functions, and at most 999
- * bound values per statement. The schema is exported to `app/schemas/` for future migrations.
+ * bound values per statement. The schema is exported to `data/schemas/` for future migrations.
  */
 @Database(
     entities = [
@@ -84,7 +84,7 @@ abstract class SkimDatabase : RoomDatabase() {
 }
 
 /** Adds the callbacks every Skim database needs, on disk or in memory. */
-internal fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<SkimDatabase> =
+fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<SkimDatabase> =
     addCallback(SkimDatabaseCallback)
 
 private object SkimDatabaseCallback : RoomDatabase.Callback() {
@@ -125,7 +125,7 @@ internal const val SQL_IN_LIMIT = 500
  * A LIKE pattern matching [text] anywhere, for queries that declare `ESCAPE '\'`: the user's `%`,
  * `_` and `\` match themselves instead of acting as wildcards.
  */
-internal fun containsPattern(text: String): String = buildString(text.length + 2) {
+fun containsPattern(text: String): String = buildString(text.length + 2) {
     append('%')
     text.forEach { char ->
         if (char == '\\' || char == '%' || char == '_') append('\\')

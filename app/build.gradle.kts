@@ -13,7 +13,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.room)
     alias(libs.plugins.aboutlibraries)
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.kover)
@@ -120,10 +119,6 @@ android {
             }
         }
     }
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
 }
 
 aboutLibraries {
@@ -329,6 +324,10 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":data"))
+    kover(project(":domain"))
+    kover(project(":data"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -341,9 +340,6 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.webkit)
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.aboutlibraries.compose.m3)

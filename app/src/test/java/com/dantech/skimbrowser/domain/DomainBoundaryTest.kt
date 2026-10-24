@@ -96,13 +96,22 @@ class DomainBoundaryTest {
     }
 
     private fun violationsIn(layer: String): List<String> {
-        val root = sourceRoot()
-        val layerRoot = root.resolve(layer)
-        assertTrue("$layer sources", layerRoot.isDirectory)
-        return kotlinFiles(layerRoot).flatMap { file ->
-            val relative = file.relativeTo(root).invariantSeparatorsPath
-            file.readLines().mapIndexedNotNull { index, line ->
-                violation(relative, line)?.let { "$it:${index + 1}" }
+        val roots = when (layer) {
+            "domain" -> listOf(domainSourceRoot())
+            "data" -> listOf(dataSourceRoot(), sourceRoot())
+            else -> listOf(sourceRoot())
+        }
+        val found = roots.mapNotNull { root ->
+            val layerRoot = root.resolve(layer)
+            if (layerRoot.isDirectory) root to layerRoot else null
+        }
+        assertTrue("$layer sources", found.isNotEmpty())
+        return found.flatMap { (root, layerRoot) ->
+            kotlinFiles(layerRoot).flatMap { file ->
+                val relative = file.relativeTo(root).invariantSeparatorsPath
+                file.readLines().mapIndexedNotNull { index, line ->
+                    violation(relative, line)?.let { "$it:${index + 1}" }
+                }
             }
         }
     }
@@ -114,6 +123,21 @@ class DomainBoundaryTest {
         )
         return candidates.firstOrNull { it.isDirectory }
             ?: error("Main sources were not found from ${File(".").absolutePath}")
+    }
+
+    /** `:domain` sources. Unit tests run with the working directory at `:app` or the repo root. */
+    private fun domainSourceRoot(): File = moduleSourceRoot("domain", "kotlin")
+
+    /** `:data` sources. The Hilt bindings stay under `:app` and are scanned from [sourceRoot]. */
+    private fun dataSourceRoot(): File = moduleSourceRoot("data", "java")
+
+    private fun moduleSourceRoot(module: String, language: String): File {
+        val candidates = listOf(
+            File("../$module/src/main/$language/com/dantech/skimbrowser"),
+            File("$module/src/main/$language/com/dantech/skimbrowser"),
+        )
+        return candidates.firstOrNull { it.resolve(module).isDirectory }
+            ?: error("$module sources were not found from ${File(".").absolutePath}")
     }
 
     private fun kotlinFiles(root: File): List<File> =

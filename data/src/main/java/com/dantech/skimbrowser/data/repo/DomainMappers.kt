@@ -70,7 +70,7 @@ internal fun TabEntity.toDomain() = PersistedTab(
     chatId, createdAt, lastAccessedAt, closedAt,
 )
 
-internal fun PersistedTab.toEntity() = TabEntity(
+fun PersistedTab.toEntity() = TabEntity(
     id, url, title, groupId, position, desktopSite, openedByExternalApp, closeOnBack, fromNewTabPage,
     chatId, createdAt, lastAccessedAt, closedAt,
 )
