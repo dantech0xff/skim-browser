@@ -27,7 +27,7 @@ fun ThemeSetting.isDark(systemDark: Boolean, incognito: Boolean): Boolean = inco
 fun SkimTheme(
     theme: ThemeSetting,         // Theme in 12
     incognito: Boolean = false,  // 09b, 09c
-    dynamicColor: Boolean = true, // Wallpaper colors on API 31+; screenshot tests pass false for the brand scheme
+    dynamicColor: Boolean = false, // Wallpaper colors on API 31+; screenshot tests pass false for the brand scheme
     content: @Composable () -> Unit,
 ) {
     val dark = theme.isDark(systemDark = isSystemInDarkTheme(), incognito = incognito)
