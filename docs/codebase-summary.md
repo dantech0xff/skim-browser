@@ -1,6 +1,6 @@
 # Codebase summary
 
-Four Gradle modules. `:domain` is a Kotlin JVM library (`org.jetbrains.kotlin.jvm`, Java 11 bytecode) and holds the `domain` package. `:data` is an Android library: Room, DataStore, concrete repositories, bookmark import, and `AppStorage`. `:browser` is an Android library: the tab engine, WebView pool, downloads, site permissions, and page scripts. `:app` is the Android application; the Android Gradle Plugin compiles its Kotlin. Entry points are `SkimApplication` and `MainActivity`. Hilt modules that read `ProcessGraph` stay in `:app`, including `data/di` and `browser/di`.
+Five Gradle modules. `:domain` is a Kotlin JVM library (`org.jetbrains.kotlin.jvm`, Java 11 bytecode) and holds the `domain` package. `:data` is an Android library: Room, DataStore, concrete repositories, bookmark import, and `AppStorage`. `:browser` is an Android library: the tab engine, WebView pool, downloads, site permissions, and page scripts. `:ai` is an Android library: the Claude adapter, chat sessions, and tab grouping. `:app` is the Android application; the Android Gradle Plugin compiles its Kotlin. Entry points are `SkimApplication` and `MainActivity`. Hilt modules that read `ProcessGraph` stay in `:app`, including `data/di`, `browser/di`, and `ai/di`.
 
 Hilt (`SingletonComponent`) is the process-wide graph. `SkimApplication` is `@HiltAndroidApp`. Tests install a temporary `AppStorage` before the graph opens, so Room, DataStore, tab state, and thumbnails land in a temporary directory. `ProcessGraph.close()` drops the database and cancels the process scope so the next graph can open the same files.
 
@@ -12,7 +12,7 @@ Hilt (`SingletonComponent`) is the process-wide graph. `SkimApplication` is `@Hi
 | `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. ViewModels take use cases or domain interfaces. |
 | `browser/` | The `:browser` module, except `browser/di`, which stays in `:app` because those Hilt bindings read `ProcessGraph`. `TabManager` implements `domain.tab.TabsController` (process-wide tab list). `WebViewPool` (the Activity's WebViews), `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. Tab models live in `domain/tab`. |
 | `data/` | The `:data` module, except `data/di`, which stays in `:app` because those Hilt bindings read `ProcessGraph`. Room (`data/db`), concrete repositories (`data/repo`) that implement the domain interfaces and map entities, settings DataStore (`data/settings`), bookmark import (`BookmarkFiles`). `AppStorage` lives in this module. |
-| `ai/` | `AiGate`, `SkimAiService` (`AiAssistant`), Claude streaming, chat sessions (`PageChats`), tab grouping. The only request builder is `SkimAiService`. SDK types stay in this package. Site, settings, and chat reads and writes use domain interfaces and use cases. |
+| `ai/` | The `:ai` module, except `ai/di`, which stays in `:app` because those Hilt bindings read `ProcessGraph` and `BuildConfig`. `AiGate`, `SkimAiService` (`AiAssistant`), Claude streaming, chat sessions (`PageChats`), tab grouping. The only request builder is `SkimAiService`. SDK types stay in this package. Site, settings, and chat reads and writes use domain interfaces and use cases. |
 | `search/` | Suggestion fetches for the search field. |
 | `system/` | Share sheet, clipboard, share-image files. |
 
@@ -28,7 +28,7 @@ Incognito tabs are not rows in Room. A chat id that is still negative (memory on
 
 `AiConfig` names the model `claude-haiku-5-5`, max tokens, and effort. Debug uses `BuildConfig.AI_BASE_URL` (`https://api.anthropic.com`) and `BuildConfig.ANTHROPIC_API_KEY` when `skim.anthropicApiKey` is set. Release sets the key field to null and the base URL to `skim.aiProxyUrl`. `releaseSmoke` uses `http://127.0.0.1:8787` and a null key.
 
-SSE fixtures used by unit tests and the release smoke test are in `app/src/sharedTest/sse/`. Unit tests load them as classpath resources. The androidTest source set exposes the same directory as assets.
+SSE fixtures used by unit tests and the release smoke test are in `ai/src/testFixtures/resources/sse/`. Unit tests load them as classpath resources. The androidTest source set exposes the same directory as assets.
 
 ## Tests
 
@@ -37,10 +37,11 @@ SSE fixtures used by unit tests and the release smoke test are in `app/src/share
 | `domain/src/test` | Use cases and pure model rules. |
 | `data/src/test` | Room, DataStore, repositories, and bookmark import. |
 | `browser/src/test` | The tab engine, WebView, downloads, and page scripts. |
-| `app/src/test` | Screens, ViewModels, AI, search, system, and the process graph. Robolectric, Turbine, Roborazzi. `DomainBoundaryTest` and `BrowsingDataCleanerTest` stay here because they name `ui`. |
+| `ai/src/test` | The Claude adapter, chat sessions, and tab grouping. |
+| `app/src/test` | Screens, ViewModels, search, system, and the process graph. Robolectric, Turbine, Roborazzi. `DomainBoundaryTest`, `BrowsingDataCleanerTest`, and `AiDataEraserTest` stay here because they name `ui`. |
 | `app/src/androidTest` | Instrumented tests, including `ProcessDeathRestoreTest` and `ReleaseSmokeTest`. |
 | `app/src/test/screenshots` | Recorded goldens. Board images share names with `design/screens/`. |
 
-Fakes shared with `:app` tests live in each module's test fixtures: `domain/src/testFixtures` (repository fakes, `RecordingTabs`, and `MainDispatcherRule`), `data/src/testFixtures` (the in-memory database), and `browser/src/testFixtures` (`TabManagerFixture` and the WebView fakes). `:app:testDebugUnitTest` runs the three module suites first.
+Fakes shared with `:app` tests live in each module's test fixtures: `domain/src/testFixtures` (repository fakes, `RecordingTabs`, and `MainDispatcherRule`), `data/src/testFixtures` (the in-memory database), `browser/src/testFixtures` (`TabManagerFixture` and the WebView fakes), and `ai/src/testFixtures` (`FakeClaudeServer` and the session helpers). `:app:testDebugUnitTest` runs the four module suites first.
 
 `RestoreAcrossContainersTest` opens the process graph, closes it, and restores with a second graph on the same directory.

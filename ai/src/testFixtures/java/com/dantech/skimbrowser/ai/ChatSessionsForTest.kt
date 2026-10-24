@@ -12,7 +12,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 
 /** A session store whose transcript writes go through the chat use cases. */
-internal fun chatSessionsForTest(
+fun chatSessionsForTest(
     chats: ChatRepository,
     tabs: TabManager,
     settings: SettingsRepository,

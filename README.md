@@ -2,7 +2,7 @@
 
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude (`claude-haiku-5-5`). The UI is Jetpack Compose and Material 3 Expressive.
 
-`:domain` is a Kotlin JVM module: models, repository interfaces, and one use case per write. `:data` is an Android library: Room, DataStore, the concrete repositories, and bookmark import. `:browser` is an Android library: the tab engine, WebView pool, downloads, and page scripts. `:app` (`com.dantech.skimbrowser`, minSdk 26, targetSdk 37) is the Android application. Its screens and ViewModels depend on `:domain`. Hilt in `:app` binds the `:data` implementations and the browser engine. See `docs/system-architecture.md`.
+`:domain` is a Kotlin JVM module: models, repository interfaces, and one use case per write. `:data` is an Android library: Room, DataStore, the concrete repositories, and bookmark import. `:browser` is an Android library: the tab engine, WebView pool, downloads, and page scripts. `:ai` is an Android library: the Claude adapter, chat sessions, and tab grouping. `:app` (`com.dantech.skimbrowser`, minSdk 26, targetSdk 37) is the Android application. Its screens and ViewModels depend on `:domain`. Hilt in `:app` binds the `:data` implementations, the browser engine, and the AI adapter. See `docs/system-architecture.md`.
 
 ## What you need
 
@@ -46,7 +46,7 @@ From the repo root. KSP does not serialize into the configuration cache, so thes
 ./gradlew :app:designParity --no-configuration-cache
 ```
 
-`:app:testDebugUnitTest` runs `:domain:test`, `:data:testDebugUnitTest`, and `:browser:testDebugUnitTest` first. Those suites live with the modules they cover.
+`:app:testDebugUnitTest` runs `:domain:test`, `:data:testDebugUnitTest`, `:browser:testDebugUnitTest`, and `:ai:testDebugUnitTest` first. Those suites live with the modules they cover.
 
 `designParity` writes a red pixel diff of each recorded board against `design/screens/` into `app/build/design-parity/`. It is not part of `check`. Pixel diffs are not zero: Chrome and Skia rasterize type differently. The accepted differences are in `docs/design-guidelines.md`.
 
@@ -58,7 +58,7 @@ Record a golden after a deliberate UI change:
 
 Screenshots use Robolectric at `w412dp-h915dp-xhdpi` (824×1830). WebView does not paint, so the page area of boards 05–06d is empty in the goldens.
 
-Kover reports are under `app/build/reports/kover/`. `:app` aggregates `:domain`, `:data`, and `:browser`. Generated Android classes and Room `*Dao_Impl` / `*Database_Impl` are excluded. Composables are not excluded.
+Kover reports are under `app/build/reports/kover/`. `:app` aggregates `:domain`, `:data`, `:browser`, and `:ai`. Generated Android classes and Room `*Dao_Impl` / `*Database_Impl` are excluded. Composables are not excluded.
 
 ## Device checks
 

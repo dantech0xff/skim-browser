@@ -5,9 +5,9 @@ import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.SitePermissionRepository
 import com.dantech.skimbrowser.data.settings.SettingsRepository
-import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
+import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

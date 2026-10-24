@@ -94,7 +94,7 @@ internal fun parseTabsOverview(json: String, refs: Set<String>): TabsOverview? =
 /** An overview that was already checked and saved. */
 internal fun decodeStoredOverview(json: String): TabsOverview? = domainDecodeStoredOverview(json)
 
-internal fun encodeOverview(overview: TabsOverview): String = domainEncodeOverview(overview)
+fun encodeOverview(overview: TabsOverview): String = domainEncodeOverview(overview)
 
 /** Rewrites refs to tab ids so a reopened chat can still point at the tabs. */
 internal fun TabsOverview.withRealTabIds(context: List<TabContext>): TabsOverview =

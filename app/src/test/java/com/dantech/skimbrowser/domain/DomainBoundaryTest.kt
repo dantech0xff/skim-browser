@@ -97,9 +97,9 @@ class DomainBoundaryTest {
 
     private fun violationsIn(layer: String): List<String> {
         val roots = when (layer) {
-            "domain" -> listOf(domainSourceRoot())
-            "data" -> listOf(dataSourceRoot(), sourceRoot())
-            "browser" -> listOf(browserSourceRoot(), sourceRoot())
+            "domain" -> listOf(moduleSourceRoot("domain", "kotlin"))
+            // Hilt bindings for these libraries stay in :app, so both trees are scanned.
+            "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"), sourceRoot())
             else -> listOf(sourceRoot())
         }
         val found = roots.mapNotNull { root ->
@@ -126,15 +126,7 @@ class DomainBoundaryTest {
             ?: error("Main sources were not found from ${File(".").absolutePath}")
     }
 
-    /** `:domain` sources. Unit tests run with the working directory at `:app` or the repo root. */
-    private fun domainSourceRoot(): File = moduleSourceRoot("domain", "kotlin")
-
-    /** `:data` sources. The Hilt bindings stay under `:app` and are scanned from [sourceRoot]. */
-    private fun dataSourceRoot(): File = moduleSourceRoot("data", "java")
-
-    /** `:browser` sources. The Hilt bindings stay under `:app` and are scanned from [sourceRoot]. */
-    private fun browserSourceRoot(): File = moduleSourceRoot("browser", "java")
-
+    /** Sources for [module]. Unit tests run with the working directory at `:app` or the repo root. */
     private fun moduleSourceRoot(module: String, language: String): File {
         val candidates = listOf(
             File("../$module/src/main/$language/com/dantech/skimbrowser"),

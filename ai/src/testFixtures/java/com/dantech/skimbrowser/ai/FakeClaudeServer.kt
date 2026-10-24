@@ -43,13 +43,12 @@ class FakeClaudeServer : Closeable {
         val text = fixture(name)
         val body = text.toByteArray()
         val markerAt = text.indexOf(pauseAfter)
-        val splitAt = if (markerAt < 0) {
+        val split = if (markerAt < 0) {
             text.length / 2
         } else {
             val eventEnd = text.indexOf("\n\n", markerAt)
             if (eventEnd < 0) text.length else eventEnd + 2
         }
-        val split = splitAt
         val socket = ServerSocket(0)
         val written = AtomicInteger()
         val thread = Thread {

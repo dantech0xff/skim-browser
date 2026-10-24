@@ -5,6 +5,7 @@ import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedMessage
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -15,10 +16,10 @@ internal fun ChatMessage.toSaved(chatId: Long, createdAt: Long) = SavedMessage(
     role = role,
     kind = kind,
     text = text,
-    citationsJson = citationsJson(citations),
+    citationsJson = encodeList(citations, Int.serializer()),
     feedback = feedback,
     status = status,
-    suggestedQuestionsJson = questionsJson(suggestedQuestions),
+    suggestedQuestionsJson = encodeList(suggestedQuestions, String.serializer()),
     createdAt = createdAt,
 )
 
@@ -27,10 +28,10 @@ internal fun SavedMessage.toMessage() = ChatMessage(
     role = role,
     kind = kind,
     text = text,
-    citations = citationsOf(citationsJson),
+    citations = decodeList(citationsJson, Int.serializer()),
     feedback = feedback,
     status = status,
-    suggestedQuestions = questionsOf(suggestedQuestionsJson),
+    suggestedQuestions = decodeList(suggestedQuestionsJson, String.serializer()),
 )
 
 /** The first summary line, without its bullet, for the Continue card. */
@@ -45,25 +46,13 @@ internal fun historyTurn(message: ChatMessage): HistoryTurn? = when (message.kin
         HistoryTurn.Text(MessageRole.ASSISTANT, message.text)
 }
 
-private fun citationsJson(indexes: List<Int>): String? =
-    indexes.takeIf { it.isNotEmpty() }?.let { JSON.encodeToString(ListSerializer(Int.serializer()), it) }
+private fun <T> encodeList(values: List<T>, serializer: KSerializer<T>): String? =
+    values.takeIf { it.isNotEmpty() }?.let { JSON.encodeToString(ListSerializer(serializer), it) }
 
-private fun citationsOf(json: String?): List<Int> {
+private fun <T> decodeList(json: String?, serializer: KSerializer<T>): List<T> {
     if (json.isNullOrBlank()) return emptyList()
     return try {
-        JSON.decodeFromString(ListSerializer(Int.serializer()), json)
-    } catch (_: IllegalArgumentException) {
-        emptyList()
-    }
-}
-
-private fun questionsJson(questions: List<String>): String? =
-    questions.takeIf { it.isNotEmpty() }?.let { JSON.encodeToString(ListSerializer(String.serializer()), it) }
-
-private fun questionsOf(json: String?): List<String> {
-    if (json.isNullOrBlank()) return emptyList()
-    return try {
-        JSON.decodeFromString(ListSerializer(String.serializer()), json)
+        JSON.decodeFromString(ListSerializer(serializer), json)
     } catch (_: IllegalArgumentException) {
         emptyList()
     }

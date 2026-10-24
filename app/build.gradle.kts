@@ -84,11 +84,9 @@ android {
         }
     }
     sourceSets {
-        getByName("test") {
-            resources.directories.add("src/sharedTest")
-        }
         getByName("androidTest") {
-            assets.directories.add("src/sharedTest")
+            // The release smoke test reads the same SSE files the unit tests load from the classpath.
+            assets.directories.add("../ai/src/testFixtures/resources")
         }
     }
     // `./gradlew :app:connectedReleaseSmokeAndroidTest -Pskim.testBuildType=releaseSmoke`
@@ -327,9 +325,11 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":data"))
     implementation(project(":browser"))
+    implementation(project(":ai"))
     kover(project(":domain"))
     kover(project(":data"))
     kover(project(":browser"))
+    kover(project(":ai"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -345,7 +345,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.aboutlibraries.compose.m3)
-    implementation(libs.anthropic.java)
     implementation(libs.jsoup)
     implementation(libs.okhttp)
     implementation(libs.hilt.android)
@@ -356,6 +355,7 @@ dependencies {
     testImplementation(testFixtures(project(":domain")))
     testImplementation(testFixtures(project(":data")))
     testImplementation(testFixtures(project(":browser")))
+    testImplementation(testFixtures(project(":ai")))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
@@ -381,11 +381,17 @@ dependencies {
     kspAndroidTest(libs.kotlin.metadata.jvm)
 }
 
+val moduleUnitTests = arrayOf(
+    ":domain:test",
+    ":data:testDebugUnitTest",
+    ":browser:testDebugUnitTest",
+    ":ai:testDebugUnitTest",
+)
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
-    dependsOn(":domain:test", ":data:testDebugUnitTest", ":browser:testDebugUnitTest")
+    dependsOn(*moduleUnitTests)
 }
 tasks.matching { it.name == "koverHtmlReportDebug" || it.name == "koverXmlReportDebug" }.configureEach {
-    dependsOn(":domain:test", ":data:testDebugUnitTest", ":browser:testDebugUnitTest")
+    dependsOn(*moduleUnitTests)
 }
 
 kover {

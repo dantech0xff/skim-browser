@@ -1,14 +1,14 @@
 package com.dantech.skimbrowser.ai
 
-import com.dantech.skimbrowser.domain.tab.GroupLayout
-import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
-import com.dantech.skimbrowser.domain.tab.layout
-import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.tab.GroupLayout
+import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
+import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.domain.tab.TabRepository
+import com.dantech.skimbrowser.domain.tab.layout
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher

@@ -40,7 +40,7 @@ internal fun overviewBlocks(context: List<TabContext>, prompt: String): List<Con
                 title = tab.title.ifBlank { tab.host },
                 context = "ref ${tab.ref}, ${tab.host}",
                 text = tab.text ?: NO_PAGE_TEXT,
-                cache = index == last && last >= 0,
+                cache = index == last,
             ),
         )
     }

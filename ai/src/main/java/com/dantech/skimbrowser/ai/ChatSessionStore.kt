@@ -4,14 +4,14 @@ import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.PageConversation
-import com.dantech.skimbrowser.domain.page.PageContent
-import com.dantech.skimbrowser.domain.tab.PageEvent
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.domain.page.PageContent
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.tab.PageEvent
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
@@ -191,7 +191,7 @@ class ChatSessionStore(
 
     private suspend fun onRemoval(id: Long?) {
         val gone = if (id == null) {
-            (byTab.values + byChat.values).distinct()
+            byTab.values + byChat.values
         } else {
             byTab.values.filter { it.chatId == id } + listOfNotNull(byChat[id])
         }

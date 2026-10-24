@@ -26,4 +26,5 @@ rootProject.name = "skim browser"
 include(":domain")
 include(":data")
 include(":browser")
+include(":ai")
 include(":app")

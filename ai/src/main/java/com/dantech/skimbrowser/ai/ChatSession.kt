@@ -114,24 +114,20 @@ class ChatSession(
     val history: List<HistoryTurn> get() = synchronized(turnLock) { turns.toList() }
 
     /** The document plus the summary instruction. Later calls return the same blocks. */
-    fun summaryOpening(): List<ContentBlockParam> {
-        val blocks = listOf(
+    fun summaryOpening(): List<ContentBlockParam> = freezeOpening(
+        listOf(
             ContentBlockParam.ofDocument(pageDocument(document)),
             ContentBlockParam.ofText(Prompts.summaryInstruction(languageTag)),
-        )
-        openingRef.compareAndSet(null, blocks)
-        return openingRef.get()!!
-    }
+        ),
+    )
 
     /** The document plus [question], used when the page was never summarized. */
-    fun questionOpening(question: String): List<ContentBlockParam> {
-        val blocks = listOf(
+    fun questionOpening(question: String): List<ContentBlockParam> = freezeOpening(
+        listOf(
             ContentBlockParam.ofDocument(pageDocument(document)),
             ContentBlockParam.ofText(question),
-        )
-        openingRef.compareAndSet(null, blocks)
-        return openingRef.get()!!
-    }
+        ),
+    )
 
     fun addTurn(turn: HistoryTurn) {
         synchronized(turnLock) { turns += turn }

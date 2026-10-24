@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ai
 
 import com.anthropic.models.messages.OutputConfig
+import com.dantech.skimbrowser.domain.ai.OpenTabLimits
 
 /** The one place the model and its limits are named. */
 object AiConfig {
@@ -19,14 +20,14 @@ object AiConfig {
     const val GROUPING_MAX_TOKENS = 2048L
 
     /** The longest page text sent for one tab in an across-tabs answer. */
-    const val TAB_TEXT_CHARS = com.dantech.skimbrowser.domain.ai.OpenTabLimits.TEXT_CHARS
+    const val TAB_TEXT_CHARS = OpenTabLimits.TEXT_CHARS
 
     /** The most tabs one across-tabs request includes. */
-    const val MAX_TABS = com.dantech.skimbrowser.domain.ai.OpenTabLimits.MAX_TABS
+    const val MAX_TABS = OpenTabLimits.MAX_TABS
 
     /** Below this many characters of page text, Skim does not ask for a summary. */
     const val NOT_ENOUGH_TEXT_CHARS = 300
 
     /** A Continue card shows at most this many characters of the first summary line. */
-    const val SNIPPET_CHARS = com.dantech.skimbrowser.domain.ai.OpenTabLimits.SNIPPET_CHARS
+    const val SNIPPET_CHARS = OpenTabLimits.SNIPPET_CHARS
 }

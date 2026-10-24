@@ -52,13 +52,7 @@ class SkimAiService(
         val params = if (chat.opening == null) {
             base().addUserMessageOfBlockParams(chat.questionOpening(wrapped)).build()
         } else {
-            val turns = chat.history
-            val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
-            val builder = base().addUserMessageOfBlockParams(chat.opening!!)
-            replay(builder, if (already) turns.dropLast(1) else turns)
-            builder.addUserMessage(wrapped)
-            if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
-            builder.build()
+            followUpParams(base().addUserMessageOfBlockParams(chat.opening!!), chat, wrapped)
         }
         chat.lastParams = params
         return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
@@ -87,15 +81,12 @@ class SkimAiService(
     override fun askTabs(session: PageConversation, question: String): Flow<AiReply> {
         val chat = session as ChatSession
         val opening = chat.opening ?: return flow { }
-        val wrapped = Prompts.question(question)
-        val turns = chat.history
-        val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
-        val builder = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, format = null)
-            .addUserMessageOfBlockParams(opening)
-        replay(builder, if (already) turns.dropLast(1) else turns)
-        builder.addUserMessage(wrapped)
-        if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
-        val params = builder.build()
+        val params = followUpParams(
+            configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, format = null)
+                .addUserMessageOfBlockParams(opening),
+            chat,
+            Prompts.question(question),
+        )
         chat.lastParams = params
         return send(params, chat.sources, Consent.TABS_ACTION, chat.approvedHost).toReplies(chat)
     }
@@ -183,6 +174,20 @@ class SkimAiService(
             .maxTokens(maxTokens)
             .outputConfig(output.build())
             .system(Prompts.SYSTEM)
+    }
+
+    /** Adds [wrapped] after the turns already sent, and remembers it unless that turn is already last. */
+    private fun followUpParams(
+        builder: MessageCreateParams.Builder,
+        chat: ChatSession,
+        wrapped: String,
+    ): MessageCreateParams {
+        val turns = chat.history
+        val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
+        replay(builder, if (already) turns.dropLast(1) else turns)
+        builder.addUserMessage(wrapped)
+        if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
+        return builder.build()
     }
 
     private fun replay(builder: MessageCreateParams.Builder, turns: List<HistoryTurn>) {
