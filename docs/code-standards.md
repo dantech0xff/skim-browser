@@ -22,7 +22,9 @@ Settings go through `domain.settings.SettingsRepository`. Do not read the DataSt
 
 ## Dependencies
 
-Hilt is the only composition root. New process types are `@Singleton` on `SingletonComponent`. Activity-lifetime types are `@ActivityScoped` and `MainActivity` destroys them in `onDestroy`. `domain/` does not import `javax.inject` or `dagger`.
+Hilt is the only composition root. Process types are `@Singleton` on `SingletonComponent`, with `@Inject` on the class. A `@Module` exists only where Hilt cannot call the constructor: Room, DataStore, `@AppScope`, `@SettingsJob`, the `lastError` flow, OkHttp, `AppStorage`, `ClaudeClientProvider`, qualified values such as the wall clock, and one unscoped `@Provides` per domain use case. `@Binds` lives in the library that owns the implementation. Activity-lifetime types are `@ActivityScoped`, and `MainActivity` destroys them in `onDestroy`. `domain/` does not import `javax.inject` or `dagger`.
+
+Production does not close these singletons; they last as long as the process. A test that needs a second open of the same files uses another `@HiltAndroidTest` method and a directory that outlives `@Rule TemporaryFolder`. `@After` calls `ReleaseProcessResources` while the test component is still alive.
 
 ## Coroutines
 
