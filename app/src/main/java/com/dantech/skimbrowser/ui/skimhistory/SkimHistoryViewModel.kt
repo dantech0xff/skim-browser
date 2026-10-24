@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.ui.skimhistory
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.dantech.skimbrowser.di.WallClock
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -58,13 +61,14 @@ data class SkimHistoryUiState(
  * is gone. Clearing all history cancels that Undo first, so it cannot put a chat back.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class SkimHistoryViewModel(
+@HiltViewModel
+class SkimHistoryViewModel @Inject constructor(
     private val chats: ChatRepository,
     private val removeSkimChat: RemoveSkimChat,
     private val restoreSkimChat: RestoreSkimChat,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
-    private val clock: () -> Long = System::currentTimeMillis,
+    @WallClock private val clock: () -> Long = System::currentTimeMillis,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 

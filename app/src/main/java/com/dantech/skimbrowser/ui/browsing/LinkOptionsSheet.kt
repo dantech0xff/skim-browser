@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -32,8 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.HitTarget
@@ -125,11 +129,17 @@ internal fun linkHeader(target: HitTarget): Pair<String, String> {
  * Link options or Image options for [target] on [tabId]. The header follows the tab only to know
  * whether it is still open and whether it is incognito.
  */
-class LinkOptionsViewModel(
-    private val tabId: String,
-    private val target: HitTarget,
+@HiltViewModel(assistedFactory = LinkOptionsViewModel.Factory::class)
+class LinkOptionsViewModel @AssistedInject constructor(
+    @Assisted private val tabId: String,
+    @Assisted private val target: HitTarget,
     tabs: TabsController,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(tabId: String, target: HitTarget): LinkOptionsViewModel
+    }
 
     private val header = linkHeader(target)
 
@@ -169,23 +179,26 @@ class LinkOptionsViewModel(
 
 /** The [LinkOptionsKey] destination. */
 @Composable
-fun LinkOptionsRoute(key: LinkOptionsKey, container: AppContainer, navigator: SkimNavigator) {
-    val options = viewModel(key = "link-options:${key.tabId}:${key.target}") {
-        LinkOptionsViewModel(key.tabId, key.target, container.tabManager)
+fun LinkOptionsRoute(key: LinkOptionsKey, navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val options = hiltViewModel<LinkOptionsViewModel, LinkOptionsViewModel.Factory>(
+        key = "link-options:${key.tabId}:${key.target}",
+    ) { factory ->
+        factory.create(key.tabId, key.target)
     }
     val state by options.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val host = LocalBrowserHost.current
     LaunchedEffect(state.tabMissing) { if (state.tabMissing) navigator.back() }
     LinkOptionsSheet(state, onRow = { row ->
-        val tab = container.tabManager.state.value.tab(key.tabId) ?: return@LinkOptionsSheet
+        val tab = shell.tabs().state.value.tab(key.tabId) ?: return@LinkOptionsSheet
         val url = linkTargetUrl(key.target)
         when (row) {
             LinkRow.OpenNewTab, LinkRow.OpenIncognito, LinkRow.OpenImage -> {
                 val id = navigator.openInBackground(url, opensIncognito(tab.incognito, row))
                 navigator.back()
                 if (id != null) {
-                    container.snackbarController.show(
+                    shell.snackbar().show(
                         UiText.Res(R.string.snackbar_opened_in_new_tab),
                         SnackbarAction.SwitchToTab(id),
                     )
@@ -194,7 +207,7 @@ fun LinkOptionsRoute(key: LinkOptionsKey, container: AppContainer, navigator: Sk
             LinkRow.CopyLink -> {
                 val confirm = Clipboard.copy(context, url, sensitive = tab.incognito)
                 navigator.back()
-                if (confirm) container.snackbarController.show(UiText.Res(R.string.snackbar_copied))
+                if (confirm) shell.snackbar().show(UiText.Res(R.string.snackbar_copied))
             }
             LinkRow.ShareLink -> {
                 navigator.back()
@@ -217,10 +230,10 @@ fun LinkOptionsRoute(key: LinkOptionsKey, container: AppContainer, navigator: Sk
             LinkRow.ShareImage -> {
                 val view = host.pool.obtain(tab)
                 val blob = host.blob
-                val share = container.shareImage
-                val bar = container.snackbarController
+                val share = shell.shareImage()
+                val bar = shell.snackbar()
                 navigator.back()
-                container.appScope.launch {
+                shell.appScope().launch {
                     val shared = share.prepare(context, tab, url, blob, view)
                     withContext(Dispatchers.Main.immediate) {
                         if (shared == null) {

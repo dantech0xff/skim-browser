@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.home
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,8 +16,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimDialogContent
@@ -36,15 +35,9 @@ val ShortcutDialogProperties = DialogProperties(usePlatformDefaultWidth = false)
  * shortcut take the key off the back stack.
  */
 @Composable
-fun ShortcutDialogRoute(key: ShortcutDialogKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel {
-        ShortcutDialogViewModel(
-            key.shortcutId,
-            container.shortcutRepository,
-            container.addShortcut,
-            container.updateShortcut,
-            container.appScope,
-        )
+fun ShortcutDialogRoute(key: ShortcutDialogKey, navigator: SkimNavigator) {
+    val dialog = hiltViewModel<ShortcutDialogViewModel, ShortcutDialogViewModel.Factory> { factory ->
+        factory.create(key.shortcutId)
     }
     ShortcutDialog(dialog, onClose = { navigator.remove(key) })
 }

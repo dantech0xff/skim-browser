@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.settings
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,8 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.IconTile
@@ -37,15 +36,8 @@ import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 
 /** AI & privacy (10). */
 @Composable
-fun AiPrivacyRoute(container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel {
-        AiPrivacyViewModel(
-            container.settings,
-            container.setAskBeforeSending,
-            container.setKeepChatHistory,
-            container.chatRepository,
-        )
-    }
+fun AiPrivacyRoute(navigator: SkimNavigator) {
+    val model = hiltViewModel<AiPrivacyViewModel>()
     val state by model.state.collectAsStateWithLifecycle()
     AiPrivacyScreen(
         state = state,
@@ -62,8 +54,8 @@ fun AiPrivacyRoute(container: AppContainer, navigator: SkimNavigator) {
 
 /** Delete all AI data (15). The delete runs on the app scope and the dialog closes at once. */
 @Composable
-fun DeleteAiDataRoute(container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel { DeleteAiDataViewModel(container.deleteAllAiData, container.appScope) }
+fun DeleteAiDataRoute(navigator: SkimNavigator) {
+    val model = hiltViewModel<DeleteAiDataViewModel>()
     DeleteAiDataDialog(
         onDelete = {
             model.deleteAll()

@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.tabs
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -67,8 +69,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.tab.GroupingBannerState
 import com.dantech.skimbrowser.browser.ThumbnailStore
@@ -105,16 +105,13 @@ class TabsActions(
 
 /** Tabs (09) or Incognito tabs (09b), from [key]. */
 @Composable
-fun TabsRoute(key: TabsKey, container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel(key = "tabs-${key.incognito}") {
-        TabsViewModel(
+fun TabsRoute(key: TabsKey, navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val model = hiltViewModel<TabsViewModel, TabsViewModel.Factory>(key = "tabs-${key.incognito}") { factory ->
+        factory.create(
             incognito = key.incognito,
-            tabs = container.tabManager,
-            snackbar = container.snackbarController,
-            undo = container.undoRegistry,
-            grouping = container.tabGrouping.banner,
-            grouper = if (key.incognito) null else container.tabGrouping,
-            appScope = container.appScope,
+            grouping = shell.grouping().banner,
+            grouper = if (key.incognito) null else shell.grouping(),
         )
     }
     val state by model.state.collectAsStateWithLifecycle()
@@ -172,7 +169,7 @@ fun TabsRoute(key: TabsKey, container: AppContainer, navigator: SkimNavigator) {
             },
             onNewTab = { navigator.openNewTab(incognito = key.incognito) },
         ),
-        thumbnails = container.thumbnails,
+        thumbnails = shell.thumbnails(),
     )
 }
 

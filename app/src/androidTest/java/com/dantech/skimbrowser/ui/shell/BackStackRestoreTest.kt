@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.tab.HitTarget
@@ -26,10 +28,14 @@ import org.junit.runner.RunWith
  * gone are dropped. MainActivity handles configuration changes itself, so `recreate` stands for
  * every time the system rebuilds it from saved state.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class BackStackRestoreTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     @Test

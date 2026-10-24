@@ -16,8 +16,12 @@ import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.settings.SearchEngine
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.usecase.MatchBookmarks
 import com.dantech.skimbrowser.domain.usecase.MatchHistory
+import com.dantech.skimbrowser.search.SuggestionService
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import com.dantech.skimbrowser.search.omniboxAddress
 import com.dantech.skimbrowser.search.resolveOmnibox
 import kotlinx.coroutines.CancellationException
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -73,12 +78,26 @@ data class SearchUiState(
  * @param engine the user's search engine, from the settings.
  * @param suggestions the engine's suggestions for a text (`SuggestionService.suggestions`).
  */
+@HiltViewModel
 class SearchViewModel(
     engine: Flow<SearchEngine>,
     private val suggestions: suspend (SearchEngine, String) -> List<String>,
     private val matchHistory: MatchHistory,
     private val matchBookmarks: MatchBookmarks,
 ) : ViewModel() {
+
+    @Inject
+    constructor(
+        settings: SettingsRepository,
+        suggestionService: SuggestionService,
+        matchHistory: MatchHistory,
+        matchBookmarks: MatchBookmarks,
+    ) : this(
+        settings.settings.map { it.searchEngine },
+        suggestionService::suggestions,
+        matchHistory,
+        matchBookmarks,
+    )
 
     private data class Session(val id: Int, val incognito: Boolean)
 

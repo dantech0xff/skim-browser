@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.settings
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.content.ActivityNotFoundException
 import android.util.Log
 import androidx.annotation.DrawableRes
@@ -22,8 +24,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
@@ -45,17 +45,9 @@ import com.dantech.skimbrowser.ui.navigation.ThemeDialogKey
 
 /** Settings (12). */
 @Composable
-fun SettingsRoute(container: AppContainer, navigator: SkimNavigator) {
+fun SettingsRoute(navigator: SkimNavigator) {
     val context = LocalContext.current
-    val model = viewModel {
-        SettingsViewModel(
-            settings = container.settings,
-            saveSearchEngine = container.setSearchEngine,
-            saveTheme = container.setTheme,
-            versionName = BuildConfig.VERSION_NAME,
-            versionCode = BuildConfig.VERSION_CODE,
-        )
-    }
+    val model = hiltViewModel<SettingsViewModel>()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(model, context) { model.setDefaultBrowser(DefaultBrowser.isDefault(context)) }
     DisposableEffect(lifecycle, model, context) {
@@ -88,12 +80,13 @@ fun SettingsRoute(container: AppContainer, navigator: SkimNavigator) {
 
 /** Search engine (15), over Settings. Choosing a row saves it and closes the dialog. */
 @Composable
-fun SearchEngineRoute(container: AppContainer, navigator: SkimNavigator) {
-    val settings by container.settings.settings.collectAsStateWithLifecycle(SkimSettings())
+fun SearchEngineRoute(navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val settings by shell.settings().settings.collectAsStateWithLifecycle(SkimSettings())
     SearchEngineDialog(
         selected = settings.searchEngine,
         onSelect = { engine ->
-            container.appScope.launch { container.setSearchEngine(engine) }
+            shell.appScope().launch { shell.setSearchEngine()(engine) }
             navigator.back()
         },
         onDismiss = navigator::back,
@@ -102,12 +95,13 @@ fun SearchEngineRoute(container: AppContainer, navigator: SkimNavigator) {
 
 /** Theme (15), over Settings. Choosing a row applies it and closes the dialog. */
 @Composable
-fun ThemeRoute(container: AppContainer, navigator: SkimNavigator) {
-    val settings by container.settings.settings.collectAsStateWithLifecycle(SkimSettings())
+fun ThemeRoute(navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val settings by shell.settings().settings.collectAsStateWithLifecycle(SkimSettings())
     ThemeDialog(
         selected = settings.theme,
         onSelect = { theme ->
-            container.appScope.launch { container.setTheme(theme) }
+            shell.appScope().launch { shell.setTheme()(theme) }
             navigator.back()
         },
         onDismiss = navigator::back,
@@ -119,11 +113,9 @@ fun ThemeRoute(container: AppContainer, navigator: SkimNavigator) {
  * The clear runs on the app scope so it finishes after the dialog closes.
  */
 @Composable
-fun ClearBrowsingDataRoute(container: AppContainer, navigator: SkimNavigator) {
+fun ClearBrowsingDataRoute(navigator: SkimNavigator) {
     val pages = LocalBrowserHost.current.pool.toOpenPages()
-    val model = viewModel {
-        ClearBrowsingDataViewModel(container.clearBrowsingData, container.appScope)
-    }
+    val model = hiltViewModel<ClearBrowsingDataViewModel>()
     ClearBrowsingDataDialog(
         onClear = { history, cookies, cache ->
             model.clear(history, cookies, cache, pages)

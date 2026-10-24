@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.Manifest
 import android.content.Context
 import android.content.ContextWrapper
@@ -28,13 +30,17 @@ import org.junit.runner.RunWith
  * permission: Skim asks for it first, and a refusal ends the download as failed, with nothing
  * written. The other tests of the run are given that permission ([DeviceDownloads]).
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class SharedDownloadsFolderDeviceTest {
 
     @get:Rule(order = 0)
-    val downloads = DeviceDownloads()
+    val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
+    val downloads = DeviceDownloads()
+
+    @get:Rule(order = 2)
     val rig = BrowserRig()
 
     @Test
@@ -89,13 +95,13 @@ class SharedDownloadsFolderDeviceTest {
             DownloadRouter(
                 tabs = rig.tabs,
                 incognito = rig.incognito,
-                profiles = rig.container.browserProfiles,
-                tracker = rig.container.downloadTracker,
-                inProcess = InProcessDownloader({ rig.container.httpClient }, store),
+                profiles = rig.graph.browserProfiles(),
+                tracker = rig.graph.downloadTracker(),
+                inProcess = InProcessDownloader({ rig.graph.httpClient() }, store),
                 store = store,
                 blob = rig.host.blob,
                 activityHost = rig.activityHost,
-                scope = rig.container.appScope,
+                scope = rig.graph.appScope(),
             )
         }
         val view = showDownloadPage(rig.pages.url("/report.pdf"), plain = true)

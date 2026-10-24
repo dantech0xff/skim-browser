@@ -2,7 +2,7 @@
 
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude (`claude-haiku-5-5`). The UI is Jetpack Compose and Material 3 Expressive.
 
-The app module is `:app` (`com.dantech.skimbrowser`). minSdk 26, targetSdk 37. Screens and ViewModels depend on `domain/` (models, repository interfaces, and one use case per write). `data/` implements those interfaces and maps Room and DataStore types at the boundary. `AppContainer` wires the two. See `docs/system-architecture.md`.
+The app module is `:app` (`com.dantech.skimbrowser`). minSdk 26, targetSdk 37. Screens and ViewModels depend on `domain/` (models, repository interfaces, and one use case per write). `data/` implements those interfaces and maps Room and DataStore types at the boundary. Hilt wires the two. See `docs/system-architecture.md`.
 
 ## What you need
 

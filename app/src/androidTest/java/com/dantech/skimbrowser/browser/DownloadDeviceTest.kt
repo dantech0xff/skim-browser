@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.app.DownloadManager
 import android.net.Uri
 import android.os.Environment
@@ -26,13 +28,17 @@ import org.junit.runner.RunWith
  * is made inside Skim with the session's cookies and saved through MediaStore, and DownloadManager
  * never hears of it. Every download, file and row is removed after each test.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class DownloadDeviceTest {
 
     @get:Rule(order = 0)
-    val downloads = DeviceDownloads()
+    val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
+    val downloads = DeviceDownloads()
+
+    @get:Rule(order = 2)
     val rig = BrowserRig()
 
     @Test
@@ -58,7 +64,7 @@ class DownloadDeviceTest {
         }
 
         // DownloadManager's own notice is only heard while MainActivity is started; asked again, the tracker reports the file.
-        rig.container.downloadTracker.refresh()
+        rig.graph.downloadTracker().refresh()
         val completed = rig.awaitDownloadEvents(1).single() as DownloadEvent.DownloadCompleted
         assertEquals(SAFE_REPORT_NAME, completed.fileName)
         assertEquals("the type DownloadManager keeps for the file", download.mediaType, completed.mime)

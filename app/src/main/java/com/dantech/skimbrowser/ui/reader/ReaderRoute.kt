@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.reader
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -15,8 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.ui.navigation.ReaderKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.shell.TabAiFab
@@ -24,20 +24,14 @@ import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /** Reader view (08) of [key]'s tab, with the text settings panel (08b) over it. */
 @Composable
-fun ReaderRoute(key: ReaderKey, container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel(key = "reader-${key.tabId}") {
-        ReaderViewModel(
-            key.tabId,
-            container.tabManager,
-            container.settings,
-            container.setReaderTextScale,
-            container.setReaderFont,
-            container.appScope,
-        )
+fun ReaderRoute(key: ReaderKey, navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val model = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(key = "reader-${key.tabId}") { factory ->
+        factory.create(key.tabId)
     }
     val state by model.state.collectAsStateWithLifecycle()
-    val tabs by container.tabManager.state.collectAsStateWithLifecycle()
-    val runtime by container.tabManager.runtime(key.tabId).collectAsStateWithLifecycle()
+    val tabs by shell.tabs().state.collectAsStateWithLifecycle()
+    val runtime by shell.tabs().runtime(key.tabId).collectAsStateWithLifecycle()
     val tab = tabs.tab(key.tabId)
     var panelOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -60,7 +54,7 @@ fun ReaderRoute(key: ReaderKey, container: AppContainer, navigator: SkimNavigato
             val reduced = rememberReducedMotion()
             val article = current.article
             LaunchedEffect(listState) {
-                container.readerHighlights.requests.collect { (tabId, index) ->
+                shell.highlights().requests.collect { (tabId, index) ->
                     if (tabId != key.tabId || index !in article.blocks.indices) return@collect
                     val item = index + readerHeaderCount(article)
                     if (reduced) listState.scrollToItem(item) else listState.animateScrollToItem(item)

@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.ui.bookmarks
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,8 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
@@ -112,12 +116,18 @@ internal fun folderLabel(folder: BookmarkFolder): FolderLabel = when (folder.kin
  * its folder changes. Save writes the name and URL only; the folder changes in Move to folder.
  * The write runs on [appScope], so it is kept when the dialog closes as it is saved.
  */
-class EditBookmarkViewModel(
-    private val bookmarkId: Long,
+@HiltViewModel(assistedFactory = EditBookmarkViewModel.Factory::class)
+class EditBookmarkViewModel @AssistedInject constructor(
+    @Assisted private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
     private val updateBookmark: UpdateBookmark,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(bookmarkId: Long): EditBookmarkViewModel
+    }
 
     val name = TextFieldState()
     val url = TextFieldState()
@@ -192,12 +202,18 @@ class EditBookmarkViewModel(
  * Move to folder (15). Choosing a folder moves the bookmark there at once, including the folder it
  * is already in, and closes the dialog. The move runs on [appScope].
  */
-class MoveToFolderViewModel(
-    private val bookmarkId: Long,
+@HiltViewModel(assistedFactory = MoveToFolderViewModel.Factory::class)
+class MoveToFolderViewModel @AssistedInject constructor(
+    @Assisted private val bookmarkId: Long,
     private val bookmarks: BookmarkRepository,
     private val moveBookmark: MoveBookmark,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(bookmarkId: Long): MoveToFolderViewModel
+    }
 
     private val options = MutableStateFlow<List<MoveFolderOption>>(emptyList())
     private val selectedId = MutableStateFlow<Long?>(null)
@@ -250,9 +266,9 @@ class MoveToFolderViewModel(
 
 /** The [EditBookmarkKey] destination. */
 @Composable
-fun EditBookmarkRoute(key: EditBookmarkKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel {
-        EditBookmarkViewModel(key.bookmarkId, container.bookmarkRepository, container.updateBookmark, container.appScope)
+fun EditBookmarkRoute(key: EditBookmarkKey, navigator: SkimNavigator) {
+    val dialog = hiltViewModel<EditBookmarkViewModel, EditBookmarkViewModel.Factory> { factory ->
+        factory.create(key.bookmarkId)
     }
     EditBookmarkDialog(
         dialog = dialog,
@@ -263,9 +279,9 @@ fun EditBookmarkRoute(key: EditBookmarkKey, container: AppContainer, navigator: 
 
 /** The [MoveToFolderKey] destination. Edit bookmark stays under it. */
 @Composable
-fun MoveToFolderRoute(key: MoveToFolderKey, container: AppContainer, navigator: SkimNavigator) {
-    val dialog = viewModel {
-        MoveToFolderViewModel(key.bookmarkId, container.bookmarkRepository, container.moveBookmark, container.appScope)
+fun MoveToFolderRoute(key: MoveToFolderKey, navigator: SkimNavigator) {
+    val dialog = hiltViewModel<MoveToFolderViewModel, MoveToFolderViewModel.Factory> { factory ->
+        factory.create(key.bookmarkId)
     }
     MoveToFolderDialog(dialog, onClose = { navigator.remove(key) })
 }

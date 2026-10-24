@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent
@@ -21,13 +23,17 @@ import org.junit.runner.RunWith
  * The WebView hands Skim no name for a blob (no Content-Disposition, whatever the link's download
  * attribute says), so the file is named from its type.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class BlobDownloadDeviceTest {
 
     @get:Rule(order = 0)
-    val downloads = DeviceDownloads()
+    val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
+    val downloads = DeviceDownloads()
+
+    @get:Rule(order = 2)
     val rig = BrowserRig()
 
     @Test

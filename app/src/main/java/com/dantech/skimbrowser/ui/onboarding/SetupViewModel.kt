@@ -1,5 +1,9 @@
 package com.dantech.skimbrowser.ui.onboarding
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.di.DefaultBrowserCheck
 import android.net.Uri
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -30,12 +34,13 @@ data class SetupUiState(val isDefault: Boolean)
  *
  * @param isDefaultBrowser asks the system whether Skim is the default browser now.
  */
-class SetupViewModel(
-    private val isDefaultBrowser: () -> Boolean,
+@HiltViewModel
+class SetupViewModel @Inject constructor(
+    @DefaultBrowserCheck private val isDefaultBrowser: () -> Boolean,
     private val importBookmarks: ImportBookmarks,
     private val completeOnboarding: CompleteOnboarding,
     private val snackbar: SnackbarController,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel(), DefaultLifecycleObserver {
 
     private val _state = MutableStateFlow(SetupUiState(isDefault = isDefaultBrowser()))

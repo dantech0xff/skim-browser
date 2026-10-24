@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,10 +22,14 @@ import org.junit.runner.RunWith
  * keyboard is asked not to learn from what is typed, the autofill service is not offered the page's
  * fields, and the page's console never reaches the system log. A normal tab keeps the defaults.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class IncognitoPrivacyDeviceTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Before

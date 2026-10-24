@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.settings
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.di.AppVersion
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
@@ -27,7 +28,7 @@ class SettingsViewModelTest {
     @Test
     fun themeAndSearchEngineAreStoredAndTheDefaultBrowserFlagUpdates() = runTest {
         val settings = FakeSettingsRepository()
-        val model = SettingsViewModel(settings, SetSearchEngine(settings), SetTheme(settings), versionName = "1.0", versionCode = 1)
+        val model = SettingsViewModel(settings, SetSearchEngine(settings), SetTheme(settings), AppVersion("1.0", 1))
         model.state.first { it.searchEngine == SearchEngine.GOOGLE }
 
         assertFalse(model.state.value.isDefaultBrowser)

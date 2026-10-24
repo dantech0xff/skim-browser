@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,8 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
@@ -108,8 +112,9 @@ data class SiteInfoUiState(
  * Skim AI asks first from [settings]. An incognito tab reads the session's answers; those are not
  * a flow, so a change bumps [revision] and the sheet is drawn again. Commands run on the main thread.
  */
-class SiteInfoViewModel(
-    private val tabId: String,
+@HiltViewModel(assistedFactory = SiteInfoViewModel.Factory::class)
+class SiteInfoViewModel @AssistedInject constructor(
+    @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val permissions: SitePermissionRepository,
     private val settings: SettingsRepository,
@@ -117,8 +122,13 @@ class SiteInfoViewModel(
     private val savePermission: SetSitePermission,
     private val incognito: IncognitoDecisions,
     private val cleaner: SiteDataCleaner,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(tabId: String): SiteInfoViewModel
+    }
 
     private val revision = MutableStateFlow(0)
     private val skimAiConsent = ResolveSkimAiConsent()
@@ -238,19 +248,9 @@ private fun permissionRows(host: String, stateOf: (SitePermissionKind) -> Permis
 
 /** The [SiteInfoKey] destination. */
 @Composable
-fun SiteInfoRoute(key: SiteInfoKey, container: AppContainer, navigator: SkimNavigator) {
-    val info = viewModel {
-        SiteInfoViewModel(
-            key.tabId,
-            container.tabManager,
-            container.sitePermissionRepository,
-            container.settings,
-            container.setSkimAi,
-            container.setSitePermission,
-            container.incognitoSession,
-            container.browsingDataCleaner,
-            container.appScope,
-        )
+fun SiteInfoRoute(key: SiteInfoKey, navigator: SkimNavigator) {
+    val info = hiltViewModel<SiteInfoViewModel, SiteInfoViewModel.Factory> { factory ->
+        factory.create(key.tabId)
     }
     val state by info.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.tabMissing) { if (state.tabMissing) navigator.back() }

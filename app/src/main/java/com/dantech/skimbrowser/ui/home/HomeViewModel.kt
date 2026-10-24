@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.ui.home
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.di.WallClock
+import com.dantech.skimbrowser.di.WallZone
+import com.dantech.skimbrowser.di.VoiceAvailable
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
@@ -76,7 +82,8 @@ data class HomeUiState(
  * @param clock the time the Continue cards count from.
  * @param zone the time zone their calendar days are counted in.
  */
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val tabs: TabsController,
     private val shortcuts: ShortcutRepository,
     private val removeShortcut: RemoveShortcut,
@@ -84,10 +91,10 @@ class HomeViewModel(
     chats: ChatRepository,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
-    private val appScope: CoroutineScope,
-    voiceAvailable: Boolean,
-    private val clock: () -> Long = System::currentTimeMillis,
-    private val zone: () -> ZoneId = ZoneId::systemDefault,
+    @AppScope private val appScope: CoroutineScope,
+    @VoiceAvailable voiceAvailable: Boolean,
+    @WallClock private val clock: () -> Long = System::currentTimeMillis,
+    @WallZone private val zone: @JvmSuppressWildcards () -> ZoneId = ZoneId::systemDefault,
 ) : ViewModel() {
 
     val state: StateFlow<HomeUiState> = combine(

@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.speech.RecognizerIntent
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -41,17 +40,25 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.window.Dialog
 import androidx.core.app.ActivityOptionsCompat
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.AppContainer
+import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.TestStorage
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
+import javax.inject.Inject
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabsState
@@ -71,7 +78,9 @@ import com.dantech.skimbrowser.ui.navigation.TabsKey
 import com.dantech.skimbrowser.ui.search.SearchViewModel
 import com.dantech.skimbrowser.ui.search.latestDialog
 import com.dantech.skimbrowser.ui.search.pass
-import com.dantech.skimbrowser.ui.search.searchViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.dantech.skimbrowser.HiltRouteActivity
+import com.dantech.skimbrowser.ui.search.SEARCH_VIEW_MODEL_KEY
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.theme.SkimTheme
@@ -93,6 +102,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -105,26 +116,42 @@ import org.robolectric.annotation.GraphicsMode
  * test's own. An incognito tab cannot be opened without WebView profiles, so the incognito New tab
  * page is shown for a tab made by the test.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = PHONE_QUALIFIERS)
+@Config(application = HiltTestApplication::class, qualifiers = PHONE_QUALIFIERS)
 class NewTabPageRouteTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val folder = TemporaryFolder()
 
-    @get:Rule
-    val composeRule = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule(order = 2)
+    val storage = object : TestWatcher() {
+        override fun starting(description: Description) {
+            TestStorage.current.set(AppStorage.temp(folder.newFolder()))
+        }
+    }
+
+    @get:Rule(order = 3)
+    val composeRule = createAndroidComposeRule<HiltRouteActivity>()
 
     private val app: Application = ApplicationProvider.getApplicationContext()
-    private lateinit var container: AppContainer
+
+    @Inject lateinit var graph: ProcessGraph
     private lateinit var navigator: SkimNavigator
     private val backStack = NavBackStack<NavKey>(BrowserKey)
     private lateinit var gateScope: CoroutineScope
 
-    /** The browser destination's store: the search and Home view models live in it. */
-    private val destination = object : ViewModelStoreOwner {
+    /** The browser destination's store. Extras come from the Hilt activity so assisted view models can be created. */
+    private val destination = object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
         override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory: ViewModelProvider.Factory
+            get() = composeRule.activity.defaultViewModelProviderFactory
+        override val defaultViewModelCreationExtras: CreationExtras
+            get() = composeRule.activity.defaultViewModelCreationExtras
     }
     private val speech = SpeechRegistry()
     private lateinit var search: SearchViewModel
@@ -133,15 +160,15 @@ class NewTabPageRouteTest {
     @Before
     fun setUp() {
         gateScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        container = AppContainer(app, AppStorage.temp(folder.newFolder()))
+        hiltRule.inject()
         val window = composeRule.activity.window
         navigator = SkimNavigator(
             backStack,
-            container.tabManager,
-            container.incognitoSession,
+            graph.tabManager(),
+            graph.incognitoSession(),
             WindowSecureController(window, setRecentsScreenshotEnabled = null),
-            container.snackbarController,
-            container.aiGate,
+            graph.snackbarController(),
+            graph.aiGate(),
             gateScope,
         )
     }
@@ -150,7 +177,8 @@ class NewTabPageRouteTest {
     fun tearDown() {
         destination.viewModelStore.clear()
         gateScope.cancel()
-        container.close()
+        if (::graph.isInitialized) graph.close()
+        TestStorage.current.set(null)
     }
 
     // The toolbar and the AI FAB
@@ -169,8 +197,8 @@ class NewTabPageRouteTest {
 
     @Test
     fun theToolbarCountsOnlyTheTabsOfItsOwnKind() {
-        container.tabManager.newTab(incognito = false, url = "https://example.com/", background = true)
-        container.tabManager.newTab(incognito = false, url = "https://example.org/", background = true)
+        graph.tabManager().newTab(incognito = false, url = "https://example.com/", background = true)
+        graph.tabManager().newTab(incognito = false, url = "https://example.org/", background = true)
         showIncognito()
 
         composeRule.onNodeWithContentDescription("Incognito tabs, 0 open").assertExists()
@@ -233,7 +261,7 @@ class NewTabPageRouteTest {
         field().performImeAction()
         composeRule.waitForIdle()
 
-        assertEquals("https://example.com", container.tabManager.state.value.tab(tabId)?.url)
+        assertEquals("https://example.com", graph.tabManager().state.value.tab(tabId)?.url)
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
         assertEquals("nothing typed is kept", "", search.query.text.toString())
         assertEquals(listOf<NavKey>(BrowserKey), keys())
@@ -262,21 +290,21 @@ class NewTabPageRouteTest {
 
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
         composeRule.onNodeWithText("Search or ask anything").assertExists()
-        assertNull(container.tabManager.state.value.tab(tabId)?.url)
+        assertNull(graph.tabManager().state.value.tab(tabId)?.url)
         assertFalse(composeRule.activity.isFinishing)
         assertEquals(listOf<NavKey>(BrowserKey), keys())
     }
 
     @Test
     fun theLayerDoesNotComeBackOpenWhenTheScreenIsRestored() {
-        val tabId = container.tabManager.newTab(incognito = false)
+        val tabId = graph.tabManager().newTab(incognito = false)
         val restoration = StateRestorationTester(composeRule)
         restoration.setContent {
             SkimTheme(ThemeSetting.Light, dynamicColor = false) {
                 CompositionLocalProvider(LocalViewModelStoreOwner provides destination) {
-                    search = searchViewModel(container)
-                    val tabs by container.tabManager.state.collectAsStateWithLifecycle()
-                    tabs.tab(tabId)?.let { tab -> NewTabPageRoute(tab, container, navigator) }
+                    search = hiltViewModel(key = SEARCH_VIEW_MODEL_KEY)
+                    val tabs by graph.tabManager().state.collectAsStateWithLifecycle()
+                    tabs.tab(tabId)?.let { tab -> NewTabPageRoute(tab, navigator) }
                 }
             }
         }
@@ -294,7 +322,7 @@ class NewTabPageRouteTest {
 
     @Test
     fun theHeroCardAsksSkimToSummarizeTheOpenTabs() {
-        container.tabManager.newTab(incognito = false, url = "https://daylightjournal.com/", background = true)
+        graph.tabManager().newTab(incognito = false, url = "https://daylightjournal.com/", background = true)
         showHome()
 
         // The tab Home shows has no page yet: only the other one counts.
@@ -324,7 +352,7 @@ class NewTabPageRouteTest {
             composeRule.waitForIdle()
             keys() == listOf<NavKey>(BrowserKey)
         }
-        val saved = runBlocking { withTimeout(5_000) { container.shortcutRepository.observe().first { it.isNotEmpty() } } }
+        val saved = runBlocking { withTimeout(5_000) { graph.shortcutRepository().observe().first { it.isNotEmpty() } } }
         assertEquals(listOf("daylightjournal.com" to "https://daylightjournal.com"), saved.map { it.name to it.url })
     }
 
@@ -356,7 +384,7 @@ class NewTabPageRouteTest {
 
         composeRule.onNodeWithText("Wikipedia").performClick()
 
-        assertEquals("https://www.wikipedia.org", container.tabManager.state.value.tab(tabId)?.url)
+        assertEquals("https://www.wikipedia.org", graph.tabManager().state.value.tab(tabId)?.url)
     }
 
     @Test
@@ -379,25 +407,25 @@ class NewTabPageRouteTest {
 
         composeRule.onNodeWithText("Wikipedia").performTouchInput { longClick() }
         composeRule.onNodeWithText("Remove").performClick()
-        val message = runBlocking { withTimeout(5_000) { container.snackbarController.current.filterNotNull().first() } }
+        val message = runBlocking { withTimeout(5_000) { graph.snackbarController().current.filterNotNull().first() } }
         assertEquals(UiText.Res(R.string.snackbar_shortcut_removed), message.text)
         assertTrue(message.action is SnackbarAction.Undo)
-        assertTrue(runBlocking { withTimeout(5_000) { container.shortcutRepository.observe().first { it.isEmpty() } } }.isEmpty())
+        assertTrue(runBlocking { withTimeout(5_000) { graph.shortcutRepository().observe().first { it.isEmpty() } } }.isEmpty())
 
         // Home leaves the screen and its view model is gone, as after opening another shortcut.
         shown = false
         composeRule.waitForIdle()
         destination.viewModelStore.clear()
-        container.snackbarController.onActionClicked(message.id)
+        graph.snackbarController().onActionClicked(message.id)
 
-        val back = runBlocking { withTimeout(5_000) { container.shortcutRepository.observe().first { it.isNotEmpty() } } }
+        val back = runBlocking { withTimeout(5_000) { graph.shortcutRepository().observe().first { it.isNotEmpty() } } }
         assertEquals(listOf("Wikipedia" to "https://www.wikipedia.org"), back.map { it.name to it.url })
     }
 
     @Test
     fun aContinueCardOpensItsSavedChatAndSeeAllOpensSkimHistory() {
         val chatId = runBlocking {
-            container.chatRepository.createChat(
+            graph.chatRepository().createChat(
                 SavedChat(
                     kind = ChatKind.PAGE,
                     url = "https://daylightjournal.com/energy",
@@ -496,7 +524,7 @@ class NewTabPageRouteTest {
 
     /** Shows Home for a new normal tab, the current one, and returns its id. */
     private fun showHome(): String {
-        val tabId = container.tabManager.newTab(incognito = false)
+        val tabId = graph.tabManager().newTab(incognito = false)
         setRoute { tabs -> tabs.tab(tabId) }
         return tabId
     }
@@ -514,11 +542,11 @@ class NewTabPageRouteTest {
                 LocalViewModelStoreOwner provides destination,
                 LocalActivityResultRegistryOwner provides speech.owner,
             ) {
-                search = searchViewModel(container)
-                val tabs by container.tabManager.state.collectAsStateWithLifecycle()
+                search = hiltViewModel(key = SEARCH_VIEW_MODEL_KEY)
+                val tabs by graph.tabManager().state.collectAsStateWithLifecycle()
                 val tab = tabOf(tabs)
                 // As in the browser's slot: the New tab page shows while the tab has no page.
-                if (shown && tab != null && tab.url == null) NewTabPageRoute(tab, container, navigator)
+                if (shown && tab != null && tab.url == null) NewTabPageRoute(tab, navigator)
             }
         }
         composeRule.waitForIdle()
@@ -529,7 +557,7 @@ class NewTabPageRouteTest {
         composeRule.setSkimContent {
             CompositionLocalProvider(LocalViewModelStoreOwner provides destination) {
                 Dialog(onDismissRequest = navigator::back, properties = ShortcutDialogProperties) {
-                    ShortcutDialogRoute(key, container, navigator)
+                    ShortcutDialogRoute(key, navigator)
                 }
             }
         }
@@ -550,8 +578,8 @@ class NewTabPageRouteTest {
     }
 
     private fun addShortcut(name: String, url: String): Long = runBlocking {
-        container.shortcutRepository.add(name, url)
-        withTimeout(5_000) { container.shortcutRepository.observe().first { list -> list.any { it.url == url } } }.single { it.url == url }.id
+        graph.shortcutRepository().add(name, url)
+        withTimeout(5_000) { graph.shortcutRepository().observe().first { list -> list.any { it.url == url } } }.single { it.url == url }.id
     }
 
     private fun installSpeechInput() {

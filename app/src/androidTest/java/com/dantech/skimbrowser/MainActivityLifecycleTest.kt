@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.app.Activity
 import android.app.Application
 import android.app.DownloadManager
@@ -10,6 +12,12 @@ import android.webkit.WebStorage
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
+import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.TestStorage
+import com.dantech.skimbrowser.di.AppGraphEntryPoint
+import com.dantech.skimbrowser.di.ProcessGraph
+import com.dantech.skimbrowser.system.purgeOldShares
+import dagger.hilt.android.EntryPointAccessors
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.DEVICE_TIMEOUT_MS
@@ -55,22 +63,34 @@ import org.junit.runner.RunWith
  * when it finishes for good makes every close still waiting for Undo final. Each test closes the
  * tabs it opened and clears the history, site data and downloads it left.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class MainActivityLifecycleTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val downloads = DeviceDownloads()
 
-    private val app = ApplicationProvider.getApplicationContext<SkimApplication>()
-    private val container: AppContainer get() = app.container
-    private val tabs: TabManager get() = container.tabManager
+    private val app: Application
+        get() = ApplicationProvider.getApplicationContext()
+    private lateinit var graph: ProcessGraph
+    private val tabs: TabManager get() = graph.tabManager()
     private val pages = TestPages()
     private val collectors = CoroutineScope(Dispatchers.Default)
 
     @Before
     fun setUp() {
+        TestStorage.current.set(AppStorage())
+        graph = EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).graph()
         pages.start()
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.restore() } }
+        runBlocking {
+            withTimeout(DEVICE_TIMEOUT_MS) {
+                tabs.restore()
+                purgeOldShares(app.cacheDir)
+            }
+        }
     }
 
     @After
@@ -80,7 +100,7 @@ class MainActivityLifecycleTest {
                 val open = tabs.state.value.tabs.map { it.id }
                 if (open.isNotEmpty()) tabs.finalizeClose(tabs.close(open))
                 tabs.finalizePendingCloses()
-                if (container.incognitoSession.state.value != IncognitoSession.State.None) container.incognitoSession.end(engine = null)
+                if (graph.incognitoSession().state.value != IncognitoSession.State.None) graph.incognitoSession().end(engine = null)
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     flush()
@@ -90,14 +110,18 @@ class MainActivityLifecycleTest {
             runBlocking {
                 withTimeout(DEVICE_TIMEOUT_MS) {
                     tabs.awaitWrites()
-                    container.historyRepository.clearAll()
-                    container.tabStateStore.awaitIdle()
-                    container.thumbnails.awaitIdle()
+                    graph.historyRepository().clearAll()
+                    graph.tabStateStore().awaitIdle()
+                    graph.thumbnails().awaitIdle()
                 }
             }
         } finally {
             collectors.cancel()
             pages.close()
+            if (::graph.isInitialized) {
+                EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).shutdown().close()
+                TestStorage.current.set(null)
+            }
         }
     }
 
@@ -231,7 +255,7 @@ class MainActivityLifecycleTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             waitUntil("the earlier session's shared files to be deleted") { !left.exists() }
         }
-        assertEquals(IncognitoSession.State.None, container.incognitoSession.state.value)
+        assertEquals(IncognitoSession.State.None, graph.incognitoSession().state.value)
     }
 
     @Test
@@ -243,14 +267,14 @@ class MainActivityLifecycleTest {
         assertTrue(runBlocking { tabs.awaitPageReady(normal) && tabs.awaitPageReady(incognito) })
         val normalClose = onMain { tabs.close(listOf(normal)) }
         onMain { tabs.close(listOf(incognito)) }
-        assertTrue(container.incognitoSession.state.value is IncognitoSession.State.Ending)
+        assertTrue(graph.incognitoSession().state.value is IncognitoSession.State.Ending)
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.awaitWrites() } }
         assertEquals("closed and still undoable", 1L, tabRows(normal))
 
         scenario.close()
 
         assertTrue(onMain { tabs.pendingCloseIds() }.isEmpty())
-        assertEquals(IncognitoSession.State.None, container.incognitoSession.state.value)
+        assertEquals(IncognitoSession.State.None, graph.incognitoSession().state.value)
         onMain { tabs.undoClose(normalClose) }
         assertNull("Undo has nothing left to bring back", tabs.state.value.tab(normal))
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.awaitWrites() } }
@@ -288,7 +312,7 @@ class MainActivityLifecycleTest {
 
     private fun tabRows(tabId: String): Long = runBlocking {
         withContext(Dispatchers.IO) {
-            container.database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM tabs WHERE id = ?", arrayOf<Any>(tabId)).use { cursor ->
+            graph.database().openHelper.readableDatabase.query("SELECT COUNT(*) FROM tabs WHERE id = ?", arrayOf<Any>(tabId)).use { cursor ->
                 cursor.moveToFirst()
                 cursor.getLong(0)
             }
@@ -298,7 +322,7 @@ class MainActivityLifecycleTest {
     /** How the downloads of the process end from now on, as they reach the tracker. */
     private fun downloadEvents(): List<DownloadEvent> {
         val events = CopyOnWriteArrayList<DownloadEvent>()
-        collectors.launch(start = CoroutineStart.UNDISPATCHED) { container.downloadTracker.events.collect { events += it } }
+        collectors.launch(start = CoroutineStart.UNDISPATCHED) { graph.downloadTracker().events.collect { events += it } }
         return events
     }
 

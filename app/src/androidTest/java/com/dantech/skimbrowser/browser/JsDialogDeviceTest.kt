@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
@@ -18,10 +20,14 @@ import org.junit.runner.RunWith
  * lock the app. A dialog on screen takes the window focus from the app's window, which is how the
  * test sees one; it answers a dialog with Back.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class JsDialogDeviceTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Test

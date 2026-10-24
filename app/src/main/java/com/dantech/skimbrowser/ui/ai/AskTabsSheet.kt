@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.ai
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,9 +46,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.system.Clipboard
@@ -80,18 +78,11 @@ data class AskTabsActions(
 
 /** Ask Skim about the open tabs (06b), for [key]'s prompt or a saved chat. */
 @Composable
-fun AskTabsRoute(key: AskTabsKey, container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel(key = "ask-tabs-${key.prompt}-${key.savedChatId}") {
-        AskTabsViewModel(
-            key = key,
-            sessions = container.chatSessions,
-            overviewTabs = container.overviewTabs,
-            askTabs = container.askTabs,
-            collectOpenTabs = container.collectOpenTabs,
-            network = container.networkMonitor,
-            savedState = createSavedStateHandle(),
-            appScope = container.appScope,
-        )
+fun AskTabsRoute(key: AskTabsKey, navigator: SkimNavigator) {
+    val model = hiltViewModel<AskTabsViewModel, AskTabsViewModel.Factory>(
+        key = "ask-tabs-${key.prompt}-${key.savedChatId}",
+    ) { factory ->
+        factory.create(key)
     }
     val state by model.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }

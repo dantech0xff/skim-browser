@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,10 +29,14 @@ import org.junit.runner.RunWith
  * with the drag and its release reaching the box the right way up; a page scrolled down scrolls
  * instead, and a page that keeps the drag for itself (a map) is never pulled.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class PullToRefreshNestedScrollTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     private val refreshes = AtomicInteger()

@@ -13,7 +13,6 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
@@ -63,12 +62,11 @@ import com.dantech.skimbrowser.ui.shell.rememberSecureEntryDecorator
 fun SkimNavDisplay(
     backStack: NavBackStack<NavKey>,
     navigator: SkimNavigator,
-    container: AppContainer,
     modifier: Modifier = Modifier,
 ) {
     val secure = LocalBrowserHost.current.secure
-    val tabs by container.tabManager.state.collectAsStateWithLifecycle()
-    val entries = remember(navigator, container) { skimEntries(navigator, container) }
+    val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
+    val entries = remember(navigator) { skimEntries(navigator) }
     val strategies = remember { listOf(DialogSceneStrategy<NavKey>(), BottomSheetSceneStrategy<NavKey>()) }
     NavDisplay(
         backStack = backStack,
@@ -85,7 +83,7 @@ fun SkimNavDisplay(
 }
 
 /** The entry of every key that has a screen; sheets add `bottomSheet` metadata, dialogs `dialog`. */
-private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (NavKey) -> NavEntry<NavKey> =
+private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> =
     entryProvider(fallback = { key -> NavEntry(key) {} }) {
         entry<WelcomeKey> {
             WelcomeScreen(
@@ -96,22 +94,21 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
             )
         }
         entry<SetupKey> {
-            SetupRoute(container, navigator)
+            SetupRoute(navigator)
         }
-        entry<ReaderKey> { key -> ReaderRoute(key, container, navigator) }
+        entry<ReaderKey> { key -> ReaderRoute(key, navigator) }
         entry<BrowserKey> {
             BrowserRoute(
-                container = container,
                 navigator = navigator,
-                newTabPage = { tab -> NewTabPageRoute(tab, container, navigator) },
-                page = { tab, runtime -> BrowsingRoute(tab, runtime, container, navigator) },
+                newTabPage = { tab -> NewTabPageRoute(tab, navigator) },
+                page = { tab, runtime -> BrowsingRoute(tab, runtime, navigator) },
             )
         }
         entry<ShortcutDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
-            ShortcutDialogRoute(key, container, navigator)
+            ShortcutDialogRoute(key, navigator)
         }
         entry<MoreMenuKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_more_options)) { key ->
-            MoreMenuRoute(key, container, navigator)
+            MoreMenuRoute(key, navigator)
         }
         entry<LinkOptionsKey>(
             metadata = { key ->
@@ -120,15 +117,15 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
                 )
             },
         ) { key ->
-            LinkOptionsRoute(key, container, navigator)
+            LinkOptionsRoute(key, navigator)
         }
         entry<SiteInfoKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_site_info)) { key ->
-            SiteInfoRoute(key, container, navigator)
+            SiteInfoRoute(key, navigator)
         }
         entry<AskTabsKey>(
             metadata = BottomSheetSceneStrategy.bottomSheet(R.string.ask_skim),
         ) { key ->
-            AskTabsRoute(key, container, navigator)
+            AskTabsRoute(key, navigator)
         }
         entry<AskPageKey>(
             metadata = BottomSheetSceneStrategy.bottomSheet(
@@ -136,40 +133,40 @@ private fun skimEntries(navigator: SkimNavigator, container: AppContainer): (Nav
                 skipPartiallyExpanded = false,
             ),
         ) { key ->
-            AskPageRoute(key, container, navigator)
+            AskPageRoute(key, navigator)
         }
         entry<AiPermissionKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
-            AiPermissionRoute(key, container, navigator)
+            AiPermissionRoute(key, navigator)
         }
         entry<EditBookmarkKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
-            EditBookmarkRoute(key, container, navigator)
+            EditBookmarkRoute(key, navigator)
         }
         entry<MoveToFolderKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
-            MoveToFolderRoute(key, container, navigator)
+            MoveToFolderRoute(key, navigator)
         }
-        entry<TabsKey> { key -> TabsRoute(key, container, navigator) }
-        entry<SettingsKey> { SettingsRoute(container, navigator) }
-        entry<AiPrivacyKey> { AiPrivacyRoute(container, navigator) }
-        entry<HistoryKey> { HistoryRoute(container, navigator) }
-        entry<SkimHistoryKey> { SkimHistoryRoute(container, navigator) }
+        entry<TabsKey> { key -> TabsRoute(key, navigator) }
+        entry<SettingsKey> { SettingsRoute(navigator) }
+        entry<AiPrivacyKey> { AiPrivacyRoute(navigator) }
+        entry<HistoryKey> { HistoryRoute(navigator) }
+        entry<SkimHistoryKey> { SkimHistoryRoute(navigator) }
         entry<ClearSkimHistoryKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            ClearSkimHistoryRoute(container, navigator)
+            ClearSkimHistoryRoute(navigator)
         }
-        entry<BookmarksKey> { key -> BookmarksRoute(key, container, navigator) }
+        entry<BookmarksKey> { key -> BookmarksRoute(key, navigator) }
         entry<LicensesKey> { LicensesRoute(navigator) }
         entry<SearchEngineDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            SearchEngineRoute(container, navigator)
+            SearchEngineRoute(navigator)
         }
         entry<ThemeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            ThemeRoute(container, navigator)
+            ThemeRoute(navigator)
         }
         entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            ClearBrowsingDataRoute(container, navigator)
+            ClearBrowsingDataRoute(navigator)
         }
         entry<DeleteAiDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            DeleteAiDataRoute(container, navigator)
+            DeleteAiDataRoute(navigator)
         }
         entry<RenameGroupKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) { key ->
-            RenameGroupRoute(key, container, navigator)
+            RenameGroupRoute(key, navigator)
         }
     }

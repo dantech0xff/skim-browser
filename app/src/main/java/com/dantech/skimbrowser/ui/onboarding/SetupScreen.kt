@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.onboarding
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.content.ActivityNotFoundException
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.system.DefaultBrowser
 import com.dantech.skimbrowser.ui.components.ShapeArt
@@ -146,18 +145,10 @@ fun SetupScreen(
  * Start browsing ends onboarding for good.
  */
 @Composable
-fun SetupRoute(container: AppContainer, navigator: SkimNavigator) {
+fun SetupRoute(navigator: SkimNavigator) {
     val context = LocalContext.current
     val appContext = context.applicationContext
-    val viewModel = viewModel {
-        SetupViewModel(
-            isDefaultBrowser = { DefaultBrowser.isDefault(appContext) },
-            importBookmarks = container.importBookmarks,
-            completeOnboarding = container.completeOnboarding,
-            snackbar = container.snackbarController,
-            appScope = container.appScope,
-        )
-    }
+    val viewModel = hiltViewModel<SetupViewModel>()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, viewModel) {
         lifecycle.addObserver(viewModel)

@@ -1,5 +1,11 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
@@ -28,8 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -100,14 +104,20 @@ data class MoreMenuUiState(
  * writes it on [appScope], so it is kept when the sheet closes at that moment. Commands are called
  * on the main thread.
  */
-class MoreMenuViewModel(
-    private val tabId: String,
+@HiltViewModel(assistedFactory = MoreMenuViewModel.Factory::class)
+class MoreMenuViewModel @AssistedInject constructor(
+    @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val bookmarks: BookmarkRepository,
     private val addBookmark: AddBookmark,
     private val snackbar: SnackbarController,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(tabId: String): MoreMenuViewModel
+    }
 
     private val adding = AtomicBoolean(false)
     private val closedRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -202,16 +212,9 @@ private fun menuState(tab: Tab, bookmark: Bookmark?, known: Boolean): MoreMenuUi
 
 /** The [MoreMenuKey] destination. Its view model goes away with the sheet. */
 @Composable
-fun MoreMenuRoute(key: MoreMenuKey, container: AppContainer, navigator: SkimNavigator) {
-    val menu = viewModel {
-        MoreMenuViewModel(
-            key.tabId,
-            container.tabManager,
-            container.bookmarkRepository,
-            container.addBookmark,
-            container.snackbarController,
-            container.appScope,
-        )
+fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
+    val menu = hiltViewModel<MoreMenuViewModel, MoreMenuViewModel.Factory> { factory ->
+        factory.create(key.tabId)
     }
     val state by menu.state.collectAsStateWithLifecycle()
     val context = LocalContext.current

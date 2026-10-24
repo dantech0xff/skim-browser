@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.skimhistory
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,8 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
@@ -49,16 +48,8 @@ import kotlinx.coroutines.flow.map
 
 /** Skim history (04c). A page row reopens that chat. A tabs row reopens the across-tabs answer. */
 @Composable
-fun SkimHistoryRoute(container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel {
-        SkimHistoryViewModel(
-            container.chatRepository,
-            container.removeSkimChat,
-            container.restoreSkimChat,
-            container.snackbarController,
-            container.undoRegistry,
-        )
-    }
+fun SkimHistoryRoute(navigator: SkimNavigator) {
+    val model = hiltViewModel<SkimHistoryViewModel>()
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }
     val query = rememberTextFieldState()

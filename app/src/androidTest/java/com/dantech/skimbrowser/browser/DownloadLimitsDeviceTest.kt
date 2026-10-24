@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.net.Uri
 import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,13 +23,17 @@ import org.junit.runner.RunWith
  * attribute over unrequested, at the link's own address and with no type
  * ([WebViewSupport.readsDownloadLinksFirst]); Skim gives such a download no cookies.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class DownloadLimitsDeviceTest {
 
     @get:Rule(order = 0)
-    val downloads = DeviceDownloads()
+    val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
+    val downloads = DeviceDownloads()
+
+    @get:Rule(order = 2)
     val rig = BrowserRig()
 
     /** One call of the WebView's download listener. */

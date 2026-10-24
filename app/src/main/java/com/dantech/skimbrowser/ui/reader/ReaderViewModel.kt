@@ -1,5 +1,10 @@
 package com.dantech.skimbrowser.ui.reader
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,14 +43,20 @@ sealed interface ReaderUiState {
  * Text size and font are the saved reader settings. Changing them writes through [writes], which
  * outlives this screen, and the new value comes back through [settings].
  */
-class ReaderViewModel(
-    private val tabId: String,
+@HiltViewModel(assistedFactory = ReaderViewModel.Factory::class)
+class ReaderViewModel @AssistedInject constructor(
+    @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val settings: SettingsRepository,
     private val saveScale: SetReaderTextScale,
     private val saveFont: SetReaderFont,
-    private val writes: CoroutineScope,
+    @AppScope private val writes: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(tabId: String): ReaderViewModel
+    }
 
     private val load = MutableStateFlow<Load>(Load.Pending)
 

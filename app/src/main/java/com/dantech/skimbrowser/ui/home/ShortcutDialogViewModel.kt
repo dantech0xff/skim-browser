@@ -1,5 +1,10 @@
 package com.dantech.skimbrowser.ui.home
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.compose.foundation.text.input.TextFieldState
@@ -45,13 +50,19 @@ data class ShortcutDialogUiState(
  * URLs, leaves Save off. An empty Name takes the site's host. Saving runs on [appScope], so a
  * shortcut being written is not lost when the dialog goes away at that moment.
  */
-class ShortcutDialogViewModel(
-    private val shortcutId: Long?,
+@HiltViewModel(assistedFactory = ShortcutDialogViewModel.Factory::class)
+class ShortcutDialogViewModel @AssistedInject constructor(
+    @Assisted private val shortcutId: Long?,
     private val shortcuts: ShortcutRepository,
     private val addShortcut: AddShortcut,
     private val updateShortcut: UpdateShortcut,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(shortcutId: Long?): ShortcutDialogViewModel
+    }
 
     private data class Progress(
         val loaded: Boolean,

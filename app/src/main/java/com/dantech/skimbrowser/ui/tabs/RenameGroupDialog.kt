@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.tabs
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,8 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.flow.flowOf
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimDialogContent
@@ -23,16 +24,11 @@ import com.dantech.skimbrowser.ui.navigation.SkimNavigator
  * dialog.
  */
 @Composable
-fun RenameGroupRoute(key: RenameGroupKey, container: AppContainer, navigator: SkimNavigator) {
-    val tabs by container.tabManager.state.collectAsStateWithLifecycle()
+fun RenameGroupRoute(key: RenameGroupKey, navigator: SkimNavigator) {
+    val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
     val group = tabs.groups.firstOrNull { it.id == key.groupId }
-    val model = viewModel {
-        TabsViewModel(
-            incognito = false,
-            tabs = container.tabManager,
-            snackbar = container.snackbarController,
-            undo = container.undoRegistry,
-        )
+    val model = hiltViewModel<TabsViewModel, TabsViewModel.Factory> { factory ->
+        factory.create(incognito = false, grouping = flowOf(null), grouper = null)
     }
     LaunchedEffect(group) {
         if (group == null) navigator.back()

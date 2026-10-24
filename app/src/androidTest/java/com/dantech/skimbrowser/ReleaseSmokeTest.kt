@@ -28,6 +28,8 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.Description
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 
@@ -36,6 +38,7 @@ import org.junit.runners.model.Statement
  * Run with `-Pskim.testBuildType=releaseSmoke`. It drives the UI by visible text, so renamed
  * classes do not hide a broken screen.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class ReleaseSmokeTest {
 
@@ -51,7 +54,8 @@ class ReleaseSmokeTest {
 
     @get:Rule
     val rules: RuleChain = RuleChain
-        .outerRule(skim)
+        .outerRule(HiltAndroidRule(this))
+        .around(skim)
         .around(prepare())
         .around(compose)
 

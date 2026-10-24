@@ -35,14 +35,10 @@ class DomainBoundaryTest {
         val root = sourceRoot()
         val violations = kotlinFiles(root).filter { file ->
             val path = file.path.replace('\\', '/')
-            !path.contains("/data/") && file.name != "AppContainer.kt"
+            !path.contains("/data/")
         }.flatMap { file ->
             file.readLines().mapIndexedNotNull { index, line ->
-                if (line.trim().startsWith("import com.dantech.skimbrowser.data.repo.ChatRepository")) {
-                    "${file.path}:${index + 1}"
-                } else {
-                    null
-                }
+                if (chatRepositoryOutsideData(file.path, line)) "${file.path}:${index + 1}" else null
             }
         }
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
@@ -69,6 +65,8 @@ class DomainBoundaryTest {
             "ai/TabsContext.kt" to "import com.dantech.skimbrowser.data.db.entity.SkimAiState",
             "ai/AiGate.kt" to "import com.dantech.skimbrowser.data.hostOf",
             "ai/AiGate.kt" to "val state = com.dantech.skimbrowser.data.db.entity.SkimAiState.ASK",
+            "domain/tab/Tab.kt" to "import javax.inject.Inject",
+            "domain/tab/Tab.kt" to "import dagger.Module",
             "domain/tab/Tab.kt" to "import android.os.Bundle",
             "domain/tab/Tab.kt" to "import androidx.compose.runtime.Composable",
             "domain/tab/Tab.kt" to "import okhttp3.OkHttpClient",
@@ -91,7 +89,10 @@ class DomainBoundaryTest {
         assertNull(violation("domain/ai/AskPageAccess.kt", "package com.dantech.skimbrowser.domain.ai"))
         assertNull(violation("domain/ai/AskPageAccess.kt", "import com.dantech.skimbrowser.domain.tab.Tab"))
         assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
-        assertNull(violation("AppContainer.kt", "import com.dantech.skimbrowser.browser.TabManager"))
+        assertNull(violation("SkimApplication.kt", "import com.dantech.skimbrowser.browser.TabManager"))
+        assertTrue(chatRepositoryOutsideData("di/ProcessGraph.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository"))
+        assertTrue(!chatRepositoryOutsideData("data/di/DataGeneration.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
+        assertTrue(chatRepositoryOutsideData("SkimApplication.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
     }
 
     private fun violationsIn(layer: String): List<String> {
@@ -136,6 +137,8 @@ class DomainBoundaryTest {
             AI,
             "com.dantech.skimbrowser.system",
             "com.dantech.skimbrowser.search",
+            "javax.inject.",
+            "dagger.",
         )
 
         /**
@@ -153,6 +156,13 @@ class DomainBoundaryTest {
             "ui/shell/SkimApp.kt",
             "ui/shell/SnackbarActions.kt",
         )
+
+        fun chatRepositoryOutsideData(path: String, line: String): Boolean {
+            val normalized = path.replace('\\', '/')
+            val inData = normalized.contains("/data/") || normalized.startsWith("data/")
+            if (inData) return false
+            return line.contains("com.dantech.skimbrowser.data.repo.ChatRepository")
+        }
 
         fun violation(relativePath: String, line: String): String? {
             val layer = relativePath.substringBefore('/', missingDelimiterValue = "")

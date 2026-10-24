@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.os.Process
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
@@ -17,10 +19,14 @@ import org.junit.runner.RunWith
  * WebViews alive, a tab whose WebView went away comes back on its page and at its scroll position,
  * and a saved state file cut in half is dropped and the tab loads its page afresh.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class TabPoolDeviceTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Test
@@ -74,7 +80,7 @@ class TabPoolDeviceTest {
         assertEquals("loaded afresh, without the history the file held", 1, jsValue(rig.evaluate(id, "history.length")))
         assertFalse(rig.runtime(id).canGoBack)
         assertTrue("at the top of the page", rig.isScrolledTo(id, 0))
-        waitUntil("a new state to be saved for it") { runBlocking { rig.container.tabStateStore.load(id, incognito = false) } != null }
+        waitUntil("a new state to be saved for it") { runBlocking { rig.graph.tabStateStore().load(id, incognito = false) } != null }
     }
 
     /** Opens new tabs until [tabId]'s WebView is pushed out of the pool, then waits until its state is on disk. */
@@ -85,7 +91,7 @@ class TabPoolDeviceTest {
             val url = rig.pages.url("/plain.html?filler=$n")
             rig.awaitLoaded(rig.newTab(url), url)
         }
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.container.tabStateStore.awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.tabStateStore().awaitIdle() } }
     }
 
     /**

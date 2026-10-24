@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.history
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,8 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.IconTile
@@ -46,17 +45,8 @@ import kotlinx.coroutines.flow.map
 
 /** History (13). A row opens in the current tab. Search filters the list in place. */
 @Composable
-fun HistoryRoute(container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel {
-        HistoryViewModel(
-            container.historyRepository,
-            container.removeHistoryEntry,
-            container.restoreHistoryEntry,
-            container.snackbarController,
-            container.undoRegistry,
-            container.openUrlInCurrentTab,
-        )
-    }
+fun HistoryRoute(navigator: SkimNavigator) {
+    val model = hiltViewModel<HistoryViewModel>()
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }
     val query = rememberTextFieldState()

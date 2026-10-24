@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.graphics.Bitmap
@@ -46,10 +48,14 @@ import org.junit.runner.RunWith
  * is checked for the flag as it is drawn, and screenshots show that the system really blanks the
  * window. Incognito needs WebView profiles, so the tests skip on a WebView without them.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class SecureFlagTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     private val page: String get() = skim.pages.url("/plain.html")
@@ -222,7 +228,7 @@ class SecureFlagTest {
             awaitPageOnScreen(activity, incognito = false)
             waitUntil("FLAG_SECURE to go") { onMain { !activity.isSecure() } }
             onMain { skim.tabs.finalizeClose(close) }
-            assertEquals(IncognitoSession.State.None, skim.container.incognitoSession.state.value)
+            assertEquals(IncognitoSession.State.None, skim.graph.incognitoSession().state.value)
             assertFalse(onMain { activity.isSecure() })
         }
     }

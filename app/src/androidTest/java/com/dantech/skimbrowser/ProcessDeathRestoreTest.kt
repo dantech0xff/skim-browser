@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.onMain
@@ -20,10 +22,14 @@ import org.junit.runner.RunWith
  *
  * This runs on a device. The unit-test stand-in is [RestoreAcrossContainersTest].
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class ProcessDeathRestoreTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     @Test
@@ -33,7 +39,7 @@ class ProcessDeathRestoreTest {
         val readerTab = skim.openTab(article)
         val scenario = skim.launch()
         val navigator = skim.navigatorOf(scenario)
-        val privateTab = if (skim.container.incognitoSession.isSupported) {
+        val privateTab = if (skim.graph.incognitoSession().isSupported) {
             skim.openTab(skim.pages.url("/plain.html"), incognito = true)
         } else {
             null
@@ -50,7 +56,7 @@ class ProcessDeathRestoreTest {
 
         onMain { skim.activityOf(scenario).browserHostForTests.pool.destroyAll() }
         if (privateTab != null) {
-            onMain { skim.container.incognitoSession.end(engine = null) }
+            onMain { skim.graph.incognitoSession().end(engine = null) }
         }
 
         scenario.recreate()

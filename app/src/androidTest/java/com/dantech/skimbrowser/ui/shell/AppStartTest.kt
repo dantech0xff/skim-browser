@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
@@ -20,10 +22,14 @@ import org.junit.runner.RunWith
  * to the browser for good, and every later launch straight on the last tab. Buttons are tapped on
  * screen, Back is the system's.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class AppStartTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     private val getStarted: String get() = skim.app.getString(R.string.welcome_get_started)
@@ -65,7 +71,7 @@ class AppStartTest {
         AppScreen.tap(activity, startBrowsing)
 
         waitUntil("the browser to be all that is left") { skim.keysOf(first) == listOf(BrowserKey) }
-        awaitValue(skim.container.settings.settings, "onboarding to be saved as done") { it.onboardingCompleted }
+        awaitValue(skim.graph.settings().settings, "onboarding to be saved as done") { it.onboardingCompleted }
         waitUntil("the browser to open a tab") { skim.tabs.state.value.currentTabId != null }
         val tab = checkNotNull(skim.tabs.state.value.currentTabId)
         onMain { skim.tabs.load(tab, skim.pages.url("/plain.html")) }

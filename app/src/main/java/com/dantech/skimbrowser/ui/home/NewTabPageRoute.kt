@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.home
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.content.ActivityNotFoundException
 import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -11,8 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.system.VoiceInput
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
@@ -37,10 +37,10 @@ import com.dantech.skimbrowser.ui.shell.TabAiFab
  * after the process was gone, with a new search view model that knows nothing of what was typed.
  */
 @Composable
-fun NewTabPageRoute(tab: Tab, container: AppContainer, navigator: SkimNavigator) {
-    val tabs = container.tabManager
+fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
+    val tabs = rememberShell().tabs()
     val context = LocalContext.current
-    val search = searchViewModel(container)
+    val search = searchViewModel()
     val voiceAvailable = remember(context) { VoiceInput.isAvailable(context.applicationContext) }
     var searching by remember(tab.id) { mutableStateOf(false) }
     val openSearch: (String) -> Unit = { text ->
@@ -79,19 +79,7 @@ fun NewTabPageRoute(tab: Tab, container: AppContainer, navigator: SkimNavigator)
             toolbar = toolbar,
         )
     } else {
-        val home = viewModel(key = HOME_VIEW_MODEL_KEY) {
-            HomeViewModel(
-                tabs = tabs,
-                shortcuts = container.shortcutRepository,
-                removeShortcut = container.removeShortcut,
-                restoreShortcut = container.restoreShortcut,
-                chats = container.chatRepository,
-                snackbar = container.snackbarController,
-                undo = container.undoRegistry,
-                appScope = container.appScope,
-                voiceAvailable = voiceAvailable,
-            )
-        }
+        val home = hiltViewModel<HomeViewModel>(key = HOME_VIEW_MODEL_KEY)
         val state by home.state.collectAsStateWithLifecycle()
         val actions = HomeActions(
             onSearch = { openSearch("") },

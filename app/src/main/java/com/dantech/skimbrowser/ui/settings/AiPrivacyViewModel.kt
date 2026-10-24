@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.chat.ChatRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
 import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
@@ -27,7 +29,8 @@ data class AiPrivacyUiState(
  * Skim chats. Deleting all AI data is [DeleteAiDataViewModel], on the app scope, so the delete
  * finishes after the dialog closes.
  */
-class AiPrivacyViewModel(
+@HiltViewModel
+class AiPrivacyViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val saveAskBeforeSending: SetAskBeforeSending,
     private val saveKeepChatHistory: SetKeepChatHistory,

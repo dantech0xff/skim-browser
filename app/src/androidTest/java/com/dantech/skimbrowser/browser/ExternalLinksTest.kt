@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import com.dantech.skimbrowser.domain.tab.PageEvent
 
 import android.content.Intent
@@ -20,10 +22,14 @@ import org.junit.runner.RunWith
  * never load in a tab. Apps are only recorded ([TestActivityHost.launched]), never started,
  * except where a launch must fail as it does in the app.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class ExternalLinksTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Test

@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.content.Intent
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -28,10 +30,14 @@ import org.junit.runner.RunWith
  * Whether a link opened again shows only once the app had the chance to open it: another link
  * sent afterwards opens after any earlier one, so once its tab is there the tabs are counted.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class ExternalLinkTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     private val link: String get() = skim.pages.url("/plain.html")

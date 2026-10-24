@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
 import android.graphics.Bitmap
@@ -21,10 +23,14 @@ import org.junit.runner.RunWith
  * (with the link's address and text from `requestFocusNodeHref`), and the thumbnail drawn from it,
  * kept on disk for a normal tab and only in memory for an incognito one.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class LongPressAndThumbnailTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Test
@@ -60,7 +66,7 @@ class LongPressAndThumbnailTest {
         assertEquals(width, normalThumbnail.width)
         assertEquals(height, normalThumbnail.height)
         assertTrue("the page's text shows in it", darkPixelShare(normalThumbnail) > MIN_TEXT_SHARE)
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.container.thumbnails.awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.thumbnails().awaitIdle() } }
         assertTrue("saved for after process death", File(thumbnailDir(), "$normal.webp").isFile)
 
         // A normal tab's thumbnail is checked on every WebView; an incognito tab needs profiles.
@@ -69,7 +75,7 @@ class LongPressAndThumbnailTest {
         rig.awaitLoaded(incognito, url)
         val incognitoThumbnail = awaitThumbnail(incognito)
         assertTrue(darkPixelShare(incognitoThumbnail) > MIN_TEXT_SHARE)
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.container.thumbnails.awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.thumbnails().awaitIdle() } }
         assertFalse("never on disk", File(thumbnailDir(), "$incognito.webp").exists())
         assertEquals(listOf("$normal.webp"), thumbnailDir().list().orEmpty().toList())
     }
@@ -85,7 +91,7 @@ class LongPressAndThumbnailTest {
     }
 
     private fun awaitThumbnail(tabId: String): Bitmap =
-        checkNotNull(awaitValue(rig.container.thumbnails.observe(tabId), "the thumbnail of $tabId") { it != null }).asAndroidBitmap()
+        checkNotNull(awaitValue(rig.graph.thumbnails().observe(tabId), "the thumbnail of $tabId") { it != null }).asAndroidBitmap()
 
     private fun thumbnailDir() = File(rig.storageDir, "thumbs")
 

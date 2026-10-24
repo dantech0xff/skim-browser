@@ -3,7 +3,10 @@ package com.dantech.skimbrowser.ui.settings
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dantech.skimbrowser.di.AppVersion
 import com.dantech.skimbrowser.domain.settings.SearchEngine
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
 import com.dantech.skimbrowser.domain.usecase.SetSearchEngine
@@ -31,12 +34,12 @@ data class SettingsUiState(
  * default browser is reported with [setDefaultBrowser] when the screen resumes, because the system
  * can change it while Skim is in the background. The screen reads that; this class keeps no Context.
  */
-class SettingsViewModel(
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val saveSearchEngine: SetSearchEngine,
     private val saveTheme: SetTheme,
-    versionName: String,
-    versionCode: Int,
+    version: AppVersion,
 ) : ViewModel() {
 
     private val defaultBrowser = MutableStateFlow(false)
@@ -47,13 +50,13 @@ class SettingsViewModel(
             theme = stored.theme,
             isDefaultBrowser = isDefault,
             askBeforeSending = stored.askBeforeSending,
-            versionName = versionName,
-            versionCode = versionCode,
+            versionName = version.name,
+            versionCode = version.code,
         )
     }.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,
-        SettingsUiState(versionName = versionName, versionCode = versionCode),
+        SettingsUiState(versionName = version.name, versionCode = version.code),
     )
 
     /** The default-browser role as the screen just read it. */

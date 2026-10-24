@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -25,10 +27,14 @@ import org.junit.runner.RunWith
  * Incognito on the device's WebView profiles: what a session's tabs share and keep from normal
  * tabs, which profile every WebView of a session gets, and what is left once the session ends.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class IncognitoProfileTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Before

@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.ai
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -9,9 +11,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.system.Clipboard
@@ -23,21 +22,11 @@ import kotlinx.coroutines.launch
 
 /** Ask about this page (06), for [key]'s tab or a saved chat. */
 @Composable
-fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel(key = "ask-${key.tabId}-${key.savedChatId}-${key.fromReader}") {
-        AskPageViewModel(
-            key = key,
-            tabs = container.tabManager,
-            sessions = container.chatSessions,
-            summarizePage = container.summarizePage,
-            askPage = container.askPage,
-            retryAnswer = container.retryAnswer,
-            network = container.networkMonitor,
-            readerHighlights = container.readerHighlights,
-            loadSavedChat = container.loadSavedChat,
-            savedState = createSavedStateHandle(),
-            appScope = container.appScope,
-        )
+fun AskPageRoute(key: AskPageKey, navigator: SkimNavigator) {
+    val model = hiltViewModel<AskPageViewModel, AskPageViewModel.Factory>(
+        key = "ask-${key.tabId}-${key.savedChatId}-${key.fromReader}",
+    ) { factory ->
+        factory.create(key)
     }
     val state by model.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -79,12 +68,10 @@ fun AskPageRoute(key: AskPageKey, container: AppContainer, navigator: SkimNaviga
 
 /** The first-time permission dialog (06d) for [key]'s site. */
 @Composable
-fun AiPermissionRoute(key: AiPermissionKey, container: AppContainer, navigator: SkimNavigator) {
-    val tabs by container.tabManager.state.collectAsStateWithLifecycle()
+fun AiPermissionRoute(key: AiPermissionKey, navigator: SkimNavigator) {
+    val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
     val host = hostOf(tabs.tab(key.tabId)?.url.orEmpty()).orEmpty()
-    val model = viewModel(key = "allow-${key.tabId}") {
-        AiPermissionViewModel(container.setSkimAi)
-    }
+    val model = hiltViewModel<AiPermissionViewModel>(key = "allow-${key.tabId}")
     AiPermissionDialog(
         host = host,
         onAllow = {

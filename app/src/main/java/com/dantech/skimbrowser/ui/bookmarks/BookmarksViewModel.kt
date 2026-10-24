@@ -1,5 +1,9 @@
 package com.dantech.skimbrowser.ui.bookmarks
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -79,8 +83,9 @@ data class BookmarksUiState(
  * looks through every folder. Deleting a bookmark offers Undo through [undo], which still runs
  * after this screen is gone.
  */
-class BookmarksViewModel(
-    private val folderId: Long?,
+@HiltViewModel(assistedFactory = BookmarksViewModel.Factory::class)
+class BookmarksViewModel @AssistedInject constructor(
+    @Assisted private val folderId: Long?,
     private val bookmarks: BookmarkRepository,
     private val deleteBookmark: DeleteBookmark,
     private val restoreBookmark: RestoreBookmark,
@@ -88,6 +93,11 @@ class BookmarksViewModel(
     private val undo: UndoRegistry,
     private val openUrl: OpenUrlInCurrentTab,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(folderId: Long?): BookmarksViewModel
+    }
 
     private val query = MutableStateFlow("")
 

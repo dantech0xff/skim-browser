@@ -14,22 +14,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.domain.tab.TabsState
+import com.dantech.skimbrowser.di.ShellEntryPoint
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
+import com.dantech.skimbrowser.ui.navigation.NavigatorEntryPoint
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.WelcomeKey
 import com.dantech.skimbrowser.ui.navigation.reconcileBackStack
+import com.dantech.skimbrowser.ui.navigation.rememberShell
 import com.dantech.skimbrowser.ui.navigation.skimNavConfig
 import com.dantech.skimbrowser.ui.navigation.topScreen
+import dagger.hilt.EntryPoints
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
@@ -58,13 +62,13 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 @Composable
 fun SkimApp(
-    container: AppContainer,
     host: BrowserHost,
     pendingLinks: ReceiveChannel<String>,
     onNavigator: (SkimNavigator) -> Unit = {},
 ) {
-    val settings by remember(container) { container.settings.settings }.collectAsStateWithLifecycle(initialValue = null)
-    val onboarded by produceState<Boolean?>(initialValue = null, container) { value = startUp(container) }
+    val shell = rememberShell()
+    val settings by remember(shell) { shell.settings().settings }.collectAsStateWithLifecycle(initialValue = null)
+    val onboarded by produceState<Boolean?>(initialValue = null, shell) { value = startUp(shell) }
     val theme = settings?.theme ?: ThemeSetting.System
     val started = onboarded
     if (started == null) {
@@ -74,22 +78,18 @@ fun SkimApp(
         return
     }
 
-    val tabs = container.tabManager
+    val tabs = shell.tabManager()
     val tabsState by tabs.state.collectAsStateWithLifecycle()
     val backStack = rememberNavBackStack(skimNavConfig, if (started) BrowserKey else WelcomeKey)
     val scope = rememberCoroutineScope()
-    val navigator = remember(backStack, scope) {
+    val context = LocalContext.current
+    val navigatorFactory = remember(context) {
+        EntryPoints.get(context, NavigatorEntryPoint::class.java).navigatorFactory()
+    }
+    val navigator = remember(backStack, scope, host.secure) {
         // A restored back stack may point at tabs that did not come back; it is fixed once, before it shows.
         backStack.reconcileWith(tabsState)
-        SkimNavigator(
-            backStack,
-            tabs,
-            container.incognitoSession,
-            host.secure,
-            container.snackbarController,
-            container.aiGate,
-            scope,
-        )
+        navigatorFactory.create(backStack, host.secure, scope)
     }
     val keys = backStack.toList()
     val incognitoSurface = secureTarget(keys, tabsState)
@@ -102,7 +102,7 @@ fun SkimApp(
     )
     SystemBarsEffect(theme.isDark(isSystemInDarkTheme(), incognitoSurface))
     // A download that ends is told on whatever screen is up, with the one snackbar host below.
-    DownloadSnackbarEffect(container.downloadTracker, container.snackbarController, host.secure)
+    DownloadSnackbarEffect(shell.downloads(), shell.snackbar(), host.secure)
     LaunchedEffect(navigator) {
         // The channel belongs to the Activity, so each link is received here exactly once.
         for (url in pendingLinks) {
@@ -118,11 +118,11 @@ fun SkimApp(
     SkimTheme(theme, incognito = incognitoSurface) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
-                SkimNavDisplay(backStack, navigator, container)
+                SkimNavDisplay(backStack, navigator)
                 SkimSnackbarHost(
-                    controller = container.snackbarController,
+                    controller = shell.snackbar(),
                     placement = topScreen(keys)?.placement ?: SnackbarPlacement.Bottom,
-                    onAction = { action -> interpret(action, navigator, container.undoRegistry, host.activityHost) },
+                    onAction = { action -> interpret(action, navigator, shell.undo(), host.activityHost) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
@@ -135,11 +135,11 @@ fun SkimApp(
  * long: settings that cannot be read count as a first launch, and tabs that are not restored in
  * time (or not at all) leave the browser to open a New tab.
  */
-private suspend fun startUp(container: AppContainer): Boolean {
-    val onboarded = withTimeoutOrNull(START_TIMEOUT_MS) { container.settings.settings.first().onboardingCompleted }
+private suspend fun startUp(shell: ShellEntryPoint): Boolean {
+    val onboarded = withTimeoutOrNull(START_TIMEOUT_MS) { shell.settings().settings.first().onboardingCompleted }
     if (onboarded == null) Log.w(TAG, "Settings were not read in time")
     try {
-        if (withTimeoutOrNull(START_TIMEOUT_MS) { container.tabManager.restore() } == null) {
+        if (withTimeoutOrNull(START_TIMEOUT_MS) { shell.tabManager().restore() } == null) {
             Log.w(TAG, "Saved tabs were not restored in time")
         }
     } catch (e: CancellationException) {

@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.ui.history
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.dantech.skimbrowser.di.WallClock
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -47,14 +50,15 @@ data class HistoryUiState(
  * runs after this screen is gone. A visit recorded again for the same URL while Undo is waiting
  * keeps the newer row: [HistoryRepository.restore] does not replace it.
  */
-class HistoryViewModel(
+@HiltViewModel
+class HistoryViewModel @Inject constructor(
     private val history: HistoryRepository,
     private val removeHistoryEntry: RemoveHistoryEntry,
     private val restoreHistoryEntry: RestoreHistoryEntry,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
     private val openUrl: OpenUrlInCurrentTab,
-    private val clock: () -> Long = System::currentTimeMillis,
+    @WallClock private val clock: () -> Long = System::currentTimeMillis,
     private val zone: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 

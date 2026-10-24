@@ -54,7 +54,7 @@ class SkimThemeTest {
 
     @Test
     fun dynamicColorUsesTheWallpaperSchemeFromApi31() {
-        val scheme = colorSchemeOf { SkimTheme(ThemeSetting.Light, content = it) }
+        val scheme = colorSchemeOf { SkimTheme(ThemeSetting.Light, dynamicColor = true, content = it) }
 
         val wallpaper = dynamicLightColorScheme(ApplicationProvider.getApplicationContext<Context>())
         assertEquals(wallpaper.primary, scheme.primary)

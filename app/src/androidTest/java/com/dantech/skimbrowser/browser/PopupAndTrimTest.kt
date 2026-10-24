@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.content.ComponentCallbacks2
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
@@ -17,10 +19,14 @@ import org.junit.runner.RunWith
  * only after a tap, as a foreground tab that stays linked to its opener, kept alive with it when the
  * app goes to the background, and closed back to the opener by `window.close()`.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class PopupAndTrimTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Test
@@ -61,7 +67,7 @@ class PopupAndTrimTest {
         assertEquals("neither WebView was replaced", before, openerGeneration.value to popupGeneration.value)
         assertTrue(rig.runtime(opener).pageLoaded && rig.runtime(popup.id).pageLoaded)
         assertEquals("the popup still talks to its opener", true, jsValue(rig.evaluate(popup.id, "window.opener !== null")))
-        assertNotNull("their state was saved", runBlocking { rig.container.tabStateStore.load(opener, incognito = false) })
+        assertNotNull("their state was saved", runBlocking { rig.graph.tabStateStore().load(opener, incognito = false) })
     }
 
     @Test

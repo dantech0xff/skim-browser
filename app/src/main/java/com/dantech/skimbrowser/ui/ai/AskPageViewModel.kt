@@ -1,5 +1,10 @@
 package com.dantech.skimbrowser.ui.ai
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -107,8 +112,9 @@ sealed interface AskPageEffect {
  * that has enough text and is online. Opening again, or coming back after process death, shows
  * what was already saved and sends nothing until the person asks.
  */
-class AskPageViewModel(
-    private val key: AskPageKey,
+@HiltViewModel(assistedFactory = AskPageViewModel.Factory::class)
+class AskPageViewModel @AssistedInject constructor(
+    @Assisted private val key: AskPageKey,
     private val tabs: TabsController,
     private val sessions: PageChats,
     private val summarizePage: SummarizePage,
@@ -118,8 +124,13 @@ class AskPageViewModel(
     private val readerHighlights: ReaderHighlights,
     private val loadSavedChat: LoadSavedChat,
     private val savedState: SavedStateHandle,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(key: AskPageKey): AskPageViewModel
+    }
 
     private val _state = MutableStateFlow(AskPageUiState())
     val state: StateFlow<AskPageUiState> = _state.asStateFlow()

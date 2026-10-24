@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -15,10 +17,14 @@ import org.junit.runner.RunWith
  * Incognito on a WebView without profiles: there is none, and nothing falls back to the profile
  * normal tabs share. Runs only on such a WebView; IncognitoProfileTest covers the others.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class IncognitoUnavailableTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val rig = BrowserRig()
 
     @Before

@@ -34,6 +34,7 @@ data class BrowserHost(
         blob.destroy()
         downloads.destroy()
         pool.destroyAll()
+        activityHost.destroy()
     }
 }
 

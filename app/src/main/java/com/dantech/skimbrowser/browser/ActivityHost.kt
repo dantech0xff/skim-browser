@@ -40,6 +40,9 @@ interface ActivityHost {
      * @throws SecurityException when the target app does not let Skim start it.
      */
     fun startExternal(intent: Intent)
+
+    /** The Activity is being destroyed. A host with nothing waiting does nothing. */
+    fun destroy() {}
 }
 
 /**
@@ -99,7 +102,7 @@ class ActivityResultHost(
     }
 
     /** The Activity is being destroyed: every request still waiting is answered as cancelled. */
-    fun destroy() {
+    override fun destroy() {
         destroyed = true
         takeFiles()?.invoke(Activity.RESULT_CANCELED, null)
         takePermissions()?.let(::deny)

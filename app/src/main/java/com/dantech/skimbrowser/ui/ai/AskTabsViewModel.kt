@@ -1,5 +1,10 @@
 package com.dantech.skimbrowser.ui.ai
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.assisted.Assisted
+import com.dantech.skimbrowser.di.AppScope
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -87,16 +92,22 @@ data class AskTabsUiState(
  * Ask Skim about the open tabs. A prompt on the key is sent once. Opening again, or coming back
  * after process death, shows what was already saved and sends nothing until the person asks.
  */
-class AskTabsViewModel(
-    private val key: AskTabsKey,
+@HiltViewModel(assistedFactory = AskTabsViewModel.Factory::class)
+class AskTabsViewModel @AssistedInject constructor(
+    @Assisted private val key: AskTabsKey,
     private val sessions: PageChats,
     private val overviewTabs: OverviewTabs,
     private val askTabs: AskTabs,
     private val collectOpenTabs: CollectOpenTabs,
     private val network: NetworkAvailability,
     private val savedState: SavedStateHandle,
-    private val appScope: CoroutineScope,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(key: AskTabsKey): AskTabsViewModel
+    }
 
     private val _state = MutableStateFlow(AskTabsUiState())
     val state: StateFlow<AskTabsUiState> = _state.asStateFlow()

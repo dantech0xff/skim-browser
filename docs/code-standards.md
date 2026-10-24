@@ -10,7 +10,7 @@ A composable does not open a tab, allow a site, group tabs, or delete browsing o
 
 ## ViewModels
 
-ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with the `viewModel { }` factory and receives use cases, or a domain repository interface for a read that does nothing but forward the call, from `AppContainer` or `SavedStateHandle`. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.
+ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with `hiltViewModel`. Navigation arguments are assisted parameters, not values read from `SavedStateHandle`. It receives use cases, or a domain repository interface for a read that does nothing but forward the call. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.
 
 ## Domain and data
 
@@ -22,11 +22,11 @@ Settings go through `domain.settings.SettingsRepository`. Do not read the DataSt
 
 ## Dependencies
 
-`AppContainer` constructs the graph. Do not add a DI framework in passing. New process-wide types are `val`s on the container, created lazily. Types that live only as long as the Activity (`WebViewPool`, `SkimNavigator`) stay off the container and on `MainActivity` / `BrowserHost`.
+Hilt is the only composition root. New process types are `@Singleton` on `SingletonComponent`. Activity-lifetime types are `@ActivityScoped` and `MainActivity` destroys them in `onDestroy`. `domain/` does not import `javax.inject` or `dagger`.
 
 ## Coroutines
 
-Process work uses `AppContainer.appScope` (`SupervisorJob` + `Dispatchers.Default`). A failure is logged and stored in `lastError`. It does not cancel sibling work. Room and settings writes that must stay ordered go through `SerialWriter`.
+Process work uses the `@AppScope` binding (`SupervisorJob` + `Dispatchers.Default`). A failure is logged and stored in `lastError`. It does not cancel sibling work. Room and settings writes that must stay ordered go through `SerialWriter`.
 
 `Dispatchers.Main` in production is the Android main thread. Unit tests that construct a `TabManager` or a ViewModel replace it with `MainDispatcherRule` so `runTest` can advance the work.
 

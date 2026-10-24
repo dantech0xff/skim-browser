@@ -2,7 +2,7 @@
 
 One Gradle module, `:app`. Kotlin is compiled by the Android Gradle Plugin (built-in Kotlin). Entry points are `SkimApplication` and `MainActivity`.
 
-`AppContainer` (`AppContainer.kt`) is the process-wide graph. It is created in `SkimApplication.onCreate`. Tests construct another container with `AppStorage.temp(dir)` so Room, DataStore, tab state, and thumbnails land in a temporary directory. `close()` drops the database and cancels the process scope so the next container can open the same files.
+Hilt (`SingletonComponent`) is the process-wide graph. `SkimApplication` is `@HiltAndroidApp`. Tests install a temporary `AppStorage` before the graph opens, so Room, DataStore, tab state, and thumbnails land in a temporary directory. `ProcessGraph.close()` drops the database and cancels the process scope so the next graph can open the same files.
 
 ## Packages
 
@@ -38,4 +38,4 @@ SSE fixtures used by unit tests and the release smoke test are in `app/src/share
 | `app/src/androidTest` | Instrumented tests, including `ProcessDeathRestoreTest` and `ReleaseSmokeTest`. |
 | `app/src/test/screenshots` | Recorded goldens. Board images share names with `design/screens/`. |
 
-`RestoreAcrossContainersTest` opens a real `AppContainer`, closes it, and restores with a second container on the same directory.
+`RestoreAcrossContainersTest` opens the process graph, closes it, and restores with a second graph on the same directory.

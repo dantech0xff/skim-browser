@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.bookmarks
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +32,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.bookmark.FolderKind
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
@@ -50,17 +49,11 @@ import kotlinx.coroutines.flow.map
 
 /** Bookmarks (14), at the root or in one folder. Search looks through every folder. */
 @Composable
-fun BookmarksRoute(key: BookmarksKey, container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel(key = "bookmarks-${key.folderId}") {
-        BookmarksViewModel(
-            key.folderId,
-            container.bookmarkRepository,
-            container.deleteBookmark,
-            container.restoreBookmark,
-            container.snackbarController,
-            container.undoRegistry,
-            container.openUrlInCurrentTab,
-        )
+fun BookmarksRoute(key: BookmarksKey, navigator: SkimNavigator) {
+    val model = hiltViewModel<BookmarksViewModel, BookmarksViewModel.Factory>(
+        key = "bookmarks-${key.folderId}",
+    ) { factory ->
+        factory.create(key.folderId)
     }
     val state by model.state.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }

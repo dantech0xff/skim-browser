@@ -10,25 +10,20 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.MainThread
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
-import com.dantech.skimbrowser.browser.ActivityHost
-import com.dantech.skimbrowser.browser.ActivityResultHost
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.browser.FullscreenController
+import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.WebViewPool
-import com.dantech.skimbrowser.browser.WindowSecureController
-import com.dantech.skimbrowser.browser.downloads.BlobBridge
-import com.dantech.skimbrowser.browser.downloads.DownloadRouter
-import com.dantech.skimbrowser.browser.downloads.InProcessDownloader
-import com.dantech.skimbrowser.browser.downloads.MediaStoreDownloads
-import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
+import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import dagger.hilt.android.AndroidEntryPoint
 import com.dantech.skimbrowser.ui.shell.IncomingIntents
 import com.dantech.skimbrowser.ui.shell.SkimApp
+import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 
 /**
@@ -44,12 +39,14 @@ import kotlinx.coroutines.channels.Channel
  * It shows the app ([SkimApp]) and hands it the web links other apps send: the one that started it
  * and, as the activity is single-task, each later one through [onNewIntent].
  */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val container: AppContainer get() = (application as SkimApplication).container
-
-    private lateinit var activityHost: ActivityResultHost
-    private lateinit var browserHost: BrowserHost
+    @Inject lateinit var browserHost: BrowserHost
+    @Inject lateinit var tabs: TabManager
+    @Inject lateinit var downloads: DownloadTracker
+    @Inject lateinit var browsingData: BrowsingDataCleaner
+    @Inject lateinit var incognito: IncognitoSession
 
     /**
      * Links other apps sent, waiting for the app to open them. It belongs to this Activity, so a
@@ -70,7 +67,7 @@ class MainActivity : ComponentActivity() {
     private val downloadFinished = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, NO_DOWNLOAD)
-            if (id != NO_DOWNLOAD) container.downloadTracker.onDownloadComplete(id)
+            if (id != NO_DOWNLOAD) downloads.onDownloadComplete(id)
         }
     }
 
@@ -78,18 +75,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
-        // Result launchers must be registered before the Activity starts.
-        activityHost = ActivityResultHost(this)
-        browserHost = createBrowserHost(this, container, activityHost)
-        container.tabManager.attach(browserHost.pool)
-        container.browsingDataCleaner.applyPendingCacheClear(browserHost.pool)
+        tabs.attach(browserHost.pool)
+        browsingData.applyPendingCacheClear(browserHost.pool)
         // Deleting old incognito profiles needs the main thread; it waits until the first frame is drawn.
-        window.decorView.post { container.incognitoSession.purgeStale() }
+        window.decorView.post { incognito.purgeStale() }
         // A recreated Activity gets the intent that started the first one again: that link was opened.
         if (savedInstanceState == null) receiveLink(intent)
         setContent {
             CompositionLocalProvider(LocalBrowserHost provides browserHost) {
-                SkimApp(container, browserHost, pendingLinks, onNavigator = { navigator = it })
+                SkimApp(browserHost, pendingLinks, onNavigator = { navigator = it })
             }
         }
     }
@@ -117,7 +111,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_EXPORTED,
         )
         // Downloads that finished while the Activity was stopped were not heard.
-        container.downloadTracker.refresh()
+        downloads.refresh()
     }
 
     override fun onStop() {
@@ -133,13 +127,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (::browserHost.isInitialized) {
-            val tabs = container.tabManager
+            val openTabs = tabs
             // Leaving for good ends what Undo still held, while the pool can still clear an incognito
             // session's cache through a WebView of its profile.
-            if (isFinishing) tabs.finalizePendingCloses()
+            if (isFinishing) openTabs.finalizePendingCloses()
             browserHost.destroy()
-            activityHost.destroy()
-            tabs.detach(browserHost.pool)
+            openTabs.detach(browserHost.pool)
         }
         super.onDestroy()
     }
@@ -153,45 +146,3 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * The browser host of [activity] over [container]'s process-wide parts, built the one way the app
- * and its device tests both use. Call it in `onCreate`, before the Activity starts; the caller
- * attaches the pool to the tab manager and [BrowserHost.destroy]s the host in `onDestroy`.
- */
-@MainThread
-internal fun createBrowserHost(activity: ComponentActivity, container: AppContainer, activityHost: ActivityHost): BrowserHost {
-    val fullscreen = FullscreenController(activity)
-    val sitePermissions = SitePermissionBridge(
-        context = activity.applicationContext,
-        tabs = container.tabManager.state,
-        repository = container.sitePermissionRepository,
-        incognitoSession = container.incognitoSession,
-        activityHost = activityHost,
-        scope = container.appScope,
-    )
-    val blob = BlobBridge(activity.assets)
-    val store = MediaStoreDownloads(activity.applicationContext)
-    val downloads = DownloadRouter(
-        tabs = container.tabManager,
-        incognito = container.incognitoSession,
-        profiles = container.browserProfiles,
-        tracker = container.downloadTracker,
-        inProcess = InProcessDownloader({ container.httpClient }, store),
-        store = store,
-        blob = blob,
-        activityHost = activityHost,
-        scope = container.appScope,
-    )
-    val pool = WebViewPool(
-        activity = activity,
-        tabs = container.tabManager,
-        incognito = container.incognitoSession,
-        stateStore = container.tabStateStore,
-        thumbnails = container.thumbnails,
-        activityHost = activityHost,
-        fullscreen = fullscreen,
-        sitePermissions = sitePermissions,
-        downloads = downloads,
-    )
-    return BrowserHost(pool, sitePermissions, downloads, blob, activityHost, fullscreen, WindowSecureController(activity))
-}

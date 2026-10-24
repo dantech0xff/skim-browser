@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.room)
     alias(libs.plugins.aboutlibraries)
     alias(libs.plugins.roborazzi)
@@ -49,7 +50,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.dantech.skimbrowser.SkimTestRunner"
 
         buildConfigField("String", "TERMS_URL", javaString(skimProperty("skim.termsUrl")))
         buildConfigField("String", "PRIVACY_URL", javaString(skimProperty("skim.privacyUrl")))
@@ -349,6 +350,10 @@ dependencies {
     implementation(libs.anthropic.java)
     implementation(libs.jsoup)
     implementation(libs.okhttp)
+    implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
+    ksp(libs.hilt.compiler)
+    ksp(libs.kotlin.metadata.jvm)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -359,6 +364,9 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.junit)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.hilt.android.testing)
+    kspTest(libs.hilt.compiler)
+    kspTest(libs.kotlin.metadata.jvm)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -367,6 +375,9 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+    kspAndroidTest(libs.kotlin.metadata.jvm)
 }
 
 kover {
@@ -379,6 +390,10 @@ kover {
                     "*Dao_Impl$*",
                     "*Database_Impl",
                     "*Database_Impl$*",
+                    "Hilt_*",
+                    "*_Factory",
+                    "*_MembersInjector",
+                    "*_HiltModules*",
                 )
             }
         }

@@ -18,6 +18,12 @@ import com.dantech.skimbrowser.ui.shell.INCOGNITO_SURFACE_OWNER
 import com.dantech.skimbrowser.ui.shell.secureTarget
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ActivityComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -31,14 +37,14 @@ import kotlinx.coroutines.launch
  * frame is ever drawn without it. The shell lets the flag go once nothing incognito is on screen.
  */
 @MainThread
-class SkimNavigator(
-    private val backStack: NavBackStack<NavKey>,
+class SkimNavigator @AssistedInject constructor(
+    @Assisted private val backStack: NavBackStack<NavKey>,
     private val tabs: TabsController,
     private val incognito: IncognitoSupport,
-    private val secure: WindowPrivacy,
+    @Assisted private val secure: WindowPrivacy,
     private val snackbar: SnackbarController,
     private val aiGate: AskPageAccess,
-    private val scope: CoroutineScope,
+    @Assisted private val scope: CoroutineScope,
 ) {
     private val arming = mutableIntStateOf(0)
 
@@ -213,4 +219,20 @@ class SkimNavigator(
     private fun incognitoUnavailable() {
         snackbar.show(UiText.Res(R.string.incognito_unavailable))
     }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            backStack: NavBackStack<NavKey>,
+            secure: WindowPrivacy,
+            scope: CoroutineScope,
+        ): SkimNavigator
+    }
+}
+
+/** The activity's navigator factory. The navigator itself is not retained. */
+@EntryPoint
+@InstallIn(ActivityComponent::class)
+interface NavigatorEntryPoint {
+    fun navigatorFactory(): SkimNavigator.Factory
 }

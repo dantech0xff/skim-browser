@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.onboarding
 
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import android.app.Activity
 import android.net.Uri
 import android.os.SystemClock
@@ -45,14 +47,18 @@ import org.junit.runner.RunWith
  * view model and the app's importer into Room, and the window's snackbar reports it, "Imported N
  * bookmarks" with View, or the error alone for 4 s. The bookmarks imported are deleted afterwards.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
 class SetupImportTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val skim = SkimAppRule()
 
     private val files: File get() = File(skim.app.cacheDir, "shared/bookmarks-import-test")
-    private val snackbar: SnackbarController get() = skim.container.snackbarController
+    private val snackbar: SnackbarController get() = skim.graph.snackbarController()
     private var lastFolderBefore = 0L
 
     @Before
@@ -65,7 +71,7 @@ class SetupImportTest {
         runBlocking {
             withContext(Dispatchers.IO) {
                 // A folder's subfolders and bookmarks were all made after it, so their ids are larger.
-                skim.container.database.openHelper.writableDatabase.apply {
+                skim.graph.database().openHelper.writableDatabase.apply {
                     execSQL("DELETE FROM bookmarks WHERE folderId > ?", arrayOf<Any>(lastFolderBefore))
                     execSQL("DELETE FROM bookmark_folders WHERE id > ?", arrayOf<Any>(lastFolderBefore))
                 }
@@ -84,7 +90,7 @@ class SetupImportTest {
         assertEquals(UiText.Plural(R.plurals.snackbar_imported_bookmarks, BOOKMARKS_IN_FILE), message.text)
         assertFalse(message.isError)
         val view = message.action as SnackbarAction.ViewImported
-        val folder = runBlocking { skim.container.bookmarkRepository.observeRoot().first() }.folders.single { it.folder.id == view.folderId }
+        val folder = runBlocking { skim.graph.bookmarkRepository().observeRoot().first() }.folders.single { it.folder.id == view.folderId }
         assertEquals(FolderKind.IMPORTED, folder.folder.kind)
         assertEquals("bookmarks-export.html", folder.folder.sourceFileName)
         assertEquals("the http and https bookmarks, subfolders included", BOOKMARKS_IN_FILE, folder.bookmarkCount)
@@ -134,10 +140,10 @@ class SetupImportTest {
     /** Setup's view model as Setup makes it, over the app's own importer, settings and snackbar. */
     private fun setupViewModel() = SetupViewModel(
         isDefaultBrowser = { DefaultBrowser.isDefault(skim.app) },
-        importBookmarks = ImportBookmarks(skim.container.bookmarkImporter),
-        completeOnboarding = CompleteOnboarding(skim.container.settings),
+        importBookmarks = ImportBookmarks(skim.graph.bookmarkImporter()),
+        completeOnboarding = CompleteOnboarding(skim.graph.settings()),
         snackbar = snackbar,
-        appScope = skim.container.appScope,
+        appScope = skim.graph.appScope(),
     )
 
     /** The test APK's asset [name] as a document the app reads through its content resolver. */
@@ -154,7 +160,7 @@ class SetupImportTest {
 
     private fun lastFolderId(): Long = runBlocking {
         withContext(Dispatchers.IO) {
-            skim.container.database.openHelper.readableDatabase.query("SELECT COALESCE(MAX(id), 0) FROM bookmark_folders").use { cursor ->
+            skim.graph.database().openHelper.readableDatabase.query("SELECT COALESCE(MAX(id), 0) FROM bookmark_folders").use { cursor ->
                 cursor.moveToFirst()
                 cursor.getLong(0)
             }

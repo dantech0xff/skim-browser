@@ -1,12 +1,11 @@
 package com.dantech.skimbrowser.ui.skimhistory
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimDialogContent
@@ -31,8 +30,8 @@ fun ClearSkimHistoryDialog(
 
 /** Clears every saved chat, then closes. Leaving the dialog does not cancel the delete. */
 @Composable
-fun ClearSkimHistoryRoute(container: AppContainer, navigator: SkimNavigator) {
-    val model = viewModel { ClearSkimHistoryViewModel(container.clearSkimHistory, container.appScope) }
+fun ClearSkimHistoryRoute(navigator: SkimNavigator) {
+    val model = hiltViewModel<ClearSkimHistoryViewModel>()
     val scope = rememberCoroutineScope()
     ClearSkimHistoryDialog(
         onClear = {

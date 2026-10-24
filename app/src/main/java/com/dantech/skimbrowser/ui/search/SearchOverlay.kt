@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.search
 
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import androidx.annotation.DrawableRes
@@ -67,8 +68,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.SegmentedColumn
 import com.dantech.skimbrowser.ui.components.SkimListItem
@@ -81,14 +80,7 @@ import kotlinx.coroutines.flow.map
  * content, whose view model store keeps it while the browser is in the back stack.
  */
 @Composable
-fun searchViewModel(container: AppContainer): SearchViewModel = viewModel(key = SEARCH_VIEW_MODEL_KEY) {
-    SearchViewModel(
-        engine = container.settings.settings.map { it.searchEngine },
-        suggestions = container.suggestionService::suggestions,
-        matchHistory = container.matchHistory,
-        matchBookmarks = container.matchBookmarks,
-    )
-}
+fun searchViewModel(): SearchViewModel = hiltViewModel(key = SEARCH_VIEW_MODEL_KEY)
 
 /**
  * Search & suggestions (04b): a full-screen layer over the screen that opened it, shown while it is
@@ -395,7 +387,7 @@ internal fun NoKeyboardLearning(enabled: Boolean, content: @Composable () -> Uni
 }
 
 /** The key of [searchViewModel] in the browser destination's store. */
-private const val SEARCH_VIEW_MODEL_KEY = "search"
+internal const val SEARCH_VIEW_MODEL_KEY = "search"
 
 private val BarHeight = 56.dp
 

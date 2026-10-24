@@ -9,6 +9,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.tab.LoadError
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -92,10 +96,16 @@ data class FindUiState(
  * has loaded, the same text is searched again, which also lets a step still waiting for the old
  * count go.
  */
-class BrowsingViewModel(
-    private val tabId: String,
+@HiltViewModel(assistedFactory = BrowsingViewModel.Factory::class)
+class BrowsingViewModel @AssistedInject constructor(
+    @Assisted private val tabId: String,
     private val tabs: TabsController,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(tabId: String): BrowsingViewModel
+    }
 
     /** The text of the Find in page field; the bar's input field edits it. */
     val findQuery = TextFieldState()

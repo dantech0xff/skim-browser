@@ -1,13 +1,11 @@
 package com.dantech.skimbrowser.ui.browsing
 
-import android.app.Application
 import android.content.pm.PackageInfo
 import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.WebViewClient
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -31,18 +29,24 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.TextRange
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.AppContainer
+import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.TestStorage
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
+import javax.inject.Inject
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.browser.FakeActivityHost
 import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.domain.tab.HitTarget
@@ -51,7 +55,6 @@ import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabRuntime
-import com.dantech.skimbrowser.createBrowserHost
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
@@ -68,7 +71,9 @@ import com.dantech.skimbrowser.ui.navigation.TabsKey
 import com.dantech.skimbrowser.ui.search.SearchViewModel
 import com.dantech.skimbrowser.ui.search.latestDialog
 import com.dantech.skimbrowser.ui.search.pass
-import com.dantech.skimbrowser.ui.search.searchViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.dantech.skimbrowser.HiltRouteActivity
+import com.dantech.skimbrowser.ui.search.SEARCH_VIEW_MODEL_KEY
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -84,6 +89,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -96,18 +103,34 @@ import org.robolectric.shadows.ShadowWebView
  * plays what the page reports and reads what was asked of it. Incognito tabs cannot open without
  * WebView profiles, so an incognito tab is one of the test's own.
  */
+@HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
-@Config(qualifiers = PHONE_QUALIFIERS)
+@Config(application = HiltTestApplication::class, qualifiers = PHONE_QUALIFIERS)
 class BrowsingRouteTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val folder = TemporaryFolder()
 
-    @get:Rule
-    val composeRule = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule(order = 2)
+    val storage = object : TestWatcher() {
+        override fun starting(description: Description) {
+            ShadowWebView.setCurrentWebViewPackage(
+                PackageInfo().apply {
+                    packageName = "com.google.android.webview"
+                    versionName = "120.0.6099.230"
+                },
+            )
+            TestStorage.current.set(AppStorage.temp(folder.newFolder()))
+        }
+    }
 
-    private val app: Application = ApplicationProvider.getApplicationContext()
-    private lateinit var container: AppContainer
+    @get:Rule(order = 3)
+    val composeRule = createAndroidComposeRule<HiltRouteActivity>()
+
+    @Inject lateinit var graph: ProcessGraph
     private lateinit var host: BrowserHost
     private lateinit var navigator: SkimNavigator
     private lateinit var engine: FakeTabEngine
@@ -122,39 +145,37 @@ class BrowsingRouteTest {
     private lateinit var gateScope: CoroutineScope
     private var gateError: Throwable? = null
 
-    /** The browser destination's store: the browsing and search view models live in it. */
-    private val destination = object : ViewModelStoreOwner {
+    /** The browser destination's store. Extras come from the Hilt activity so assisted view models can be created. */
+    private val destination = object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
         override val viewModelStore = ViewModelStore()
+        override val defaultViewModelProviderFactory: ViewModelProvider.Factory
+            get() = composeRule.activity.defaultViewModelProviderFactory
+        override val defaultViewModelCreationExtras: CreationExtras
+            get() = composeRule.activity.defaultViewModelCreationExtras
     }
     private lateinit var search: SearchViewModel
 
-    private val tabs: TabManager get() = container.tabManager
+    private val tabs: TabManager get() = graph.tabManager()
 
     @Before
     fun setUp() {
         // Robolectric reports no WebView package, so page scripts would stay off and Reader view
         // would never be offered. A current package makes the check run, as it does on a device.
-        ShadowWebView.setCurrentWebViewPackage(
-            PackageInfo().apply {
-                packageName = "com.google.android.webview"
-                versionName = "120.0.6099.230"
-            },
-        )
         gateError = null
         gateScope = CoroutineScope(
             SupervisorJob() + gateDispatcher + CoroutineExceptionHandler { _, error -> gateError = error },
         )
-        container = AppContainer(app, AppStorage.temp(folder.newFolder()))
-        host = createBrowserHost(composeRule.activity, container, FakeActivityHost())
+        hiltRule.inject()
+        host = composeRule.activity.host
         engine = FakeTabEngine(tabs.events)
         tabs.attach(engine)
         navigator = SkimNavigator(
             backStack,
             tabs,
-            container.incognitoSession,
+            graph.incognitoSession(),
             host.secure,
-            container.snackbarController,
-            container.aiGate,
+            graph.snackbarController(),
+            graph.aiGate(),
             gateScope,
         )
     }
@@ -165,7 +186,8 @@ class BrowsingRouteTest {
         host.destroy()
         tabs.detach(engine)
         gateScope.cancel()
-        container.close()
+        if (::graph.isInitialized) graph.close()
+        TestStorage.current.set(null)
     }
 
     // The address and Search & suggestions
@@ -188,7 +210,7 @@ class BrowsingRouteTest {
     fun anIncognitoTabsAddressOpensTheIncognitoSearch() {
         val tab = Tab(id = "incognito-1", incognito = true, url = PAGE, title = "", groupId = null, position = 0, createdAt = 0, lastAccessedAt = 0)
         composeRule.setSkimContent(incognito = true) {
-            Provided { BrowsingRoute(tab, TabRuntime(), container, navigator) }
+            Provided { BrowsingRoute(tab, TabRuntime(), navigator) }
         }
         composeRule.waitForIdle()
 
@@ -399,10 +421,9 @@ class BrowsingRouteTest {
         composeRule.setSkimContent {
             Provided {
                 BrowserRoute(
-                    container = container,
                     navigator = navigator,
                     newTabPage = { Box(Modifier.fillMaxSize().testTag(NEW_TAB_PAGE)) },
-                    page = { tab, runtime -> BrowsingRoute(tab, runtime, container, navigator) },
+                    page = { tab, runtime -> BrowsingRoute(tab, runtime, navigator) },
                 )
             }
         }
@@ -412,7 +433,7 @@ class BrowsingRouteTest {
     @Composable
     private fun Provided(content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalBrowserHost provides host, LocalViewModelStoreOwner provides destination) {
-            search = searchViewModel(container)
+            search = hiltViewModel(key = SEARCH_VIEW_MODEL_KEY)
             content()
         }
     }

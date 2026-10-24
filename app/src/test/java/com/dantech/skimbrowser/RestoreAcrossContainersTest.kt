@@ -1,48 +1,70 @@
 package com.dantech.skimbrowser
 
-import android.app.Application
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.data.db.entity.ChatKind
+import com.dantech.skimbrowser.di.ProcessGraph
+import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.domain.tab.RestoreResult
-import com.dantech.skimbrowser.data.db.entity.ChatKind
-import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.testing.MainDispatcherRule
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
+import javax.inject.Inject
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /**
  * A new container on the same directory is the app after process death. Normal tabs, their groups,
  * the current tab and a saved chat come back. An incognito tab does not, and a chat id that existed
  * only in memory is not stored.
  */
+@HiltAndroidTest
+@Config(application = HiltTestApplication::class)
 @RunWith(AndroidJUnit4::class)
 class RestoreAcrossContainersTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val folder = TemporaryFolder()
 
-    @get:Rule
+    @get:Rule(order = 2)
     val main = MainDispatcherRule()
 
-    private val app: Application = ApplicationProvider.getApplicationContext()
+    @Inject lateinit var graph: ProcessGraph
+
+    @Before
+    fun setUp() {
+        TestStorage.current.set(AppStorage.temp(folder.newFolder()))
+        hiltRule.inject()
+    }
+
+    @After
+    fun tearDown() {
+        graph.close()
+        TestStorage.current.set(null)
+    }
 
     @Test
     fun normalTabsGroupsAndASavedChatComeBack() = runTest {
-        val storage = AppStorage.temp(folder.newFolder())
         lateinit var heat: String
         lateinit var sizing: String
         lateinit var notes: String
         var chatId = 0L
 
-        AppContainer(app, storage).use { container ->
-            val tabs = container.tabManager
+        run {
+            val tabs = graph.tabManager()
             heat = tabs.newTab(incognito = false, url = HEAT)
             sizing = tabs.newTab(incognito = false, url = SIZING)
             notes = tabs.newTab(incognito = false, url = NOTES)
@@ -55,7 +77,7 @@ class RestoreAcrossContainersTest {
                 ),
             )
             tabs.select(heat)
-            chatId = container.chatRepository.createChat(
+            chatId = graph.chatRepository().createChat(
                 SavedChat(
                     kind = ChatKind.PAGE,
                     url = HEAT,
@@ -67,18 +89,19 @@ class RestoreAcrossContainersTest {
             )
             tabs.bindChat(heat, chatId)
             tabs.bindChat(notes, -4)
-            if (container.incognitoSession.isSupported) {
+            if (graph.incognitoSession().isSupported) {
                 tabs.newTab(incognito = true, url = SECRET)
             }
-            container.settings.setLastTabId(heat)
+            graph.settings().setLastTabId(heat)
             tabs.awaitWrites()
         }
+        graph.close()
 
-        AppContainer(app, storage).use { container ->
-            val restored = container.tabManager.restore()
+        run {
+            val restored = graph.tabManager().restore()
             assertTrue(restored is RestoreResult.Restored)
             assertEquals(3, (restored as RestoreResult.Restored).tabCount)
-            val state = container.tabManager.state.value
+            val state = graph.tabManager().state.value
             assertTrue(state.tabs.none { it.incognito })
             assertEquals(setOf(heat, sizing, notes), state.tabs.map { it.id }.toSet())
             assertEquals(heat, state.currentTabId)

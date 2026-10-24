@@ -4,6 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.di.MainImmediate
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
 import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.domain.tab.GroupingBannerState
 import com.dantech.skimbrowser.domain.tab.Tab
@@ -77,16 +83,26 @@ data class TabsUiState(
  * [grouping] is the banner shown after tabs were grouped. This screen only draws it.
  * [grouper] runs while the normal tabs screen is open. Rename and incognito do not pass one.
  */
-class TabsViewModel(
-    private val incognito: Boolean,
+@HiltViewModel(assistedFactory = TabsViewModel.Factory::class)
+class TabsViewModel @AssistedInject constructor(
+    @Assisted private val incognito: Boolean,
     private val tabs: TabsController,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
-    grouping: Flow<GroupingBannerState?> = flowOf(null),
-    private val grouper: TabGrouper? = null,
-    private val appScope: CoroutineScope? = null,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    @Assisted grouping: Flow<GroupingBannerState?> = flowOf(null),
+    @Assisted private val grouper: TabGrouper? = null,
+    @AppScope private val appScope: CoroutineScope? = null,
+    @MainImmediate private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            incognito: Boolean,
+            grouping: Flow<GroupingBannerState?>,
+            grouper: TabGrouper?,
+        ): TabsViewModel
+    }
 
     private val query = MutableStateFlow<String?>(null)
     private var groupingJob: Job? = null

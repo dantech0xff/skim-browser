@@ -15,12 +15,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.newTab
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import com.dantech.skimbrowser.ui.navigation.rememberShell
 
 /** What system Back does on the browser, by priority. */
 enum class BrowserBack {
@@ -80,12 +80,11 @@ fun BrowserBack.perform(tab: Tab, tabs: TabsController, navigator: SkimNavigator
  */
 @Composable
 fun BrowserRoute(
-    container: AppContainer,
     navigator: SkimNavigator,
     newTabPage: @Composable (Tab) -> Unit,
     page: @Composable (Tab, TabRuntime) -> Unit,
 ) {
-    val tabs = container.tabManager
+    val tabs = rememberShell().tabs()
     val state by tabs.state.collectAsStateWithLifecycle()
     val tab = state.currentTab
     if (tab == null) {

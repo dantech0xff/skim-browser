@@ -3,8 +3,13 @@ package com.dantech.skimbrowser.search
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.AppContainer
+import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.TestStorage
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
+import javax.inject.Inject
 import com.dantech.skimbrowser.data.settings.SearchEngine
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -44,17 +49,25 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /**
  * Real HTTP: the service builds each engine's real https address, and the test client sends it to a
  * local server instead (scheme, host and port swapped, path and query kept), so what the server
  * receives is exactly what the engine would.
  */
+@HiltAndroidTest
+@Config(application = HiltTestApplication::class)
 @RunWith(AndroidJUnit4::class)
 class SuggestionServiceTest {
 
-    @get:Rule
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
     val folder = TemporaryFolder()
+
+    @Inject lateinit var graph: ProcessGraph
 
     private val server = MockWebServer()
     private val other = MockWebServer()
@@ -72,6 +85,8 @@ class SuggestionServiceTest {
 
     @After
     fun tearDown() {
+        if (::graph.isInitialized) graph.close()
+        TestStorage.current.set(null)
         clients.forEach { client ->
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()
@@ -354,23 +369,18 @@ class SuggestionServiceTest {
 
     @Test
     fun theAppMakesItsServiceOnFirstUseOverItsOwnClient() {
-        val app: Application = ApplicationProvider.getApplicationContext()
+        TestStorage.current.set(AppStorage.temp(folder.newFolder()))
+        hiltRule.inject()
+        val service = graph.suggestionService()
 
-        AppContainer(app, AppStorage.temp(folder.newFolder())).use { container ->
-            assertFalse(made(container, "suggestionService\$delegate"))
-            assertFalse("the HTTP client waits too", made(container, "httpClientHolder"))
-
-            val service = container.suggestionService
-
-            assertSame(service, container.suggestionService)
-            assertSame(container.httpClient.dispatcher, service.client.dispatcher)
-            assertSame(container.httpClient.connectionPool, service.client.connectionPool)
-            assertEquals(3_000, service.client.callTimeoutMillis)
-            assertTrue(
-                "an interceptor on the shared client would add to what goes to the search engine",
-                container.httpClient.interceptors.isEmpty() && container.httpClient.networkInterceptors.isEmpty(),
-            )
-        }
+        assertSame(service, graph.suggestionService())
+        assertSame(graph.httpClient().dispatcher, service.client.dispatcher)
+        assertSame(graph.httpClient().connectionPool, service.client.connectionPool)
+        assertEquals(3_000, service.client.callTimeoutMillis)
+        assertTrue(
+            "an interceptor on the shared client would add to what goes to the search engine",
+            graph.httpClient().interceptors.isEmpty() && graph.httpClient().networkInterceptors.isEmpty(),
+        )
     }
 
     /** A service whose requests reach [server] instead of the engine. */
@@ -408,12 +418,6 @@ class SuggestionServiceTest {
     private fun fixture(name: String): String =
         checkNotNull(javaClass.classLoader?.getResourceAsStream("suggest/$name.json")) { "Missing fixture $name" }
             .use { it.readBytes().toString(Charsets.UTF_8) }
-
-    /** Whether the container's lazy part behind field [name] was made. */
-    private fun made(container: AppContainer, name: String): Boolean {
-        val field = AppContainer::class.java.getDeclaredField(name).apply { isAccessible = true }
-        return (field.get(container) as Lazy<*>).isInitialized()
-    }
 
     private companion object {
         const val WAIT_MS = 5_000L

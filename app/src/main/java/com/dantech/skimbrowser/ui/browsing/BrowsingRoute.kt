@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import com.dantech.skimbrowser.ui.navigation.rememberShell
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,8 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.dantech.skimbrowser.AppContainer
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
@@ -40,14 +40,19 @@ import com.dantech.skimbrowser.ui.search.searchViewModel
  * The screen's view model lives in the browser destination's store, one for each tab shown.
  */
 @Composable
-fun BrowsingRoute(tab: Tab, runtime: TabRuntime, container: AppContainer, navigator: SkimNavigator) {
-    val tabs = container.tabManager
+fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
+    val shell = rememberShell()
+    val tabs = shell.tabs()
     val host = LocalBrowserHost.current
     val activity = LocalActivity.current
     val context = LocalContext.current
-    val browsing = viewModel(key = "$BROWSING_VIEW_MODEL_KEY:${tab.id}") { BrowsingViewModel(tab.id, tabs) }
+    val browsing = hiltViewModel<BrowsingViewModel, BrowsingViewModel.Factory>(
+        key = "$BROWSING_VIEW_MODEL_KEY:${tab.id}",
+    ) { factory ->
+        factory.create(tab.id)
+    }
     val state by browsing.state.collectAsStateWithLifecycle()
-    val search = searchViewModel(container)
+    val search = searchViewModel()
     var searching by remember(tab.id) { mutableStateOf(false) }
     val closeSearch = {
         searching = false
@@ -56,8 +61,8 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, container: AppContainer, naviga
     }
 
     BackHandler(enabled = state.find != null) { browsing.closeFind() }
-    LaunchedEffect(tabs, tab.id) {
-        tabs.hitTargets.collect { (tabId, target) ->
+    LaunchedEffect(shell, tab.id) {
+        shell.tabManager().hitTargets.collect { (tabId, target) ->
             if (tabId == tab.id) navigator.openLinkOptions(tab.id, target)
         }
     }
