@@ -80,7 +80,7 @@ class TabPoolDeviceTest {
         assertEquals("loaded afresh, without the history the file held", 1, jsValue(rig.evaluate(id, "history.length")))
         assertFalse(rig.runtime(id).canGoBack)
         assertTrue("at the top of the page", rig.isScrolledTo(id, 0))
-        waitUntil("a new state to be saved for it") { runBlocking { rig.graph.tabStateStore().load(id, incognito = false) } != null }
+        waitUntil("a new state to be saved for it") { runBlocking { rig.access.tabStateStore().load(id, incognito = false) } != null }
     }
 
     /** Opens new tabs until [tabId]'s WebView is pushed out of the pool, then waits until its state is on disk. */
@@ -91,7 +91,7 @@ class TabPoolDeviceTest {
             val url = rig.pages.url("/plain.html?filler=$n")
             rig.awaitLoaded(rig.newTab(url), url)
         }
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.tabStateStore().awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.access.tabStateStore().awaitIdle() } }
     }
 
     /**

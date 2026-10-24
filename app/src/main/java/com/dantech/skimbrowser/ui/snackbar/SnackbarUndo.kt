@@ -2,12 +2,15 @@ package com.dantech.skimbrowser.ui.snackbar
 
 import com.dantech.skimbrowser.domain.undo.PendingUndo
 import com.dantech.skimbrowser.domain.undo.UndoSubject
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * [PendingUndo] over the process-wide undo registry and snackbar. Cancel finalizes the tokens and
  * dismisses the snackbar that offers them, in that order.
  */
-class SnackbarUndo(
+@Singleton
+class SnackbarUndo @Inject constructor(
     private val undo: UndoRegistry,
     private val snackbar: SnackbarController,
 ) : PendingUndo {

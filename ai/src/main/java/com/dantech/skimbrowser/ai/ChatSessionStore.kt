@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.ai
 
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.PageConversation
 import com.dantech.skimbrowser.domain.chat.ChatKind
@@ -22,6 +23,8 @@ import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +37,7 @@ import kotlinx.coroutines.withContext
  * chat never gets an id written onto its tab. Leaving the page, or deleting the chat, drops the
  * session here; [record] never changes which chat a tab points at.
  */
+@Singleton
 class ChatSessionStore(
     private val chats: ChatRepository,
     private val createChat: CreateSavedChat,
@@ -48,6 +52,22 @@ class ChatSessionStore(
     private val clock: () -> Long = System::currentTimeMillis,
     private val languageTag: () -> String = { Locale.getDefault().toLanguageTag() },
 ) : PageChats {
+
+    @Inject constructor(
+        chats: ChatRepository,
+        createChat: CreateSavedChat,
+        messages: ReadSavedMessages,
+        addMessage: AddSavedMessage,
+        updateChat: UpdateSavedChat,
+        updateMessage: UpdateSavedMessage,
+        tabs: TabManager,
+        settings: SettingsRepository,
+        @AppScope appScope: CoroutineScope,
+    ) : this(
+        chats, createChat, messages, addMessage, updateChat, updateMessage, tabs, settings, appScope,
+        mainDispatcher = Dispatchers.Main.immediate,
+    )
+
     private val byTab = ConcurrentHashMap<String, ChatSession>()
     private val byChat = ConcurrentHashMap<Long, ChatSession>()
     private val nextMemoryId = AtomicLong(-1)

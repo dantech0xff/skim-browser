@@ -5,13 +5,22 @@ import android.net.ConnectivityManager
 import android.os.Bundle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.di.ProcessGraph
+import com.dantech.skimbrowser.browser.BrowserProfiles
+import com.dantech.skimbrowser.browser.IncognitoSession
+import com.dantech.skimbrowser.browser.NetworkMonitor
+import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.browser.TabStateStore
+import com.dantech.skimbrowser.browser.ThumbnailStore
+import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.browser.page.PageScriptSource
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import java.io.File
 import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -30,7 +39,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(application = HiltTestApplication::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class ProcessGraphBrowserTest {
+class AppContainerBrowserTest {
 
     @get:Rule(order = 0)
     val hiltRule = HiltAndroidRule(this)
@@ -38,7 +47,16 @@ class ProcessGraphBrowserTest {
     @get:Rule(order = 1)
     val folder = TemporaryFolder()
 
-    @Inject lateinit var graph: ProcessGraph
+    @Inject lateinit var resources: ReleaseProcessResources
+    @Inject lateinit var httpClient: Provider<OkHttpClient>
+    @Inject lateinit var downloadTracker: Provider<DownloadTracker>
+    @Inject lateinit var browserProfiles: Provider<BrowserProfiles>
+    @Inject lateinit var tabManager: Provider<TabManager>
+    @Inject lateinit var networkMonitor: Provider<NetworkMonitor>
+    @Inject lateinit var incognitoSession: Provider<IncognitoSession>
+    @Inject lateinit var tabStateStore: Provider<TabStateStore>
+    @Inject lateinit var thumbnails: Provider<ThumbnailStore>
+    @Inject lateinit var pageScripts: Provider<PageScriptSource>
 
     private lateinit var dir: File
 
@@ -51,7 +69,7 @@ class ProcessGraphBrowserTest {
 
     @After
     fun tearDown() {
-        graph.close()
+        resources.release()
         TestStorage.current.set(null)
     }
 
@@ -65,20 +83,20 @@ class ProcessGraphBrowserTest {
 
     @Test
     fun theDownloadPartsAreMadeOnceAndShared() {
-        val client = graph.httpClient()
+        val client = httpClient.get()
 
-        assertSame(client, graph.httpClient())
-        assertSame(graph.downloadTracker(), graph.downloadTracker())
-        assertSame(graph.browserProfiles(), graph.browserProfiles())
+        assertSame(client, httpClient.get())
+        assertSame(downloadTracker.get(), downloadTracker.get())
+        assertSame(browserProfiles.get(), browserProfiles.get())
         assertEquals(15_000, client.connectTimeoutMillis)
         assertEquals(15_000, client.readTimeoutMillis)
     }
 
     @Test
     fun closeLetsTheHttpClientsThreadsGo() {
-        val client = graph.httpClient()
+        val client = httpClient.get()
 
-        graph.close()
+        resources.release()
 
         assertTrue(client.dispatcher.executorService.isShutdown)
     }
@@ -87,16 +105,16 @@ class ProcessGraphBrowserTest {
     fun theTabManagerBringsItsPartsAlongWithoutReadingAnything() {
         val connectivity = ApplicationProvider.getApplicationContext<android.app.Application>()
             .getSystemService(ConnectivityManager::class.java)
-        val tabs = graph.tabManager()
+        val tabs = tabManager.get()
 
-        assertSame(tabs, graph.tabManager())
+        assertSame(tabs, tabManager.get())
         assertEquals("it watches the network from now on", 1, shadowOf(connectivity).networkCallbacks.size)
         assertFalse("the saved tabs are read by restore, not by making the manager", File(dir, "skim.db").exists())
-        assertSame(graph.networkMonitor(), graph.networkMonitor())
-        assertSame(graph.incognitoSession(), graph.incognitoSession())
-        assertSame(graph.tabStateStore(), graph.tabStateStore())
-        assertSame(graph.thumbnails(), graph.thumbnails())
-        assertSame(graph.pageScripts(), graph.pageScripts())
+        assertSame(networkMonitor.get(), networkMonitor.get())
+        assertSame(incognitoSession.get(), incognitoSession.get())
+        assertSame(tabStateStore.get(), tabStateStore.get())
+        assertSame(thumbnails.get(), thumbnails.get())
+        assertSame(pageScripts.get(), pageScripts.get())
         assertEquals("one monitor for the manager and the container", 1, shadowOf(connectivity).networkCallbacks.size)
     }
 
@@ -104,21 +122,21 @@ class ProcessGraphBrowserTest {
     fun closeStopsWatchingTheNetwork() {
         val connectivity = ApplicationProvider.getApplicationContext<android.app.Application>()
             .getSystemService(ConnectivityManager::class.java)
-        graph.networkMonitor()
+        networkMonitor.get()
         assertEquals(1, shadowOf(connectivity).networkCallbacks.size)
 
-        graph.close()
+        resources.release()
 
         assertEquals(0, shadowOf(connectivity).networkCallbacks.size)
     }
 
     @Test
     fun theStoresKeepTheirFilesInTheContainersStorage() {
-        graph.tabStateStore().save("tab-1", Bundle().apply { putString("history", "a") }, incognito = false)
-        graph.thumbnails().put("tab-1", Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), incognito = false)
+        tabStateStore.get().save("tab-1", Bundle().apply { putString("history", "a") }, incognito = false)
+        thumbnails.get().put("tab-1", Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), incognito = false)
         runBlocking {
-            graph.tabStateStore().awaitIdle()
-            graph.thumbnails().awaitIdle()
+            tabStateStore.get().awaitIdle()
+            thumbnails.get().awaitIdle()
         }
 
         assertTrue(File(dir, "tabstate/tab-1.bin").isFile)
@@ -127,7 +145,7 @@ class ProcessGraphBrowserTest {
 
     @Test
     fun thePageScriptsComeFromTheAppsAssets() {
-        assertTrue(graph.pageScripts().readerableScript().contains("function isProbablyReaderable("))
+        assertTrue(pageScripts.get().readerableScript().contains("function isProbablyReaderable("))
     }
 
     @Test

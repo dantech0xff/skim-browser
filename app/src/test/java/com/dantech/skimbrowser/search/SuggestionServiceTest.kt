@@ -3,13 +3,14 @@ package com.dantech.skimbrowser.search
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.di.ProcessGraph
+import com.dantech.skimbrowser.ReleaseProcessResources
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.TestStorage
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import javax.inject.Inject
+import javax.inject.Provider
 import com.dantech.skimbrowser.data.settings.SearchEngine
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -67,7 +68,9 @@ class SuggestionServiceTest {
     @get:Rule(order = 1)
     val folder = TemporaryFolder()
 
-    @Inject lateinit var graph: ProcessGraph
+    @Inject lateinit var resources: ReleaseProcessResources
+    @Inject lateinit var appService: Provider<SuggestionService>
+    @Inject lateinit var appClient: OkHttpClient
 
     private val server = MockWebServer()
     private val other = MockWebServer()
@@ -85,7 +88,7 @@ class SuggestionServiceTest {
 
     @After
     fun tearDown() {
-        if (::graph.isInitialized) graph.close()
+        if (::resources.isInitialized) resources.release()
         TestStorage.current.set(null)
         clients.forEach { client ->
             client.dispatcher.executorService.shutdown()
@@ -371,15 +374,15 @@ class SuggestionServiceTest {
     fun theAppMakesItsServiceOnFirstUseOverItsOwnClient() {
         TestStorage.current.set(AppStorage.temp(folder.newFolder()))
         hiltRule.inject()
-        val service = graph.suggestionService()
+        val service = appService.get()
 
-        assertSame(service, graph.suggestionService())
-        assertSame(graph.httpClient().dispatcher, service.client.dispatcher)
-        assertSame(graph.httpClient().connectionPool, service.client.connectionPool)
+        assertSame(service, appService.get())
+        assertSame(appClient.dispatcher, service.client.dispatcher)
+        assertSame(appClient.connectionPool, service.client.connectionPool)
         assertEquals(3_000, service.client.callTimeoutMillis)
         assertTrue(
             "an interceptor on the shared client would add to what goes to the search engine",
-            graph.httpClient().interceptors.isEmpty() && graph.httpClient().networkInterceptors.isEmpty(),
+            appClient.interceptors.isEmpty() && appClient.networkInterceptors.isEmpty(),
         )
     }
 

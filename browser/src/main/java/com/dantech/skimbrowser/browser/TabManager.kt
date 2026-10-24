@@ -18,6 +18,7 @@ import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
 import com.dantech.skimbrowser.data.isWebUrl
 import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
@@ -34,6 +35,8 @@ import com.dantech.skimbrowser.domain.tab.tabsToRestore
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -68,6 +71,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * tab setting or any file. A closed tab is never written again (a write still queued for it is
  * dropped), so it cannot come back after process death unless Undo brings it back.
  */
+@Singleton
 class TabManager(
     private val tabRepo: TabRepository,
     private val history: HistoryRepository,
@@ -86,6 +90,22 @@ class TabManager(
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
 ) : TabsController {
+
+    @Inject constructor(
+        tabRepo: TabRepository,
+        history: HistoryRepository,
+        settings: SettingsRepository,
+        incognito: IncognitoSession,
+        stateStore: TabStateStore,
+        thumbnails: ThumbnailStore,
+        network: NetworkMonitor,
+        @AppScope appScope: CoroutineScope,
+        scripts: PageScriptSource,
+    ) : this(
+        tabRepo, history, settings, incognito, stateStore, thumbnails, network, appScope, scripts,
+        restoreTimeoutMs = RESTORE_TIMEOUT_MS,
+    )
+
     /** A close that can still be undone; [replacementId] is the tab the close made current. */
     private data class PendingClose(val tabs: List<Tab>, val previousCurrentId: String?, val replacementId: String?)
 

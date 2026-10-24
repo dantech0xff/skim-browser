@@ -1,7 +1,10 @@
 package com.dantech.skimbrowser.ui.snackbar
 
+import com.dantech.skimbrowser.di.AppScope
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -18,7 +21,8 @@ import kotlinx.coroutines.launch
  * objects (repositories, the tab manager), never a navigator, an Activity or a view model. A block
  * that throws is reported by [appScope]'s exception handler.
  */
-class UndoRegistry(private val appScope: CoroutineScope) {
+@Singleton
+class UndoRegistry @Inject constructor(@AppScope private val appScope: CoroutineScope) {
 
     private class Pending(
         val kind: UndoKind,

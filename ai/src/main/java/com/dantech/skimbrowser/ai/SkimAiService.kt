@@ -14,6 +14,8 @@ import com.dantech.skimbrowser.domain.permission.SkimAiAudience
 import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -26,12 +28,20 @@ import kotlinx.coroutines.flow.toList
  * Incognito pages, a site that has not been allowed, and a page that moved to another host are
  * refused here, before the client is asked for.
  */
+@Singleton
 class SkimAiService(
     private val clients: ClaudeClientProvider,
     private val sites: SitePermissionRepository,
     private val settings: SettingsRepository,
     private val resolveConsent: ResolveSkimAiConsent = ResolveSkimAiConsent(),
 ) : AiAssistant {
+
+    @Inject constructor(
+        clients: ClaudeClientProvider,
+        sites: SitePermissionRepository,
+        settings: SettingsRepository,
+    ) : this(clients, sites, settings, resolveConsent = ResolveSkimAiConsent())
+
     override fun summarize(session: PageConversation): Flow<AiReply> {
         val chat = session as ChatSession
         val params = base()

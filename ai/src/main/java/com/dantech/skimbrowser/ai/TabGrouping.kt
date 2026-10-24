@@ -3,6 +3,7 @@ package com.dantech.skimbrowser.ai
 import com.dantech.skimbrowser.browser.NetworkMonitor
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabsState
+import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.tab.GroupLayout
 import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
@@ -10,6 +11,8 @@ import com.dantech.skimbrowser.domain.tab.TabGrouper
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.tab.layout
 import java.util.concurrent.atomic.AtomicReference
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +33,7 @@ typealias GroupingBannerState = com.dantech.skimbrowser.domain.tab.GroupingBanne
  * open. Leaving that screen cancels a request that is still running and hides the banner. The set
  * of tabs is remembered, so the same tabs are not grouped again.
  */
+@Singleton
 class TabGrouping(
     private val ai: SkimAiService,
     private val tabs: TabManager,
@@ -40,6 +44,16 @@ class TabGrouping(
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : TabGrouper {
+
+    @Inject constructor(
+        ai: SkimAiService,
+        tabs: TabManager,
+        tabRepo: TabRepository,
+        sites: SitePermissionRepository,
+        network: NetworkMonitor,
+        @AppScope appScope: CoroutineScope,
+    ) : this(ai, tabs, tabRepo, sites, network, appScope, mainDispatcher = Dispatchers.Main.immediate)
+
     private val shown = MutableStateFlow<Long?>(null)
     private val undoSnapshot = AtomicReference<GroupingSnapshot?>(null)
     private val knownKey = AtomicReference<String?>(null)

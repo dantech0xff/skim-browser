@@ -278,7 +278,7 @@ class SkimWebViewEngineTest {
 
         assertNotEquals("its WebView was destroyed", before, generation.value)
         assertFalse(rig.runtime(id).pageLoaded)
-        assertNotNull("its state is on disk", runBlocking { rig.graph.tabStateStore().load(id, incognito = false) })
+        assertNotNull("its state is on disk", runBlocking { rig.access.tabStateStore().load(id, incognito = false) })
         onMain { rig.pool.onStart() }
 
         assertTrue(runBlocking { rig.tabs.awaitPageReady(id) })
@@ -449,7 +449,7 @@ class SkimWebViewEngineTest {
         assertTrue("the error stays once the error page is in: $events", holdsFor(ERROR_SETTLE_MS) { rig.runtime(id).loadError is LoadError.Unreachable })
 
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.tabs.awaitWrites() } }
-        val history = runBlocking { rig.graph.historyRepository().observe(null).first() }.map { it.url }.toSet()
+        val history = runBlocking { rig.access.historyRepository().observe(null).first() }.map { it.url }.toSet()
         assertTrue("$history", history.containsAll(listOf(article, long, moved)))
         assertFalse("a failed load is no visit: $history", unreachable in history)
     }

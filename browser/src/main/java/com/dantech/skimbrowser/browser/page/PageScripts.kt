@@ -1,9 +1,12 @@
 package com.dantech.skimbrowser.browser.page
 
+import android.app.Application
 import android.content.Context
 import android.content.res.AssetManager
 import androidx.webkit.WebViewCompat
 import java.io.InputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * The page scripts, read from the app's assets once, on first use, and kept.
@@ -13,6 +16,7 @@ import java.io.InputStream
  * they declare reaches the page's global object. That scope also declares an empty `module`, so
  * Readability's CommonJS export never writes into a `module` object the page may define.
  */
+@Singleton
 class PageScripts(
     private val open: (path: String) -> InputStream,
     /** Whether this WebView can run the scripts, asked once, on first use. */
@@ -20,6 +24,8 @@ class PageScripts(
 ) : PageScriptSource {
 
     constructor(assets: AssetManager, supported: () -> Boolean = { true }) : this(assets::open, supported)
+
+    @Inject constructor(app: Application) : this(app.assets, { runOnDevice(app) })
 
     override val isSupported: Boolean by lazy(supported)
 

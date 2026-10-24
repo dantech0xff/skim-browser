@@ -90,16 +90,15 @@ class DomainBoundaryTest {
         assertNull(violation("domain/ai/AskPageAccess.kt", "import com.dantech.skimbrowser.domain.tab.Tab"))
         assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
         assertNull(violation("SkimApplication.kt", "import com.dantech.skimbrowser.browser.TabManager"))
-        assertTrue(chatRepositoryOutsideData("di/ProcessGraph.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository"))
-        assertTrue(!chatRepositoryOutsideData("di/data/DataGeneration.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
+        assertTrue(!chatRepositoryOutsideData("data/di/DataBindingsModule.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
         assertTrue(chatRepositoryOutsideData("SkimApplication.kt", "import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore"))
     }
 
     private fun violationsIn(layer: String): List<String> {
         val roots = when (layer) {
             "domain" -> listOf(moduleSourceRoot("domain", "kotlin"))
-            // Hilt bindings for these libraries stay in :app, so both trees are scanned.
-            "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"), sourceRoot())
+            // :app's di/browser and di/ai are activity and BuildConfig wiring, not library sources.
+            "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"))
             else -> listOf(sourceRoot())
         }
         val found = roots.flatMap { root ->
@@ -190,7 +189,7 @@ class DomainBoundaryTest {
             return "$relativePath contains $token"
         }
 
-        /** `di/data`, `di/browser`, and `di/ai` are the Hilt bindings for those layers. */
+        /** A file under `di/data`, `di/browser`, or `di/ai` is held to that layer's rules. */
         fun layerOf(relativePath: String): String {
             val head = relativePath.substringBefore('/', missingDelimiterValue = "")
             if (head != "di") return head

@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.system
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -18,6 +19,8 @@ import java.io.IOException
 import kotlin.io.DEFAULT_BUFFER_SIZE
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -30,6 +33,7 @@ import okhttp3.ResponseBody
  * `cacheDir/shared/` (or `shared/incognito/` for an incognito tab) and returned as a file-provider
  * URI. Nothing over [MAX_INLINE_DOWNLOAD_BYTES] is written. A failure returns null and names no URL.
  */
+@Singleton
 class ShareImage(
     private val httpClient: OkHttpClient,
     private val cacheDir: File,
@@ -39,6 +43,14 @@ class ShareImage(
         android.webkit.CookieManager.getInstance().getCookie(url)?.takeIf { it.isNotBlank() }
     },
 ) {
+
+    @Inject constructor(
+        httpClient: OkHttpClient,
+        app: Application,
+        incognito: IncognitoSession,
+        profiles: BrowserProfiles,
+    ) : this(httpClient, app.cacheDir, incognito, profiles)
+
     /**
      * The file to share, or null when the image cannot be read or is too large. [webView] is the
      * page that owns a `blob:` URL; other URLs ignore it.

@@ -64,7 +64,7 @@ class DownloadDeviceTest {
         }
 
         // DownloadManager's own notice is only heard while MainActivity is started; asked again, the tracker reports the file.
-        rig.graph.downloadTracker().refresh()
+        rig.access.downloadTracker().refresh()
         val completed = rig.awaitDownloadEvents(1).single() as DownloadEvent.DownloadCompleted
         assertEquals(SAFE_REPORT_NAME, completed.fileName)
         assertEquals("the type DownloadManager keeps for the file", download.mediaType, completed.mime)

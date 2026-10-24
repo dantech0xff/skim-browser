@@ -5,8 +5,8 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import java.io.File
 
 /**
- * Where the process graph keeps its data. The defaults are the app's private storage; [temp] puts
- * everything in one directory, so a test can build a container, close it and build another one on
+ * Where the app's singletons keep their data. The defaults are the app's private storage; [temp] puts
+ * everything in one directory, so a test can open a container, release it and open another one on
  * the same data.
  */
 data class AppStorage(

@@ -6,6 +6,8 @@ import androidx.webkit.Profile
 import androidx.webkit.ProfileStore
 import androidx.webkit.WebStorageCompat
 import androidx.webkit.WebViewFeature
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * [BrowserProfiles] over androidx.webkit's [ProfileStore]. The two feature checks are read once:
@@ -14,7 +16,8 @@ import androidx.webkit.WebViewFeature
  * as `ProfileStore` itself would.
  */
 @MainThread
-class WebViewProfiles : BrowserProfiles {
+@Singleton
+class WebViewProfiles @Inject constructor() : BrowserProfiles {
 
     override val isMultiProfileSupported: Boolean by lazy {
         WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)

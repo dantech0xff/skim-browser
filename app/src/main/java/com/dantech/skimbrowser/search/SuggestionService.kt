@@ -4,6 +4,8 @@ import android.util.Log
 import com.dantech.skimbrowser.data.settings.SearchEngine
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -29,7 +31,10 @@ import okhttp3.Response
  * @param client the app's HTTP client, whose connections and threads are shared.
  * @param callTimeoutMs the longest a request may take, from connecting to the last byte.
  */
-class SuggestionService(client: OkHttpClient, callTimeoutMs: Long = CALL_TIMEOUT_MS) {
+@Singleton
+class SuggestionService(client: OkHttpClient, callTimeoutMs: Long) {
+
+    @Inject constructor(client: OkHttpClient) : this(client, CALL_TIMEOUT_MS)
 
     internal val client: OkHttpClient = client.newBuilder()
         .callTimeout(callTimeoutMs, TimeUnit.MILLISECONDS)

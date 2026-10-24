@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser
 
-import com.dantech.skimbrowser.di.data.StorageModule
+import com.dantech.skimbrowser.data.di.StorageModule
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent

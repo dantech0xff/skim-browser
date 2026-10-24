@@ -2,10 +2,13 @@ package com.dantech.skimbrowser.di
 
 import javax.inject.Qualifier
 
-/** The process scope. A new one is created after [ProcessGraph.close]. */
+/**
+ * The settings store's job, a child of [AppScope]. The test release joins it after cancelling
+ * that scope, so the next test method's component can open the settings file again.
+ */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class AppScope
+annotation class SettingsJob
 
 /** Wall time for history sections and Continue cards. */
 @Qualifier

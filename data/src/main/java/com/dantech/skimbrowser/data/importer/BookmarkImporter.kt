@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.data.importer
 
+import android.app.Application
 import android.content.ContentResolver
 import android.database.sqlite.SQLiteException
 import android.net.Uri
@@ -13,6 +14,8 @@ import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,12 +26,15 @@ import kotlinx.coroutines.withContext
  * [MAX_FILE_BYTES]) on [ioDispatcher], parsed on [parseDispatcher], then saved as a new Imported
  * folder named after the file. Nothing about the file (name, links, titles) is ever logged.
  */
+@Singleton
 class BookmarkImporter(
     private val resolver: ContentResolver,
     private val bookmarks: BookmarkRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val parseDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : BookmarkFiles {
+
+    @Inject constructor(app: Application, bookmarks: BookmarkRepository) : this(app.contentResolver, bookmarks)
 
     override suspend fun import(location: String): ImportResult = import(Uri.parse(location))
 

@@ -13,11 +13,10 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
-import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.MainActivity
 import com.dantech.skimbrowser.TestStorage
-import com.dantech.skimbrowser.di.AppGraphEntryPoint
+import com.dantech.skimbrowser.di.DeviceAccess
 import com.dantech.skimbrowser.system.purgeOldShares
 import dagger.hilt.android.EntryPointAccessors
 import com.dantech.skimbrowser.browser.DEVICE_TIMEOUT_MS
@@ -48,9 +47,9 @@ class SkimAppRule : ExternalResource() {
 
     lateinit var app: Application
         private set
-    lateinit var graph: ProcessGraph
+    lateinit var access: DeviceAccess
         private set
-    val tabs: TabManager get() = graph.tabManager()
+    val tabs: TabManager get() = access.tabManager()
     val pages = TestPages()
 
     private val scenarios = ArrayList<ActivityScenario<MainActivity>>()
@@ -60,12 +59,12 @@ class SkimAppRule : ExternalResource() {
     override fun before() {
         app = ApplicationProvider.getApplicationContext()
         TestStorage.current.set(AppStorage())
-        graph = EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).graph()
+        access = EntryPointAccessors.fromApplication(app, DeviceAccess::class.java)
         runBlocking {
             withTimeout(DEVICE_TIMEOUT_MS) {
                 tabs.restore()
                 purgeOldShares(app.cacheDir)
-                settingsBefore = graph.dataStore().data.first()
+                settingsBefore = access.dataStore().data.first()
             }
         }
         closeEveryTab()
@@ -86,7 +85,7 @@ class SkimAppRule : ExternalResource() {
         step(::closeEveryTab)
         step {
             onMain {
-                graph.snackbarController().current.value?.let { graph.snackbarController().onDismissed(it.id) }
+                access.snackbarController().current.value?.let { access.snackbarController().onDismissed(it.id) }
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     flush()
@@ -97,16 +96,14 @@ class SkimAppRule : ExternalResource() {
         step {
             runBlocking {
                 withTimeout(DEVICE_TIMEOUT_MS) {
-                    graph.historyRepository().clearAll()
-                    graph.dataStore().updateData { settingsBefore }
+                    access.historyRepository().clearAll()
+                    access.dataStore().updateData { settingsBefore }
                 }
             }
         }
         step {
-            if (::app.isInitialized) {
-                EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).shutdown().close()
-                TestStorage.current.set(null)
-            }
+            if (::access.isInitialized) access.release().release()
+            TestStorage.current.set(null)
         }
         if (::app.isInitialized) app.unregisterActivityLifecycleCallbacks(instances)
         pages.close()
@@ -123,7 +120,7 @@ class SkimAppRule : ExternalResource() {
     fun setOnboarded(done: Boolean) {
         runBlocking {
             withTimeout(DEVICE_TIMEOUT_MS) {
-                if (done) graph.settings().setOnboardingCompleted() else graph.dataStore().updateData { emptyPreferences() }
+                if (done) access.settings().setOnboardingCompleted() else access.dataStore().updateData { emptyPreferences() }
             }
         }
     }
@@ -172,13 +169,13 @@ class SkimAppRule : ExternalResource() {
             val open = tabs.state.value.tabs.map { it.id }
             if (open.isNotEmpty()) tabs.finalizeClose(tabs.close(open))
             tabs.finalizePendingCloses()
-            if (graph.incognitoSession().state.value != IncognitoSession.State.None) graph.incognitoSession().end(engine = null)
+            if (access.incognitoSession().state.value != IncognitoSession.State.None) access.incognitoSession().end(engine = null)
         }
         runBlocking {
             withTimeout(DEVICE_TIMEOUT_MS) {
                 tabs.awaitWrites()
-                graph.tabStateStore().awaitIdle()
-                graph.thumbnails().awaitIdle()
+                access.tabStateStore().awaitIdle()
+                access.thumbnails().awaitIdle()
             }
         }
     }

@@ -19,17 +19,18 @@ import com.dantech.skimbrowser.browser.downloads.InProcessDownloader
 import com.dantech.skimbrowser.browser.downloads.MediaStoreDownloads
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.di.AppScope
-import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ActivityComponent
 import dagger.hilt.android.scopes.ActivityScoped
+import javax.inject.Provider
 import kotlinx.coroutines.CoroutineScope
+import okhttp3.OkHttpClient
 
 /**
- * One browser host per activity. The download client's HTTP getter is not called while this
+ * One browser host per activity. The download client's HTTP client is not built while this
  * module builds the host.
  */
 @Module
@@ -73,7 +74,7 @@ object ActivityBrowserModule {
         incognito: IncognitoSession,
         profiles: BrowserProfiles,
         tracker: DownloadTracker,
-        graph: ProcessGraph,
+        httpClient: Provider<OkHttpClient>,
         blob: BlobBridge,
         activityHost: ActivityHost,
         @AppScope scope: CoroutineScope,
@@ -84,7 +85,7 @@ object ActivityBrowserModule {
             incognito = incognito,
             profiles = profiles,
             tracker = tracker,
-            inProcess = InProcessDownloader({ graph.httpClient() }, store),
+            inProcess = InProcessDownloader({ httpClient.get() }, store),
             store = store,
             blob = blob,
             activityHost = activityHost,

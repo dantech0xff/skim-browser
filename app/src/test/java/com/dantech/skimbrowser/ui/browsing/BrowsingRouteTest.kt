@@ -39,14 +39,16 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.di.ProcessGraph
+import com.dantech.skimbrowser.ReleaseProcessResources
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.TestStorage
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import javax.inject.Inject
+import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.browser.BrowserHost
+import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.domain.tab.HitTarget
@@ -74,6 +76,7 @@ import com.dantech.skimbrowser.ui.search.pass
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dantech.skimbrowser.HiltRouteActivity
 import com.dantech.skimbrowser.ui.search.SEARCH_VIEW_MODEL_KEY
+import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -130,7 +133,11 @@ class BrowsingRouteTest {
     @get:Rule(order = 3)
     val composeRule = createAndroidComposeRule<HiltRouteActivity>()
 
-    @Inject lateinit var graph: ProcessGraph
+    @Inject lateinit var resources: ReleaseProcessResources
+    @Inject lateinit var tabs: TabManager
+    @Inject lateinit var incognitoSession: IncognitoSession
+    @Inject lateinit var snackbarController: SnackbarController
+    @Inject lateinit var aiGate: AiGate
     private lateinit var host: BrowserHost
     private lateinit var navigator: SkimNavigator
     private lateinit var engine: FakeTabEngine
@@ -155,8 +162,6 @@ class BrowsingRouteTest {
     }
     private lateinit var search: SearchViewModel
 
-    private val tabs: TabManager get() = graph.tabManager()
-
     @Before
     fun setUp() {
         // Robolectric reports no WebView package, so page scripts would stay off and Reader view
@@ -172,10 +177,10 @@ class BrowsingRouteTest {
         navigator = SkimNavigator(
             backStack,
             tabs,
-            graph.incognitoSession(),
+            incognitoSession,
             host.secure,
-            graph.snackbarController(),
-            graph.aiGate(),
+            snackbarController,
+            aiGate,
             gateScope,
         )
     }
@@ -186,7 +191,7 @@ class BrowsingRouteTest {
         host.destroy()
         tabs.detach(engine)
         gateScope.cancel()
-        if (::graph.isInitialized) graph.close()
+        if (::resources.isInitialized) resources.release()
         TestStorage.current.set(null)
     }
 

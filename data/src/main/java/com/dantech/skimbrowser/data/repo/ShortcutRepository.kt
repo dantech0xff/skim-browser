@@ -1,13 +1,19 @@
 package com.dantech.skimbrowser.data.repo
 
+import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.dao.ShortcutDao
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository as ShortcutStore
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Home shortcuts (04), in tile order. */
+@Singleton
 class ShortcutRepository(private val dao: ShortcutDao) : ShortcutStore {
+
+    @Inject constructor(database: SkimDatabase) : this(database.shortcutDao())
 
     override fun observe(): Flow<List<Shortcut>> = dao.observe().map { rows -> rows.map { it.toDomain() } }
 

@@ -1,8 +1,11 @@
 package com.dantech.skimbrowser.browser
 
+import android.app.Application
 import android.util.Log
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
+import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.data.db.entity.PermissionState
@@ -10,6 +13,8 @@ import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.normalizeHost
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +38,7 @@ import kotlinx.coroutines.launch
  * pending close final, so the old session can never come back.
  */
 @MainThread
+@Singleton
 class IncognitoSession(
     private val profiles: BrowserProfiles,
     /** Files shared from incognito tabs, `cacheDir/shared/incognito/`. */
@@ -41,6 +47,14 @@ class IncognitoSession(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : IncognitoSupport, IncognitoDecisions {
+
+    @Inject constructor(
+        profiles: BrowserProfiles,
+        storage: AppStorage,
+        app: Application,
+        @AppScope appScope: CoroutineScope,
+    ) : this(profiles, storage.incognitoSharedDir(app), appScope)
+
     sealed interface State {
         data object None : State
 

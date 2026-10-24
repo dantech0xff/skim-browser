@@ -8,6 +8,8 @@ import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
 import com.dantech.skimbrowser.domain.tab.PersistedTab
 import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
 import com.dantech.skimbrowser.domain.tab.TabRepository as TabStore
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -21,7 +23,8 @@ typealias TabPlacement = com.dantech.skimbrowser.domain.tab.TabPlacement
  * [deleteClosed] makes the close final. A tab still closed when the process dies is dropped by the
  * next [loadOpen].
  */
-class TabRepository(private val db: SkimDatabase) : TabStore {
+@Singleton
+class TabRepository @Inject constructor(private val db: SkimDatabase) : TabStore {
 
     private val dao = db.tabDao()
 

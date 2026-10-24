@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.data.repo
 
+import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.containsPattern
 import com.dantech.skimbrowser.data.db.dao.BookmarkDao
 import com.dantech.skimbrowser.data.db.dao.FolderBookmarkCount
@@ -8,6 +9,8 @@ import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository as BookmarkStore
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -23,10 +26,13 @@ data class ImportedNode(val title: String, val url: String?, val children: List<
 /** The Imported folder an import created and how many bookmarks it holds, subfolders included. */
 data class ImportOutcome(val folderId: Long, val bookmarkCount: Int)
 
+@Singleton
 class BookmarkRepository(
     private val dao: BookmarkDao,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : BookmarkStore {
+
+    @Inject constructor(database: SkimDatabase) : this(database.bookmarkDao())
 
     /** The top-level folders (Mobile bookmarks first) with recursive counts, and "Recently added". */
     override fun observeRoot(): Flow<BookmarksRoot> =

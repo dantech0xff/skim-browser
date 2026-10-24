@@ -66,7 +66,7 @@ class LongPressAndThumbnailTest {
         assertEquals(width, normalThumbnail.width)
         assertEquals(height, normalThumbnail.height)
         assertTrue("the page's text shows in it", darkPixelShare(normalThumbnail) > MIN_TEXT_SHARE)
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.thumbnails().awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.access.thumbnails().awaitIdle() } }
         assertTrue("saved for after process death", File(thumbnailDir(), "$normal.webp").isFile)
 
         // A normal tab's thumbnail is checked on every WebView; an incognito tab needs profiles.
@@ -75,7 +75,7 @@ class LongPressAndThumbnailTest {
         rig.awaitLoaded(incognito, url)
         val incognitoThumbnail = awaitThumbnail(incognito)
         assertTrue(darkPixelShare(incognitoThumbnail) > MIN_TEXT_SHARE)
-        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.graph.thumbnails().awaitIdle() } }
+        runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { rig.access.thumbnails().awaitIdle() } }
         assertFalse("never on disk", File(thumbnailDir(), "$incognito.webp").exists())
         assertEquals(listOf("$normal.webp"), thumbnailDir().list().orEmpty().toList())
     }
@@ -91,7 +91,7 @@ class LongPressAndThumbnailTest {
     }
 
     private fun awaitThumbnail(tabId: String): Bitmap =
-        checkNotNull(awaitValue(rig.graph.thumbnails().observe(tabId), "the thumbnail of $tabId") { it != null }).asAndroidBitmap()
+        checkNotNull(awaitValue(rig.access.thumbnails().observe(tabId), "the thumbnail of $tabId") { it != null }).asAndroidBitmap()
 
     private fun thumbnailDir() = File(rig.storageDir, "thumbs")
 

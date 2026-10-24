@@ -6,14 +6,16 @@ import android.app.Application
 import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.ReleaseProcessResources
 import com.dantech.skimbrowser.TestStorage
-import com.dantech.skimbrowser.di.AppGraphEntryPoint
-import dagger.hilt.android.EntryPointAccessors
+import com.dantech.skimbrowser.data.db.SkimDatabase
+import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.tab.PersistedTab
+import com.dantech.skimbrowser.domain.tab.TabRepository
 import java.io.File
 import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -45,21 +47,22 @@ class DeviceSqliteDataTest {
 
     private val app = ApplicationProvider.getApplicationContext<Application>()
     private lateinit var dir: File
-    private lateinit var graph: ProcessGraph
+    @Inject lateinit var historyRepository: HistoryRepository
+    @Inject lateinit var tabRepository: TabRepository
+    @Inject lateinit var database: SkimDatabase
+    @Inject lateinit var resources: ReleaseProcessResources
 
     @Before
     fun setUp() {
         dir = File(app.cacheDir, "data-test-${UUID.randomUUID()}").apply { mkdirs() }
         TestStorage.current.set(AppStorage.temp(dir))
-        graph = EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).graph()
+        hiltRule.inject()
     }
 
     @After
     fun tearDown() {
         try {
-            if (::graph.isInitialized) {
-                EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).shutdown().close()
-            }
+            if (::resources.isInitialized) resources.release()
         } finally {
             TestStorage.current.set(null)
             dir.deleteRecursively()
@@ -69,7 +72,7 @@ class DeviceSqliteDataTest {
     @Test
     fun aUrlVisitedAgainKeepsOneRowWithItsLatestVisitTime() = runBlocking<Unit> {
         withTimeout(TIMEOUT_MS) {
-            val history = graph.historyRepository()
+            val history = historyRepository
 
             history.recordVisit(FIRST_URL, "Article", at = EARLIER)
             history.recordVisit(FIRST_URL, "Article, updated", at = LATER)
@@ -90,7 +93,7 @@ class DeviceSqliteDataTest {
     @Test
     fun clearingTheHistoryLeavesNoRowAndAnEmptyWriteAheadLog() = runBlocking<Unit> {
         withTimeout(TIMEOUT_MS) {
-            val history = graph.historyRepository()
+            val history = historyRepository
             repeat(VISITS) { history.recordVisit("https://daylightjournal.com/article/$it", "Article $it", at = it.toLong()) }
             val wal = File(dir, "skim.db-wal")
             assumeTrue("Room keeps no write-ahead log here (a low-RAM device)", writeAheadLogging())
@@ -106,9 +109,9 @@ class DeviceSqliteDataTest {
     @Test
     fun closingMoreTabsThanOneStatementCanBindClosesEveryOne() = runBlocking<Unit> {
         withTimeout(TABS_TIMEOUT_MS) {
-            val tabs = graph.tabRepository()
+            val tabs = tabRepository
             val ids = List(TABS) { "tab-$it" }
-            graph.database().withTransaction {
+            database.withTransaction {
                 ids.forEachIndexed { index, id ->
                     tabs.upsert(PersistedTab(id = id, url = "https://daylightjournal.com/$index", title = "Tab $index", position = index, createdAt = 1, lastAccessedAt = 1))
                 }
@@ -125,7 +128,7 @@ class DeviceSqliteDataTest {
     @Test
     fun theConnectionThatWritesDeletesSecurely() = runBlocking<Unit> {
         withTimeout(TIMEOUT_MS) {
-            graph.historyRepository().recordVisit(FIRST_URL, "Article", at = EARLIER)
+            historyRepository.recordVisit(FIRST_URL, "Article", at = EARLIER)
 
             val secureDelete = secureDeleteOnWriteConnection()
 
@@ -135,14 +138,14 @@ class DeviceSqliteDataTest {
 
     /** The one number [sql] counts, read on the database's own connections. */
     private suspend fun count(sql: String, vararg args: Any): Long = withContext(Dispatchers.IO) {
-        graph.database().openHelper.readableDatabase.query(sql, args).use { cursor ->
+        database.openHelper.readableDatabase.query(sql, args).use { cursor ->
             cursor.moveToFirst()
             cursor.getLong(0)
         }
     }
 
     private suspend fun writeAheadLogging(): Boolean = withContext(Dispatchers.IO) {
-        graph.database().openHelper.writableDatabase.isWriteAheadLoggingEnabled
+        database.openHelper.writableDatabase.isWriteAheadLoggingEnabled
     }
 
     /**
@@ -150,7 +153,7 @@ class DeviceSqliteDataTest {
      * query on that connection, as Skim's callback does when it turns the setting on.
      */
     private suspend fun secureDeleteOnWriteConnection(): Long = withContext(Dispatchers.IO) {
-        val db = graph.database().openHelper.writableDatabase
+        val db = database.openHelper.writableDatabase
         db.beginTransaction()
         try {
             db.query("PRAGMA secure_delete").use { cursor ->
@@ -163,7 +166,7 @@ class DeviceSqliteDataTest {
     }
 
     private suspend fun sqliteVersion(): String = withContext(Dispatchers.IO) {
-        graph.database().openHelper.readableDatabase.query("SELECT sqlite_version()").use { cursor ->
+        database.openHelper.readableDatabase.query("SELECT sqlite_version()").use { cursor ->
             cursor.moveToFirst()
             cursor.getString(0)
         }

@@ -1,8 +1,10 @@
 plugins {
     // AGP 9 compiles Kotlin itself. This module is an Android library because the adapter calls
-    // the tab engine in :browser. The Hilt bindings stay in :app: they read ProcessGraph and BuildConfig.
+    // the tab engine in :browser. Bindings live in this module; BuildConfig stays in :app inside ClaudeClientFactory.
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.kover)
 }
 
@@ -47,6 +49,9 @@ dependencies {
     implementation(libs.anthropic.java)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    ksp(libs.kotlin.metadata.jvm)
 
     // FakeClaudeServer's public methods name MockWebServer types. probeParams returns an SDK params type.
     testFixturesApi(libs.okhttp.mockwebserver)

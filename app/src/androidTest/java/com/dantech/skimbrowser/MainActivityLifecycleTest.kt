@@ -14,26 +14,29 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.TestStorage
-import com.dantech.skimbrowser.di.AppGraphEntryPoint
-import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.system.purgeOldShares
-import dagger.hilt.android.EntryPointAccessors
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.DEVICE_TIMEOUT_MS
 import com.dantech.skimbrowser.browser.DeviceDownloads
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.browser.TabStateStore
+import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.browser.TestPages
 import com.dantech.skimbrowser.browser.WebViewSupport
 import com.dantech.skimbrowser.browser.awaitValue
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent
+import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.data.db.SkimDatabase
+import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.browser.holdsFor
 import com.dantech.skimbrowser.browser.jsValue
 import com.dantech.skimbrowser.browser.onMain
 import com.dantech.skimbrowser.browser.waitUntil
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -75,15 +78,21 @@ class MainActivityLifecycleTest {
 
     private val app: Application
         get() = ApplicationProvider.getApplicationContext()
-    private lateinit var graph: ProcessGraph
-    private val tabs: TabManager get() = graph.tabManager()
+    @Inject lateinit var tabs: TabManager
+    @Inject lateinit var incognitoSession: IncognitoSession
+    @Inject lateinit var historyRepository: HistoryRepository
+    @Inject lateinit var tabStateStore: TabStateStore
+    @Inject lateinit var thumbnails: ThumbnailStore
+    @Inject lateinit var database: SkimDatabase
+    @Inject lateinit var downloadTracker: DownloadTracker
+    @Inject lateinit var resources: ReleaseProcessResources
     private val pages = TestPages()
     private val collectors = CoroutineScope(Dispatchers.Default)
 
     @Before
     fun setUp() {
         TestStorage.current.set(AppStorage())
-        graph = EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).graph()
+        hiltRule.inject()
         pages.start()
         runBlocking {
             withTimeout(DEVICE_TIMEOUT_MS) {
@@ -100,7 +109,7 @@ class MainActivityLifecycleTest {
                 val open = tabs.state.value.tabs.map { it.id }
                 if (open.isNotEmpty()) tabs.finalizeClose(tabs.close(open))
                 tabs.finalizePendingCloses()
-                if (graph.incognitoSession().state.value != IncognitoSession.State.None) graph.incognitoSession().end(engine = null)
+                if (incognitoSession.state.value != IncognitoSession.State.None) incognitoSession.end(engine = null)
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     flush()
@@ -110,18 +119,16 @@ class MainActivityLifecycleTest {
             runBlocking {
                 withTimeout(DEVICE_TIMEOUT_MS) {
                     tabs.awaitWrites()
-                    graph.historyRepository().clearAll()
-                    graph.tabStateStore().awaitIdle()
-                    graph.thumbnails().awaitIdle()
+                    historyRepository.clearAll()
+                    tabStateStore.awaitIdle()
+                    thumbnails.awaitIdle()
                 }
             }
         } finally {
             collectors.cancel()
             pages.close()
-            if (::graph.isInitialized) {
-                EntryPointAccessors.fromApplication(app, AppGraphEntryPoint::class.java).shutdown().close()
-                TestStorage.current.set(null)
-            }
+            if (::resources.isInitialized) resources.release()
+            TestStorage.current.set(null)
         }
     }
 
@@ -255,7 +262,7 @@ class MainActivityLifecycleTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             waitUntil("the earlier session's shared files to be deleted") { !left.exists() }
         }
-        assertEquals(IncognitoSession.State.None, graph.incognitoSession().state.value)
+        assertEquals(IncognitoSession.State.None, incognitoSession.state.value)
     }
 
     @Test
@@ -267,14 +274,14 @@ class MainActivityLifecycleTest {
         assertTrue(runBlocking { tabs.awaitPageReady(normal) && tabs.awaitPageReady(incognito) })
         val normalClose = onMain { tabs.close(listOf(normal)) }
         onMain { tabs.close(listOf(incognito)) }
-        assertTrue(graph.incognitoSession().state.value is IncognitoSession.State.Ending)
+        assertTrue(incognitoSession.state.value is IncognitoSession.State.Ending)
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.awaitWrites() } }
         assertEquals("closed and still undoable", 1L, tabRows(normal))
 
         scenario.close()
 
         assertTrue(onMain { tabs.pendingCloseIds() }.isEmpty())
-        assertEquals(IncognitoSession.State.None, graph.incognitoSession().state.value)
+        assertEquals(IncognitoSession.State.None, incognitoSession.state.value)
         onMain { tabs.undoClose(normalClose) }
         assertNull("Undo has nothing left to bring back", tabs.state.value.tab(normal))
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.awaitWrites() } }
@@ -312,7 +319,7 @@ class MainActivityLifecycleTest {
 
     private fun tabRows(tabId: String): Long = runBlocking {
         withContext(Dispatchers.IO) {
-            graph.database().openHelper.readableDatabase.query("SELECT COUNT(*) FROM tabs WHERE id = ?", arrayOf<Any>(tabId)).use { cursor ->
+            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM tabs WHERE id = ?", arrayOf<Any>(tabId)).use { cursor ->
                 cursor.moveToFirst()
                 cursor.getLong(0)
             }
@@ -322,7 +329,7 @@ class MainActivityLifecycleTest {
     /** How the downloads of the process end from now on, as they reach the tracker. */
     private fun downloadEvents(): List<DownloadEvent> {
         val events = CopyOnWriteArrayList<DownloadEvent>()
-        collectors.launch(start = CoroutineStart.UNDISPATCHED) { graph.downloadTracker().events.collect { events += it } }
+        collectors.launch(start = CoroutineStart.UNDISPATCHED) { downloadTracker.events.collect { events += it } }
         return events
     }
 

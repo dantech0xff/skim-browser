@@ -14,6 +14,8 @@ import com.dantech.skimbrowser.domain.settings.ThemeSetting
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -26,7 +28,8 @@ import kotlinx.coroutines.flow.map
  * missing, of the wrong type or an unknown name reads as its default, and the reader text scale is
  * clamped to [SkimSettings.READER_TEXT_SCALE_RANGE].
  */
-class SettingsRepository(private val dataStore: DataStore<Preferences>) : SettingsStore {
+@Singleton
+class SettingsRepository @Inject constructor(private val dataStore: DataStore<Preferences>) : SettingsStore {
 
     override val settings: Flow<SkimSettings> = preferences().map { it.toSettings() }.distinctUntilChanged()
 

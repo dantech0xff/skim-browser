@@ -8,6 +8,8 @@ import com.dantech.skimbrowser.data.hostOf
 import com.dantech.skimbrowser.data.isWebUrl
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.history.HistoryRepository as HistoryStore
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -17,7 +19,10 @@ import kotlinx.coroutines.withContext
  * Browsing history (13 and the History rows of 04b): one row per http(s) URL. Callers must never
  * record incognito visits; this class has no way to tell them apart.
  */
+@Singleton
 class HistoryRepository(private val dao: HistoryDao, private val db: SkimDatabase) : HistoryStore {
+
+    @Inject constructor(database: SkimDatabase) : this(database.historyDao(), database)
 
     /**
      * Records a visit to [url]; anything but an http(s) URL with a host, or a URL longer than

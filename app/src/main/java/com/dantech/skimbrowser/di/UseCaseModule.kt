@@ -1,12 +1,22 @@
 package com.dantech.skimbrowser.di
 
+import com.dantech.skimbrowser.browser.BrowsingDataCleaner
+import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AskPage
 import com.dantech.skimbrowser.domain.ai.AskTabs
 import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
 import com.dantech.skimbrowser.domain.ai.OverviewTabs
 import com.dantech.skimbrowser.domain.ai.RetryAnswer
+import com.dantech.skimbrowser.domain.ai.SkimDataEraser
 import com.dantech.skimbrowser.domain.ai.SummarizePage
+import com.dantech.skimbrowser.domain.bookmark.BookmarkFiles
+import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository
+import com.dantech.skimbrowser.domain.chat.ChatRepository
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
+import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
 import com.dantech.skimbrowser.domain.usecase.ClearBrowsingData
@@ -38,55 +48,54 @@ import com.dantech.skimbrowser.domain.usecase.SetTheme
 import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedChat
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
-import com.dantech.skimbrowser.search.SuggestionService
-import com.dantech.skimbrowser.system.ShareImage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Each use case is the generation's instance, so [ProcessGraph.close] drops it. */
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
-    @Provides fun removeHistoryEntry(graph: ProcessGraph): RemoveHistoryEntry = graph.removeHistoryEntry()
-    @Provides fun restoreHistoryEntry(graph: ProcessGraph): RestoreHistoryEntry = graph.restoreHistoryEntry()
-    @Provides fun matchHistory(graph: ProcessGraph): MatchHistory = graph.matchHistory()
-    @Provides fun addBookmark(graph: ProcessGraph): AddBookmark = graph.addBookmark()
-    @Provides fun updateBookmark(graph: ProcessGraph): UpdateBookmark = graph.updateBookmark()
-    @Provides fun moveBookmark(graph: ProcessGraph): MoveBookmark = graph.moveBookmark()
-    @Provides fun deleteBookmark(graph: ProcessGraph): DeleteBookmark = graph.deleteBookmark()
-    @Provides fun restoreBookmark(graph: ProcessGraph): RestoreBookmark = graph.restoreBookmark()
-    @Provides fun matchBookmarks(graph: ProcessGraph): MatchBookmarks = graph.matchBookmarks()
-    @Provides fun setSearchEngine(graph: ProcessGraph): SetSearchEngine = graph.setSearchEngine()
-    @Provides fun setTheme(graph: ProcessGraph): SetTheme = graph.setTheme()
-    @Provides fun setAskBeforeSending(graph: ProcessGraph): SetAskBeforeSending = graph.setAskBeforeSending()
-    @Provides fun setKeepChatHistory(graph: ProcessGraph): SetKeepChatHistory = graph.setKeepChatHistory()
-    @Provides fun setReaderTextScale(graph: ProcessGraph): SetReaderTextScale = graph.setReaderTextScale()
-    @Provides fun setReaderFont(graph: ProcessGraph): SetReaderFont = graph.setReaderFont()
-    @Provides fun completeOnboarding(graph: ProcessGraph): CompleteOnboarding = graph.completeOnboarding()
-    @Provides fun loadSavedChat(graph: ProcessGraph): LoadSavedChat = graph.loadSavedChat()
-    @Provides fun createSavedChat(graph: ProcessGraph): CreateSavedChat = graph.createSavedChat()
-    @Provides fun readSavedMessages(graph: ProcessGraph): ReadSavedMessages = graph.readSavedMessages()
-    @Provides fun addSavedMessage(graph: ProcessGraph): AddSavedMessage = graph.addSavedMessage()
-    @Provides fun updateSavedChat(graph: ProcessGraph): UpdateSavedChat = graph.updateSavedChat()
-    @Provides fun updateSavedMessage(graph: ProcessGraph): UpdateSavedMessage = graph.updateSavedMessage()
-    @Provides fun deleteAllSkimChats(graph: ProcessGraph): DeleteAllSkimChats = graph.deleteAllSkimChats()
-    @Provides fun removeSkimChat(graph: ProcessGraph): RemoveSkimChat = graph.removeSkimChat()
-    @Provides fun restoreSkimChat(graph: ProcessGraph): RestoreSkimChat = graph.restoreSkimChat()
-    @Provides fun setSkimAi(graph: ProcessGraph): SetSkimAi = graph.setSkimAi()
-    @Provides fun setSitePermission(graph: ProcessGraph): SetSitePermission = graph.setSitePermission()
-    @Provides fun openUrlInCurrentTab(graph: ProcessGraph): OpenUrlInCurrentTab = graph.openUrlInCurrentTab()
-    @Provides fun importBookmarks(graph: ProcessGraph): ImportBookmarks = graph.importBookmarks()
-    @Provides fun summarizePage(graph: ProcessGraph): SummarizePage = graph.summarizePage()
-    @Provides fun askPage(graph: ProcessGraph): AskPage = graph.askPage()
-    @Provides fun retryAnswer(graph: ProcessGraph): RetryAnswer = graph.retryAnswer()
-    @Provides fun overviewTabs(graph: ProcessGraph): OverviewTabs = graph.overviewTabs()
-    @Provides fun askTabs(graph: ProcessGraph): AskTabs = graph.askTabs()
-    @Provides fun collectOpenTabs(graph: ProcessGraph): CollectOpenTabs = graph.collectOpenTabs()
-    @Provides fun clearBrowsingData(graph: ProcessGraph): ClearBrowsingData = graph.clearBrowsingData()
-    @Provides fun deleteAllAiData(graph: ProcessGraph): DeleteAllAiData = graph.deleteAllAiData()
-    @Provides fun clearSkimHistory(graph: ProcessGraph): ClearSkimHistory = graph.clearSkimHistory()
-    @Provides fun suggestions(graph: ProcessGraph): SuggestionService = graph.suggestionService()
-    @Provides fun shareImage(graph: ProcessGraph): ShareImage = graph.shareImage()
+    @Provides fun removeHistoryEntry(history: HistoryRepository): RemoveHistoryEntry = RemoveHistoryEntry(history)
+    @Provides fun restoreHistoryEntry(history: HistoryRepository): RestoreHistoryEntry = RestoreHistoryEntry(history)
+    @Provides fun matchHistory(history: HistoryRepository): MatchHistory = MatchHistory(history)
+    @Provides fun addBookmark(bookmarks: BookmarkRepository): AddBookmark = AddBookmark(bookmarks)
+    @Provides fun updateBookmark(bookmarks: BookmarkRepository): UpdateBookmark = UpdateBookmark(bookmarks)
+    @Provides fun moveBookmark(bookmarks: BookmarkRepository): MoveBookmark = MoveBookmark(bookmarks)
+    @Provides fun deleteBookmark(bookmarks: BookmarkRepository): DeleteBookmark = DeleteBookmark(bookmarks)
+    @Provides fun restoreBookmark(bookmarks: BookmarkRepository): RestoreBookmark = RestoreBookmark(bookmarks)
+    @Provides fun matchBookmarks(bookmarks: BookmarkRepository): MatchBookmarks = MatchBookmarks(bookmarks)
+    @Provides fun importBookmarks(files: BookmarkFiles): ImportBookmarks = ImportBookmarks(files)
+    @Provides fun setSearchEngine(settings: SettingsRepository): SetSearchEngine = SetSearchEngine(settings)
+    @Provides fun setTheme(settings: SettingsRepository): SetTheme = SetTheme(settings)
+    @Provides fun setAskBeforeSending(settings: SettingsRepository): SetAskBeforeSending = SetAskBeforeSending(settings)
+    @Provides fun setKeepChatHistory(settings: SettingsRepository): SetKeepChatHistory = SetKeepChatHistory(settings)
+    @Provides fun setReaderTextScale(settings: SettingsRepository): SetReaderTextScale = SetReaderTextScale(settings)
+    @Provides fun setReaderFont(settings: SettingsRepository): SetReaderFont = SetReaderFont(settings)
+    @Provides fun completeOnboarding(settings: SettingsRepository): CompleteOnboarding = CompleteOnboarding(settings)
+    @Provides fun loadSavedChat(chats: ChatRepository): LoadSavedChat = LoadSavedChat(chats)
+    @Provides fun createSavedChat(chats: ChatRepository): CreateSavedChat = CreateSavedChat(chats)
+    @Provides fun readSavedMessages(chats: ChatRepository): ReadSavedMessages = ReadSavedMessages(chats)
+    @Provides fun addSavedMessage(chats: ChatRepository): AddSavedMessage = AddSavedMessage(chats)
+    @Provides fun updateSavedChat(chats: ChatRepository): UpdateSavedChat = UpdateSavedChat(chats)
+    @Provides fun updateSavedMessage(chats: ChatRepository): UpdateSavedMessage = UpdateSavedMessage(chats)
+    @Provides fun deleteAllSkimChats(chats: ChatRepository): DeleteAllSkimChats = DeleteAllSkimChats(chats)
+    @Provides fun removeSkimChat(chats: ChatRepository): RemoveSkimChat = RemoveSkimChat(chats)
+    @Provides fun restoreSkimChat(chats: ChatRepository): RestoreSkimChat = RestoreSkimChat(chats)
+    @Provides fun setSkimAi(sites: SitePermissionRepository): SetSkimAi = SetSkimAi(sites)
+    @Provides fun setSitePermission(sites: SitePermissionRepository): SetSitePermission = SetSitePermission(sites)
+    @Provides fun openUrlInCurrentTab(tabs: TabsController): OpenUrlInCurrentTab = OpenUrlInCurrentTab(tabs)
+    @Provides fun summarizePage(ai: AiAssistant): SummarizePage = SummarizePage(ai)
+    @Provides fun askPage(ai: AiAssistant): AskPage = AskPage(ai)
+    @Provides fun retryAnswer(ai: AiAssistant): RetryAnswer = RetryAnswer(ai)
+    @Provides fun overviewTabs(ai: AiAssistant): OverviewTabs = OverviewTabs(ai)
+    @Provides fun askTabs(ai: AiAssistant): AskTabs = AskTabs(ai)
+    @Provides fun collectOpenTabs(tabs: TabsController, sites: SitePermissionRepository): CollectOpenTabs = CollectOpenTabs(tabs, sites)
+    @Provides fun deleteAllAiData(eraser: SkimDataEraser): DeleteAllAiData = DeleteAllAiData(eraser)
+    @Provides fun clearSkimHistory(eraser: SkimDataEraser): ClearSkimHistory = ClearSkimHistory(eraser)
+
+    @Provides
+    fun clearBrowsingData(cleaner: BrowsingDataCleaner): ClearBrowsingData = ClearBrowsingData { history, cookies, cache, pages ->
+        cleaner.clearAll(history, cookies, cache, pages)
+    }
 }

@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.kover)
 }
 
@@ -57,6 +59,9 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    ksp(libs.kotlin.metadata.jvm)
 
     testFixturesApi(libs.kotlinx.coroutines.test)
     testFixturesImplementation(testFixtures(project(":data")))

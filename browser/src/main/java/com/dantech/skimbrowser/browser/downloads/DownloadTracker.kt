@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.browser.downloads
 
+import android.app.Application
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
@@ -8,7 +9,10 @@ import android.os.Environment
 import android.util.Log
 import androidx.annotation.AnyThread
 import androidx.core.net.toUri
+import com.dantech.skimbrowser.di.AppScope
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -131,11 +135,15 @@ class AndroidSystemDownloads(context: Context) : SystemDownloads {
  *
  * Events are not replayed: they go to whoever collects [events] when they happen.
  */
+@Singleton
 class DownloadTracker(
     private val system: SystemDownloads,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+
+    @Inject constructor(app: Application, @AppScope scope: CoroutineScope) : this(AndroidSystemDownloads(app), scope)
+
     private val _events = MutableSharedFlow<DownloadEvent>(
         extraBufferCapacity = EVENT_BUFFER,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,

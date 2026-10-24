@@ -9,6 +9,8 @@ import com.dantech.skimbrowser.domain.chat.ChatRepository as ChatStore
 import com.dantech.skimbrowser.domain.chat.ChatSummary
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,7 +25,10 @@ typealias DeletedChat = com.dantech.skimbrowser.domain.chat.DeletedChat
  * Saved Skim chats (04c, 06, 06b). Only chats of normal tabs are stored, and only while Keep chat
  * history is on; the caller enforces both.
  */
+@Singleton
 class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase) : ChatStore {
+
+    @Inject constructor(database: SkimDatabase) : this(database.skimChatDao(), database)
 
     private val removalSignals = MutableSharedFlow<Long?>(extraBufferCapacity = REMOVAL_BUFFER)
 

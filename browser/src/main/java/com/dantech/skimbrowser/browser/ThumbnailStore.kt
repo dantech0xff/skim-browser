@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.browser
 
+import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -9,8 +10,12 @@ import androidx.annotation.AnyThread
 import androidx.annotation.WorkerThread
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.di.AppScope
 import java.io.File
 import java.io.FileOutputStream
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,12 +32,20 @@ import kotlinx.coroutines.flow.asStateFlow
  * least-recently-used memory cache of [incognitoCacheBytes], and one pushed out of it is gone.
  * File work runs on [ioDispatcher], one operation at a time in the order of the calls.
  */
+@Singleton
 class ThumbnailStore(
     private val dir: File,
     scope: CoroutineScope,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     incognitoCacheBytes: Int = DEFAULT_INCOGNITO_CACHE_BYTES,
 ) {
+
+    @Inject constructor(
+        storage: AppStorage,
+        app: Application,
+        @AppScope scope: CoroutineScope,
+    ) : this(storage.thumbnailDir(app), scope)
+
     private class Entry {
         val flow = MutableStateFlow<ImageBitmap?>(null)
 

@@ -3,6 +3,7 @@ plugins {
     // bookmark importer use the platform.
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.room)
     alias(libs.plugins.kover)
 }
@@ -52,7 +53,10 @@ dependencies {
     api(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.jsoup)
+    implementation(libs.hilt.android)
     ksp(libs.androidx.room.compiler)
+    ksp(libs.hilt.compiler)
+    ksp(libs.kotlin.metadata.jvm)
 
     testFixturesApi(libs.turbine)
     testFixturesImplementation(libs.androidx.test.core)

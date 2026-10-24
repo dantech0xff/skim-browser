@@ -9,6 +9,8 @@ import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.normalizeHost
 import com.dantech.skimbrowser.domain.permission.SitePermission
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository as SitePermissionStore
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -20,11 +22,14 @@ import kotlinx.coroutines.withContext
  * leading "www.", so `https://WWW.Example.com` and `http://example.com:8080` share a row. Incognito
  * decisions never reach this class.
  */
+@Singleton
 class SitePermissionRepository(
     private val dao: SitePermissionDao,
     private val db: SkimDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : SitePermissionStore {
+
+    @Inject constructor(database: SkimDatabase) : this(database.sitePermissionDao(), database)
 
     /** The decisions for [host], or null while there are none (always null for a blank host). */
     override fun observe(host: String): Flow<SitePermission?> {

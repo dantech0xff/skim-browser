@@ -11,6 +11,8 @@ import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.undo.PendingUndo
 import com.dantech.skimbrowser.domain.undo.UndoSubject
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ import kotlinx.coroutines.withContext
  * The Activity's live pages are passed per call and never kept. Cache asked for while no Activity
  * is up waits for the next one ([applyPendingCacheClear]).
  */
+@Singleton
 class BrowsingDataCleaner(
     private val history: HistoryRepository,
     private val tabRepo: TabRepository,
@@ -36,6 +39,20 @@ class BrowsingDataCleaner(
     private val siteData: DefaultProfileSiteData = AndroidDefaultProfileSiteData(),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : SiteDataCleaner {
+
+    @Inject constructor(
+        history: HistoryRepository,
+        tabRepo: TabRepository,
+        tabs: TabManager,
+        stateStore: TabStateStore,
+        thumbnails: ThumbnailStore,
+        incognito: IncognitoSession,
+        pendingUndo: PendingUndo,
+    ) : this(
+        history, tabRepo, tabs, stateStore, thumbnails, incognito, pendingUndo,
+        siteData = AndroidDefaultProfileSiteData(),
+    )
+
     private val pendingCacheClear = AtomicBoolean(false)
 
     /** Cookies and web storage of [host]. An incognito tab uses the session's profile. */

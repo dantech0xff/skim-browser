@@ -99,7 +99,7 @@ class SitePermissionDeviceTest {
         onMain { bridge.dismiss(pending) }
 
         assertEquals(DENIED, answer(id))
-        assertNull("nothing kept for the site", runBlocking { rig.graph.sitePermissionRepository().get(PAGE_HOST) })
+        assertNull("nothing kept for the site", runBlocking { rig.access.sitePermissionRepository().get(PAGE_HOST) })
         rig.evaluate(id, "skimAskMedia()")
         val next = awaitRequest()
         assertEquals(PendingSitePermission(id, PAGE_HOST, MEDIA, incognito = false), next)
@@ -110,7 +110,7 @@ class SitePermissionDeviceTest {
     @Test
     fun aFrameOfAnotherSiteGetsNoneOfThatSitesDecisionsAndTheRequestNamesThePage() {
         runBlocking {
-            MEDIA.forEach { rig.graph.sitePermissionRepository().setPermission(TestPages.LOCALHOST, it, PermissionState.ALLOWED) }
+            MEDIA.forEach { rig.access.sitePermissionRepository().setPermission(TestPages.LOCALHOST, it, PermissionState.ALLOWED) }
         }
         rig.showCurrentTab()
         // On a page of its own the other site has its decision.
@@ -154,7 +154,7 @@ class SitePermissionDeviceTest {
         assertEquals(GRANTED, again)
         assertTrue(shown.isEmpty())
         rig.evaluate(id, "skimStopMedia()")
-        assertTrue("never in the normal tabs' decisions", holdsFor(WAIT_MS) { runBlocking { rig.graph.sitePermissionRepository().get(PAGE_HOST) } == null })
+        assertTrue("never in the normal tabs' decisions", holdsFor(WAIT_MS) { runBlocking { rig.access.sitePermissionRepository().get(PAGE_HOST) } == null })
 
         onMain { rig.tabs.finalizeClose(rig.tabs.close(listOf(id))) }
         assertEquals(IncognitoSession.State.None, rig.incognito.state.value)
@@ -225,7 +225,7 @@ class SitePermissionDeviceTest {
     /** Waits until the normal tabs' decisions for [host] satisfy [check]. */
     private fun awaitStored(host: String, check: (SitePermission) -> Boolean) {
         waitUntil("the site's decisions to be kept") {
-            runBlocking { rig.graph.sitePermissionRepository().get(host) }?.let(check) == true
+            runBlocking { rig.access.sitePermissionRepository().get(host) }?.let(check) == true
         }
     }
 

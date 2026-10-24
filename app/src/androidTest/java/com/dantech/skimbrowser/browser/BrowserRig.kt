@@ -20,10 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
-import com.dantech.skimbrowser.di.ProcessGraph
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.TestStorage
-import com.dantech.skimbrowser.di.AppGraphEntryPoint
+import com.dantech.skimbrowser.di.DeviceAccess
 import com.dantech.skimbrowser.system.purgeOldShares
 import dagger.hilt.android.EntryPointAccessors
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent
@@ -48,7 +47,7 @@ import kotlin.coroutines.resume
 import org.junit.rules.ExternalResource
 
 /**
- * The browser as the app wires it, for one test: the process graph on a temporary directory
+ * The browser as the app wires it, for one test: the process singletons on a temporary directory
  * (database, settings, tab state, thumbnails), and the activity-scoped browser host of
  * [BrowserHostActivity]. What the screens of later
  * phases do is up to each test: [show] puts any composable over the host, [showCurrentTab] shows
@@ -66,7 +65,7 @@ class BrowserRig : ExternalResource() {
         private set
     lateinit var host: BrowserHost
         private set
-    lateinit var graph: ProcessGraph
+    lateinit var access: DeviceAccess
         private set
     lateinit var activityHost: TestActivityHost
         private set
@@ -78,8 +77,8 @@ class BrowserRig : ExternalResource() {
     val hits = CopyOnWriteArrayList<Pair<String, HitTarget>>()
     val downloadEvents = CopyOnWriteArrayList<DownloadEvent>()
 
-    val tabs: TabManager get() = graph.tabManager()
-    val incognito: IncognitoSession get() = graph.incognitoSession()
+    val tabs: TabManager get() = access.tabManager()
+    val incognito: IncognitoSession get() = access.incognitoSession()
 
     private lateinit var scenario: ActivityScenario<BrowserHostActivity>
     private lateinit var dir: File
@@ -99,12 +98,12 @@ class BrowserRig : ExternalResource() {
             pool = host.pool
             activityHost = host.activityHost as TestActivityHost
         }
-        graph = EntryPointAccessors.fromApplication(activity.application, AppGraphEntryPoint::class.java).graph()
+        access = EntryPointAccessors.fromApplication(activity.application, DeviceAccess::class.java)
         runBlocking { withTimeout(DEVICE_TIMEOUT_MS) { tabs.restore() } }
         purgeOldShares(activity.cacheDir)
         collectors.launch(start = CoroutineStart.UNDISPATCHED) { tabs.pageEvents.collect { pageEvents += it } }
         collectors.launch(start = CoroutineStart.UNDISPATCHED) { tabs.hitTargets.collect { hits += it } }
-        collectors.launch(start = CoroutineStart.UNDISPATCHED) { graph.downloadTracker().events.collect { downloadEvents += it } }
+        collectors.launch(start = CoroutineStart.UNDISPATCHED) { access.downloadTracker().events.collect { downloadEvents += it } }
         onMain {
             tabs.attach(pool)
             pool.onStart()
@@ -131,15 +130,13 @@ class BrowserRig : ExternalResource() {
             runBlocking {
                 withTimeout(DEVICE_TIMEOUT_MS) {
                     tabs.awaitWrites()
-                    graph.tabStateStore().awaitIdle()
-                    graph.thumbnails().awaitIdle()
+                    access.tabStateStore().awaitIdle()
+                    access.thumbnails().awaitIdle()
                 }
             }
         } finally {
             collectors.cancel()
-            if (::graph.isInitialized) {
-                EntryPointAccessors.fromApplication(activity.application, AppGraphEntryPoint::class.java).shutdown().close()
-            }
+            if (::access.isInitialized) access.release().release()
             TestStorage.current.set(null)
             scenario.close()
             pages.close()

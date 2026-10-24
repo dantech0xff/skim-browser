@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.reader
 
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -12,7 +14,8 @@ import kotlinx.coroutines.flow.asSharedFlow
  * ignored by the screen. Nothing is replayed: a citation that arrives while the reader is gone
  * is dropped.
  */
-class ReaderHighlights {
+@Singleton
+class ReaderHighlights @Inject constructor() {
     private val events = MutableSharedFlow<Pair<String, Int>>(extraBufferCapacity = 16)
 
     val requests: SharedFlow<Pair<String, Int>> = events.asSharedFlow()

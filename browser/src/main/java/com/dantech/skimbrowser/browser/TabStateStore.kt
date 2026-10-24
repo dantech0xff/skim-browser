@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.browser
 
+import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
@@ -9,6 +10,8 @@ import androidx.annotation.AnyThread
 import androidx.annotation.WorkerThread
 import androidx.core.util.AtomicFile
 import androidx.webkit.WebViewCompat
+import com.dantech.skimbrowser.AppStorage
+import com.dantech.skimbrowser.di.AppScope
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -16,6 +19,8 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.CRC32
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
  * state": the file is deleted and [load] returns null; it never throws. File work runs on
  * [ioDispatcher], one operation at a time in the order of the calls.
  */
+@Singleton
 class TabStateStore(
     private val dir: File,
     private val webViewVersion: () -> String,
@@ -40,6 +46,13 @@ class TabStateStore(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val sdkInt: Int = Build.VERSION.SDK_INT,
 ) {
+
+    @Inject constructor(
+        storage: AppStorage,
+        app: Application,
+        @AppScope scope: CoroutineScope,
+    ) : this(storage.tabStateDir(app), { webViewVersionOf(app) }, scope)
+
     private val writer = SerialWriter(scope, ioDispatcher, TAG)
     private val memory = ConcurrentHashMap<String, ByteArray>()
 

@@ -9,6 +9,8 @@ import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.text.UiText
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,7 +72,8 @@ enum class SnackbarPlacement(val bottomOffset: Dp) {
  * replaced, dismissed by accessibility, its host leaving the composition, [dismissFor]) finalizes
  * its token; tapping Undo runs the undo instead.
  */
-class SnackbarController(private val undo: UndoRegistry) {
+@Singleton
+class SnackbarController @Inject constructor(private val undo: UndoRegistry) {
 
     data class Message(
         val id: Long,

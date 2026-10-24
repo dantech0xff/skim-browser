@@ -95,13 +95,13 @@ class SharedDownloadsFolderDeviceTest {
             DownloadRouter(
                 tabs = rig.tabs,
                 incognito = rig.incognito,
-                profiles = rig.graph.browserProfiles(),
-                tracker = rig.graph.downloadTracker(),
-                inProcess = InProcessDownloader({ rig.graph.httpClient() }, store),
+                profiles = rig.access.browserProfiles(),
+                tracker = rig.access.downloadTracker(),
+                inProcess = InProcessDownloader({ rig.access.httpClient() }, store),
                 store = store,
                 blob = rig.host.blob,
                 activityHost = rig.activityHost,
-                scope = rig.graph.appScope(),
+                scope = rig.access.appScope(),
             )
         }
         val view = showDownloadPage(rig.pages.url("/report.pdf"), plain = true)

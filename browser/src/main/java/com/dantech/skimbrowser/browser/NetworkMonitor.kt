@@ -6,7 +6,10 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.util.Log
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.Closeable
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +27,10 @@ interface NetworkMonitor : NetworkAvailability {
  * [NetworkMonitor] over [ConnectivityManager]'s default network callback, for the life of the
  * process. Callbacks arrive on the connectivity thread; the flow is safe to read anywhere.
  */
-class ConnectivityNetworkMonitor(context: Context) : NetworkMonitor, Closeable {
+@Singleton
+class ConnectivityNetworkMonitor @Inject constructor(
+    @ApplicationContext context: Context,
+) : NetworkMonitor, Closeable {
 
     private val connectivity = context.applicationContext.getSystemService(ConnectivityManager::class.java)
 

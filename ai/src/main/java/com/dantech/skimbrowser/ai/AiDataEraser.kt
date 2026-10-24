@@ -5,6 +5,8 @@ import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.undo.PendingUndo
 import com.dantech.skimbrowser.domain.undo.UndoSubject
 import com.dantech.skimbrowser.domain.usecase.DeleteAllSkimChats
+import javax.inject.Inject
+import javax.inject.Singleton
 
 typealias AiDataCleared = com.dantech.skimbrowser.domain.ai.AiDataCleared
 
@@ -16,7 +18,8 @@ typealias AiDataCleared = com.dantech.skimbrowser.domain.ai.AiDataCleared
  * put a chat back after the delete. Chats that exist only in memory hear the deletion through
  * the chat repository's removals; this class does not touch a tab's chat id itself.
  */
-class AiDataEraser(
+@Singleton
+class AiDataEraser @Inject constructor(
     private val deleteAllChats: DeleteAllSkimChats,
     private val sites: SitePermissionRepository,
     private val pendingUndo: PendingUndo,
