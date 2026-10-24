@@ -1,0 +1,11 @@
+<!doctype html>
+<!-- One button over the whole page: a tap anywhere opens the popup window. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in</title>
+<style>html,body{margin:0;height:100%} button{position:fixed;left:0;top:0;width:100%;height:100%;font-size:32px}</style></head>
+<body><button id="open" type="button">Sign in with a popup</button>
+<script>
+document.getElementById('open').addEventListener('click', function () {
+  window.skimPopup = window.open('/popup.html', 'skim-popup');
+});
+</script></body></html>

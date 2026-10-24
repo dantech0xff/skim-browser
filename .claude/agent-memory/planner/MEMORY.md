@@ -1,0 +1,3 @@
+- [Plan language](feedback_plan_language.md) — Skim plans: Vietnamese prose with diacritics; identifiers/paths/UI copy in English
+- [ak plan CLI quirks](reference_ak_plan_cli.md) — UTC dir timestamp, add-phase skips plan.md table, pending→todo, reindex never writes files
+- [Skim device gates](project_device_gates.md) — dedicated AVDs skim_api36:5580 / skim_api28:5582; never touch other projects' AVDs

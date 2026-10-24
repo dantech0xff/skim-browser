@@ -1,0 +1,16 @@
+{
+  "uniqueId": "com.github.mozilla:readability",
+  "artifactVersion": "0.6.0",
+  "name": "Readability.js",
+  "description": "A standalone version of the readability library used for Firefox Reader View. Copyright (c) 2010 Arc90 Inc.",
+  "website": "https://github.com/mozilla/readability",
+  "developers": [
+    {
+      "name": "Mozilla",
+      "organisationUrl": "https://github.com/mozilla/readability"
+    }
+  ],
+  "licenses": [
+    "Apache-2.0"
+  ]
+}

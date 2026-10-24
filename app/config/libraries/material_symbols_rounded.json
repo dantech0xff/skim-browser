@@ -1,0 +1,15 @@
+{
+  "uniqueId": "com.github.google:material-symbols-rounded",
+  "name": "Material Symbols Rounded",
+  "description": "Icons used across the app, bundled as vector drawables.",
+  "website": "https://github.com/google/material-design-icons",
+  "developers": [
+    {
+      "name": "Google",
+      "organisationUrl": "https://fonts.google.com/icons"
+    }
+  ],
+  "licenses": [
+    "Apache-2.0"
+  ]
+}

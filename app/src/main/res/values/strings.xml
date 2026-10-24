@@ -1,3 +1,367 @@
 <resources>
-    <string name="app_name">skim browser</string>
+    <string name="app_name">Skim</string>
+
+    <!-- Common actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_not_now">Not now</string>
+    <string name="action_block">Block</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_switch">Switch</string>
+    <string name="action_view">View</string>
+    <string name="action_open">Open</string>
+    <string name="action_done">Done</string>
+    <string name="action_see_all">See all</string>
+
+    <!-- Welcome -->
+    <string name="welcome_headline">Browse less. Understand more.</string>
+    <string name="welcome_body">Skim reads pages with you. Summaries and answers, built into the browser.</string>
+    <string name="welcome_get_started">Get started</string>
+    <string name="welcome_legal">By continuing you agree to the %1$s and %2$s.</string>
+    <string name="welcome_terms_of_service">Terms of Service</string>
+    <string name="welcome_privacy_policy">Privacy Policy</string>
+
+    <!-- Default browser and import -->
+    <string name="setup_title">Almost there</string>
+    <string name="setup_body">Two optional steps that make Skim feel like home. You can change the default browser later in Settings.</string>
+    <string name="setup_default_title">Make Skim your default browser</string>
+    <string name="setup_default_body">Links from other apps open here, with summaries and answers one tap away.</string>
+    <string name="setup_set_as_default">Set as default</string>
+    <string name="setup_import_title">Bring your bookmarks</string>
+    <string name="setup_import_body">Choose an HTML bookmarks file exported from another browser.</string>
+    <string name="setup_choose_file">Choose file</string>
+    <string name="setup_privacy_note">Skim reads a page only when you ask, and never in incognito tabs. Page text is sent encrypted and deleted after each answer.</string>
+    <string name="setup_start_browsing">Start browsing</string>
+
+    <!-- Home, search and Skim history -->
+    <string name="search_hint">Search or ask anything</string>
+    <plurals name="home_summarize_tabs">
+        <item quantity="one">Summarize my %d open tab</item>
+        <item quantity="other">Summarize my %d open tabs</item>
+    </plurals>
+    <string name="home_summarize_tabs_body">One answer that covers everything you have open</string>
+    <string name="home_shortcuts">Shortcuts</string>
+    <string name="home_add_shortcut">Add</string>
+    <string name="home_continue_with_skim">Continue with Skim</string>
+    <string name="ask_skim">Ask Skim</string>
+    <plurals name="time_hours_ago">
+        <item quantity="one">%d h ago</item>
+        <item quantity="other">%d h ago</item>
+    </plurals>
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <string name="date_earlier_this_week">Earlier this week</string>
+    <string name="skim_history_title">Skim history</string>
+    <string name="skim_history_summary_of">Summary of %s</string>
+    <plurals name="skim_history_questions_about">
+        <item quantity="one">%1$d question about %2$s</item>
+        <item quantity="other">%1$d questions about %2$s</item>
+    </plurals>
+    <plurals name="skim_history_answers_across_tabs">
+        <item quantity="one">%1$d answer across %2$d tabs</item>
+        <item quantity="other">%1$d answers across %2$d tabs</item>
+    </plurals>
+    <string name="skim_history_footer">Stored only on this phone. You can turn this off in Settings › AI &amp; privacy.</string>
+    <string name="skim_history_empty">Summaries you ask for show up here</string>
+
+    <!-- Browsing, More menu, Find in page -->
+    <string name="find_in_page">Find in page</string>
+    <string name="find_match_count">%1$d/%2$d</string>
+    <string name="menu_desktop_site">Desktop site</string>
+    <string name="new_tab">New tab</string>
+    <string name="new_incognito_tab">New incognito tab</string>
+    <string name="bookmarks_title">Bookmarks</string>
+    <string name="history_title">History</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- Link and image options -->
+    <string name="link_open_in_new_tab">Open in new tab</string>
+    <string name="link_open_in_incognito_tab">Open in incognito tab</string>
+    <string name="link_copy">Copy link</string>
+    <string name="link_share">Share link</string>
+    <string name="image_open_in_new_tab">Open image in new tab</string>
+    <string name="image_download">Download image</string>
+    <string name="image_share">Share image</string>
+
+    <!-- Skim AI -->
+    <string name="ai_ask_about_page">Ask about this page</string>
+    <string name="ai_summary">Summary</string>
+    <string name="ai_chip_key_numbers">Key numbers</string>
+    <string name="ai_chip_explain_simply">Explain simply</string>
+    <string name="ai_chip_the_catch">The catch?</string>
+    <string name="ai_citation_paragraph">From paragraph %d</string>
+    <string name="ai_ask_anything">Ask anything</string>
+    <plurals name="ai_reading_tabs">
+        <item quantity="one">Reading your %d open tab</item>
+        <item quantity="other">Reading your %d open tabs</item>
+    </plurals>
+    <string name="ai_writing_summary">Writing the summary</string>
+    <string name="ai_reading_page">Reading the page…</string>
+    <string name="ai_not_enough_text_title">Nothing to summarize here</string>
+    <string name="ai_not_enough_text_body">This page has too little text for a summary. You can still ask a question about it below.</string>
+    <string name="ai_offline_title">You\'re offline</string>
+    <string name="ai_offline_body">Skim needs an internet connection to read this page.</string>
+    <string name="ai_permission_title">Let Skim read this page?</string>
+    <string name="ai_permission_body">To summarize and answer your questions, Skim sends the text of %s to its AI. The text is encrypted and deleted after each answer.</string>
+    <string name="ai_permission_note">You\'ll only be asked once for this site. Incognito tabs are never sent.</string>
+
+    <!-- Reader view and text settings -->
+    <string name="reader_text">Text</string>
+    <string name="reader_size">Size</string>
+    <string name="reader_size_percent">%d%%</string>
+    <string name="reader_size_glyph" translatable="false">A</string>
+    <string name="reader_font">Font</string>
+    <string name="reader_font_sans_serif">Sans serif</string>
+    <string name="reader_font_serif">Serif</string>
+
+    <!-- Tabs and incognito -->
+    <plurals name="tabs_title">
+        <item quantity="one">%d tab</item>
+        <item quantity="other">%d tabs</item>
+    </plurals>
+    <plurals name="incognito_tabs_title">
+        <item quantity="one">%d incognito tab</item>
+        <item quantity="other">%d incognito tabs</item>
+    </plurals>
+    <string name="tabs_count_overflow" translatable="false">99+</string>
+    <string name="tabs_segment_open">Open</string>
+    <string name="tabs_segment_incognito">Incognito</string>
+    <string name="tabs_grouped_banner">Skim grouped your tabs by topic</string>
+    <string name="tabs_group_other">Other</string>
+    <string name="incognito_tabs_banner">Skim AI is off in incognito. These pages are never sent to it, and Skim forgets them when you close the tabs.</string>
+    <string name="incognito_search_hint">Search or type URL</string>
+    <string name="incognito_title">You\'re incognito</string>
+    <string name="incognito_body">Other people who use this phone won\'t see what you do here. Skim AI is off, so pages in incognito tabs are never sent to it.</string>
+    <string name="incognito_wont_save">Skim won\'t save</string>
+    <string name="incognito_pages_you_visit">Pages you visit</string>
+    <string name="cookies_and_site_data">Cookies and site data</string>
+    <string name="incognito_form_input">What you type into forms</string>
+    <string name="incognito_still_visible_to">Still visible to</string>
+    <string name="incognito_websites_you_visit">Websites you visit</string>
+    <string name="incognito_employer_or_school">Your employer or school</string>
+    <string name="incognito_internet_provider">Your internet provider</string>
+    <string name="incognito_footer">Bookmarks and downloads you make here are kept. Closing every incognito tab ends the session.</string>
+
+    <!-- AI and privacy settings -->
+    <string name="settings_ai_privacy">AI &amp; privacy</string>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="ai_settings_ask_before_sending">Ask before sending a page to the cloud</string>
+    <string name="ai_settings_ask_before_sending_summary">Shows a prompt the first time you use AI on a site</string>
+    <string name="ai_settings_keep_history">Keep chat history on this device</string>
+    <string name="ai_settings_keep_history_summary">Never synced. Delete it anytime below.</string>
+    <plurals name="ai_settings_conversations">
+        <item quantity="one">%d conversation on this phone</item>
+        <item quantity="other">%d conversations on this phone</item>
+    </plurals>
+    <string name="ai_settings_delete_all">Delete all AI data on this device</string>
+    <string name="ai_settings_footer">To turn Skim AI off for one site, tap the lock in the address bar. Incognito tabs never use it.</string>
+    <string name="ai_settings_data_link">How Skim AI handles your data</string>
+
+    <!-- Page failed to load -->
+    <string name="error_unreachable_title">Can\'t reach this site</string>
+    <string name="error_unreachable_body">Skim couldn\'t find %s. Check the address for typos, or try again in a moment.</string>
+    <string name="error_no_internet_title">No internet connection</string>
+    <string name="error_no_internet_body">Turn on Wi-Fi or mobile data, then try again. Skim reloads this tab as soon as you\'re back online.</string>
+    <string name="error_timed_out_title">This site is taking too long</string>
+    <string name="error_timed_out_body">%s didn\'t respond. It may be busy or briefly down.</string>
+    <string name="error_internet_settings">Internet settings</string>
+    <string name="error_code_name_not_resolved" translatable="false">ERR_NAME_NOT_RESOLVED</string>
+    <string name="error_code_internet_disconnected" translatable="false">ERR_INTERNET_DISCONNECTED</string>
+    <string name="error_code_connection_timed_out" translatable="false">ERR_CONNECTION_TIMED_OUT</string>
+
+    <!-- Settings -->
+    <string name="settings_section_general">General</string>
+    <string name="settings_search_engine">Search engine</string>
+    <string name="search_engine_google" translatable="false">Google</string>
+    <string name="search_engine_bing" translatable="false">Bing</string>
+    <string name="search_engine_duckduckgo" translatable="false">DuckDuckGo</string>
+    <string name="search_engine_ecosia" translatable="false">Ecosia</string>
+    <string name="settings_default_browser">Default browser</string>
+    <string name="settings_default_browser_summary_is_default">Skim is your default</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system_default">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="skim_ai">Skim AI</string>
+    <string name="settings_ai_privacy_summary_ask">Asks before reading new sites</string>
+    <string name="clear_browsing_data">Clear browsing data</string>
+    <string name="settings_clear_browsing_data_summary">History, cookies and cached files</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_terms_of_service">Terms of service</string>
+    <string name="settings_open_source_licenses">Open-source licenses</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_version_value" translatable="false">%1$s (%2$d)</string>
+
+    <!-- Bookmarks -->
+    <plurals name="bookmarks_count">
+        <item quantity="one">%d bookmark</item>
+        <item quantity="other">%d bookmarks</item>
+    </plurals>
+    <plurals name="bookmarks_imported_count_from">
+        <item quantity="one">%1$d bookmark from %2$s</item>
+        <item quantity="other">%1$d bookmarks from %2$s</item>
+    </plurals>
+    <string name="bookmarks_section_folders">Folders</string>
+    <string name="bookmarks_folder_mobile">Mobile bookmarks</string>
+    <string name="bookmarks_folder_imported">Imported</string>
+    <string name="bookmarks_section_recently_added">Recently added</string>
+
+    <!-- Dialogs and menus -->
+    <string name="dialog_add_shortcut_title">Add shortcut</string>
+    <string name="field_name">Name</string>
+    <string name="field_url">URL</string>
+    <string name="field_folder">Folder</string>
+    <string name="field_group_name">Group name</string>
+    <string name="clear_data_body">Removes data saved on this phone, from all time.</string>
+    <string name="clear_data_browsing_history">Browsing history</string>
+    <string name="clear_data_cookies_summary">Signs you out of most sites</string>
+    <string name="clear_data_cache">Cached images and files</string>
+    <string name="clear_data_footer">Skim history is managed in AI &amp; privacy.</string>
+    <string name="delete_ai_data_title">Delete all AI data?</string>
+    <string name="delete_ai_data_body">Your Skim history is deleted and every site asks again before Skim reads it. You can\'t undo this.</string>
+    <string name="clear_skim_history_title">Clear Skim history?</string>
+    <string name="clear_skim_history_body">Summaries and answers saved on this phone are deleted. Sites you allowed stay allowed.</string>
+    <string name="site_permission_location_title">Share your location with %s?</string>
+    <string name="site_permission_body">The site can use it while it\'s open. Change this anytime from the lock in the address bar.</string>
+    <string name="rename_group">Rename group</string>
+    <string name="edit_bookmark_title">Edit bookmark</string>
+    <string name="move_to_folder">Move to folder</string>
+    <string name="shortcut_menu_edit">Edit shortcut</string>
+    <string name="tab_group_ungroup">Ungroup</string>
+    <plurals name="tab_group_close_tabs">
+        <item quantity="one">Close %d tab</item>
+        <item quantity="other">Close %d tabs</item>
+    </plurals>
+    <string name="site_info_connection_secure">Connection is secure</string>
+    <string name="site_info_permissions">Permissions</string>
+    <string name="site_info_skim_ai_summary">Can read this site when you ask</string>
+    <string name="site_info_location">Location</string>
+    <string name="site_permission_blocked">Blocked</string>
+    <string name="site_info_cookies_summary">Stored by this site on your phone</string>
+
+    <!-- Snackbars -->
+    <string name="snackbar_tab_closed">Tab closed</string>
+    <plurals name="snackbar_tabs_closed">
+        <item quantity="one">%d tab closed</item>
+        <item quantity="other">%d tabs closed</item>
+    </plurals>
+    <string name="snackbar_bookmark_added">Bookmark added</string>
+    <string name="snackbar_removed_from_history">Removed from history</string>
+    <string name="snackbar_bookmark_deleted">Bookmark deleted</string>
+    <string name="snackbar_opened_in_new_tab">Opened in a new tab</string>
+    <plurals name="snackbar_imported_bookmarks">
+        <item quantity="one">Imported %d bookmark</item>
+        <item quantity="other">Imported %d bookmarks</item>
+    </plurals>
+    <string name="snackbar_import_failed">Couldn\'t read that file. Choose an HTML bookmarks file exported from a browser.</string>
+    <string name="snackbar_downloaded">%s downloaded</string>
+    <string name="snackbar_copied">Copied to clipboard</string>
+    <string name="snackbar_shortcut_removed">Shortcut removed</string>
+
+    <!-- Content descriptions (the aria-label text of each control) -->
+    <string name="cd_browser_controls">Browser controls</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_forward">Forward</string>
+    <plurals name="cd_tabs_open">
+        <item quantity="one">Tabs, %d open</item>
+        <item quantity="other">Tabs, %d open</item>
+    </plurals>
+    <plurals name="cd_incognito_tabs_open">
+        <item quantity="one">Incognito tabs, %d open</item>
+        <item quantity="other">Incognito tabs, %d open</item>
+    </plurals>
+    <string name="cd_more_options">More options</string>
+    <string name="cd_ask_skim_about_page">Ask Skim about this page</string>
+    <string name="cd_ask_skim_unavailable">Ask Skim about this page, unavailable until the page loads</string>
+    <string name="cd_ask_skim_off_incognito">Ask Skim, off in incognito</string>
+    <string name="cd_ask_skim_about_tabs">Ask Skim about these tabs</string>
+    <string name="cd_voice_search">Voice search</string>
+    <string name="cd_close_search">Close search</string>
+    <string name="cd_clear_text">Clear text</string>
+    <string name="cd_suggestions">Suggestions</string>
+    <string name="cd_edit_search">Edit search: %s</string>
+    <string name="cd_search_skim_history">Search Skim history</string>
+    <string name="cd_delete_all_skim_history">Delete all Skim history</string>
+    <string name="cd_remove_from_skim_history">Remove from Skim history</string>
+    <string name="cd_site_info_secure">Site information, connection is secure</string>
+    <string name="cd_edit_address">Edit address, %s</string>
+    <string name="cd_reader_view">Reader view</string>
+    <string name="cd_loading_page">Loading page</string>
+    <string name="cd_add_bookmark">Add bookmark</string>
+    <string name="cd_share_page">Share page</string>
+    <string name="cd_page_actions">Page actions</string>
+    <string name="cd_previous_match">Previous match</string>
+    <string name="cd_next_match">Next match</string>
+    <string name="cd_close_find_in_page">Close find in page</string>
+    <string name="cd_link_options">Link options</string>
+    <string name="cd_image_options">Image options</string>
+    <string name="cd_close">Close</string>
+    <string name="cd_copy_summary">Copy summary</string>
+    <string name="cd_good_summary">Good summary</string>
+    <string name="cd_poor_summary">Poor summary</string>
+    <string name="cd_copy_answer">Copy answer</string>
+    <string name="cd_good_answer">Good answer</string>
+    <string name="cd_poor_answer">Poor answer</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_stop">Stop</string>
+    <string name="cd_writing_summary">Writing summary</string>
+    <string name="cd_exit_reader_view">Exit reader view</string>
+    <string name="cd_text_size">Text size</string>
+    <string name="cd_text_settings">Text settings</string>
+    <string name="cd_search_tabs">Search tabs</string>
+    <string name="cd_tab_list">Tab list</string>
+    <string name="cd_group_options">Group options</string>
+    <string name="cd_close_tab">Close tab</string>
+    <string name="cd_tab_actions">Tab actions</string>
+    <string name="cd_close_all_tabs">Close all tabs</string>
+    <string name="cd_search_incognito_tabs">Search incognito tabs</string>
+    <string name="cd_close_all_incognito_tabs">Close all incognito tabs</string>
+    <string name="cd_page_didnt_load">Page didn\'t load</string>
+    <string name="cd_search_history">Search history</string>
+    <string name="cd_remove_from_history">Remove from history</string>
+    <string name="cd_search_bookmarks">Search bookmarks</string>
+    <string name="cd_bookmark_options">Bookmark options</string>
+    <string name="cd_folder_field">Folder, %s</string>
+    <string name="cd_shortcut_menu">%s shortcut</string>
+    <string name="cd_tab_group_menu">%s group</string>
+    <string name="cd_delete_site_data">Delete cookies and site data for %s</string>
+
+    <!--
+        Copy needs design review: minimal copy for states the design does not cover yet,
+        each one reusing the closest drawn pattern.
+    -->
+    <string name="ai_server_error_title">Skim couldn\'t answer</string>
+    <string name="ai_server_error_body">Something went wrong on Skim\'s side. Try again in a moment.</string>
+    <string name="ai_refusal_title">Skim can\'t help with this</string>
+    <string name="ai_refusal_body">Try asking about the page in a different way.</string>
+    <string name="error_crashed_title">This page stopped working</string>
+    <string name="error_crashed_body">%s crashed more than once. Try again, or go back.</string>
+    <string name="incognito_unavailable">Incognito needs a newer Android System WebView. Update it from Google Play, then try again.</string>
+    <string name="site_permission_camera_title">Let %s use your camera?</string>
+    <string name="site_permission_microphone_title">Let %s use your microphone?</string>
+    <string name="site_permission_camera_microphone_title">Let %s use your camera and microphone?</string>
+    <string name="site_info_camera">Camera</string>
+    <string name="site_info_microphone">Microphone</string>
+    <string name="site_permission_allowed">Allowed</string>
+    <string name="cd_site_info">Site information</string>
+    <string name="time_just_now">Just now</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">%d min ago</item>
+        <item quantity="other">%d min ago</item>
+    </plurals>
+    <string name="date_earlier">Earlier</string>
+    <string name="history_empty">Pages you visit show up here</string>
+    <string name="bookmarks_empty">Pages you bookmark show up here</string>
+    <string name="tabs_empty">Tabs you open show up here</string>
+    <string name="settings_default_browser_summary_not_default">Skim isn\'t your default browser</string>
+    <string name="settings_ai_privacy_summary_no_ask">Reads sites when you ask</string>
+    <string name="snackbar_download_failed">Couldn\'t download %s</string>
+    <string name="snackbar_share_failed">Couldn\'t share this image</string>
 </resources>

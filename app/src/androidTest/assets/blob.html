@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  Blob downloads. skimMakeBlob(size, type, name) makes a blob of size bytes, byte i being
+  (i * 31 + 7) mod 256, and points the link band (the top 45% of the screen) at it with that
+  download name. skimSlices counts the slices the page's FileReaders read, Skim's read of a blob
+  included; with skimLeaveAfter = n the page moves to /plain.html as the nth slice is read.
+  Served with ?csp=, the page has that Content Security Policy.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blobs</title>
+<style>html,body{margin:0} #link{display:block;width:100%;height:45vh;font-size:28px;background:#efe}</style></head>
+<body><a id="link" href="#">Download the blob</a>
+<script>
+window.skimSlices = 0;
+window.skimLeaveAfter = 0;
+var readAsDataURL = FileReader.prototype.readAsDataURL;
+FileReader.prototype.readAsDataURL = function (blob) {
+  window.skimSlices++;
+  if (window.skimLeaveAfter > 0 && window.skimSlices === window.skimLeaveAfter) {
+    setTimeout(function () { location.href = '/plain.html'; }, 0);
+  }
+  return readAsDataURL.call(this, blob);
+};
+window.skimMakeBlob = function (size, type, name) {
+  var bytes = new Uint8Array(size);
+  for (var i = 0; i < size; i++) bytes[i] = (i * 31 + 7) & 255;
+  var link = document.getElementById('link');
+  link.href = URL.createObjectURL(new Blob([bytes], { type: type }));
+  link.download = name;
+  return true;
+};
+</script></body></html>

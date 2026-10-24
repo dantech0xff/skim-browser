@@ -1,12 +1,6 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# Project specific R8 rules. AGP combines every keep rule file in src/main/keepRules and passes them to R8.
+# See https://d.android.com/r/tools/r8/keep-rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# opentelemetry-api (pulled in by anthropic-java) references the AutoValue annotation, which only exists
+# at compile time. Without this rule R8 stops the release build with a "Missing class" error.
+-dontwarn com.google.auto.value.AutoValue

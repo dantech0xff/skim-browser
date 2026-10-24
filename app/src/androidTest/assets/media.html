@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  Site permissions. skimAskMedia() asks for the camera and the microphone, skimAskLocation() for
+  the location; the answer lands in window.skimMedia or window.skimLocation: "waiting", then
+  "granted" with the kinds of the tracks, or "denied" with the error. skimStopMedia() ends the
+  stream. With ?ask the page asks for the camera and the microphone once loaded, and in a frame it
+  tells its parent every answer.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera</title></head>
+<body><p>This page asks for the camera, the microphone and the location.</p>
+<script>
+window.skimMedia = null;
+window.skimLocation = null;
+window.skimStream = null;
+function tell(value) {
+  window.skimMedia = value;
+  if (window.parent !== window) window.parent.postMessage({ skimMedia: value }, '*');
+}
+window.skimAskMedia = function () {
+  tell('waiting');
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(function (stream) {
+    window.skimStream = stream;
+    tell('granted ' + stream.getTracks().map(function (track) { return track.kind; }).sort().join(','));
+  }, function (error) {
+    tell('denied ' + error.name);
+  });
+};
+window.skimStopMedia = function () {
+  if (window.skimStream) window.skimStream.getTracks().forEach(function (track) { track.stop(); });
+  window.skimStream = null;
+};
+window.skimAskLocation = function () {
+  window.skimLocation = 'waiting';
+  navigator.geolocation.getCurrentPosition(function () {
+    window.skimLocation = 'granted';
+  }, function (error) {
+    window.skimLocation = 'denied ' + error.code;
+  }, { timeout: 10000 });
+};
+if (location.search.indexOf('ask') !== -1) window.addEventListener('load', window.skimAskMedia);
+</script></body></html>

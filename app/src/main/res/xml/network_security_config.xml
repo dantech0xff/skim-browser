@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A browser must open http:// pages, and WebView follows this policy, so cleartext is allowed.
+    Skim's own endpoints stay on https: release builds reject a non-https AI proxy or legal link at
+    build time. Only system CAs are trusted; user-installed CAs are not.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

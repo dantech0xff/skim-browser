@@ -1,0 +1,41 @@
+<!doctype html>
+<!--
+  A page's own dialogs. skimTicks counts while the page runs. skimAskAll() calls alert, confirm and
+  prompt and keeps their answers, as JSON, in skimAnswers. skimAlerts(n) calls alert n times in a
+  row, titling the page "Alert k" just before the kth call, keeps how long each call took (ms) in
+  skimAlertTimes, then titles the page "Alerts done". skimHold() makes the page ask before it is
+  left. The whole page is one button, to tap; skimTapped counts its clicks.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialogs</title>
+<style>html,body{margin:0;height:100%} button{position:fixed;left:0;top:0;width:100%;height:100%;font-size:32px}</style></head>
+<body><button id="tap" type="button">Tap the page</button>
+<script>
+window.skimTicks = 0;
+setInterval(function () { window.skimTicks++; }, 50);
+window.skimTapped = 0;
+document.getElementById('tap').addEventListener('click', function () { window.skimTapped++; });
+window.skimAnswers = null;
+window.skimAskAll = function () {
+  var answers = [String(alert('Alert')), confirm('Confirm'), prompt('Prompt', 'default')];
+  window.skimAnswers = JSON.stringify(answers);
+};
+window.skimAlertTimes = [];
+window.skimAlerts = function (times) {
+  window.skimAlertTimes = [];
+  for (var i = 1; i <= times; i++) {
+    document.title = 'Alert ' + i;
+    var started = Date.now();
+    alert('Alert ' + i);
+    window.skimAlertTimes.push(Date.now() - started);
+  }
+  document.title = 'Alerts done';
+};
+window.skimHold = function () {
+  window.addEventListener('beforeunload', function (event) {
+    event.preventDefault();
+    event.returnValue = 'Stay';
+    return 'Stay';
+  });
+};
+</script></body></html>

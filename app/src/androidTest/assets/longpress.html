@@ -1,0 +1,13 @@
+<!doctype html>
+<!-- Three bands, each 30% of the viewport high: a text link, an image, and an image inside a link.
+     None of them is draggable: Chromium may turn a long press on a draggable link or image into a drag
+     and drop, which hands the touch to the system and reports no long press. This page is about what a
+     long press hits. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links and images</title>
+<style>html,body{margin:0} .band{display:block;width:100%;height:30vh;margin:0 0 3vh 0} a.band{font-size:28px;background:#eef}</style></head>
+<body>
+<a class="band" id="link" href="/guide.html" draggable="false">Read the guide</a>
+<img class="band" id="image" src="/image.png?plain" alt="A red square" draggable="false">
+<a id="imagelink" href="/gallery.html" draggable="false"><img class="band" src="/image.png?linked" alt="A linked square" draggable="false"></a>
+</body></html>

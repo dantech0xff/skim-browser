@@ -1,0 +1,12 @@
+<!doctype html>
+<!-- A JavaScript timer that counts while timers run. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timers</title></head>
+<body><p id="count">0</p>
+<script>
+window.ticks = 0;
+setInterval(function () {
+  window.ticks++;
+  document.getElementById('count').textContent = String(window.ticks);
+}, 50);
+</script></body></html>

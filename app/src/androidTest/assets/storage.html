@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  Site data of every kind a session leaves: skimWrite() stores a cookie, a local storage item, an
+  IndexedDB record and a service worker registration; skimRead() reads them back. Both end by
+  setting window.skimStorage ("written", the JSON of what was read, or "error: ..."). The two
+  resources are served cacheable, so loading the page fills the HTTP cache.
+-->
+<html lang="en"><head><meta charset="utf-8"><title>Storage</title>
+<link rel="stylesheet" href="/cacheable.css"><script src="/cacheable.js"></script></head>
+<body><p>This page stores and reads site data.</p>
+<script>
+window.skimStorage = null;
+function fail(error) { window.skimStorage = 'error: ' + error; }
+function openNotes(then) {
+  var open = indexedDB.open('skim', 1);
+  open.onupgradeneeded = function () { open.result.createObjectStore('notes'); };
+  open.onsuccess = function () { then(open.result); };
+  open.onerror = function () { fail('indexedDB ' + open.error); };
+  open.onblocked = function () { fail('indexedDB blocked'); };
+}
+function skimWrite() {
+  window.skimStorage = null;
+  try {
+    document.cookie = 'skimstore=kept; path=/; max-age=3600';
+    localStorage.setItem('skim', 'kept');
+    openNotes(function (db) {
+      var tx = db.transaction('notes', 'readwrite');
+      tx.objectStore('notes').put('kept', 'note');
+      tx.oncomplete = function () {
+        db.close();
+        navigator.serviceWorker.register('/sw.js').then(function () { window.skimStorage = 'written'; }, fail);
+      };
+    });
+  } catch (e) {
+    fail(e);
+  }
+}
+function skimRead() {
+  window.skimStorage = null;
+  try {
+    var found = { cookie: document.cookie, local: localStorage.getItem('skim'), idb: null };
+    openNotes(function (db) {
+      var get = db.transaction('notes', 'readonly').objectStore('notes').get('note');
+      get.onsuccess = function () {
+        found.idb = get.result === undefined ? null : get.result;
+        db.close();
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          found.workers = registrations.length;
+          window.skimStorage = JSON.stringify(found);
+        }, fail);
+      };
+    });
+  } catch (e) {
+    fail(e);
+  }
+}
+</script></body></html>
