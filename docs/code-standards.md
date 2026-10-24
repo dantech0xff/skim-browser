@@ -10,7 +10,7 @@ A composable does not open a tab, allow a site, group tabs, or delete browsing o
 
 ## ViewModels
 
-ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with `hiltViewModel`. Navigation arguments are assisted parameters, not values read from `SavedStateHandle`. It receives use cases, or a domain repository interface for a read that does nothing but forward the call. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.
+ViewModels expose `StateFlow` (and `SharedFlow` for one-shot events). Screens collect them with `collectAsStateWithLifecycle`. A ViewModel is created with `hiltViewModel`. Navigation arguments are assisted parameters, not values read from `SavedStateHandle`. The one `SavedStateHandle` value is the back stack, which the shell's `SkimAppViewModel` keeps there with the `SkimNavigator` that writes it. It receives use cases, or a domain repository interface for a read that does nothing but forward the call. It does not take a concrete class from `data/`. `onCleared` is where a chat in progress is saved or dropped.
 
 ## Domain and data
 

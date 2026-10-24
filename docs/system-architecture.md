@@ -3,7 +3,7 @@
 ```
 MainActivity
   BrowserHost (WebViewPool, chrome client)   lives with the Activity
-  SkimNavigator (back stack)
+  SkimAppViewModel (back stack, SkimNavigator)   kept across recreation; back stack saved with the Activity
         |
         v
 ui/  screens and ViewModels
@@ -27,7 +27,7 @@ ai/  Claude adapter, chat sessions, tab grouping    Android library :ai
   depends on :domain and :browser; its Hilt bindings stay in :app
 ```
 
-Dependencies point inward: `ui` depends on `domain`, `data` depends on `domain`, `browser` depends on `domain` and `data`, and `ai` depends on `domain` and `browser`. `domain` does not import Android, `data`, `ui`, `browser`, or `ai`. `DomainBoundaryTest` reads every source line, so a fully qualified name fails the same way an import does. It rejects `domain` naming Android, OkHttp, or an outer layer; `ui` naming `data` or `ai`; `ui` naming `browser` outside the nine route files that attach the Activity host (`DownloadSnackbarEffect`, `BrowsingRoute`, `SettingsScreen`, `TabsScreen`, `SkimNavDisplay`, `LinkOptionsSheet`, `SitePermissionDialog`, `SkimApp`, `SnackbarActions`); `ai`, `browser`, or `data` naming `ui`; and `ai` naming `data.db.entity` or `data.hostOf`. It also checks that the concrete chat repository is constructed only under `data/`, including the Hilt bindings at `di/data`. Hilt is the composition root. `browser` and `ai` take domain repository interfaces. `SkimNavigator` depends on `TabsController`, `IncognitoSupport`, `WindowPrivacy`, and `AskPageAccess`. Site information clears a site through `SiteDataCleaner`. Visible-text cutting lives in `domain/text`. `data` does not call `ui` or `browser`. `browser` still calls a few `data` helpers (`normalizeHost`, `isWebUrl`, `hostOf`); that edge is outside the test.
+Dependencies point inward: `ui` depends on `domain`, `data` depends on `domain`, `browser` depends on `domain` and `data`, and `ai` depends on `domain` and `browser`. `domain` does not import Android, `data`, `ui`, `browser`, or `ai`. `DomainBoundaryTest` reads every source line, so a fully qualified name fails the same way an import does. It rejects `domain` naming Android, OkHttp, or an outer layer; `ui` naming `data` or `ai`; `ui` naming `browser` outside the nine route files that attach the Activity host (`DownloadSnackbarEffect`, `BrowsingRoute`, `SettingsScreen`, `TabsScreen`, `SkimNavDisplay`, `LinkOptionsSheet`, `SitePermissionDialog`, `SkimApp`, `SnackbarActions`); `ai`, `browser`, or `data` naming `ui`; and `ai` naming `data.db.entity` or `data.hostOf`. It also checks that the concrete chat repository is constructed only under `data/`, including the Hilt bindings at `di/data`. Hilt is the composition root. `browser` and `ai` take domain repository interfaces. `SkimNavigator` depends on `TabsController`, `IncognitoSupport`, `WindowPrivacy`, and `AskPageAccess`. `SkimAppViewModel` is the shell's state: it reads onboarding and waits for `TabRestore` before the first screen, keeps the back stack in its `SavedStateHandle`, and owns the navigator, which reaches the window only while `SkimApp` is composed and has attached it. `SkimApp` declares no dependency of its own: state comes from that view model, and `BrowserHost`, `DownloadTracker` and the pending links from `MainActivity`. Site information clears a site through `SiteDataCleaner`. Visible-text cutting lives in `domain/text`. `data` does not call `ui` or `browser`. `browser` still calls a few `data` helpers (`normalizeHost`, `isWebUrl`, `hostOf`); that edge is outside the test.
 
 A call that is one repository method uses that method, read or write. A use case in `domain/usecase` exists when the action is not one repository method: one action, `operator fun invoke`. The concrete repositories in `data/repo` implement the interfaces and map entities to domain models in `data/repo/DomainMappers.kt`. Settings types (`SearchEngine`, `ThemeSetting`, `ReaderFont`, `SkimSettings`) live in `domain/settings`. The old `data` and `ui.theme` names are typealiases so Room and existing call sites keep compiling.
 
@@ -35,7 +35,7 @@ A call that is one repository method uses that method, read or write. A use case
 
 ## Tabs and WebViews
 
-Tab models (`Tab`, `TabsState`, `TabRuntime`, `GroupLayout`) live in `domain/tab`. ViewModels depend on `TabsController`, and `TabManager` implements it. Incognito restore and undo-close decisions are pure functions in `domain/tab/TabRules.kt`. `TabManager` owns the live tab list and the restore path. It is created once per process. It does not hold WebViews. Android types (`Bundle`, `SystemClock`, `Log`, WebView) stay in `browser/`.
+Tab models (`Tab`, `TabsState`, `TabRuntime`, `GroupLayout`) live in `domain/tab`. ViewModels depend on `TabsController`, and `TabManager` implements it, as well as `TabRestore`, which the shell waits on at start. Incognito restore and undo-close decisions are pure functions in `domain/tab/TabRules.kt`. `TabManager` owns the live tab list and the restore path. It is created once per process. It does not hold WebViews. Android types (`Bundle`, `SystemClock`, `Log`, WebView) stay in `browser/`.
 
 `WebViewPool` is created with the Activity (`BrowserHost`). It keeps a small number of live WebViews and rebinds them when the current tab changes. `MainActivity.browserHostForTests` exposes the host to instrumented tests.
 

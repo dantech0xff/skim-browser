@@ -1,152 +1,92 @@
 package com.dantech.skimbrowser.ui.shell
 
-import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.rememberNavBackStack
 import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.di.ShellEntryPoint
+import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
-import com.dantech.skimbrowser.ui.navigation.BrowserKey
-import com.dantech.skimbrowser.ui.navigation.NavigatorEntryPoint
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
-import com.dantech.skimbrowser.ui.navigation.WelcomeKey
-import com.dantech.skimbrowser.ui.navigation.reconcileBackStack
-import com.dantech.skimbrowser.ui.navigation.rememberShell
-import com.dantech.skimbrowser.ui.navigation.skimNavConfig
 import com.dantech.skimbrowser.ui.navigation.topScreen
-import dagger.hilt.EntryPoints
-import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import com.dantech.skimbrowser.ui.theme.SkimTheme
-import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import com.dantech.skimbrowser.ui.theme.isDark
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * The app in the main window.
- *
- * It starts once the settings are read and the saved tabs restored (or given up on: a restore that
- * fails or takes too long still opens the browser, on a New tab). The first launch opens on Welcome
- * (01), later ones on the browser with the last tab; a back stack saved before the Activity or the
- * process went away wins over both, once the keys of tabs that did not come back are dropped.
+ * The app in the main window, as [viewModel] holds it: the empty window in the app's colors until
+ * the app has started (see [SkimAppViewModel]), then its back stack.
  *
  * What is on screen decides the window: the dark scheme and FLAG_SECURE while it shows incognito
  * content, system bar icons that read on the app's colors, and the Recents preview hidden while an
  * incognito tab is open. The one snackbar host sits where the top screen places it and carries out
  * snackbar actions with this window's navigator. Each link in [pendingLinks] (from another app)
  * opens in a new normal tab, shown at once.
+ *
+ * State, the back stack and the navigator come from [viewModel]. MainActivity hands in what a view
+ * model may not hold or name: its [host], the [downloads] whose ends the snackbar tells, and the
+ * links it received.
  */
 @Composable
-fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
-    val shell = rememberShell()
-    val settings by remember(shell) { shell.settings().settings }.collectAsStateWithLifecycle(initialValue = null)
-    val onboarded by produceState<Boolean?>(initialValue = null, shell) { value = startUp(shell) }
-    val theme = settings?.theme ?: ThemeSetting.System
-    val started = onboarded
-    if (started == null) {
+fun SkimApp(
+    host: BrowserHost,
+    downloads: DownloadTracker,
+    pendingLinks: ReceiveChannel<String>,
+    viewModel: SkimAppViewModel = hiltViewModel(),
+) {
+    // The view model outlives this window; its navigator reaches the window only while it is composed.
+    DisposableEffect(viewModel, host.secure) {
+        viewModel.attachWindow(host.secure)
+        onDispose { viewModel.detachWindow(host.secure) }
+    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    if (!state.started) {
         // Until the settings and tabs are read: the empty window, in the app's colors.
-        SystemBarsEffect(theme.isDark(isSystemInDarkTheme(), incognito = false))
-        SkimTheme(theme) { Surface(Modifier.fillMaxSize()) {} }
+        SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognito = false))
+        SkimTheme(state.theme) { Surface(Modifier.fillMaxSize()) {} }
         return
     }
 
-    val tabs = shell.tabManager()
-    val tabsState by tabs.state.collectAsStateWithLifecycle()
-    val backStack = rememberNavBackStack(skimNavConfig, if (started) BrowserKey else WelcomeKey)
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val navigatorFactory = remember(context) {
-        EntryPoints.get(context, NavigatorEntryPoint::class.java).navigatorFactory()
-    }
-    val navigator = remember(backStack, scope, host.secure) {
-        // A restored back stack may point at tabs that did not come back; it is fixed once, before it shows.
-        backStack.reconcileWith(tabsState)
-        navigatorFactory.create(backStack, host.secure, scope)
-    }
-    val keys = backStack.toList()
-    val incognitoSurface = secureTarget(keys, tabsState)
+    val tabs by viewModel.tabs.collectAsStateWithLifecycle()
+    val navigator = viewModel.navigator
+    val keys = viewModel.backStack.toList()
+    val incognitoSurface = secureTarget(keys, tabs)
 
     SecureFlagEffect(
         target = incognitoSurface,
-        hasIncognitoTabs = tabsState.tabs.any { it.incognito },
+        hasIncognitoTabs = tabs.tabs.any { it.incognito },
         armed = navigator.secureArming,
         secure = host.secure,
     )
-    SystemBarsEffect(theme.isDark(isSystemInDarkTheme(), incognitoSurface))
+    SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognitoSurface))
     // A download that ends is told on whatever screen is up, with the one snackbar host below.
-    DownloadSnackbarEffect(shell.downloads(), shell.snackbar(), host.secure)
-    LaunchedEffect(navigator) {
+    DownloadSnackbarEffect(downloads, viewModel.snackbar, host.secure)
+    LaunchedEffect(viewModel, pendingLinks) {
         // The channel belongs to the Activity, so each link is received here exactly once.
-        for (url in pendingLinks) {
-            tabs.newTab(incognito = false, url = url, openedByExternalApp = true)
-            navigator.showBrowser()
-        }
+        for (url in pendingLinks) viewModel.openExternalLink(url)
     }
 
-    SkimTheme(theme, incognito = incognitoSurface) {
+    SkimTheme(state.theme, incognito = incognitoSurface) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
-                SkimNavDisplay(backStack, navigator)
+                SkimNavDisplay(viewModel.backStack, navigator, tabs)
                 SkimSnackbarHost(
-                    controller = shell.snackbar(),
+                    controller = viewModel.snackbar,
                     placement = topScreen(keys)?.placement ?: SnackbarPlacement.Bottom,
-                    onAction = { action -> interpret(action, navigator, shell.undo(), host.activityHost) },
+                    onAction = { action -> interpret(action, navigator, viewModel.undo, host.activityHost) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }
     }
 }
-
-/**
- * Reads whether onboarding is done and waits for the saved tabs. Neither can hold the start up for
- * long: settings that cannot be read count as a first launch, and tabs that are not restored in
- * time (or not at all) leave the browser to open a New tab.
- */
-private suspend fun startUp(shell: ShellEntryPoint): Boolean {
-    val onboarded = withTimeoutOrNull(START_TIMEOUT_MS) { shell.settings().settings.first().onboardingCompleted }
-    if (onboarded == null) Log.w(TAG, "Settings were not read in time")
-    try {
-        if (withTimeoutOrNull(START_TIMEOUT_MS) { shell.tabManager().restore() } == null) {
-            Log.w(TAG, "Saved tabs were not restored in time")
-        }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        Log.w(TAG, "Saved tabs could not be restored: ${e.javaClass.simpleName}")
-    }
-    return onboarded == true
-}
-
-/** Drops the keys of tabs that are not open, in place. */
-private fun NavBackStack<NavKey>.reconcileWith(tabs: TabsState) {
-    val keys = toList()
-    val reconciled = reconcileBackStack(keys, tabs)
-    if (reconciled == keys) return
-    clear()
-    addAll(reconciled)
-}
-
-private const val TAG = "SkimApp"
-
-/** Longer than the tab manager's own restore timeout, which normally ends the wait first. */
-private const val START_TIMEOUT_MS = 8_000L

@@ -16,7 +16,7 @@ Hilt (`SingletonComponent`) is the process-wide container. `SkimApplication` is 
 | `search/` | Suggestion fetches for the search field. |
 | `system/` | Share sheet, clipboard, share-image files. |
 
-Navigation keys live in `ui/navigation/SkimKeys.kt`. `SkimNavDisplay` registers an entry per destination. `SkimNavigator` is the only writer of the back stack.
+Navigation keys live in `ui/navigation/SkimKeys.kt`. `SkimNavDisplay` registers an entry per destination. `SkimNavigator` is the only writer of the back stack once the app has started. `ui/shell/SkimAppViewModel` holds both, and the start up.
 
 ## Persistence
 

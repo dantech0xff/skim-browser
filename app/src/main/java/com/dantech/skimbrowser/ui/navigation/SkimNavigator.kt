@@ -20,16 +20,13 @@ import com.dantech.skimbrowser.ui.text.UiText
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ActivityComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Every move between destinations: the back stack the shell saves, the current tab and the
- * window's FLAG_SECURE. Called on the main thread.
+ * Every move between destinations: the back stack the shell's view model saves, the current tab and
+ * the window's FLAG_SECURE. Called on the main thread.
  *
  * Before a change puts incognito content on screen (an incognito tab becomes current, a screen,
  * sheet or dialog of one is shown, or Back reveals one), FLAG_SECURE is turned on, so no incognito
@@ -223,11 +220,4 @@ class SkimNavigator @AssistedInject constructor(
             scope: CoroutineScope,
         ): SkimNavigator
     }
-}
-
-/** The activity's navigator factory. The navigator itself is not retained. */
-@EntryPoint
-@InstallIn(ActivityComponent::class)
-interface NavigatorEntryPoint {
-    fun navigatorFactory(): SkimNavigator.Factory
 }

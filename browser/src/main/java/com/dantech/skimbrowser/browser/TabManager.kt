@@ -26,6 +26,7 @@ import com.dantech.skimbrowser.domain.tab.PersistedTab
 import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
 import com.dantech.skimbrowser.domain.tab.TabPlacement
 import com.dantech.skimbrowser.domain.tab.TabRepository
+import com.dantech.skimbrowser.domain.tab.TabRestore
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.closesLastIncognitoTab
 import com.dantech.skimbrowser.domain.tab.currentAfterUndo
@@ -89,7 +90,7 @@ class TabManager(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
-) : TabsController {
+) : TabsController, TabRestore {
 
     @Inject constructor(
         tabRepo: TabRepository,
@@ -193,7 +194,7 @@ class TabManager(
      * the next start. Every call returns the result of the first.
      */
     @AnyThread
-    suspend fun restore(): RestoreResult {
+    override suspend fun restore(): RestoreResult {
         val job = synchronized(this) { restoring ?: appScope.async(ioDispatcher) { restoreOnce() }.also { restoring = it } }
         return job.await()
     }

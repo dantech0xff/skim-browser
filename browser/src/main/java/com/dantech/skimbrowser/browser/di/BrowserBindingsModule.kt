@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
+import com.dantech.skimbrowser.domain.tab.TabRestore
 import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.Binds
 import dagger.Module
@@ -24,6 +25,7 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 internal abstract class BrowserBindingsModule {
     @Binds abstract fun tabsController(impl: TabManager): TabsController
+    @Binds abstract fun tabRestore(impl: TabManager): TabRestore
     @Binds abstract fun networkMonitor(impl: ConnectivityNetworkMonitor): NetworkMonitor
     @Binds abstract fun networkAvailability(impl: ConnectivityNetworkMonitor): NetworkAvailability
     @Binds abstract fun incognitoDecisions(impl: IncognitoSession): IncognitoDecisions

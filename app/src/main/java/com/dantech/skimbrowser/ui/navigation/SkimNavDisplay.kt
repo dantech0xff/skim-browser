@@ -1,12 +1,9 @@
 package com.dantech.skimbrowser.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -17,6 +14,7 @@ import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.tab.HitTarget
+import com.dantech.skimbrowser.domain.tab.TabsState
 import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
 import com.dantech.skimbrowser.ui.ai.AskPageRoute
 import com.dantech.skimbrowser.ui.ai.AskTabsRoute
@@ -53,19 +51,19 @@ import com.dantech.skimbrowser.ui.shell.rememberSecureEntryDecorator
  * metadata as a sheet and one with [DialogSceneStrategy] metadata as a dialog, over the entries
  * below it. Back, swiping a sheet down and tapping a scrim go back through [navigator]. Each entry
  * keeps its saved state and view models while it is in the back stack, and holds FLAG_SECURE while
- * its content shows incognito content.
+ * its content shows incognito content with the open [tabs].
  *
  * Every destination has a key; its entry is registered in [skimEntries] by the part of the app that
  * draws it. A key without an entry yet shows nothing, and Back leaves it.
  */
 @Composable
 fun SkimNavDisplay(
-    backStack: NavBackStack<NavKey>,
+    backStack: List<NavKey>,
     navigator: SkimNavigator,
+    tabs: TabsState,
     modifier: Modifier = Modifier,
 ) {
     val secure = LocalBrowserHost.current.secure
-    val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
     val entries = remember(navigator) { skimEntries(navigator) }
     val strategies = remember { listOf(DialogSceneStrategy<NavKey>(), BottomSheetSceneStrategy<NavKey>()) }
     NavDisplay(

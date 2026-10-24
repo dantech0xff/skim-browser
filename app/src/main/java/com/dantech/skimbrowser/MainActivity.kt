@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) receiveLink(intent)
         setContent {
             CompositionLocalProvider(LocalBrowserHost provides browserHost) {
-                SkimApp(browserHost, pendingLinks)
+                SkimApp(browserHost, downloads, pendingLinks)
             }
         }
     }
