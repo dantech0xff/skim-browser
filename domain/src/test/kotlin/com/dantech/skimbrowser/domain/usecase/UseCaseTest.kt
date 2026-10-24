@@ -15,7 +15,6 @@ import com.dantech.skimbrowser.domain.fake.FakeBookmarkRepository
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
 import com.dantech.skimbrowser.domain.fake.FakeHistoryRepository
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
-import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
 import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.permission.PermissionState
@@ -24,7 +23,6 @@ import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
-import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.testing.assertThrowsSuspending
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -72,21 +70,6 @@ class UseCaseTest {
         val files = FakeBookmarkFiles(ImportResult.Imported(folderId = 9, bookmarkCount = 4))
         assertEquals(ImportResult.Imported(9, 4), ImportBookmarks(files)("content://bookmarks"))
         assertEquals(listOf("content://bookmarks"), files.locations)
-    }
-
-    @Test
-    fun shortcutUseCasesAddUpdateRemoveAndRestore() = runTest {
-        val shortcuts = FakeShortcutRepository()
-        AddShortcut(shortcuts)("Wiki", "https://wikipedia.org")
-        val saved = shortcuts.observe().first().single()
-        UpdateShortcut(shortcuts)(saved.id, "Wikipedia", "https://www.wikipedia.org")
-        assertEquals("Wikipedia", shortcuts.observe().first().single().name)
-
-        val removed = RemoveShortcut(shortcuts)(saved.id)
-        assertEquals(saved.id, removed?.id)
-        assertTrue(shortcuts.observe().first().isEmpty())
-        RestoreShortcut(shortcuts)(removed!!.copy(name = "Wikipedia"))
-        assertEquals(listOf("Wikipedia"), shortcuts.observe().first().map { it.name })
     }
 
     @Test
@@ -175,15 +158,6 @@ class UseCaseTest {
         assertNull(DeleteBookmark(bookmarks)(4))
         assertEquals(emptyList<Bookmark>(), bookmarks.stored())
         assertEquals(BookmarkFolder.MOBILE_ID, 1L)
-    }
-
-    @Test
-    fun restoringAShortcutThatIsStillThereLeavesTheListAlone() = runTest {
-        val shortcuts = FakeShortcutRepository()
-        AddShortcut(shortcuts)("Wiki", "https://wikipedia.org")
-        val saved = shortcuts.observe().first().single()
-        RestoreShortcut(shortcuts)(Shortcut(saved.id, "Other", "https://other.example", saved.position))
-        assertEquals(listOf("Wiki"), shortcuts.observe().first().map { it.name })
     }
 
     @Test

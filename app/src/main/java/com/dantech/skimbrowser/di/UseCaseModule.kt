@@ -9,7 +9,6 @@ import com.dantech.skimbrowser.domain.ai.SummarizePage
 import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
-import com.dantech.skimbrowser.domain.usecase.AddShortcut
 import com.dantech.skimbrowser.domain.usecase.ClearBrowsingData
 import com.dantech.skimbrowser.domain.usecase.ClearSkimHistory
 import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
@@ -24,11 +23,9 @@ import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.domain.usecase.MoveBookmark
 import com.dantech.skimbrowser.domain.usecase.ReadSavedMessages
 import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
 import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
 import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
 import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
@@ -41,7 +38,6 @@ import com.dantech.skimbrowser.domain.usecase.SetTheme
 import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedChat
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
-import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.system.ShareImage
 import dagger.Module
@@ -62,10 +58,6 @@ object UseCaseModule {
     @Provides fun deleteBookmark(graph: ProcessGraph): DeleteBookmark = graph.deleteBookmark()
     @Provides fun restoreBookmark(graph: ProcessGraph): RestoreBookmark = graph.restoreBookmark()
     @Provides fun matchBookmarks(graph: ProcessGraph): MatchBookmarks = graph.matchBookmarks()
-    @Provides fun addShortcut(graph: ProcessGraph): AddShortcut = graph.addShortcut()
-    @Provides fun updateShortcut(graph: ProcessGraph): UpdateShortcut = graph.updateShortcut()
-    @Provides fun removeShortcut(graph: ProcessGraph): RemoveShortcut = graph.removeShortcut()
-    @Provides fun restoreShortcut(graph: ProcessGraph): RestoreShortcut = graph.restoreShortcut()
     @Provides fun setSearchEngine(graph: ProcessGraph): SetSearchEngine = graph.setSearchEngine()
     @Provides fun setTheme(graph: ProcessGraph): SetTheme = graph.setTheme()
     @Provides fun setAskBeforeSending(graph: ProcessGraph): SetAskBeforeSending = graph.setAskBeforeSending()

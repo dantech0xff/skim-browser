@@ -44,7 +44,6 @@ import com.dantech.skimbrowser.domain.tab.OpenUrlInCurrentTab
 import com.dantech.skimbrowser.domain.tab.TabRepository
 import com.dantech.skimbrowser.domain.usecase.AddBookmark
 import com.dantech.skimbrowser.domain.usecase.AddSavedMessage
-import com.dantech.skimbrowser.domain.usecase.AddShortcut
 import com.dantech.skimbrowser.domain.usecase.ClearBrowsingData
 import com.dantech.skimbrowser.domain.usecase.ClearSkimHistory
 import com.dantech.skimbrowser.domain.usecase.CompleteOnboarding
@@ -59,11 +58,9 @@ import com.dantech.skimbrowser.domain.usecase.MatchHistory
 import com.dantech.skimbrowser.domain.usecase.MoveBookmark
 import com.dantech.skimbrowser.domain.usecase.ReadSavedMessages
 import com.dantech.skimbrowser.domain.usecase.RemoveHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
 import com.dantech.skimbrowser.domain.usecase.RemoveSkimChat
 import com.dantech.skimbrowser.domain.usecase.RestoreBookmark
 import com.dantech.skimbrowser.domain.usecase.RestoreHistoryEntry
-import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.domain.usecase.RestoreSkimChat
 import com.dantech.skimbrowser.domain.usecase.SetAskBeforeSending
 import com.dantech.skimbrowser.domain.usecase.SetKeepChatHistory
@@ -76,7 +73,6 @@ import com.dantech.skimbrowser.domain.usecase.SetTheme
 import com.dantech.skimbrowser.domain.usecase.UpdateBookmark
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedChat
 import com.dantech.skimbrowser.domain.usecase.UpdateSavedMessage
-import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.search.SuggestionService
 import com.dantech.skimbrowser.system.ShareImage
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
@@ -156,10 +152,6 @@ class ProcessGraph @Inject constructor(
     fun deleteBookmark(): DeleteBookmark = use { deleteBookmark }
     fun restoreBookmark(): RestoreBookmark = use { restoreBookmark }
     fun matchBookmarks(): MatchBookmarks = use { matchBookmarks }
-    fun addShortcut(): AddShortcut = use { addShortcut }
-    fun updateShortcut(): UpdateShortcut = use { updateShortcut }
-    fun removeShortcut(): RemoveShortcut = use { removeShortcut }
-    fun restoreShortcut(): RestoreShortcut = use { restoreShortcut }
     fun setSearchEngine(): SetSearchEngine = use { setSearchEngine }
     fun setTheme(): SetTheme = use { setTheme }
     fun setAskBeforeSending(): SetAskBeforeSending = use { setAskBeforeSending }
@@ -346,10 +338,6 @@ private class Generation(
     val deleteBookmark: DeleteBookmark by lazy { DeleteBookmark(data.bookmarkRepository) }
     val restoreBookmark: RestoreBookmark by lazy { RestoreBookmark(data.bookmarkRepository) }
     val matchBookmarks: MatchBookmarks by lazy { MatchBookmarks(data.bookmarkRepository) }
-    val addShortcut: AddShortcut by lazy { AddShortcut(data.shortcutRepository) }
-    val updateShortcut: UpdateShortcut by lazy { UpdateShortcut(data.shortcutRepository) }
-    val removeShortcut: RemoveShortcut by lazy { RemoveShortcut(data.shortcutRepository) }
-    val restoreShortcut: RestoreShortcut by lazy { RestoreShortcut(data.shortcutRepository) }
     val setSearchEngine: SetSearchEngine by lazy { SetSearchEngine(data.settings) }
     val setTheme: SetTheme by lazy { SetTheme(data.settings) }
     val setAskBeforeSending: SetAskBeforeSending by lazy { SetAskBeforeSending(data.settings) }

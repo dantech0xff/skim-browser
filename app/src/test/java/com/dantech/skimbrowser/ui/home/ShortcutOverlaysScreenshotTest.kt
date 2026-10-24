@@ -20,8 +20,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.repo.ShortcutRepository
-import com.dantech.skimbrowser.domain.usecase.AddShortcut
-import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -72,7 +70,7 @@ class ShortcutOverlaysScreenshotTest {
             viewModelFactory {
                 initializer {
                     val shortcuts = ShortcutRepository(db.shortcutDao())
-                    ShortcutDialogViewModel(null, shortcuts, AddShortcut(shortcuts), UpdateShortcut(shortcuts), appScope)
+                    ShortcutDialogViewModel(null, shortcuts, appScope)
                 }
             },
         )[ShortcutDialogViewModel::class]

@@ -2,7 +2,6 @@ package com.dantech.skimbrowser.ui.home
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.di.WallClock
 import com.dantech.skimbrowser.di.WallZone
 import com.dantech.skimbrowser.di.VoiceAvailable
@@ -10,15 +9,13 @@ import android.util.Log
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.pagesEligibleForAsk
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.SavedChat
+import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
-import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
-import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -27,15 +24,14 @@ import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.text.relativeTimeText
 import java.time.ZoneId
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /** A Continue with Skim card on Home (04): one of the newest page chats. */
 data class ContinueCard(
@@ -74,9 +70,9 @@ data class HomeUiState(
 /**
  * Home, the New tab page of a normal tab (04). Commands are called on the main thread.
  *
- * Removing a shortcut runs on [appScope] and its Undo runs through [undo], which also runs on the
- * app's scope: Undo still puts the shortcut back after Home has left the screen and this view model
- * is gone, for instance once the user opened another shortcut.
+ * Removing a shortcut runs on [viewModelScope] and calls [ShortcutRepository]. This view model stays
+ * with the browser screen, so leaving the New tab page does not cancel the delete. Undo runs
+ * through [undo], which keeps the restore on its own scope after this view model is gone.
  *
  * @param voiceAvailable whether an app takes speech input, from `VoiceInput.isAvailable`.
  * @param clock the time the Continue cards count from.
@@ -86,12 +82,9 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val tabs: TabsController,
     private val shortcuts: ShortcutRepository,
-    private val removeShortcut: RemoveShortcut,
-    private val restoreShortcut: RestoreShortcut,
     chats: ChatRepository,
     private val snackbar: SnackbarController,
     private val undo: UndoRegistry,
-    @AppScope private val appScope: CoroutineScope,
     @VoiceAvailable voiceAvailable: Boolean,
     @WallClock private val clock: () -> Long = System::currentTimeMillis,
     @WallZone private val zone: @JvmSuppressWildcards () -> ZoneId = ZoneId::systemDefault,
@@ -125,15 +118,12 @@ class HomeViewModel @Inject constructor(
 
     /** Remove in the shortcut menu: deletes the shortcut at once and shows "Shortcut removed" with Undo. */
     fun removeShortcut(id: Long) {
-        // Only process-wide objects go into the Undo block: it may run after this view model is gone.
-        val remove = removeShortcut
-        val restore = restoreShortcut
-        val registry = undo
-        val messages = snackbar
-        appScope.launch {
-            val removed = remove(id) ?: return@launch
-            val token = registry.register(UndoKind.SHORTCUT, undo = { restore(removed) })
-            messages.show(UiText.Res(R.string.snackbar_shortcut_removed), SnackbarAction.Undo(token))
+        // The registry keeps the Undo block after this view model is gone, so the block captures the repository.
+        val repository = shortcuts
+        viewModelScope.launch {
+            val removed = repository.remove(id) ?: return@launch
+            val token = undo.register(UndoKind.SHORTCUT, undo = { repository.restore(removed) })
+            snackbar.show(UiText.Res(R.string.snackbar_shortcut_removed), SnackbarAction.Undo(token))
         }
     }
 

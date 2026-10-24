@@ -13,9 +13,6 @@ import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
 import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
-import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
-import com.dantech.skimbrowser.domain.usecase.RemoveShortcut
-import com.dantech.skimbrowser.domain.usecase.RestoreShortcut
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -31,7 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -47,8 +43,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 
 /**
- * Home over the real tab manager, an in-memory database and the real snackbar and undo registry;
- * work that outlives Home runs on an app scope of the test's own.
+ * Home over the real tab manager, an in-memory database and the real snackbar and undo registry.
+ * Undo runs on an app scope of the test's own, so it still restores a shortcut after Home is gone.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -291,32 +287,13 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun aRemoveTappedAsHomeGoesAwayStillHappensWithItsUndo() = runTest {
-        val home = home()
-        home.shortcuts.add("Wikipedia", "https://wikipedia.org")
-        home.shortcuts.add("GitHub", "https://github.com")
-        val (wikipedia, github) = home.shortcuts.observe().first()
-        val store = ViewModelStore()
-        val viewModel = ViewModelProvider.create(store, viewModelFactory { initializer { home.newViewModel() } })[HomeViewModel::class]
-
-        viewModel.removeShortcut(github.id)
-        store.clear()
-        home.appJob.children.toList().joinAll()
-
-        assertEquals(listOf(wikipedia), home.shortcuts.observe().first())
-        val shown = checkNotNull(home.snackbar.current.value) { "no Shortcut removed snackbar" }
-        home.snackbar.onActionClicked(shown.id)
-        assertEquals(listOf(wikipedia, github), home.shortcuts.observe().first { it.size == 2 })
-    }
-
-    @Test
     fun aShortcutThatIsAlreadyGoneShowsNoSnackbar() = runTest {
         val home = home()
         home.shortcuts.add("Wikipedia", "https://wikipedia.org")
         val viewModel = home.viewModel()
 
         viewModel.removeShortcut(id = 999)
-        home.appJob.children.toList().joinAll()
+        main.testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(home.snackbar.current.value)
         assertEquals(1, home.shortcuts.observe().first().size)
@@ -331,7 +308,6 @@ class HomeViewModelTest {
         val undo: UndoRegistry,
         val snackbar: SnackbarController,
         val appJob: Job,
-        val appScope: CoroutineScope,
         private val viewModels: ViewModelStore,
     ) {
         private var count = 0
@@ -344,12 +320,9 @@ class HomeViewModelTest {
         fun newViewModel(voiceAvailable: Boolean = true) = HomeViewModel(
             tabs = tabs.manager,
             shortcuts = shortcuts,
-            removeShortcut = RemoveShortcut(shortcuts),
-            restoreShortcut = RestoreShortcut(shortcuts),
             chats = chats,
             snackbar = snackbar,
             undo = undo,
-            appScope = appScope,
             voiceAvailable = voiceAvailable,
             clock = { NOW },
             zone = { ZoneOffset.UTC },
@@ -368,7 +341,6 @@ class HomeViewModelTest {
             undo = undo,
             snackbar = SnackbarController(undo),
             appJob = appJob,
-            appScope = appScope,
             viewModels = viewModels,
         ).also { homes += it }
     }

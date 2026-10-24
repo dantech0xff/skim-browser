@@ -10,8 +10,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
-import com.dantech.skimbrowser.domain.usecase.AddShortcut
-import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -250,8 +248,6 @@ class ShortcutDialogViewModelTest {
             ShortcutDialogViewModel(
                 7,
                 held,
-                AddShortcut(held),
-                UpdateShortcut(held),
                 CoroutineScope(appJob + StandardTestDispatcher(testScheduler)),
             )
         }
@@ -288,8 +284,6 @@ class ShortcutDialogViewModelTest {
         ShortcutDialogViewModel(
             shortcutId,
             shortcuts,
-            AddShortcut(shortcuts),
-            UpdateShortcut(shortcuts),
             CoroutineScope(appJob + StandardTestDispatcher(testScheduler)),
         )
 

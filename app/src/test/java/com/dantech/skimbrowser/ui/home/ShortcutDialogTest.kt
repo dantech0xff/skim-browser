@@ -20,8 +20,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
-import com.dantech.skimbrowser.domain.usecase.AddShortcut
-import com.dantech.skimbrowser.domain.usecase.UpdateShortcut
 import com.dantech.skimbrowser.data.repo.ShortcutRepository
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -163,7 +161,7 @@ class ShortcutDialogTest {
             viewModels,
             viewModelFactory {
                 initializer {
-                    ShortcutDialogViewModel(shortcutId, shortcuts, AddShortcut(shortcuts), UpdateShortcut(shortcuts), appScope)
+                    ShortcutDialogViewModel(shortcutId, shortcuts, appScope)
                 }
             },
         )[ShortcutDialogViewModel::class]
