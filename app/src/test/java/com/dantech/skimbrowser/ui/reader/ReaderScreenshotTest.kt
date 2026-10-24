@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.components.AiFab
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.toImmutableList
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.junit.Rule
@@ -113,7 +114,7 @@ class ReaderScreenshotTest {
         host = "daylightjournal.com",
         title = "Why heat pumps are winning in cold climates",
         byline = "Marta Lindqvist",
-        blocks = blocks.toList(),
+        blocks = blocks.toImmutableList(),
     )
 
     private fun idleActions() = ReaderActions(

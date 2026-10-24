@@ -23,6 +23,7 @@ import com.dantech.skimbrowser.ui.components.SkimBottomSheet
 import com.dantech.skimbrowser.ui.components.rememberSkimSheetState
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -172,13 +173,13 @@ private fun answered() = AskPageUiState(
         feedback = MessageFeedback.NONE,
         messageId = 1,
     ),
-    turns = listOf(QaTurn(question = QUESTION, answer = ANSWER, paragraphs = listOf(6), stopped = false)),
+    turns = persistentListOf(QaTurn(question = QUESTION, answer = ANSWER, paragraphs = persistentListOf(6), stopped = false)),
     showChips = true,
     inputEnabled = true,
     citationsEnabled = true,
 )
 
-private val SummaryPoints = listOf(
+private val SummaryPoints = persistentListOf(
     "Modern cold-climate heat pumps keep heating at minus 25 °C, so the old \"not below freezing\" rule no longer holds.",
     "The gains come from variable-speed compressors and refrigerants that stay efficient in cold air.",
     "Switching from oil saves roughly \$300 to \$900 a year; from gas the savings are smaller and depend on local prices.",

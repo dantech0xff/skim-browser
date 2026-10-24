@@ -30,6 +30,9 @@ import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import kotlin.coroutines.coroutineContext
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -54,10 +57,10 @@ sealed interface TabsOverviewState {
     /** A finished overview. [groups] use real tab ids. */
     data class Ready(
         val intro: String,
-        val groups: List<OverviewGroupUi>,
+        val groups: ImmutableList<OverviewGroupUi>,
         val feedback: MessageFeedback,
         val messageId: Long,
-        val followUps: List<String>,
+        val followUps: ImmutableList<String>,
     ) : TabsOverviewState
 
     data object Offline : TabsOverviewState
@@ -80,7 +83,7 @@ data class AskTabsUiState(
     val tabCount: Int = 0,
     val prompt: String? = null,
     val overview: TabsOverviewState = TabsOverviewState.Idle,
-    val turns: List<TabsAnswer> = emptyList(),
+    val turns: ImmutableList<TabsAnswer> = persistentListOf(),
     val generating: Boolean = false,
     val inputEnabled: Boolean = true,
     val answerError: AnswerError? = null,
@@ -481,10 +484,10 @@ private fun overviewOf(message: ChatMessage): TabsOverviewState {
         intro = parsed.intro,
         groups = parsed.groups.map { group ->
             OverviewGroupUi(group.name, group.summary, group.tabIds.firstOrNull())
-        },
+        }.toImmutableList(),
         feedback = message.feedback,
         messageId = message.id,
-        followUps = message.suggestedQuestions.ifEmpty { parsed.followUps },
+        followUps = message.suggestedQuestions.ifEmpty { parsed.followUps }.toImmutableList(),
     )
 }
 
@@ -505,7 +508,7 @@ private fun questionMessage(text: String) = ChatMessage(
     status = MessageStatus.COMPLETE,
 )
 
-private fun turnsOf(messages: List<ChatMessage>, streamingAnswer: String?): List<TabsAnswer> {
+private fun turnsOf(messages: List<ChatMessage>, streamingAnswer: String?): ImmutableList<TabsAnswer> {
     val turns = mutableListOf<TabsAnswer>()
     var seenQuestion = false
     var pending: String? = null
@@ -534,5 +537,5 @@ private fun turnsOf(messages: List<ChatMessage>, streamingAnswer: String?): List
     pending?.let { asked ->
         turns += TabsAnswer(asked, streamingAnswer?.takeIf { it.isNotEmpty() }, stopped = false)
     }
-    return turns
+    return turns.toImmutableList()
 }

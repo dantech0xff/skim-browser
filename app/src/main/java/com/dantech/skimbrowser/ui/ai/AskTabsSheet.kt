@@ -61,6 +61,7 @@ import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.UserBubble
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 
 /** What the across-tabs sheet can ask the screen to do. */
@@ -319,7 +320,7 @@ private fun OverviewFeedback(actions: AskTabsActions, feedback: MessageFeedback)
 }
 
 @Composable
-private fun FollowUps(questions: List<String>, onChip: (String) -> Unit) {
+private fun FollowUps(questions: ImmutableList<String>, onChip: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         questions.forEach { question ->
             AiSuggestionChip(question, onClick = { onChip(question) })

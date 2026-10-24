@@ -32,6 +32,7 @@ import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -258,12 +259,12 @@ class OverlaysScreenshotTest {
                     SkimMenu(
                         expanded = true,
                         onDismiss = {},
-                        groups = listOf(
-                            listOf(
+                        groups = persistentListOf(
+                            persistentListOf(
                                 MenuEntry(stringResource(R.string.rename_group), R.drawable.ic_drive_file_rename_outline) {},
                                 MenuEntry(stringResource(R.string.tab_group_ungroup), R.drawable.ic_layers_clear) {},
                             ),
-                            listOf(MenuEntry(pluralStringResource(R.plurals.tab_group_close_tabs, 4, 4), R.drawable.ic_close) {}),
+                            persistentListOf(MenuEntry(pluralStringResource(R.plurals.tab_group_close_tabs, 4, 4), R.drawable.ic_close) {}),
                         ),
                         anchorContentDescription = stringResource(R.string.cd_tab_group_menu, GROUP),
                     )
@@ -276,7 +277,7 @@ class OverlaysScreenshotTest {
     private companion object {
         const val GROUP = "Heat pump research"
 
-        val SearchEngines = listOf(
+        val SearchEngines = persistentListOf(
             R.string.search_engine_google,
             R.string.search_engine_bing,
             R.string.search_engine_duckduckgo,

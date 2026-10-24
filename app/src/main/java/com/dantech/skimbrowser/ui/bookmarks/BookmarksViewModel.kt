@@ -21,6 +21,9 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -71,8 +74,8 @@ data class BookmarksUiState(
     val title: FolderLabel? = null,
     val missing: Boolean = false,
     val searching: Boolean = false,
-    val folders: List<BookmarkFolderRow> = emptyList(),
-    val bookmarks: List<BookmarkRow> = emptyList(),
+    val folders: ImmutableList<BookmarkFolderRow> = persistentListOf(),
+    val bookmarks: ImmutableList<BookmarkRow> = persistentListOf(),
     val heading: BookmarkListHeading = BookmarkListHeading.None,
 ) {
     val empty: Boolean get() = loaded && !missing && !searching && folders.isEmpty() && bookmarks.isEmpty()
@@ -105,7 +108,7 @@ class BookmarksViewModel @AssistedInject constructor(
         val text = raw.trim()
         if (text.isNotEmpty()) {
             bookmarks.search(text).map { matches ->
-                BookmarksUiState(loaded = true, searching = true, bookmarks = matches.map(::bookmarkRow))
+                BookmarksUiState(loaded = true, searching = true, bookmarks = matches.map(::bookmarkRow).toImmutableList())
             }
         } else if (folderId == null) {
             bookmarks.observeRoot().map { root -> rootState(root.folders, root.recentlyAdded) }
@@ -118,8 +121,8 @@ class BookmarksViewModel @AssistedInject constructor(
                     BookmarksUiState(
                         loaded = true,
                         title = folderLabel(folder),
-                        folders = content.subfolders.map(::folderRow),
-                        bookmarks = content.bookmarks.map(::bookmarkRow),
+                        folders = content.subfolders.map(::folderRow).toImmutableList(),
+                        bookmarks = content.bookmarks.map(::bookmarkRow).toImmutableList(),
                     )
                 }
             }
@@ -155,8 +158,8 @@ class BookmarksViewModel @AssistedInject constructor(
         if (!any) return BookmarksUiState(loaded = true)
         return BookmarksUiState(
             loaded = true,
-            folders = folders.map(::folderRow),
-            bookmarks = recent.map(::bookmarkRow),
+            folders = folders.map(::folderRow).toImmutableList(),
+            bookmarks = recent.map(::bookmarkRow).toImmutableList(),
             heading = if (recent.isEmpty()) BookmarkListHeading.None else BookmarkListHeading.RecentlyAdded,
         )
     }

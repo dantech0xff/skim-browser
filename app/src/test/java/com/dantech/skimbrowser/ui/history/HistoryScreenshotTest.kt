@@ -8,6 +8,8 @@ import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.captureBoard
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.text.DateBucket
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,9 +31,12 @@ class HistoryScreenshotTest {
             HistoryScreen(
                 state = HistoryUiState(
                     loaded = true,
-                    sections = listOf(
-                        HistorySection(DateBucket.Today, Today.mapIndexed { index, row -> entry(index + 1L, row) }),
-                        HistorySection(DateBucket.Yesterday, Yesterday.mapIndexed { index, row -> entry(index + 10L, row) }),
+                    sections = persistentListOf(
+                        HistorySection(DateBucket.Today, Today.mapIndexed { index, row -> entry(index + 1L, row) }.toImmutableList()),
+                        HistorySection(
+                            DateBucket.Yesterday,
+                            Yesterday.mapIndexed { index, row -> entry(index + 10L, row) }.toImmutableList(),
+                        ),
                     ),
                 ),
                 searchState = null,

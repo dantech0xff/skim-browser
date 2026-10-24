@@ -34,6 +34,7 @@ import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.DateBucket
 import com.dantech.skimbrowser.ui.text.UiText
 import java.time.ZoneId
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -77,17 +78,17 @@ class SkimHistoryViewModelTest {
             grouped.sections[0].rows.map { it.title },
         )
         assertEquals(
-            UiText.Plural(R.plurals.skim_history_questions_about, 1, listOf(1, "daylightjournal.com")),
+            UiText.Plural(R.plurals.skim_history_questions_about, 1, persistentListOf(1, "daylightjournal.com")),
             grouped.sections[0].rows[0].subtitle,
         )
         assertEquals(
-            UiText.Plural(R.plurals.skim_history_answers_across_tabs, 1, listOf(1, 7)),
+            UiText.Plural(R.plurals.skim_history_answers_across_tabs, 1, persistentListOf(1, 7)),
             grouped.sections[0].rows[1].subtitle,
         )
         assertEquals("D", grouped.sections[0].rows[0].letter)
         assertEquals(DateBucket.Yesterday, grouped.sections[1].bucket)
         assertEquals(
-            UiText.Res(R.string.skim_history_summary_of, listOf("tabi-note.jp")),
+            UiText.Res(R.string.skim_history_summary_of, persistentListOf("tabi-note.jp")),
             grouped.sections[1].rows.single().subtitle,
         )
 

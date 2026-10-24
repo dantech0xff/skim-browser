@@ -53,6 +53,9 @@ import com.dantech.skimbrowser.ui.navigation.LinkOptionsKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -84,7 +87,7 @@ data class LinkOptionsUiState(
     val image: Boolean = false,
     val title: String = "",
     val subtitle: String = "",
-    val rows: List<LinkRow> = emptyList(),
+    val rows: ImmutableList<LinkRow> = persistentListOf(),
 )
 
 /** The address a row opens, downloads or shares. */
@@ -94,14 +97,14 @@ internal fun linkTargetUrl(target: HitTarget): String = when (target) {
 }
 
 /** The rows of [target] on a tab that is [incognito]. */
-internal fun linkRows(target: HitTarget, incognito: Boolean): List<LinkRow> = when (target) {
-    is HitTarget.Image -> listOf(LinkRow.OpenImage, LinkRow.DownloadImage, LinkRow.ShareImage)
+internal fun linkRows(target: HitTarget, incognito: Boolean): ImmutableList<LinkRow> = when (target) {
+    is HitTarget.Image -> persistentListOf(LinkRow.OpenImage, LinkRow.DownloadImage, LinkRow.ShareImage)
     is HitTarget.Link -> buildList {
         add(LinkRow.OpenNewTab)
         if (!incognito) add(LinkRow.OpenIncognito)
         add(LinkRow.CopyLink)
         add(LinkRow.ShareLink)
-    }
+    }.toImmutableList()
 }
 
 /**

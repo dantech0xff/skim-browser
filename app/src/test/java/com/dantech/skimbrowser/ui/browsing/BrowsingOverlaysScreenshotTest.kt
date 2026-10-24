@@ -22,6 +22,7 @@ import com.dantech.skimbrowser.ui.components.SkimBottomSheet
 import com.dantech.skimbrowser.ui.shell.AiFabMode
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -87,7 +88,7 @@ class BrowsingOverlaysScreenshotTest {
                 LinkOptionsUiState(
                     title = "2026 rebate guide",
                     subtitle = "energysaver.example/rebates-2026",
-                    rows = listOf(LinkRow.OpenNewTab, LinkRow.OpenIncognito, LinkRow.CopyLink, LinkRow.ShareLink),
+                    rows = persistentListOf(LinkRow.OpenNewTab, LinkRow.OpenIncognito, LinkRow.CopyLink, LinkRow.ShareLink),
                 ),
                 onRow = {},
             )
@@ -104,7 +105,7 @@ class BrowsingOverlaysScreenshotTest {
                     image = true,
                     title = "A heat pump unit mounted outside a timber house in snow",
                     subtitle = "daylightjournal.com/images/heat-pump-snow.jpg",
-                    rows = listOf(LinkRow.OpenImage, LinkRow.DownloadImage, LinkRow.ShareImage),
+                    rows = persistentListOf(LinkRow.OpenImage, LinkRow.DownloadImage, LinkRow.ShareImage),
                 ),
                 onRow = {},
             )
@@ -125,7 +126,7 @@ class BrowsingOverlaysScreenshotTest {
                     secure = true,
                     showSkimAi = true,
                     skimAiOn = true,
-                    permissions = listOf(SitePermissionRow(SitePermissionKind.LOCATION, allowed = false)),
+                    permissions = persistentListOf(SitePermissionRow(SitePermissionKind.LOCATION, allowed = false)),
                     showCookies = true,
                 ),
                 onSkimAi = {},

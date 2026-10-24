@@ -37,6 +37,7 @@ import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -247,7 +248,7 @@ class SkimDialogsTest {
         composeRule.setSkimContent {
             ChoiceDialog(
                 title = ENGINE,
-                options = listOf(GOOGLE, BING, DUCKDUCKGO),
+                options = persistentListOf(GOOGLE, BING, DUCKDUCKGO),
                 selected = selected,
                 label = { it },
                 onSelect = { calls += "select $it" },

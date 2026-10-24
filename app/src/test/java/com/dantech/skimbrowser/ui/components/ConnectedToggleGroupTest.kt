@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -73,7 +74,7 @@ class ConnectedToggleGroupTest {
         composeRule.setSkimContent {
             var selected by remember { mutableIntStateOf(0) }
             ConnectedToggleGroup(
-                options = listOf(OPEN, INCOGNITO),
+                options = persistentListOf(OPEN, INCOGNITO),
                 selected = selected,
                 onSelect = { selected = it },
                 contentDescription = GROUP,
@@ -99,7 +100,7 @@ class ConnectedToggleGroupTest {
     fun aMiddleOptionIsSelectableToo() {
         composeRule.setSkimContent {
             ConnectedToggleGroup(
-                options = listOf("A", "B", "C"),
+                options = persistentListOf("A", "B", "C"),
                 selected = 0,
                 onSelect = { selections += it },
                 contentDescription = GROUP,
@@ -115,7 +116,7 @@ class ConnectedToggleGroupTest {
     private fun setGroup(selected: Int) {
         composeRule.setSkimContent {
             ConnectedToggleGroup(
-                options = listOf(OPEN, INCOGNITO),
+                options = persistentListOf(OPEN, INCOGNITO),
                 selected = selected,
                 onSelect = { selections += it },
                 contentDescription = GROUP,

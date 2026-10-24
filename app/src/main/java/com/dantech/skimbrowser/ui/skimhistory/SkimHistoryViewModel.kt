@@ -21,6 +21,9 @@ import com.dantech.skimbrowser.ui.text.DateBucket
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.text.bucketOf
 import java.time.ZoneId
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,14 +47,14 @@ data class SkimHistoryRow(
 
 /** One day section, newest first. */
 @Immutable
-data class SkimHistorySection(val bucket: DateBucket, val rows: List<SkimHistoryRow>)
+data class SkimHistorySection(val bucket: DateBucket, val rows: ImmutableList<SkimHistoryRow>)
 
 /** What Skim history shows. [empty] is true once the list has been read and holds nothing. */
 @Immutable
 data class SkimHistoryUiState(
     val loaded: Boolean = false,
     val searching: Boolean = false,
-    val sections: List<SkimHistorySection> = emptyList(),
+    val sections: ImmutableList<SkimHistorySection> = persistentListOf(),
 ) {
     val empty: Boolean get() = loaded && sections.isEmpty()
 }
@@ -106,12 +109,12 @@ class SkimHistoryViewModel @Inject constructor(
 }
 
 /** Groups [items] into the day sections, dropping empty ones. [items] is newest first. */
-internal fun sectionsOf(items: List<ChatSummary>, now: Long, zone: ZoneId): List<SkimHistorySection> {
-    if (items.isEmpty()) return emptyList()
+internal fun sectionsOf(items: List<ChatSummary>, now: Long, zone: ZoneId): ImmutableList<SkimHistorySection> {
+    if (items.isEmpty()) return persistentListOf()
     val grouped = items.groupBy { bucketOf(it.chat.updatedAt, now, zone) }
     return DateBucket.entries.mapNotNull { bucket ->
-        grouped[bucket]?.let { rows -> SkimHistorySection(bucket, rows.map(::rowOf)) }
-    }
+        grouped[bucket]?.let { rows -> SkimHistorySection(bucket, rows.map(::rowOf).toImmutableList()) }
+    }.toImmutableList()
 }
 
 private fun rowOf(item: ChatSummary): SkimHistoryRow {
@@ -121,15 +124,15 @@ private fun rowOf(item: ChatSummary): SkimHistoryRow {
             UiText.Plural(
                 R.plurals.skim_history_questions_about,
                 item.questionCount,
-                listOf(item.questionCount, chat.host.orEmpty()),
+                persistentListOf(item.questionCount, chat.host.orEmpty()),
             )
         } else {
-            UiText.Res(R.string.skim_history_summary_of, listOf(chat.host.orEmpty()))
+            UiText.Res(R.string.skim_history_summary_of, persistentListOf(chat.host.orEmpty()))
         }
         ChatKind.TABS -> UiText.Plural(
             R.plurals.skim_history_answers_across_tabs,
             item.answerCount,
-            listOf(item.answerCount, chat.tabCount),
+            persistentListOf(item.answerCount, chat.tabCount),
         )
     }
     return SkimHistoryRow(

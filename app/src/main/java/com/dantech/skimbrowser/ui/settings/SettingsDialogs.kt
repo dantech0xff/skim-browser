@@ -8,6 +8,12 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.settings.SearchEngine
 import com.dantech.skimbrowser.ui.components.ChoiceDialogContent
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+
+private val SearchEngineOptions: ImmutableList<SearchEngine> = SearchEngine.entries.toImmutableList()
+
+private val ThemeOptions: ImmutableList<ThemeSetting> = ThemeSetting.entries.toImmutableList()
 
 /** Search engine (15). Choosing an option saves it; the caller closes the dialog. */
 @Composable
@@ -19,7 +25,7 @@ fun SearchEngineDialog(
 ) {
     ChoiceDialogContent(
         title = stringResource(R.string.settings_search_engine),
-        options = SearchEngine.entries,
+        options = SearchEngineOptions,
         selected = selected,
         label = { stringResource(it.labelRes()) },
         onSelect = onSelect,
@@ -38,7 +44,7 @@ fun ThemeDialog(
 ) {
     ChoiceDialogContent(
         title = stringResource(R.string.settings_theme),
-        options = ThemeSetting.entries,
+        options = ThemeOptions,
         selected = selected,
         label = { stringResource(it.labelRes()) },
         onSelect = onSelect,

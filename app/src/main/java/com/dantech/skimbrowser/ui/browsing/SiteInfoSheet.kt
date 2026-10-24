@@ -66,6 +66,9 @@ import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.components.toggleableRow
 import com.dantech.skimbrowser.ui.navigation.SiteInfoKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -99,7 +102,7 @@ data class SiteInfoUiState(
     val incognito: Boolean = false,
     val showSkimAi: Boolean = false,
     val skimAiOn: Boolean = false,
-    val permissions: List<SitePermissionRow> = emptyList(),
+    val permissions: ImmutableList<SitePermissionRow> = persistentListOf(),
     val showCookies: Boolean = false,
 ) {
     companion object {
@@ -222,7 +225,7 @@ private fun sheetState(
     host: String,
     showSkimAi: Boolean,
     skimAiOn: Boolean,
-    permissions: List<SitePermissionRow>,
+    permissions: ImmutableList<SitePermissionRow>,
 ): SiteInfoUiState = SiteInfoUiState(
     siteKey = host,
     title = if (host.isNotEmpty()) host else pageAddressOf(tab.url),
@@ -235,15 +238,15 @@ private fun sheetState(
     showCookies = host.isNotEmpty(),
 )
 
-private fun permissionRows(host: String, stateOf: (SitePermissionKind) -> PermissionState): List<SitePermissionRow> {
-    if (host.isEmpty()) return emptyList()
+private fun permissionRows(host: String, stateOf: (SitePermissionKind) -> PermissionState): ImmutableList<SitePermissionRow> {
+    if (host.isEmpty()) return persistentListOf()
     return SitePermissionKind.entries.mapNotNull { kind ->
         when (val state = stateOf(kind)) {
             PermissionState.UNSET -> null
             PermissionState.ALLOWED -> SitePermissionRow(kind, allowed = true)
             PermissionState.BLOCKED -> SitePermissionRow(kind, allowed = false)
         }
-    }
+    }.toImmutableList()
 }
 
 /** The [SiteInfoKey] destination. */

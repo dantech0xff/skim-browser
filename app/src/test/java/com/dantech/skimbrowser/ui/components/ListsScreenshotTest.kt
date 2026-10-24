@@ -43,6 +43,7 @@ import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.captureComponent
 import com.dantech.skimbrowser.testing.setSkimContent
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -197,11 +198,11 @@ class ListsScreenshotTest {
             // The group lays out 48 dp high around its 40 dp buttons.
             Spacer(Modifier.height(88.dp))
             ConnectedToggleGroup(
-                options = listOf(stringResource(R.string.reader_font_sans_serif), stringResource(R.string.reader_font_serif)),
+                options = persistentListOf(stringResource(R.string.reader_font_sans_serif), stringResource(R.string.reader_font_serif)),
                 selected = 0,
                 onSelect = {},
                 contentDescription = stringResource(R.string.reader_font),
-                fontFamilies = listOf(null, FontFamily.Serif),
+                fontFamilies = persistentListOf(null, FontFamily.Serif),
             )
         }
     }
@@ -212,7 +213,7 @@ class ListsScreenshotTest {
             // The status bar and the 64 dp title row; the group lays out 4 dp above its 40 dp buttons.
             Spacer(Modifier.height(BOARD_STATUS_BAR_HEIGHT + 60.dp))
             ConnectedToggleGroup(
-                options = listOf(stringResource(R.string.tabs_segment_open), stringResource(R.string.tabs_segment_incognito)),
+                options = persistentListOf(stringResource(R.string.tabs_segment_open), stringResource(R.string.tabs_segment_incognito)),
                 selected = selected,
                 onSelect = {},
                 contentDescription = stringResource(R.string.cd_tab_list),

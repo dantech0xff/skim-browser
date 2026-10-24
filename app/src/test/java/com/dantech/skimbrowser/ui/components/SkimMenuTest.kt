@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
@@ -103,12 +104,12 @@ class SkimMenuTest {
                         calls += "dismiss"
                         expanded = false
                     },
-                    groups = listOf(
-                        listOf(
+                    groups = persistentListOf(
+                        persistentListOf(
                             MenuEntry(RENAME, R.drawable.ic_drive_file_rename_outline) { calls += RENAME },
                             MenuEntry(UNGROUP, R.drawable.ic_layers_clear) { calls += UNGROUP },
                         ),
-                        listOf(MenuEntry(CLOSE_TABS, R.drawable.ic_close) { calls += CLOSE_TABS }),
+                        persistentListOf(MenuEntry(CLOSE_TABS, R.drawable.ic_close) { calls += CLOSE_TABS }),
                     ),
                     anchorContentDescription = MENU_LABEL,
                 )

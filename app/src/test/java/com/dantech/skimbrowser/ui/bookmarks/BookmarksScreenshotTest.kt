@@ -9,6 +9,7 @@ import com.dantech.skimbrowser.testing.captureBoard
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,7 +39,7 @@ class BookmarksScreenshotTest {
             BookmarksUiState(
                 loaded = true,
                 title = FolderLabel.Imported,
-                bookmarks = listOf(
+                bookmarks = persistentListOf(
                     bookmark(1, "D", "Why heat pumps are winning in cold climates", "daylightjournal.com"),
                     bookmark(2, "E", "Heat pump rebates 2026", "energysaver.example"),
                 ),
@@ -85,11 +86,11 @@ class BookmarksScreenshotTest {
     private companion object {
         val Root = BookmarksUiState(
             loaded = true,
-            folders = listOf(
+            folders = persistentListOf(
                 BookmarkFolderRow(1, FolderLabel.Mobile, FolderKind.MOBILE, null, 3),
                 BookmarkFolderRow(2, FolderLabel.Imported, FolderKind.IMPORTED, "bookmarks.html", 24),
             ),
-            bookmarks = listOf(
+            bookmarks = persistentListOf(
                 bookmark(1, "D", "Why heat pumps are winning in cold climates", "daylightjournal.com"),
                 bookmark(2, "T", "Osaka night buses: a complete guide", "tabi-note.jp"),
                 bookmark(3, "K", "Kotlin 2.2 release notes", "kotlinlang.org"),

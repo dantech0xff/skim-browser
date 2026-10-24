@@ -62,6 +62,9 @@ import com.dantech.skimbrowser.ui.components.SkimTextField
 import com.dantech.skimbrowser.ui.navigation.EditBookmarkKey
 import com.dantech.skimbrowser.ui.navigation.MoveToFolderKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,7 +103,7 @@ data class EditBookmarkUiState(
 @Immutable
 data class MoveToFolderUiState(
     val loaded: Boolean = false,
-    val options: List<MoveFolderOption> = emptyList(),
+    val options: ImmutableList<MoveFolderOption> = persistentListOf(),
     val selectedId: Long? = null,
     val done: Boolean = false,
 )
@@ -215,7 +218,7 @@ class MoveToFolderViewModel @AssistedInject constructor(
         fun create(bookmarkId: Long): MoveToFolderViewModel
     }
 
-    private val options = MutableStateFlow<List<MoveFolderOption>>(emptyList())
+    private val options = MutableStateFlow<ImmutableList<MoveFolderOption>>(persistentListOf())
     private val selectedId = MutableStateFlow<Long?>(null)
     private val loaded = MutableStateFlow(false)
     private val done = MutableStateFlow(false)
@@ -255,7 +258,7 @@ class MoveToFolderViewModel @AssistedInject constructor(
             return
         }
         selectedId.value = current.folderId
-        options.value = bookmarks.topLevelFolders().map { MoveFolderOption(it.id, folderLabel(it)) }
+        options.value = bookmarks.topLevelFolders().map { MoveFolderOption(it.id, folderLabel(it)) }.toImmutableList()
         loaded.value = true
     }
 

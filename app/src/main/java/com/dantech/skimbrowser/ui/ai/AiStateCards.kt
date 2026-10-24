@@ -28,6 +28,7 @@ import com.dantech.skimbrowser.ui.components.AiWavyProgress
 import com.dantech.skimbrowser.ui.components.SkimButton
 import com.dantech.skimbrowser.ui.components.SkimButtonStyle
 import com.dantech.skimbrowser.ui.components.SkimCard
+import kotlinx.collections.immutable.ImmutableList
 
 /** The summary label: filled auto_awesome and "Summary", both tertiary. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -51,7 +52,7 @@ internal fun SummaryLabel() {
 
 /** Summary points, one line each, with the bullet in a 20 dp column. */
 @Composable
-internal fun SummaryBullets(lines: List<String>, modifier: Modifier = Modifier) {
+internal fun SummaryBullets(lines: ImmutableList<String>, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         lines.forEach { line ->
             Row {

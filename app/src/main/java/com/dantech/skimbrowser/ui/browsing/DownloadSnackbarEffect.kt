@@ -14,6 +14,7 @@ import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,11 +56,11 @@ fun DownloadSnackbarEffect(
 private fun show(event: DownloadEvent, snackbar: SnackbarController) {
     when (event) {
         is DownloadEvent.DownloadCompleted -> snackbar.show(
-            UiText.Res(R.string.snackbar_downloaded, listOf(shownFileName(event.fileName))),
+            UiText.Res(R.string.snackbar_downloaded, persistentListOf(shownFileName(event.fileName))),
             SnackbarAction.OpenDownload(event.uri, event.mime),
         )
         is DownloadEvent.DownloadFailed -> snackbar.show(
-            UiText.Res(R.string.snackbar_download_failed, listOf(shownFileName(event.fileName))),
+            UiText.Res(R.string.snackbar_download_failed, persistentListOf(shownFileName(event.fileName))),
             isError = true,
         )
     }

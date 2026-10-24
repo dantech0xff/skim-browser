@@ -81,6 +81,9 @@ import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.navigation.RenameGroupKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.TabsKey
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -191,7 +194,9 @@ fun TabsScreen(
     val belowGrid = navigationBar + ToolbarMetrics.BottomOffset + ToolbarMetrics.Height + 16.dp
     val searching = searchState != null
     var menuGroupId by remember { mutableStateOf<Long?>(null) }
-    val tabKeys = remember(state.sections) { state.sections.flatMap { section -> section.tabs.map { it.id } }.toSet() }
+    val tabKeys = remember(state.sections) {
+        state.sections.flatMap { section -> section.tabs.map { it.id } }.toImmutableSet()
+    }
     val groupOf = remember(state.sections) {
         val map = HashMap<String, Long?>()
         state.sections.forEach { section -> section.tabs.forEach { map[it.id] = section.group?.id } }
@@ -211,7 +216,7 @@ fun TabsScreen(
                 )
             }
             ConnectedToggleGroup(
-                options = listOf(
+                options = persistentListOf(
                     stringResource(R.string.tabs_segment_open),
                     stringResource(R.string.tabs_segment_incognito),
                 ),
@@ -486,7 +491,7 @@ private fun SwipeCard(
     incognito: Boolean,
     reorderEnabled: Boolean,
     gridState: LazyGridState,
-    tabKeys: Set<String>,
+    tabKeys: ImmutableSet<String>,
     groupOf: (String) -> Long?,
     onOpen: () -> Unit,
     onClose: () -> Unit,

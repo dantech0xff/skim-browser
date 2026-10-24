@@ -44,6 +44,7 @@ import com.dantech.skimbrowser.ui.navigation.BookmarksKey
 import com.dantech.skimbrowser.ui.navigation.EditBookmarkKey
 import com.dantech.skimbrowser.ui.navigation.MoveToFolderKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -227,7 +228,7 @@ private fun ColumnScope.BookmarkItems(
 
 @Composable
 private fun BookmarkRows(
-    bookmarks: List<BookmarkRow>,
+    bookmarks: ImmutableList<BookmarkRow>,
     menuBookmarkId: Long?,
     onOpenBookmark: (String) -> Unit,
     onOpenMenu: (Long) -> Unit,

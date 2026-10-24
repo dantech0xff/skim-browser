@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /** An item of a [SkimMenu]: its [label], a 24 dp leading [icon], and what choosing it does. */
 data class MenuEntry(val label: String, @DrawableRes val icon: Int, val onClick: () -> Unit)
@@ -59,7 +61,7 @@ data class MenuEntry(val label: String, @DrawableRes val icon: Int, val onClick:
 fun SkimMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
-    groups: List<List<MenuEntry>>,
+    groups: ImmutableList<ImmutableList<MenuEntry>>,
     anchorContentDescription: String,
     modifier: Modifier = Modifier,
 ) {
@@ -136,12 +138,12 @@ private fun SkimMenuPreview() {
                 SkimMenu(
                     expanded = true,
                     onDismiss = {},
-                    groups = listOf(
-                        listOf(
+                    groups = persistentListOf(
+                        persistentListOf(
                             MenuEntry(stringResource(R.string.rename_group), R.drawable.ic_drive_file_rename_outline) {},
                             MenuEntry(stringResource(R.string.tab_group_ungroup), R.drawable.ic_layers_clear) {},
                         ),
-                        listOf(MenuEntry(pluralStringResource(R.plurals.tab_group_close_tabs, 4, 4), R.drawable.ic_close) {}),
+                        persistentListOf(MenuEntry(pluralStringResource(R.plurals.tab_group_close_tabs, 4, 4), R.drawable.ic_close) {}),
                     ),
                     anchorContentDescription = stringResource(R.string.cd_tab_group_menu, "Heat pump research"),
                 )

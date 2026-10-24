@@ -3,6 +3,7 @@ package com.dantech.skimbrowser.ui.reader
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -14,13 +15,16 @@ import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.theme.GoogleSansFlex
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /** The article Reader view shows. [blocks] is what a citation indexes. */
+@Immutable
 data class ReaderArticle(
     val host: String,
     val title: String,
     val byline: String?,
-    val blocks: List<PageBlock>,
+    val blocks: ImmutableList<PageBlock>,
 )
 
 /** Body copy of 08 before the text-size scale: 17 sp on 28 sp. */
@@ -68,7 +72,7 @@ internal fun articleOf(page: PageContent): ReaderArticle? {
         host = hostOf(page.url).orEmpty(),
         title = page.title,
         byline = page.byline?.takeIf { it.isNotBlank() },
-        blocks = blocks,
+        blocks = blocks.toImmutableList(),
     )
 }
 

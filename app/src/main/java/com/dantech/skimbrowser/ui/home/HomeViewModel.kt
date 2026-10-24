@@ -7,6 +7,7 @@ import com.dantech.skimbrowser.di.WallZone
 import com.dantech.skimbrowser.di.VoiceAvailable
 import android.util.Log
 import androidx.annotation.MainThread
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -24,6 +25,9 @@ import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.text.relativeTimeText
 import java.time.ZoneId
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +38,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /** A Continue with Skim card on Home (04): one of the newest page chats. */
+@Immutable
 data class ContinueCard(
     val chatId: Long,
     /** The page's site, as the card's meta row shows it. */
@@ -52,13 +57,14 @@ data class ContinueCard(
  * hero card hides while no tab shows a page ([showsHero]), Continue with Skim hides while there is no
  * page chat ([showsContinue]), and Shortcuts shows only its Add tile while [shortcuts] is empty.
  */
+@Immutable
 data class HomeUiState(
     /** The N of "Summarize my N open tabs": normal tabs showing a web page; New tab pages and incognito tabs don't count. */
     val eligibleTabCount: Int = 0,
     /** In tile order. */
-    val shortcuts: List<Shortcut> = emptyList(),
+    val shortcuts: ImmutableList<Shortcut> = persistentListOf(),
     /** The newest page chats, newest first, at most two. */
-    val continueChats: List<ContinueCard> = emptyList(),
+    val continueChats: ImmutableList<ContinueCard> = persistentListOf(),
     /** False hides the mic: no app takes speech input. */
     val voiceAvailable: Boolean = false,
 ) {
@@ -92,8 +98,8 @@ class HomeViewModel @Inject constructor(
 
     val state: StateFlow<HomeUiState> = combine(
         tabs.state.map { pagesEligibleForAsk(it) }.distinctUntilChanged(),
-        shortcuts.observe(),
-        chats.observeRecentPageChats(CONTINUE_CARDS).map { recent -> recent.map(::continueCard) },
+        shortcuts.observe().map { it.toImmutableList() },
+        chats.observeRecentPageChats(CONTINUE_CARDS).map { recent -> recent.map(::continueCard).toImmutableList() },
     ) { tabCount, shortcutList, cards ->
         HomeUiState(tabCount, shortcutList, cards, voiceAvailable)
     }

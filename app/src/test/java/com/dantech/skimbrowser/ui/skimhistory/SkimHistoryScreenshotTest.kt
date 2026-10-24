@@ -19,6 +19,7 @@ import com.dantech.skimbrowser.ui.text.DateBucket
 import com.dantech.skimbrowser.ui.text.UiText
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,53 +91,53 @@ class SkimHistoryScreenshotTest {
         captureScreenRoboImage("src/test/screenshots/boards/$name.png")
     }
 
-    private fun board() = listOf(
+    private fun board() = persistentListOf(
         SkimHistorySection(
             DateBucket.Today,
-            listOf(
+            persistentListOf(
                 row(
                     1,
                     ChatKind.PAGE,
                     "Why heat pumps are winning in cold climates",
-                    UiText.Plural(R.plurals.skim_history_questions_about, 1, listOf(1, "daylightjournal.com")),
+                    UiText.Plural(R.plurals.skim_history_questions_about, 1, persistentListOf(1, "daylightjournal.com")),
                     "D",
                 ),
                 row(
                     2,
                     ChatKind.TABS,
                     "Summarize my 7 open tabs",
-                    UiText.Plural(R.plurals.skim_history_answers_across_tabs, 1, listOf(1, 7)),
+                    UiText.Plural(R.plurals.skim_history_answers_across_tabs, 1, persistentListOf(1, 7)),
                     "S",
                 ),
             ),
         ),
         SkimHistorySection(
             DateBucket.Yesterday,
-            listOf(
+            persistentListOf(
                 row(
                     3,
                     ChatKind.PAGE,
                     "Osaka night buses: a complete guide",
-                    UiText.Res(R.string.skim_history_summary_of, listOf("tabi-note.jp")),
+                    UiText.Res(R.string.skim_history_summary_of, persistentListOf("tabi-note.jp")),
                     "T",
                 ),
                 row(
                     4,
                     ChatKind.PAGE,
                     "Kotlin 2.2 release notes",
-                    UiText.Plural(R.plurals.skim_history_questions_about, 3, listOf(3, "kotlinlang.org")),
+                    UiText.Plural(R.plurals.skim_history_questions_about, 3, persistentListOf(3, "kotlinlang.org")),
                     "K",
                 ),
             ),
         ),
         SkimHistorySection(
             DateBucket.EarlierThisWeek,
-            listOf(
+            persistentListOf(
                 row(
                     5,
                     ChatKind.PAGE,
                     "Heat pump rebates 2026",
-                    UiText.Res(R.string.skim_history_summary_of, listOf("energysaver.example")),
+                    UiText.Res(R.string.skim_history_summary_of, persistentListOf("energysaver.example")),
                     "E",
                 ),
             ),

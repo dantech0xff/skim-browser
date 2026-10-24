@@ -61,6 +61,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /** A button of a dialog: its [label], what pressing it does, and whether it can be pressed now. */
 data class DialogAction(val label: String, val onClick: () -> Unit, val enabled: Boolean = true)
@@ -167,7 +169,7 @@ private fun alertBody(text: (@Composable () -> Unit)?): (@Composable ColumnScope
 @Composable
 fun <T> ChoiceDialog(
     title: String,
-    options: List<T>,
+    options: ImmutableList<T>,
     selected: T?,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
@@ -200,7 +202,7 @@ fun <T> ChoiceDialog(
 @Composable
 fun <T> ChoiceDialogContent(
     title: String,
-    options: List<T>,
+    options: ImmutableList<T>,
     selected: T?,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
@@ -449,7 +451,7 @@ private fun ChoiceDialogPreview() {
         )
         ChoiceDialog(
             title = stringResource(R.string.settings_theme),
-            options = ThemeSetting.entries,
+            options = ThemeSetting.entries.toImmutableList(),
             selected = ThemeSetting.System,
             label = { labels.getValue(it) },
             onSelect = {},

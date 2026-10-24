@@ -20,6 +20,9 @@ import com.dantech.skimbrowser.ui.text.DateBucket
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.text.bucketOf
 import java.time.ZoneId
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,14 +35,14 @@ import kotlinx.coroutines.withContext
 
 /** One day section of History (13), newest section first and newest visit first inside it. */
 @Immutable
-data class HistorySection(val bucket: DateBucket, val entries: List<HistoryEntry>)
+data class HistorySection(val bucket: DateBucket, val entries: ImmutableList<HistoryEntry>)
 
 /** What History shows. [empty] is true once the list has been read and holds nothing. */
 @Immutable
 data class HistoryUiState(
     val loaded: Boolean = false,
     val searching: Boolean = false,
-    val sections: List<HistorySection> = emptyList(),
+    val sections: ImmutableList<HistorySection> = persistentListOf(),
 ) {
     val empty: Boolean get() = loaded && sections.isEmpty()
 }
@@ -101,8 +104,10 @@ class HistoryViewModel @Inject constructor(
 }
 
 /** Groups [entries] into the day sections, dropping empty ones. [entries] is newest first. */
-internal fun sectionsOf(entries: List<HistoryEntry>, now: Long, zone: ZoneId): List<HistorySection> {
-    if (entries.isEmpty()) return emptyList()
+internal fun sectionsOf(entries: List<HistoryEntry>, now: Long, zone: ZoneId): ImmutableList<HistorySection> {
+    if (entries.isEmpty()) return persistentListOf()
     val grouped = entries.groupBy { bucketOf(it.visitedAt, now, zone) }
-    return DateBucket.entries.mapNotNull { bucket -> grouped[bucket]?.let { HistorySection(bucket, it) } }
+    return DateBucket.entries.mapNotNull { bucket ->
+        grouped[bucket]?.let { HistorySection(bucket, it.toImmutableList()) }
+    }.toImmutableList()
 }

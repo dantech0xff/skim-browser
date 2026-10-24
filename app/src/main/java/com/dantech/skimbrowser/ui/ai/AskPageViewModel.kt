@@ -34,6 +34,9 @@ import com.dantech.skimbrowser.domain.usecase.LoadSavedChat
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.reader.ReaderHighlights
 import kotlin.coroutines.coroutineContext
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -58,7 +61,7 @@ sealed interface SummaryState {
     /** A finished summary. [bullets] are the lines without their leading "- ". */
     data class Done(
         val text: String,
-        val bullets: List<String>,
+        val bullets: ImmutableList<String>,
         val feedback: MessageFeedback,
         val messageId: Long,
     ) : SummaryState
@@ -83,7 +86,7 @@ enum class AnswerError { Server, Offline, Refused }
 data class QaTurn(
     val question: String,
     val answer: String?,
-    val paragraphs: List<Int>,
+    val paragraphs: ImmutableList<Int>,
     val stopped: Boolean,
 )
 
@@ -93,7 +96,7 @@ data class AskPageUiState(
     val title: String = "",
     val host: String = "",
     val summary: SummaryState = SummaryState.Generating,
-    val turns: List<QaTurn> = emptyList(),
+    val turns: ImmutableList<QaTurn> = persistentListOf(),
     val showChips: Boolean = false,
     val inputEnabled: Boolean = false,
     val generating: Boolean = false,
@@ -514,13 +517,13 @@ class AskPageViewModel @AssistedInject constructor(
         MessageStatus.ERROR -> SummaryState.ServerError
     }
 
-    private fun turnsOf(messages: List<ChatMessage>, streamingAnswer: String?): List<QaTurn> {
+    private fun turnsOf(messages: List<ChatMessage>, streamingAnswer: String?): ImmutableList<QaTurn> {
         val turns = mutableListOf<QaTurn>()
         var question: String? = null
         messages.forEach { message ->
             when (message.kind) {
                 MessageKind.QUESTION -> {
-                    question?.let { turns += QaTurn(it, null, emptyList(), stopped = false) }
+                    question?.let { turns += QaTurn(it, null, persistentListOf(), stopped = false) }
                     question = message.text
                 }
                 MessageKind.ANSWER -> {
@@ -528,7 +531,7 @@ class AskPageViewModel @AssistedInject constructor(
                     turns += QaTurn(
                         question = asked,
                         answer = message.text,
-                        paragraphs = message.citations.map { it + 1 },
+                        paragraphs = message.citations.map { it + 1 }.toImmutableList(),
                         stopped = message.status == MessageStatus.STOPPED,
                     )
                     question = null
@@ -540,11 +543,13 @@ class AskPageViewModel @AssistedInject constructor(
             turns += QaTurn(
                 question = asked,
                 answer = streamingAnswer?.takeIf { it.isNotEmpty() },
-                paragraphs = streamingAnswer?.let { session?.draftCitations.orEmpty().map { index -> index + 1 } }.orEmpty(),
+                paragraphs = streamingAnswer?.let { session?.draftCitations.orEmpty().map { index -> index + 1 } }
+                    .orEmpty()
+                    .toImmutableList(),
                 stopped = false,
             )
         }
-        return turns
+        return turns.toImmutableList()
     }
 
     private fun finishedMessage(opened: PageConversation, kind: MessageKind, refused: Boolean) = ChatMessage(
@@ -577,10 +582,10 @@ class AskPageViewModel @AssistedInject constructor(
 }
 
 /** The summary lines without a leading "- ". */
-internal fun summaryBullets(text: String): List<String> = text.lineSequence()
+internal fun summaryBullets(text: String): ImmutableList<String> = text.lineSequence()
     .map { it.trim().removePrefix("- ").trim() }
     .filter { it.isNotEmpty() }
-    .toList()
+    .toImmutableList()
 
 private fun enoughText(content: PageContent): Boolean = content.blocks.sumOf { it.text.length } >= NOT_ENOUGH_TEXT
 

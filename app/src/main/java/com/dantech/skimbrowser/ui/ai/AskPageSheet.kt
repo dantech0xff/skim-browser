@@ -55,6 +55,7 @@ import com.dantech.skimbrowser.ui.components.SkimSnackbar
 import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.UserBubble
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
+import kotlinx.collections.immutable.ImmutableList
 
 /** What the sheet can ask the screen to do. */
 data class AskPageActions(
@@ -193,7 +194,7 @@ private fun SummaryBlock(summary: SummaryState, actions: AskPageActions) {
 
 @Composable
 private fun SummaryTextCard(
-    lines: List<String>,
+    lines: ImmutableList<String>,
     actions: AskPageActions? = null,
     feedback: MessageFeedback = MessageFeedback.NONE,
 ) {

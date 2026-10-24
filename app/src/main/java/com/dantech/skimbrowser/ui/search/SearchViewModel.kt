@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.setTextAndSelectAll
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -24,6 +25,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.dantech.skimbrowser.search.omniboxAddress
 import com.dantech.skimbrowser.search.resolveOmnibox
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -41,6 +45,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** A history or bookmark row of the search field (04b): a page whose title or URL holds the text. */
+@Immutable
 data class PageMatch(
     /** The page's title as plain visible text, or its URL when it has none. */
     val title: String,
@@ -51,15 +56,16 @@ data class PageMatch(
 )
 
 /** The rows under the search field (04b); the text itself is [SearchViewModel.query]. */
+@Immutable
 data class SearchUiState(
     /** The field belongs to an incognito tab: dark, no Ask Skim row, no history or bookmark rows. */
     val incognito: Boolean = true,
     /** The Ask Skim row, with the text as the question: shown while there is text, never in incognito. */
     val askSkim: Boolean = false,
     /** The engine's suggestions for the text, at most three; none while it fails or has none. */
-    val engineSuggestions: List<String> = emptyList(),
+    val engineSuggestions: ImmutableList<String> = persistentListOf(),
     /** History then bookmarks holding the text, one row per URL, at most three; always none in incognito. */
-    val pageMatches: List<PageMatch> = emptyList(),
+    val pageMatches: ImmutableList<PageMatch> = persistentListOf(),
 )
 
 /**
@@ -170,7 +176,7 @@ class SearchViewModel(
         suggestion.trim().takeIf { it.isNotEmpty() }?.let { text -> currentEngine.value?.searchUrl(text) }
 
     private fun showNothing() {
-        _state.update { it.copy(askSkim = false, engineSuggestions = emptyList(), pageMatches = emptyList()) }
+        _state.update { it.copy(askSkim = false, engineSuggestions = persistentListOf(), pageMatches = persistentListOf()) }
     }
 
     private suspend fun lookUp(lookup: Lookup) = coroutineScope {
@@ -196,19 +202,20 @@ class SearchViewModel(
     }
 
     /** At most three, without the text itself: the field and its Ask Skim row show that already. */
-    private suspend fun engineSuggestionsFor(text: String): List<String> {
+    private suspend fun engineSuggestionsFor(text: String): ImmutableList<String> {
         val engine = currentEngine.filterNotNull().first()
         val typed = text.trim()
         return orNothing { suggestions(engine, text) }
             .filterNot { it.equals(typed, ignoreCase = true) }
             .take(MAX_ROWS)
+            .toImmutableList()
     }
 
     /** History first, then bookmarks, one row per URL, at most three in all. */
-    private suspend fun pageMatchesFor(text: String): List<PageMatch> {
+    private suspend fun pageMatchesFor(text: String): ImmutableList<PageMatch> {
         val visited = orNothing { matchHistory(text, MAX_ROWS) }.map { pageMatch(it) }
         val bookmarked = orNothing { matchBookmarks(text, MAX_ROWS) }.map { pageMatch(it) }
-        return (visited + bookmarked).distinctBy { it.url }.take(MAX_ROWS)
+        return (visited + bookmarked).distinctBy { it.url }.take(MAX_ROWS).toImmutableList()
     }
 
     /** What [read] returns, or nothing when it fails: a failed lookup only hides its rows. */

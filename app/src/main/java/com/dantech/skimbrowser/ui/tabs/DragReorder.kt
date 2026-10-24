@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import kotlinx.collections.immutable.ImmutableSet
 
 /**
  * Where a tab card sits in the grid, in the grid's coordinates. [groupId] null is Other.
@@ -66,7 +67,7 @@ internal fun Modifier.tabDragReorder(
     groupId: Long?,
     gridState: LazyGridState,
     enabled: Boolean,
-    tabKeys: Set<String>,
+    tabKeys: ImmutableSet<String>,
     groupOf: (String) -> Long?,
     onMove: (toIndex: Int) -> Unit,
 ): Modifier {

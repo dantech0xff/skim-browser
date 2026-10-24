@@ -17,6 +17,7 @@ import com.dantech.skimbrowser.ui.components.SkimBottomSheet
 import com.dantech.skimbrowser.ui.components.rememberSkimSheetState
 import com.dantech.skimbrowser.ui.home.HomeFixtures
 import com.dantech.skimbrowser.ui.home.HomeScreen
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,7 +78,7 @@ private fun board() = AskTabsUiState(
     prompt = "Summarize my 7 open tabs",
     overview = TabsOverviewState.Ready(
         intro = "Your tabs cover three topics.",
-        groups = listOf(
+        groups = persistentListOf(
             OverviewGroupUi(
                 "Heat pump research",
                 "Across 4 tabs you were comparing sizing, installer reviews and 2026 rebates. " +
@@ -93,7 +94,7 @@ private fun board() = AskTabsUiState(
         ),
         feedback = MessageFeedback.NONE,
         messageId = 1,
-        followUps = listOf("Which installer looked best?", "What is left to book in Osaka?"),
+        followUps = persistentListOf("Which installer looked best?", "What is left to book in Osaka?"),
     ),
     inputEnabled = true,
 )

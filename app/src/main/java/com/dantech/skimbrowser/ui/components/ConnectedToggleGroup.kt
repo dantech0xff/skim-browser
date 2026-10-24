@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * A single-choice connected button group (09, 09b, 08b): the [options] share the width, 40 dp high
@@ -51,12 +53,12 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
  */
 @Composable
 fun ConnectedToggleGroup(
-    options: List<String>,
+    options: ImmutableList<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
     contentDescription: String,
     modifier: Modifier = Modifier,
-    fontFamilies: List<FontFamily?> = emptyList(),
+    fontFamilies: ImmutableList<FontFamily?> = persistentListOf(),
 ) {
     require(options.size >= 2) { "A connected group needs at least two options, got ${options.size}." }
     require(selected in options.indices) { "Option $selected is not one of the ${options.size} options." }
@@ -123,17 +125,17 @@ private fun ConnectedToggleGroupPreview() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ConnectedToggleGroup(
-                options = listOf(stringResource(R.string.tabs_segment_open), stringResource(R.string.tabs_segment_incognito)),
+                options = persistentListOf(stringResource(R.string.tabs_segment_open), stringResource(R.string.tabs_segment_incognito)),
                 selected = tabList,
                 onSelect = { tabList = it },
                 contentDescription = stringResource(R.string.cd_tab_list),
             )
             ConnectedToggleGroup(
-                options = listOf(stringResource(R.string.reader_font_sans_serif), stringResource(R.string.reader_font_serif)),
+                options = persistentListOf(stringResource(R.string.reader_font_sans_serif), stringResource(R.string.reader_font_serif)),
                 selected = font,
                 onSelect = { font = it },
                 contentDescription = stringResource(R.string.reader_font),
-                fontFamilies = listOf(null, FontFamily.Serif),
+                fontFamilies = persistentListOf(null, FontFamily.Serif),
             )
         }
     }

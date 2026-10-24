@@ -60,6 +60,7 @@ import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.components.segmentedShapes
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.text.asString
+import kotlinx.collections.immutable.ImmutableList
 
 /** What the controls of Home (04) do. */
 @Immutable
@@ -174,7 +175,7 @@ fun HomeScreen(
  */
 @Composable
 internal fun ShortcutGrid(
-    shortcuts: List<Shortcut>,
+    shortcuts: ImmutableList<Shortcut>,
     onOpen: (Shortcut) -> Unit,
     onEdit: (Shortcut) -> Unit,
     onRemove: (Shortcut) -> Unit,
@@ -286,7 +287,7 @@ private fun CellLabel(text: String) {
  * cards on surfaceContainerLow (20 dp outer and 4 dp inner corners, 2 dp apart).
  */
 @Composable
-private fun ContinueWithSkim(cards: List<ContinueCard>, onOpenChat: (Long) -> Unit, onSeeAll: () -> Unit) {
+private fun ContinueWithSkim(cards: ImmutableList<ContinueCard>, onOpenChat: (Long) -> Unit, onSeeAll: () -> Unit) {
     Column {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.home_continue_with_skim), Modifier.weight(1f))

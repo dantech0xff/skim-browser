@@ -24,6 +24,7 @@ import com.dantech.skimbrowser.ui.components.ConnectedToggleGroup
 import com.dantech.skimbrowser.ui.components.ReaderSizeSlider
 import com.dantech.skimbrowser.ui.components.SheetHandle
 import com.dantech.skimbrowser.ui.components.SheetShape
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Text settings (08b), drawn as a sheet along the bottom with no scrim. A scrim would take the
@@ -81,14 +82,14 @@ fun ReaderTextPanel(
                     style = MaterialTheme.typography.labelLarge,
                 )
                 ConnectedToggleGroup(
-                    options = listOf(
+                    options = persistentListOf(
                         stringResource(R.string.reader_font_sans_serif),
                         stringResource(R.string.reader_font_serif),
                     ),
                     selected = if (font == ReaderFont.SERIF) 1 else 0,
                     onSelect = { index -> onFont(if (index == 1) ReaderFont.SERIF else ReaderFont.SANS_SERIF) },
                     contentDescription = stringResource(R.string.reader_font),
-                    fontFamilies = listOf(null, FontFamily.Serif),
+                    fontFamilies = persistentListOf(null, FontFamily.Serif),
                 )
             }
         }

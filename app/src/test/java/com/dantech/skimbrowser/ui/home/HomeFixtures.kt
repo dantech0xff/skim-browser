@@ -8,12 +8,15 @@ import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.shell.TabAiFab
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /** The data Home (04) and the incognito New tab page (09c) are drawn with on their boards. */
 object HomeFixtures {
 
     /** The seven shortcuts of 04, in tile order. */
-    val Shortcuts: List<Shortcut> = listOf(
+    val Shortcuts: ImmutableList<Shortcut> = listOf(
         "Wikipedia" to "https://www.wikipedia.org",
         "GitHub" to "https://github.com",
         "YouTube" to "https://www.youtube.com",
@@ -22,9 +25,10 @@ object HomeFixtures {
         "Medium" to "https://medium.com",
         "Stack Overflow" to "https://stackoverflow.com",
     ).mapIndexed { index, (name, url) -> Shortcut(id = index + 1L, name = name, url = url, position = index) }
+        .toImmutableList()
 
     /** The two Continue with Skim cards of 04. */
-    val ContinueCards: List<ContinueCard> = listOf(
+    val ContinueCards: ImmutableList<ContinueCard> = persistentListOf(
         ContinueCard(
             chatId = 11,
             host = "daylightjournal.com",

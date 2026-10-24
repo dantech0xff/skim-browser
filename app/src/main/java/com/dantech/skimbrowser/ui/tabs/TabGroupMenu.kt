@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.MenuEntry
 import com.dantech.skimbrowser.ui.components.SkimMenu
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Group options (15): Rename group and Ungroup, then Close N tabs on its own. Choosing an item
@@ -25,12 +26,12 @@ fun TabGroupMenu(
     SkimMenu(
         expanded = expanded,
         onDismiss = onDismiss,
-        groups = listOf(
-            listOf(
+        groups = persistentListOf(
+            persistentListOf(
                 MenuEntry(stringResource(R.string.rename_group), R.drawable.ic_drive_file_rename_outline, onRename),
                 MenuEntry(stringResource(R.string.tab_group_ungroup), R.drawable.ic_layers_clear, onUngroup),
             ),
-            listOf(
+            persistentListOf(
                 MenuEntry(
                     pluralStringResource(R.plurals.tab_group_close_tabs, tabCount, tabCount),
                     R.drawable.ic_close,

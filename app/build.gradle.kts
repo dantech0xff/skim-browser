@@ -119,6 +119,10 @@ android {
     }
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
+}
+
 aboutLibraries {
     collect {
         // Definitions for bundled assets that are not Maven dependencies (font, icons, Readability.js).
@@ -344,6 +348,7 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.collections.immutable)
     implementation(libs.aboutlibraries.compose.m3)
     implementation(libs.jsoup)
     implementation(libs.okhttp)

@@ -26,6 +26,7 @@ import com.dantech.skimbrowser.testing.inMemorySkimDatabase
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -94,7 +95,7 @@ class ShortcutOverlaysScreenshotTest {
         composeRule.setSkimContent(statusBarInset = 0.dp) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                 ShortcutGrid(
-                    shortcuts = HomeFixtures.Shortcuts.take(4),
+                    shortcuts = HomeFixtures.Shortcuts.take(4).toImmutableList(),
                     onOpen = {},
                     onEdit = {},
                     onRemove = {},

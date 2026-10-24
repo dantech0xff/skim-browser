@@ -20,6 +20,7 @@ import com.dantech.skimbrowser.testing.captureBoard
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,7 +80,7 @@ class TabsScreenshotTest {
         show(
             board().copy(
                 query = "osaka",
-                sections = listOf(board().sections[1]),
+                sections = persistentListOf(board().sections[1]),
                 grouping = null,
             ),
             search = TextFieldState("osaka"),
@@ -100,11 +101,11 @@ class TabsScreenshotTest {
         show(
             TabsUiState(
                 count = 2,
-                sections = listOf(
+                sections = persistentListOf(
                     TabSection(
                         group = null,
                         showHeader = false,
-                        tabs = listOf(
+                        tabs = persistentListOf(
                             card("a", "Why heat pumps are winning in cold climates", "D", current = true),
                             card("b", "Kotlin 2.2 release notes", "K"),
                         ),
@@ -134,10 +135,10 @@ class TabsScreenshotTest {
         return TabsUiState(
             count = 7,
             grouping = GroupingBannerState(undoEnabled = true),
-            sections = listOf(
+            sections = persistentListOf(
                 TabSection(
                     heat,
-                    listOf(
+                    persistentListOf(
                         card("1", "Why heat pumps are winning in cold climates", "D", current = true, chat = true),
                         card("2", "Heat pump sizing calculator", "H"),
                         card("3", "Installer reviews near me", "R"),
@@ -147,7 +148,7 @@ class TabsScreenshotTest {
                 ),
                 TabSection(
                     osaka,
-                    listOf(
+                    persistentListOf(
                         card("5", "Osaka night buses: a complete guide", "T"),
                         card("6", "Namba hotels, 2 nights", "N"),
                     ),
@@ -155,7 +156,7 @@ class TabsScreenshotTest {
                 ),
                 TabSection(
                     null,
-                    listOf(card("7", "Kotlin 2.2 release notes", "K")),
+                    persistentListOf(card("7", "Kotlin 2.2 release notes", "K")),
                     showHeader = true,
                 ),
             ),
@@ -165,11 +166,11 @@ class TabsScreenshotTest {
     private fun incognitoBoard() = TabsUiState(
         incognito = true,
         count = 2,
-        sections = listOf(
+        sections = persistentListOf(
             TabSection(
                 group = null,
                 showHeader = false,
-                tabs = listOf(
+                tabs = persistentListOf(
                     card("1", "Anniversary gift ideas", "G", current = true),
                     card("2", "Flights to Lisbon in May", "F"),
                 ),

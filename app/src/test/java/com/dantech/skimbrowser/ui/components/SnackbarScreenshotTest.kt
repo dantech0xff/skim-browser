@@ -28,6 +28,7 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -109,7 +110,7 @@ class SnackbarScreenshotTest {
             Triple(UiText.Plural(R.plurals.snackbar_imported_bookmarks, 24), SnackbarAction.ViewImported(2), false),
             Triple(UiText.Res(R.string.snackbar_import_failed), null, true),
             Triple(
-                UiText.Res(R.string.snackbar_downloaded, listOf("heat-pump-rebate-guide-2026-final-version.pdf")),
+                UiText.Res(R.string.snackbar_downloaded, persistentListOf("heat-pump-rebate-guide-2026-final-version.pdf")),
                 SnackbarAction.OpenDownload(Uri.parse("content://downloads/public_downloads/1"), "application/pdf"),
                 false,
             ),

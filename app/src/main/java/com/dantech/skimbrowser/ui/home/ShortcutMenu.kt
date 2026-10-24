@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.MenuEntry
 import com.dantech.skimbrowser.ui.components.SkimMenu
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * The menu of a shortcut on Home (15), opened by a long press: Edit shortcut, then Remove in a group
@@ -34,9 +35,9 @@ fun BoxScope.ShortcutMenu(
         SkimMenu(
             expanded = expanded,
             onDismiss = onDismiss,
-            groups = listOf(
-                listOf(MenuEntry(stringResource(R.string.shortcut_menu_edit), R.drawable.ic_edit, onEdit)),
-                listOf(MenuEntry(stringResource(R.string.action_remove), R.drawable.ic_delete, onRemove)),
+            groups = persistentListOf(
+                persistentListOf(MenuEntry(stringResource(R.string.shortcut_menu_edit), R.drawable.ic_edit, onEdit)),
+                persistentListOf(MenuEntry(stringResource(R.string.action_remove), R.drawable.ic_delete, onRemove)),
             ),
             anchorContentDescription = stringResource(R.string.cd_shortcut_menu, name),
         )

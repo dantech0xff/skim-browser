@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.tabs
 
 import com.dantech.skimbrowser.browser.TabGroup
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -21,8 +22,8 @@ class FocusHeaderIndexTest {
     @Test
     fun anUngroupedGridScrollsToTheCard() {
         val state = TabsUiState(
-            sections = listOf(
-                TabSection(null, listOf(card("a"), card("b")), showHeader = false),
+            sections = persistentListOf(
+                TabSection(null, persistentListOf(card("a"), card("b")), showHeader = false),
             ),
         )
 
@@ -31,9 +32,9 @@ class FocusHeaderIndexTest {
     }
 
     private fun grouped() = TabsUiState(
-        sections = listOf(
-            TabSection(TabGroup(1, "Heat", 0), listOf(card("a"), card("b")), showHeader = true),
-            TabSection(null, listOf(card("c")), showHeader = true),
+        sections = persistentListOf(
+            TabSection(TabGroup(1, "Heat", 0), persistentListOf(card("a"), card("b")), showHeader = true),
+            TabSection(null, persistentListOf(card("c")), showHeader = true),
         ),
     )
 

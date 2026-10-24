@@ -26,6 +26,9 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoKind
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
 import com.dantech.skimbrowser.ui.text.UiText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +60,7 @@ data class TabCardState(
 @Immutable
 data class TabSection(
     val group: TabGroup?,
-    val tabs: List<TabCardState>,
+    val tabs: ImmutableList<TabCardState>,
     val showHeader: Boolean,
 )
 
@@ -66,7 +69,7 @@ data class TabSection(
 data class TabsUiState(
     val incognito: Boolean = false,
     val count: Int = 0,
-    val sections: List<TabSection> = emptyList(),
+    val sections: ImmutableList<TabSection> = persistentListOf(),
     val query: String? = null,
     val grouping: GroupingBannerState? = null,
     val aiEnabled: Boolean = true,
@@ -241,7 +244,7 @@ class TabsViewModel @AssistedInject constructor(
 }
 
 /** [count] of the mode, and the sections search left. A section with no visible tab is omitted. */
-internal fun sectionsOf(state: TabsState, incognito: Boolean, query: String?): Pair<Int, List<TabSection>> {
+internal fun sectionsOf(state: TabsState, incognito: Boolean, query: String?): Pair<Int, ImmutableList<TabSection>> {
     val mine = state.tabs.filter { it.incognito == incognito }
     val shown = if (query.isNullOrBlank()) {
         mine
@@ -252,20 +255,20 @@ internal fun sectionsOf(state: TabsState, incognito: Boolean, query: String?): P
     }
     val grouped = !incognito && state.groups.isNotEmpty()
     if (!grouped) {
-        val cards = shown.sortedBy { it.position }.map { it.toCard(state) }
-        val sections = if (cards.isEmpty()) emptyList() else listOf(TabSection(null, cards, showHeader = false))
+        val cards = shown.sortedBy { it.position }.map { it.toCard(state) }.toImmutableList()
+        val sections = if (cards.isEmpty()) persistentListOf() else persistentListOf(TabSection(null, cards, showHeader = false))
         return mine.size to sections
     }
     val sections = buildList {
         state.groups.sortedBy { it.position }.forEach { group ->
             val members = shown.filter { it.groupId == group.id }.sortedBy { it.position }
-            if (members.isNotEmpty()) add(TabSection(group, members.map { it.toCard(state) }, showHeader = true))
+            if (members.isNotEmpty()) add(TabSection(group, members.map { it.toCard(state) }.toImmutableList(), showHeader = true))
         }
         val other = shown.filter { tab -> tab.groupId == null || state.groups.none { it.id == tab.groupId } }
             .sortedBy { it.position }
-        if (other.isNotEmpty()) add(TabSection(null, other.map { it.toCard(state) }, showHeader = true))
+        if (other.isNotEmpty()) add(TabSection(null, other.map { it.toCard(state) }.toImmutableList(), showHeader = true))
     }
-    return mine.size to sections
+    return mine.size to sections.toImmutableList()
 }
 
 private fun Tab.toCard(state: TabsState) = TabCardState(
