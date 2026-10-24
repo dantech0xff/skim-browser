@@ -3,17 +3,13 @@ package com.dantech.skimbrowser.ui.shell
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
-import android.graphics.Rect
 import android.os.Bundle
 import android.view.KeyEvent
-import android.view.View
-import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.WebStorage
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
@@ -26,14 +22,11 @@ import com.dantech.skimbrowser.system.purgeOldShares
 import dagger.hilt.android.EntryPointAccessors
 import com.dantech.skimbrowser.browser.DEVICE_TIMEOUT_MS
 import com.dantech.skimbrowser.browser.IncognitoSession
-import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TestPages
 import com.dantech.skimbrowser.browser.onMain
-import com.dantech.skimbrowser.browser.viewsIn
 import com.dantech.skimbrowser.browser.waitUntil
-import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -42,8 +35,8 @@ import org.junit.rules.ExternalResource
 /**
  * The app as a user runs it, for the device tests of its shell: MainActivity over the process's own
  * container, so its tabs, settings, incognito session and snackbar are the app's. A test sets up
- * what it needs first (whether onboarding is done, the tabs it opens), then [launch]es the
- * Activity the way a user or another app would, and drives it through the app's navigator.
+ * what it needs first (whether onboarding is done), then [launch]es the Activity the way a user or
+ * another app would.
  *
  * Before the test the saved tabs are read, as the app does when it starts, every tab left open is
  * closed for good and the settings are noted. Afterwards everything the test changed is undone:
@@ -135,10 +128,6 @@ class SkimAppRule : ExternalResource() {
         }
     }
 
-    /** Opens a tab on [url] (the New tab page when null) and returns its id; it becomes current unless [background]. */
-    fun openTab(url: String?, incognito: Boolean = false, background: Boolean = false): String =
-        onMain { tabs.newTab(incognito = incognito, url = url, background = background) }
-
     /** The open tabs showing [url]. */
     fun tabsShowing(url: String): List<Tab> = tabs.state.value.tabs.filter { it.url == url }
 
@@ -155,37 +144,6 @@ class SkimAppRule : ExternalResource() {
      * may: no intent filter stands between it and the activity, so it can carry any scheme.
      */
     fun linkIntent(uri: String): Intent = Intent(Intent.ACTION_VIEW, uri.toUri()).setClass(app, MainActivity::class.java)
-
-    /**
-     * Sends [intent] to Skim while it runs, as another app does: the single-task activity gets it
-     * through onNewIntent.
-     */
-    fun send(intent: Intent) {
-        app.startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-
-    /** The scenario's activity now (a recreated one after `recreate`). */
-    fun activityOf(scenario: ActivityScenario<MainActivity>): MainActivity {
-        var activity: MainActivity? = null
-        scenario.onActivity { activity = it }
-        return checkNotNull(activity)
-    }
-
-    /** The navigator of the scenario's activity, once the app has read its settings and tabs. */
-    fun navigatorOf(scenario: ActivityScenario<MainActivity>): SkimNavigator {
-        var navigator: SkimNavigator? = null
-        waitUntil("the app to start") {
-            scenario.onActivity { navigator = it.navigatorForTests }
-            navigator != null
-        }
-        return checkNotNull(navigator)
-    }
-
-    /** The back stack of the scenario's activity, bottom to top. */
-    fun keysOf(scenario: ActivityScenario<MainActivity>): List<NavKey> {
-        val navigator = navigatorOf(scenario)
-        return onMain { navigator.keysForTests }
-    }
 
     /** The system Back button, through the input pipeline to the focused window. */
     fun pressBack() {
@@ -248,13 +206,3 @@ class SkimAppRule : ExternalResource() {
         override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
     }
 }
-
-/** True while FLAG_SECURE is set on the activity's window; call on the main thread. */
-internal fun Activity.isSecure(): Boolean = window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0
-
-/** The tabs' WebViews the activity's window shows on screen now (not those parked off screen); call on the main thread. */
-internal fun Activity.webViewsOnScreen(): List<SkimWebView> =
-    viewsIn<SkimWebView>(window.decorView).filter { it.isOnScreen() }
-
-/** Whether any part of the view is on screen: shown, and not moved outside the window. */
-internal fun View.isOnScreen(): Boolean = isShown && getGlobalVisibleRect(Rect())

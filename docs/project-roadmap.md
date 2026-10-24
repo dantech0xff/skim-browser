@@ -33,7 +33,7 @@ From `design/README.md`. The app does not invent screens for these:
 
 1. **Clean Architecture.** Closed as option B. `domain/` holds models, repository interfaces, and use cases. `data/` implements the interfaces and maps entities. ViewModels take use cases or those interfaces. Chat writes (`createChat`, messages, `addMessage`, updates, `deleteAll`) are on `domain.chat.ChatRepository`, and `ChatSessionStore` and `AiDataEraser` call the use cases. Hilt wires them. A full presentation / domain / data rewrite (option C) was not done.
 
-2. **D2 on a device.** Owner kept option A. Incognito tabs are omitted from Room and from `TabManager.restore()`. `ProcessDeathRestoreTest` recreates the Activity after `pool.destroyAll()`. It has not been run on `skim_api36`. Run the instrumented test and the adb checklist before any beta.
+2. **D2 on a device.** Owner kept option A. Incognito tabs are omitted from Room and from `TabManager.restore()`. It has not been checked on `skim_api36`. Run the adb checklist before any beta.
 
 3. **D8 copy.** Owner kept option A. Server error, refusal, and interrupted answers use the strings marked default in the plan. There is no board for them. Keep the strings until design reviews them.
 

@@ -1,7 +1,6 @@
 package com.dantech.skimbrowser.ui.navigation
 
 import androidx.annotation.MainThread
-import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -53,10 +52,6 @@ class SkimNavigator @AssistedInject constructor(
      * flag after each one, so a change that did not end on incognito content lets the flag go.
      */
     val secureArming: Int get() = arming.intValue
-
-    /** The back stack, bottom to top, for device tests. */
-    @get:VisibleForTesting
-    internal val keysForTests: List<NavKey> get() = backStack.toList()
 
     /** Shows [key] on top; nothing happens when it is already on top (a second tap). */
     fun push(key: SkimKey) {

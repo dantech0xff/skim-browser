@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -26,7 +25,6 @@ import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.NavigatorEntryPoint
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
-import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.WelcomeKey
 import com.dantech.skimbrowser.ui.navigation.reconcileBackStack
 import com.dantech.skimbrowser.ui.navigation.rememberShell
@@ -56,16 +54,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * incognito tab is open. The one snackbar host sits where the top screen places it and carries out
  * snackbar actions with this window's navigator. Each link in [pendingLinks] (from another app)
  * opens in a new normal tab, shown at once.
- *
- * @param onNavigator receives the navigator once the back stack exists (the Activity keeps it for
- *   its device tests).
  */
 @Composable
-fun SkimApp(
-    host: BrowserHost,
-    pendingLinks: ReceiveChannel<String>,
-    onNavigator: (SkimNavigator) -> Unit = {},
-) {
+fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
     val shell = rememberShell()
     val settings by remember(shell) { shell.settings().settings }.collectAsStateWithLifecycle(initialValue = null)
     val onboarded by produceState<Boolean?>(initialValue = null, shell) { value = startUp(shell) }
@@ -109,10 +100,6 @@ fun SkimApp(
             tabs.newTab(incognito = false, url = url, openedByExternalApp = true)
             navigator.showBrowser()
         }
-    }
-    DisposableEffect(navigator) {
-        onNavigator(navigator)
-        onDispose { }
     }
 
     SkimTheme(theme, incognito = incognitoSurface) {

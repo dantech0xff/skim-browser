@@ -37,7 +37,7 @@ A call that is one repository method uses that method, read or write. A use case
 
 Tab models (`Tab`, `TabsState`, `TabRuntime`, `GroupLayout`) live in `domain/tab`. ViewModels depend on `TabsController`, and `TabManager` implements it. Incognito restore and undo-close decisions are pure functions in `domain/tab/TabRules.kt`. `TabManager` owns the live tab list and the restore path. It is created once per process. It does not hold WebViews. Android types (`Bundle`, `SystemClock`, `Log`, WebView) stay in `browser/`.
 
-`WebViewPool` is created with the Activity (`BrowserHost`). It keeps a small number of live WebViews and rebinds them when the current tab changes. `MainActivity.browserHostForTests` exposes the host to instrumented tests. `pool.destroyAll()` is what a process-death test uses to drop every WebView before `Activity.recreate()`.
+`WebViewPool` is created with the Activity (`BrowserHost`). It keeps a small number of live WebViews and rebinds them when the current tab changes. `MainActivity.browserHostForTests` exposes the host to instrumented tests.
 
 Opening a tab is `TabManager.newTab` on the main thread. Layout changes (group, reorder, ungroup) go through `applyLayout`, which returns false if the caller's layout version is stale. That is how a grouping result is dropped when the person moved a tab while the request was in flight.
 
@@ -47,7 +47,7 @@ Opening a tab is `TabManager.newTab` on the main thread. Layout changes (group, 
 
 `IncognitoSession` asks `BrowserProfiles` for a profile per session. `WebViewFeature.MULTI_PROFILE` has to be present. When it is not, new incognito tabs are refused and the UI says the system WebView needs an update.
 
-The session has a state (`None`, active, `Ending`). An ending session is not reused. Ending the session clears the profile (cookies, and the HTTP cache when the device can) and deletes `cache/shared/incognito`. `FLAG_SECURE` is set while an incognito tab or an incognito sheet is on screen, including while that screen is fading out. Instrumented coverage of the flag is `SecureFlagTest`; it has not been run on a device in this environment.
+The session has a state (`None`, active, `Ending`). An ending session is not reused. Ending the session clears the profile (cookies, and the HTTP cache when the device can) and deletes `cache/shared/incognito`. `FLAG_SECURE` is set while an incognito tab or an incognito sheet is on screen, including while that screen is fading out.
 
 Incognito pages never reach `SkimAiService`. The service rejects them before the client is created. Ask about this page and Ask about tabs call `SummarizePage`, `AskPage`, `RetryAnswer`, `OverviewTabs`, `AskTabs`, and `CollectOpenTabs`. Those use cases talk to `AiAssistant`. `SkimAiService` implements it and is the only type that sees the model SDK. A reply the sheet sees is `AiReply`. `ChatSession` implements `PageConversation` and keeps the last request internally; the sheet reads `canRetry`. `ChatSessionStore` implements `PageChats`. `NetworkMonitor` implements `NetworkAvailability`.
 

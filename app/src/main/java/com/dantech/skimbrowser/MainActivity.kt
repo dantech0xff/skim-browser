@@ -19,7 +19,6 @@ import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
-import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import dagger.hilt.android.AndroidEntryPoint
 import com.dantech.skimbrowser.ui.shell.IncomingIntents
 import com.dantech.skimbrowser.ui.shell.SkimApp
@@ -54,15 +53,10 @@ class MainActivity : ComponentActivity() {
      * opens an earlier one again.
      */
     private val pendingLinks = Channel<String>(Channel.BUFFERED)
-    private var navigator: SkimNavigator? = null
 
     /** The Activity's browser host, for the device tests of its life cycle. */
     @get:VisibleForTesting
     internal val browserHostForTests: BrowserHost get() = browserHost
-
-    /** The navigator of the app on screen, once it has started; for the device tests of the shell. */
-    @get:VisibleForTesting
-    internal val navigatorForTests: SkimNavigator? get() = navigator
 
     private val downloadFinished = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -83,7 +77,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) receiveLink(intent)
         setContent {
             CompositionLocalProvider(LocalBrowserHost provides browserHost) {
-                SkimApp(browserHost, pendingLinks, onNavigator = { navigator = it })
+                SkimApp(browserHost, pendingLinks)
             }
         }
     }

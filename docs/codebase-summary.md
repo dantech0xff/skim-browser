@@ -39,7 +39,7 @@ SSE fixtures used by unit tests and the release smoke test are in `ai/src/testFi
 | `browser/src/test` | The tab engine, WebView, downloads, and page scripts. |
 | `ai/src/test` | The Claude adapter, chat sessions, and tab grouping. |
 | `app/src/test` | Screens, ViewModels, search, system, and the process graph. Robolectric, Turbine, Roborazzi. `DomainBoundaryTest`, `BrowsingDataCleanerTest`, and `AiDataEraserTest` stay here because they name `ui`. |
-| `app/src/androidTest` | Instrumented tests, including `ProcessDeathRestoreTest` and `ReleaseSmokeTest`. |
+| `app/src/androidTest` | Instrumented tests, including `ReleaseSmokeTest`. |
 | `app/src/test/screenshots` | Recorded goldens. Board images share names with `design/screens/`. |
 
 Fakes shared with `:app` tests live in each module's test fixtures: `domain/src/testFixtures` (repository fakes, `RecordingTabs`, and `MainDispatcherRule`), `data/src/testFixtures` (the in-memory database), `browser/src/testFixtures` (`TabManagerFixture` and the WebView fakes), and `ai/src/testFixtures` (`FakeClaudeServer` and the session helpers). `:app:testDebugUnitTest` runs the four module suites first.
