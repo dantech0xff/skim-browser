@@ -16,6 +16,7 @@ import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.data.isWebUrl
+import com.dantech.skimbrowser.domain.tab.TabsController
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,8 +35,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * The live WebViews of the tabs, for the life of one Activity; the [TabEngine] the tab manager
- * drives while the Activity exists. Every call is made on the main thread.
+ * The live WebViews of the tabs, for the life of one Activity; the [TabEngine] the Activity plugs
+ * into the process's [TabEngineAttachment] while it exists. It reads the tabs through
+ * [TabsController] and reports to [TabEventSink], and never names the tab manager. Every call is
+ * made on the main thread.
  *
  * WebViews are made with the Activity's context when a tab is shown ([obtain]), needs its page
  * off screen ([ensureWebView]) or opens a popup ([obtainForPopup]), and kept by the rules of
@@ -60,7 +63,11 @@ import kotlin.coroutines.resume
 @MainThread
 class WebViewPool(
     private val activity: Activity,
-    private val tabs: TabManager,
+    private val tabs: TabsController,
+    /** Where the WebViews' reports go. */
+    private val tabEvents: TabEventSink,
+    /** Tells whether this pool is still the one attached, so a replaced pool stops reporting. */
+    private val engines: TabEngineSource,
     private val incognito: IncognitoSession,
     private val stateStore: TabStateStore,
     private val thumbnails: ThumbnailStore,
@@ -589,7 +596,7 @@ class WebViewPool(
         view.onHitTarget = null
         view.destroy()
         // A pool another Activity replaced no longer speaks for the tabs: the new pool shows them now.
-        if (tabs.isAttached(this)) tabs.events.onWebViewDestroyed(entry.tabId)
+        if (engines.isAttached(this)) tabEvents.onWebViewDestroyed(entry.tabId)
     }
 
     /**
@@ -670,17 +677,17 @@ class WebViewPool(
     }
 
     /** What the WebViews report, on its way to the tab manager; the pool schedules work on it. */
-    private inner class PoolEvents : TabEventSink by tabs.events {
+    private inner class PoolEvents : TabEventSink by tabEvents {
         override fun onPageStarted(tabId: String, url: String): Long {
             live[tabId]?.let { entry ->
                 entry.captureJob?.cancel()
                 entry.saveJob?.cancel()
             }
-            return tabs.events.onPageStarted(tabId, url)
+            return tabEvents.onPageStarted(tabId, url)
         }
 
         override fun onProgress(tabId: String, percent: Int) {
-            tabs.events.onProgress(tabId, percent)
+            tabEvents.onProgress(tabId, percent)
             if (percent >= FULL_PROGRESS) live[tabId]?.let(::scheduleAfterLoad)
         }
     }

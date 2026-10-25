@@ -710,7 +710,7 @@ class WebViewPoolTest {
         livePage(f, old, id)
         old.onStart()
         val newer = secondPool(f, timers)
-        f.manager.attach(newer)
+        f.engines.attach(newer)
         newer.onStart()
         val newView = livePage(f, newer, id)
         finishLoading(newView, PAGE)
@@ -719,10 +719,10 @@ class WebViewPoolTest {
         old.onStop()
         assertFalse("the newer Activity still shows pages", timers.paused)
         old.destroyAll()
-        f.manager.detach(old)
+        f.engines.detach(old)
 
         assertTrue("the old pool does not speak for the tab any more", f.manager.runtime(id).value.pageLoaded)
-        assertTrue(f.manager.isAttached(newer))
+        assertTrue(f.engines.isAttached(newer))
         f.manager.load(id, NEXT)
         assertEquals("commands reach the newer pool", NEXT, shadowOf(newView).lastLoadedUrl)
         newer.onStop()
@@ -740,11 +740,11 @@ class WebViewPoolTest {
         livePage(f, first, id)
         first.onStop()
         first.destroyAll()
-        f.manager.detach(first)
+        f.engines.detach(first)
         assertTrue(timers.paused)
 
         val next = secondPool(f, timers)
-        f.manager.attach(next)
+        f.engines.attach(next)
         next.onStart()
         assertTrue("nothing to resume them through yet", timers.paused)
         next.obtain(f.tab(id)!!)
@@ -826,6 +826,8 @@ class WebViewPoolTest {
         return WebViewPool(
             activity = secondActivity,
             tabs = f.manager,
+            tabEvents = f.manager.events,
+            engines = f.engines,
             incognito = f.incognito,
             stateStore = f.stateStore,
             thumbnails = f.thumbnails,
@@ -846,6 +848,8 @@ class WebViewPoolTest {
         val pool = WebViewPool(
             activity = activity,
             tabs = f.manager,
+            tabEvents = f.manager.events,
+            engines = f.engines,
             incognito = f.incognito,
             stateStore = f.stateStore,
             thumbnails = f.thumbnails,
@@ -861,7 +865,7 @@ class WebViewPoolTest {
                 Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
             },
         ).also { pools += it }
-        f.manager.attach(pool)
+        f.engines.attach(pool)
         return f to pool
     }
 

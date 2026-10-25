@@ -137,6 +137,8 @@ class WebViewHostTest {
         val pool = WebViewPool(
             activity = activity,
             tabs = f.manager,
+            tabEvents = f.manager.events,
+            engines = f.engines,
             incognito = f.incognito,
             stateStore = f.stateStore,
             thumbnails = f.thumbnails,
@@ -150,7 +152,7 @@ class WebViewHostTest {
             timers = WebViewTimers(),
             drawThumbnail = { null },
         ).also { pools += it }
-        f.manager.attach(pool)
+        f.engines.attach(pool)
         return f to pool
     }
 

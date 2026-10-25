@@ -161,7 +161,7 @@ class TabGroupingTest {
 
     private fun open(scope: TestScope, baseUrl: String, realTime: Boolean = false): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         val sites = SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db)
         val appJob = SupervisorJob().also { jobs += it }
         val dispatcher = if (realTime) Dispatchers.Default else fixture.main

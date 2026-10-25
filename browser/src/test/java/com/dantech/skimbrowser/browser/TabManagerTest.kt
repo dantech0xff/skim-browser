@@ -86,7 +86,7 @@ class TabManagerTest {
     @Test
     fun aUrlATabCannotOpenLeavesItOnTheNewTabPage() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
 
         val id = f.manager.newTab(incognito = false, url = "javascript:alert(document.cookie)")
         f.manager.load(id, "file:///data/data/com.dantech.skimbrowser/databases/skim.db")
@@ -109,7 +109,7 @@ class TabManagerTest {
     @Test
     fun incognitoTabsNeverReachRoomHistoryTheLastTabSettingOrTheDisk() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val normal = f.manager.newTab(incognito = false, url = "https://a.example/")
         val private = f.manager.newTab(incognito = true, url = "https://b.example/")
 
@@ -256,7 +256,7 @@ class TabManagerTest {
     @Test
     fun aFinalCloseDeletesTheRowTheSavedStateAndTheThumbnail() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = false, url = "https://a.example/")
         f.engine.openPage(id, "https://a.example/", "A")
         f.thumbnails.put(id, Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888), incognito = false)
@@ -307,7 +307,7 @@ class TabManagerTest {
     @Test
     fun aClosedTabIsNeverWrittenAgain() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = false, url = "https://a.example/")
         f.engine.openPage(id, "https://a.example/", "Before")
         f.settle()
@@ -394,7 +394,7 @@ class TabManagerTest {
     @Test
     fun closingTheLastIncognitoTabEndsTheSessionOnceTheCloseIsFinal() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = true, url = "https://b.example/")
         val profile = activeProfile(f)
         f.engine.openPage(id, "https://b.example/", "B")
@@ -428,7 +428,7 @@ class TabManagerTest {
     @Test
     fun aNewIncognitoTabWhileTheLastOneWaitsForUndoStartsANewProfile() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val old = f.manager.newTab(incognito = true, url = "https://b.example/")
         val oldProfile = activeProfile(f)
         val token = f.manager.close(listOf(old))
@@ -479,7 +479,7 @@ class TabManagerTest {
     @Test
     fun endingTheSessionDropsTheStateAndThumbnailOfEarlierIncognitoCloses() = runTest {
         val f = fixture()
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val first = f.manager.newTab(incognito = true, url = "https://one.example/")
         val second = f.manager.newTab(incognito = true, url = "https://two.example/")
         f.engine.openPage(first, "https://one.example/", "One")
@@ -594,7 +594,7 @@ class TabManagerTest {
     fun restoreDeletesSavedStateAndThumbnailsOfTabsThatAreGone() = runTest {
         val db = inMemorySkimDatabase()
         val before = fixture(db = db)
-        before.manager.attach(before.engine)
+        before.engines.attach(before.engine)
         val kept = before.manager.newTab(incognito = false, url = "https://kept.example/")
         val gone = before.manager.newTab(incognito = false, url = "https://gone.example/")
         listOf(kept, gone).forEach { id ->

@@ -64,8 +64,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The tabs of the process: their state, the commands screens give them and what their WebViews
- * report. One instance lives in the app container and outlives every Activity; the Activity's
- * WebView pool [attach]es as the [TabEngine] while it exists and reports through [events].
+ * report. One instance lives in the app container and outlives every Activity. It drives the
+ * Activity's WebView pool only through [TabEngineSource], as a [TabEngine] while one is attached,
+ * and never names the pool; the pool reports through [events].
  *
  * Commands are called on the main thread. Normal tabs are written to Room through one queue on
  * `ioDispatcher`, in the order of the commands. Incognito tabs never reach Room, history, the last
@@ -83,6 +84,8 @@ class TabManager(
     private val network: NetworkMonitor,
     private val appScope: CoroutineScope,
     private val scripts: PageScriptSource,
+    /** The Activity's engine, while one is attached. */
+    private val engines: TabEngineSource,
     private val clock: () -> Long = System::currentTimeMillis,
     /** A monotonic clock for the renderer crash budget. */
     private val elapsedRealtime: () -> Long = SystemClock::elapsedRealtime,
@@ -102,8 +105,9 @@ class TabManager(
         network: NetworkMonitor,
         @AppScope appScope: CoroutineScope,
         scripts: PageScriptSource,
+        engines: TabEngineSource,
     ) : this(
-        tabRepo, history, settings, incognito, stateStore, thumbnails, network, appScope, scripts,
+        tabRepo, history, settings, incognito, stateStore, thumbnails, network, appScope, scripts, engines,
         restoreTimeoutMs = RESTORE_TIMEOUT_MS,
     )
 
@@ -141,7 +145,7 @@ class TabManager(
     /** Where the WebView layer reports what happens in the tabs. */
     val events: TabEventSink = Events()
 
-    private val engine = MutableStateFlow<TabEngine?>(null)
+    private val engine: StateFlow<TabEngine?> = engines.engine
     private val writer = SerialWriter(appScope, ioDispatcher, TAG)
     private val crashBudget = RendererCrashBudget()
     private val runtimes = ConcurrentHashMap<String, MutableStateFlow<TabRuntime>>()
@@ -169,6 +173,7 @@ class TabManager(
     private val lastTabIdQueued = AtomicBoolean(false)
 
     init {
+        engines.addListener(::onEngineChanged)
         appScope.launch(mainDispatcher) {
             var online = network.validated.value
             network.validated.collectLatest { now ->
@@ -613,40 +618,24 @@ class TabManager(
     }
 
     /**
-     * The Activity's WebView pool is ready: loads and reloads asked for meanwhile reach it now. A
-     * newer Activity's pool may take over while an older one still lives (the older instance only
-     * finishes after the newer one started); none of its WebViews is the newer pool's, so from now
-     * on no tab's page counts as loaded until the newer pool loads it.
+     * The attached engine changed from [previous] to [current]. An engine that went, or that a
+     * newer Activity's pool replaced while the older one still lives (the older instance only
+     * finishes after the newer one started), took its WebViews with it: from now on no tab's page
+     * counts as loaded until [current] loads it. Loads and reloads asked for while none was
+     * attached reach [current] now.
      */
     @MainThread
-    fun attach(engine: TabEngine) {
-        val replaced = this.engine.value
-        if (replaced != null && replaced !== engine) forgetLivePages()
-        this.engine.value = engine
+    private fun onEngineChanged(previous: TabEngine?, current: TabEngine?) {
+        if (previous != null && previous !== current) forgetLivePages()
+        if (current == null) return
         val loads = pendingLoads.toMap()
         val reloads = pendingReloads.toList()
         pendingLoads.clear()
         pendingReloads.clear()
-        loads.forEach { (tabId, url) -> if (openTab(tabId) != null) engine.load(tabId, url) }
-        reloads.forEach { tabId -> if (openTab(tabId) != null) engine.reload(tabId) }
+        loads.forEach { (tabId, url) -> if (openTab(tabId) != null) current.load(tabId, url) }
+        reloads.forEach { tabId -> if (openTab(tabId) != null) current.reload(tabId) }
         reloadShownTabIfOffline()
     }
-
-    /**
-     * The Activity of [engine] is gone, and every WebView with it. Nothing changes when another
-     * engine is attached by now: a newer Activity that started before the old one was destroyed
-     * keeps its pool.
-     */
-    @MainThread
-    fun detach(engine: TabEngine) {
-        if (this.engine.value !== engine) return
-        this.engine.value = null
-        forgetLivePages()
-    }
-
-    /** True while [engine] is the one attached. */
-    @MainThread
-    fun isAttached(engine: TabEngine): Boolean = this.engine.value === engine
 
     /** Returns once every write queued so far has reached Room and the settings. */
     suspend fun awaitWrites() = writer.awaitIdle()

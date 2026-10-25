@@ -121,7 +121,7 @@ class SiteInfoViewModelTest {
 
     private fun TestScope.page(url: String, incognito: Boolean): Open {
         val f = TabManagerFixture(this, folder.root).also { fixtures += it }
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = incognito, url = url)
         f.engine.openPage(id, url, title = "Daylight")
         runCurrent()

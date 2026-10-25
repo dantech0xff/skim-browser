@@ -4,8 +4,9 @@ import android.webkit.WebView
 import androidx.annotation.MainThread
 
 /**
- * Commands to the tabs' WebViews, implemented by the Activity's WebView pool and attached to
- * [TabManager] while the Activity exists. Every call is made on the main thread.
+ * Commands to the tabs' WebViews, implemented by the Activity's WebView pool and plugged into
+ * [TabEngineBridge] while the Activity exists; [TabManager] reaches it there. Every call is made on
+ * the main thread.
  *
  * A tab without a live WebView keeps [load] and [reload] for the WebView created for it next (it
  * restores the saved state first, so the back history survives); the other commands do nothing.

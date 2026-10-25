@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.dantech.skimbrowser.ReleaseProcessResources
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
+import com.dantech.skimbrowser.browser.TabEngineAttachment
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
@@ -24,6 +25,7 @@ import okhttp3.OkHttpClient
 @InstallIn(SingletonComponent::class)
 interface DeviceAccess {
     fun tabManager(): TabManager
+    fun tabEngine(): TabEngineAttachment
     fun incognitoSession(): IncognitoSession
     fun tabStateStore(): TabStateStore
     fun thumbnails(): ThumbnailStore

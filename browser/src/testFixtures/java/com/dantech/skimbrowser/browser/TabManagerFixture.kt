@@ -26,9 +26,9 @@ import kotlinx.coroutines.test.TestScope
 /**
  * A [TabManager] as the app builds it, over a real in-memory database, a real settings file and
  * real state and thumbnail stores in [root], with fakes only on the WebView side: [engine] (attach
- * it to drive pages), [profiles] and [network]. Commands run on the test thread, standing for the
- * main thread; page work runs on [main], on the test's virtual clock; Room writes run on a real
- * thread, so check the database after [settle].
+ * it to [engines] to drive pages), [profiles] and [network]. Commands run on the test thread,
+ * standing for the main thread; page work runs on [main], on the test's virtual clock; Room writes
+ * run on a real thread, so check the database after [settle].
  *
  * A second fixture over the same [db] and [root] is the app after process death; close the first
  * one's settings with [closeSettings] before.
@@ -59,6 +59,9 @@ class TabManagerFixture(
     val thumbnails = ThumbnailStore(thumbsDir, scope.backgroundScope, main)
     val network = FakeNetworkMonitor()
     val scripts = FakePageScripts()
+
+    /** The process's bridge to the Activity's pool: attach [engine] here to drive pages. */
+    val engines = TabEngineBridge()
     private var lastTabNumber = 0
 
     val manager = TabManager(
@@ -71,6 +74,7 @@ class TabManagerFixture(
         network = network,
         appScope = scope.backgroundScope,
         scripts = scripts,
+        engines = engines,
         clock = ::now,
         elapsedRealtime = { scope.testScheduler.currentTime },
         newTabId = { "$idPrefix-${++lastTabNumber}" },

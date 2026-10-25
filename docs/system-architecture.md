@@ -3,6 +3,7 @@
 ```
 MainActivity
   BrowserHost (WebViewPool, chrome client)   lives with the Activity
+  plugs the pool into TabEngineBridge in onCreate, unplugs it in onDestroy
   SkimAppViewModel (back stack, SkimNavigator)   kept across recreation; back stack saved with the Activity
         |
         v
@@ -18,6 +19,7 @@ data/  Room, DataStore, concrete repositories     Android library :data
 Hilt SingletonComponent                lives with the process
   wires data implementations into domain interfaces and use cases
   TabManager, IncognitoSession, SkimAiService, AiGate, TabGrouping
+  TabEngineBridge: holds the Activity's TabEngine while one is attached
   ChatSessionStore and AiDataEraser call chat use cases
 
 browser/  tab engine, WebViews, downloads         Android library :browser
@@ -38,6 +40,8 @@ A call that is one repository method uses that method, read or write. A use case
 Tab models (`Tab`, `TabsState`, `TabRuntime`, `GroupLayout`) live in `domain/tab`. ViewModels depend on `TabsController`, and `TabManager` implements it, as well as `TabRestore`, which the shell waits on at start. Incognito restore and undo-close decisions are pure functions in `domain/tab/TabRules.kt`. `TabManager` owns the live tab list and the restore path. It is created once per process. It does not hold WebViews. Android types (`Bundle`, `SystemClock`, `Log`, WebView) stay in `browser/`.
 
 `WebViewPool` is created with the Activity (`BrowserHost`). It keeps a small number of live WebViews and rebinds them when the current tab changes.
+
+`TabManager` and `WebViewPool` do not name each other. `TabEngineBridge` is a process singleton and the only object that holds the Activity's `TabEngine`, and only between `attach` and `detach`. `MainActivity` plugs its pool in through `TabEngineAttachment` in `onCreate` and unplugs it in `onDestroy`. `TabManager` reads `TabEngineSource`. It sends commands to the attached engine and keeps the loads and reloads asked for while none is attached. When the engine goes, or a newer Activity's pool replaces it, `TabManager` forgets which pages were loaded. The pool reads tabs through `TabsController` and reports through `TabEventSink`. Before it reports a destroyed WebView, it asks `TabEngineSource` whether it is still the attached pool. `DownloadRouter` and `SitePermissionBridge` read tabs through `TabsController` too.
 
 Opening a tab is `TabManager.newTab` on the main thread. Layout changes (group, reorder, ungroup) go through `applyLayout`, which returns false if the caller's layout version is stale. That is how a grouping result is dropped when the person moved a tab while the request was in flight.
 

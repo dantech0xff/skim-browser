@@ -12,7 +12,7 @@ import com.dantech.skimbrowser.browser.BrowserProfile
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.SkimWebView
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.domain.tab.TabsController
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
@@ -64,7 +64,7 @@ import kotlinx.coroutines.withContext
  */
 @MainThread
 class DownloadRouter(
-    private val tabs: TabManager,
+    private val tabs: TabsController,
     private val incognito: IncognitoSession,
     private val profiles: BrowserProfiles,
     private val tracker: DownloadTracker,

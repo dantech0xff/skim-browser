@@ -279,7 +279,7 @@ class AskPageViewModelTest {
 
     private fun shell(scope: TestScope, baseUrl: String = server.baseUrl): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         fixture.engine.onWebViewCreated = onCreated@{ tabId ->
             val url = fixture.tab(tabId)?.url ?: return@onCreated
             fixture.engine.openPage(tabId, url, "Saved page")

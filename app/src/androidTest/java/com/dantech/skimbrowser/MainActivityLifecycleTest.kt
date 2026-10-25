@@ -20,6 +20,7 @@ import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.DEVICE_TIMEOUT_MS
 import com.dantech.skimbrowser.browser.DeviceDownloads
 import com.dantech.skimbrowser.browser.IncognitoSession
+import com.dantech.skimbrowser.browser.TabEngineSource
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
@@ -79,6 +80,7 @@ class MainActivityLifecycleTest {
     private val app: Application
         get() = ApplicationProvider.getApplicationContext()
     @Inject lateinit var tabs: TabManager
+    @Inject lateinit var tabEngines: TabEngineSource
     @Inject lateinit var incognitoSession: IncognitoSession
     @Inject lateinit var historyRepository: HistoryRepository
     @Inject lateinit var tabStateStore: TabStateStore
@@ -197,7 +199,7 @@ class MainActivityLifecycleTest {
                 val newer = onMain { instances.resumed.single() }
                 try {
                     val host = onMain { newer.browserHost }
-                    assertTrue("the newer instance's pool drives the tabs", onMain { tabs.isAttached(host.pool) })
+                    assertTrue("the newer instance's pool drives the tabs", onMain { tabEngines.isAttached(host.pool) })
                     assertTrue(runBlocking { tabs.awaitPageReady(id) })
                     val started = ticks(host, id)
                     waitUntil("the timer to run in the newer instance's page") { ticks(host, id) > started }

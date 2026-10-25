@@ -99,7 +99,7 @@ class TabsContextTest {
 
     private fun open(scope: TestScope): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         val sites = SitePermissionRepository(fixture.db.sitePermissionDao(), fixture.db)
         return Open(fixture, sites)
     }

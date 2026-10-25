@@ -55,6 +55,7 @@ import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.browser.Tab
+import com.dantech.skimbrowser.browser.TabEngineAttachment
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
@@ -135,6 +136,7 @@ class BrowsingRouteTest {
 
     @Inject lateinit var resources: ReleaseProcessResources
     @Inject lateinit var tabs: TabManager
+    @Inject lateinit var tabEngine: TabEngineAttachment
     @Inject lateinit var incognitoSession: IncognitoSession
     @Inject lateinit var snackbarController: SnackbarController
     @Inject lateinit var aiGate: AiGate
@@ -173,7 +175,7 @@ class BrowsingRouteTest {
         hiltRule.inject()
         host = composeRule.activity.host
         engine = FakeTabEngine(tabs.events)
-        tabs.attach(engine)
+        tabEngine.attach(engine)
         navigator = SkimNavigator(
             backStack,
             tabs,
@@ -189,7 +191,7 @@ class BrowsingRouteTest {
     fun tearDown() {
         destination.viewModelStore.clear()
         host.destroy()
-        tabs.detach(engine)
+        tabEngine.detach(engine)
         gateScope.cancel()
         if (::resources.isInitialized) resources.release()
         TestStorage.current.set(null)

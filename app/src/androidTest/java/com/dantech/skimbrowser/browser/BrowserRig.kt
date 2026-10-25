@@ -105,7 +105,7 @@ class BrowserRig : ExternalResource() {
         collectors.launch(start = CoroutineStart.UNDISPATCHED) { tabs.hitTargets.collect { hits += it } }
         collectors.launch(start = CoroutineStart.UNDISPATCHED) { access.downloadTracker().events.collect { downloadEvents += it } }
         onMain {
-            tabs.attach(pool)
+            access.tabEngine().attach(pool)
             pool.onStart()
         }
     }
@@ -120,7 +120,7 @@ class BrowserRig : ExternalResource() {
                 if (incognito.state.value != IncognitoSession.State.None) incognito.end(pool)
                 pool.withTemporaryWebView(profile = null) { it.clearCache(true) }
                 host.destroy()
-                tabs.detach(pool)
+                access.tabEngine().detach(pool)
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     flush()

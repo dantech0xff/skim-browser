@@ -79,7 +79,7 @@ class ReaderViewModelTest {
     @Test
     fun aSlowPageStaysLoadingUntilItIsReady() = runTest(main.testDispatcher) {
         val fixture = TabManagerFixture(this, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         fixture.engine.onWebViewCreated = { tabId ->
             backgroundScope.launch(fixture.main) {
                 delay(1_000)
@@ -110,7 +110,7 @@ class ReaderViewModelTest {
 
     private fun readyPage(scope: TestScope, readerable: Boolean): TabManagerFixture {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         val id = fixture.manager.newTab(incognito = false, url = URL)
         fixture.engine.openPage(id, URL, TITLE)
         fixture.engine.evaluator = { _, script -> if (script == FakePageScripts.EXTRACT) json(readerable) else null }

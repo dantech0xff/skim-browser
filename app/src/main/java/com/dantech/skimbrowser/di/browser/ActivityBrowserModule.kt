@@ -7,7 +7,8 @@ import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.FullscreenController
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
-import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.browser.TabEngineSource
+import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.browser.WebViewPool
@@ -20,6 +21,7 @@ import com.dantech.skimbrowser.browser.downloads.MediaStoreDownloads
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,7 +54,7 @@ object ActivityBrowserModule {
     @ActivityScoped
     fun sitePermissions(
         activity: Activity,
-        tabs: TabManager,
+        tabs: TabsController,
         repository: SitePermissionRepository,
         incognito: IncognitoSession,
         activityHost: ActivityHost,
@@ -70,7 +72,7 @@ object ActivityBrowserModule {
     @ActivityScoped
     fun downloads(
         activity: Activity,
-        tabs: TabManager,
+        tabs: TabsController,
         incognito: IncognitoSession,
         profiles: BrowserProfiles,
         tracker: DownloadTracker,
@@ -97,7 +99,9 @@ object ActivityBrowserModule {
     @ActivityScoped
     fun pool(
         activity: ComponentActivity,
-        tabs: TabManager,
+        tabs: TabsController,
+        tabEvents: TabEventSink,
+        engines: TabEngineSource,
         incognito: IncognitoSession,
         stateStore: TabStateStore,
         thumbnails: ThumbnailStore,
@@ -108,6 +112,8 @@ object ActivityBrowserModule {
     ): WebViewPool = WebViewPool(
         activity = activity,
         tabs = tabs,
+        tabEvents = tabEvents,
+        engines = engines,
         incognito = incognito,
         stateStore = stateStore,
         thumbnails = thumbnails,

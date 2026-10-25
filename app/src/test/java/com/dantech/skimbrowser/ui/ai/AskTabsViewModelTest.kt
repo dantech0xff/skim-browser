@@ -274,7 +274,7 @@ class AskTabsViewModelTest {
 
     private fun shell(scope: TestScope, baseUrl: String): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         val chats = ChatRepository(fixture.db.skimChatDao(), fixture.db)
         val appJob = SupervisorJob().also { appJobs += it }
         val appScope = CoroutineScope(appJob + StandardTestDispatcher(scope.testScheduler))

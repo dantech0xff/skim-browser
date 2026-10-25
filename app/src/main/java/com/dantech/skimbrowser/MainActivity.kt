@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.LocalBrowserHost
+import com.dantech.skimbrowser.browser.TabEngineAttachment
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
@@ -30,9 +31,9 @@ import kotlinx.coroutines.channels.Channel
  *
  * It owns everything of the browser that needs an Activity (the WebView pool, site permission
  * requests, downloads, blob reads, the result launchers, full screen and the window's privacy
- * switches) as one [BrowserHost], provided to the screens as [LocalBrowserHost], and attaches the
- * pool to the process's tab manager while it lives. While it is started it hears DownloadManager
- * finish Skim's downloads.
+ * switches) as one [BrowserHost], provided to the screens as [LocalBrowserHost], and plugs the
+ * pool into the process's [TabEngineAttachment] while it lives. While it is started it hears
+ * DownloadManager finish Skim's downloads.
  *
  * It shows the app ([SkimApp]) and hands it the web links other apps send: the one that started it
  * and, as the activity is single-task, each later one through [onNewIntent].
@@ -41,6 +42,7 @@ import kotlinx.coroutines.channels.Channel
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var browserHost: BrowserHost
+    @Inject lateinit var tabEngine: TabEngineAttachment
     @Inject lateinit var tabs: TabManager
     @Inject lateinit var downloads: DownloadTracker
     @Inject lateinit var browsingData: BrowsingDataCleaner
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
-        tabs.attach(browserHost.pool)
+        tabEngine.attach(browserHost.pool)
         browsingData.applyPendingCacheClear(browserHost.pool)
         // Deleting old incognito profiles needs the main thread; it waits until the first frame is drawn.
         window.decorView.post { incognito.purgeStale() }
@@ -116,12 +118,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (::browserHost.isInitialized) {
-            val openTabs = tabs
             // Leaving for good ends what Undo still held, while the pool can still clear an incognito
             // session's cache through a WebView of its profile.
-            if (isFinishing) openTabs.finalizePendingCloses()
+            if (isFinishing) tabs.finalizePendingCloses()
             browserHost.destroy()
-            openTabs.detach(browserHost.pool)
+            tabEngine.detach(browserHost.pool)
         }
         super.onDestroy()
     }

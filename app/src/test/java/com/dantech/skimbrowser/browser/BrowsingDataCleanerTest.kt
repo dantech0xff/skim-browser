@@ -119,7 +119,7 @@ class BrowsingDataCleanerTest {
 
     private fun TestScope.fixture(): TabManagerFixture {
         val f = TabManagerFixture(this, folder.newFolder()).also { fixtures += it }
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         return f
     }
 

@@ -150,7 +150,7 @@ class MoreMenuViewModelTest {
 
     private fun TestScope.fixture(): TabManagerFixture {
         val f = TabManagerFixture(this, folder.root).also { fixtures += it }
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
         return f
     }
 

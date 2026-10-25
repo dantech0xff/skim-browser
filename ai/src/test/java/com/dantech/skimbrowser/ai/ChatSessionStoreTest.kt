@@ -120,7 +120,7 @@ class ChatSessionStoreTest {
 
     private fun open(scope: TestScope): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
-        fixture.manager.attach(fixture.engine)
+        fixture.engines.attach(fixture.engine)
         val chats = ChatRepository(fixture.db.skimChatDao(), fixture.db)
         val appJob = SupervisorJob().also { appJobs += it }
         val store = chatSessionsForTest(

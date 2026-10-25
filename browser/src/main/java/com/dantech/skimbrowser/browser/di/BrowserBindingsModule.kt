@@ -5,6 +5,10 @@ import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.NetworkMonitor
+import com.dantech.skimbrowser.browser.TabEngineAttachment
+import com.dantech.skimbrowser.browser.TabEngineBridge
+import com.dantech.skimbrowser.browser.TabEngineSource
+import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WebViewProfiles
 import com.dantech.skimbrowser.browser.page.PageScriptSource
@@ -17,6 +21,7 @@ import com.dantech.skimbrowser.domain.tab.TabRestore
 import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
@@ -26,6 +31,8 @@ import dagger.hilt.components.SingletonComponent
 internal abstract class BrowserBindingsModule {
     @Binds abstract fun tabsController(impl: TabManager): TabsController
     @Binds abstract fun tabRestore(impl: TabManager): TabRestore
+    @Binds abstract fun tabEngineSource(impl: TabEngineBridge): TabEngineSource
+    @Binds abstract fun tabEngineAttachment(impl: TabEngineBridge): TabEngineAttachment
     @Binds abstract fun networkMonitor(impl: ConnectivityNetworkMonitor): NetworkMonitor
     @Binds abstract fun networkAvailability(impl: ConnectivityNetworkMonitor): NetworkAvailability
     @Binds abstract fun incognitoDecisions(impl: IncognitoSession): IncognitoDecisions
@@ -33,4 +40,9 @@ internal abstract class BrowserBindingsModule {
     @Binds abstract fun profiles(impl: WebViewProfiles): BrowserProfiles
     @Binds abstract fun pageScripts(impl: PageScripts): PageScriptSource
     @Binds abstract fun siteDataCleaner(impl: BrowsingDataCleaner): SiteDataCleaner
+
+    companion object {
+        /** Where the WebView layer reports what happens in the tabs. */
+        @Provides fun tabEvents(tabs: TabManager): TabEventSink = tabs.events
+    }
 }

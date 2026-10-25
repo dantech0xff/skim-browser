@@ -343,7 +343,7 @@ class TabManagerPageTest {
         assertEquals("https://a.example/", f.tab(a)?.url)
         assertFalse(f.manager.goBack(a))
 
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
 
         assertEquals(listOf(Call.Load(a, "https://a.example/"), Call.Reload(b)), f.engine.calls)
     }
@@ -529,7 +529,7 @@ class TabManagerPageTest {
         f.engine.openPage(id, "https://a.example/")
         f.manager.find(id, "x")
 
-        f.manager.detach(f.engine)
+        f.engines.detach(f.engine)
 
         val runtime = f.manager.runtime(id).value
         assertFalse(runtime.pageLoaded)
@@ -544,10 +544,10 @@ class TabManagerPageTest {
         f.engine.openPage(id, "https://a.example/")
         val replaced = FakeTabEngine(f.manager.events)
 
-        f.manager.detach(replaced)
+        f.engines.detach(replaced)
         f.manager.load(id, "https://b.example/")
 
-        assertTrue(f.manager.isAttached(f.engine))
+        assertTrue(f.engines.isAttached(f.engine))
         assertTrue("the page is still live", f.manager.runtime(id).value.pageLoaded)
         assertEquals("commands still reach the attached engine", FakeTabEngine.Call.Load(id, "https://b.example/"), f.engine.calls.last())
     }
@@ -565,12 +565,12 @@ class TabManagerPageTest {
             }
         }
 
-        f.manager.attach(newer)
+        f.engines.attach(newer)
 
         assertFalse("the page the older engine shows is none of the newer one's", f.manager.runtime(id).value.pageLoaded)
         assertTrue(f.manager.awaitPageReady(id))
         assertEquals("ready once the newer engine's own WebView loaded it", 300L, currentTime)
-        f.manager.detach(f.engine)
+        f.engines.detach(f.engine)
         assertTrue("the older engine going away later changes nothing", f.manager.runtime(id).value.pageLoaded)
     }
 
@@ -601,7 +601,7 @@ class TabManagerPageTest {
         val id = f.manager.newTab(incognito = false, url = "https://a.example/")
         f.engine.openPage(id, "https://a.example/")
 
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
 
         assertTrue("the same engine still holds the page it loaded", f.manager.runtime(id).value.pageLoaded)
     }
@@ -684,7 +684,7 @@ class TabManagerPageTest {
         val ready = async { f.manager.awaitPageReady(id) }
         advanceTimeBy(1_000)
         assertFalse(ready.isCompleted)
-        f.manager.attach(f.engine)
+        f.engines.attach(f.engine)
 
         assertTrue(ready.await())
     }
@@ -770,7 +770,7 @@ class TabManagerPageTest {
 
     private fun TestScope.fixture() = TabManagerFixture(this, folder.root).also { fixtures += it }
 
-    private fun TestScope.attached() = fixture().also { it.manager.attach(it.engine) }
+    private fun TestScope.attached() = fixture().also { it.engines.attach(it.engine) }
 
     private val TabManagerFixture.events get() = manager.events
 
