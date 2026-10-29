@@ -1,5 +1,7 @@
 # Skim — product overview
 
+The product rules are in `docs/product-vision.md`.
+
 Skim is a phone browser. The person opens pages, keeps them in tabs, and can ask Skim about the page they are reading or about the normal tabs they have open. Answers come from Claude in the cloud. The app does not run a model on the device.
 
 The visual source is `design/`. Phone boards are 412×915 dp. Boards 16–18 are documentation (navigation map, tokens, components), not screens.
