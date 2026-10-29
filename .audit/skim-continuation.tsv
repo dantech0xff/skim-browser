@@ -6,3 +6,4 @@ ts	phase	decision	why	evidence	result
 2026-10-29T06:57:36Z	settings	Search and theme dialogs save through SettingsViewModel	The routes were launching repository writes themselves	commit 9483f23	SettingsChoiceRouteTest green
 2026-10-29T06:57:37Z	ui	Removed five UI files from the browser allowlist	Those files only needed window privacy, open pages, download notices, or an external-app launch	commit e775ed0	DomainBoundaryTest and SnackbarActionsTest green
 2026-10-29T06:57:37Z	verify	Started releaseSmoke assemble and an API 36 emulator after opening /dev/kvm	The first emulator exit was missing KVM permission. chmod 666 made accel work.	/tmp/emulator-5580.log	boot in progress
+2026-10-29T08:12:34Z	verify	Drove releaseSmoke through welcome, setup, and home on emulator-5580	Nested KVM left the guest idle, so the boot used -accel off. Opening a page then SIGTRAPped in Trichrome while creating a WebView.	/tmp/skim-verify-evidence/03-home.png	home proven, page load crashed
