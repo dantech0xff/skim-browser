@@ -6,7 +6,7 @@ import com.dantech.skimbrowser.data.db.dao.BookmarkDao
 import com.dantech.skimbrowser.data.db.dao.FolderBookmarkCount
 import com.dantech.skimbrowser.data.db.dao.ImportRow
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkRepository as BookmarkStore
 import javax.inject.Inject

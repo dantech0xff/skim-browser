@@ -4,8 +4,8 @@ import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.data.db.containsPattern
 import com.dantech.skimbrowser.data.db.dao.HistoryDao
 import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
-import com.dantech.skimbrowser.data.hostOf
-import com.dantech.skimbrowser.data.isWebUrl
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.history.HistoryEntry
 import com.dantech.skimbrowser.domain.history.HistoryRepository as HistoryStore
 import javax.inject.Inject

@@ -15,7 +15,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
-import com.dantech.skimbrowser.data.isWebUrl
+import com.dantech.skimbrowser.domain.url.isWebUrl
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher

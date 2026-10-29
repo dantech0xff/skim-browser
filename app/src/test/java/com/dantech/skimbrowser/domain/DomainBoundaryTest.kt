@@ -64,6 +64,10 @@ class DomainBoundaryTest {
             "data/repo/ChatRepository.kt" to "import com.dantech.skimbrowser.ui.snackbar.SnackbarController",
             "ai/TabsContext.kt" to "import com.dantech.skimbrowser.data.db.entity.SkimAiState",
             "ai/AiGate.kt" to "import com.dantech.skimbrowser.data.hostOf",
+            "browser/TabManager.kt" to "import com.dantech.skimbrowser.data.isWebUrl",
+            "browser/TabManager.kt" to "import com.dantech.skimbrowser.data.withoutFragment",
+            "browser/WebViewPool.kt" to "import com.dantech.skimbrowser.data.hostOf",
+            "browser/BrowsingDataCleaner.kt" to "import com.dantech.skimbrowser.data.normalizeHost",
             "ai/AiGate.kt" to "val state = com.dantech.skimbrowser.data.db.entity.SkimAiState.ASK",
             "domain/tab/Tab.kt" to "import javax.inject.Inject",
             "domain/tab/Tab.kt" to "import dagger.Module",
@@ -85,7 +89,7 @@ class DomainBoundaryTest {
         }
 
         assertNull(violation("ui/settings/SettingsScreen.kt", "import com.dantech.skimbrowser.browser.LocalBrowserHost"))
-        assertNull(violation("browser/BrowsingDataCleaner.kt", "import com.dantech.skimbrowser.data.normalizeHost"))
+        assertNull(violation("browser/BrowsingDataCleaner.kt", "import com.dantech.skimbrowser.domain.url.normalizeHost"))
         assertNull(violation("domain/ai/AskPageAccess.kt", "package com.dantech.skimbrowser.domain.ai"))
         assertNull(violation("domain/ai/AskPageAccess.kt", "import com.dantech.skimbrowser.domain.tab.Tab"))
         assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
@@ -146,6 +150,11 @@ class DomainBoundaryTest {
         const val AI = "com.dantech.skimbrowser.ai"
         const val DATA_ENTITY = "com.dantech.skimbrowser.data.db.entity"
         const val DATA_HOST_OF = "com.dantech.skimbrowser.data.hostOf"
+        const val DATA_IS_WEB_URL = "com.dantech.skimbrowser.data.isWebUrl"
+        const val DATA_NORMALIZE_HOST = "com.dantech.skimbrowser.data.normalizeHost"
+        const val DATA_WITHOUT_FRAGMENT = "com.dantech.skimbrowser.data.withoutFragment"
+
+        val DATA_URL_HELPERS = listOf(DATA_HOST_OF, DATA_IS_WEB_URL, DATA_NORMALIZE_HOST, DATA_WITHOUT_FRAGMENT)
 
         val DOMAIN_FORBIDDEN = listOf(
             "android.",
@@ -208,10 +217,13 @@ class DomainBoundaryTest {
             "ai" -> when {
                 line.contains(UI) -> UI
                 line.contains(DATA_ENTITY) -> DATA_ENTITY
-                line.contains(DATA_HOST_OF) -> DATA_HOST_OF
-                else -> null
+                else -> DATA_URL_HELPERS.firstOrNull { line.contains(it) }
             }
-            "browser", "data" -> if (line.contains(UI)) UI else null
+            "browser" -> when {
+                line.contains(UI) -> UI
+                else -> DATA_URL_HELPERS.firstOrNull { line.contains(it) }
+            }
+            "data" -> if (line.contains(UI)) UI else null
             else -> null
         }
     }
