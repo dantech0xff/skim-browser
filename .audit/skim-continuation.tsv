@@ -1,0 +1,8 @@
+ts	phase	decision	why	evidence	result
+2026-10-29T06:57:36Z	frame	Wrote docs/product-vision.md and linked it from the README before any code change	Dan set five rules and said the vision lands first	commit 0e41feb	docs committed
+2026-10-29T06:57:36Z	frame	Treated Hilt as already done and left AppContainer as test names only	SkimApplication is HiltAndroidApp and no AppContainer class exists	app/src/main/java/com/dantech/skimbrowser/SkimApplication.kt	no migration
+2026-10-29T06:57:36Z	frame	Did not pick an ad-blocking mechanism	Filter lists and on-device versus a service is Dan's choice. The release proxy contract stays the AI proxy.	browser/src/main/java/com/dantech/skimbrowser/browser/SkimWebViewClient.kt	open
+2026-10-29T06:57:36Z	url	Pointed browser and data at domain.url and deleted the data pass-throughs	The helpers already lived in domain. DomainBoundaryTest now rejects the data names.	commit 9c47de0	domain and boundary tests green
+2026-10-29T06:57:36Z	settings	Search and theme dialogs save through SettingsViewModel	The routes were launching repository writes themselves	commit 9483f23	SettingsChoiceRouteTest green
+2026-10-29T06:57:37Z	ui	Removed five UI files from the browser allowlist	Those files only needed window privacy, open pages, download notices, or an external-app launch	commit e775ed0	DomainBoundaryTest and SnackbarActionsTest green
+2026-10-29T06:57:37Z	verify	Started releaseSmoke assemble and an API 36 emulator after opening /dev/kvm	The first emulator exit was missing KVM permission. chmod 666 made accel work.	/tmp/emulator-5580.log	boot in progress
