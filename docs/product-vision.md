@@ -4,9 +4,9 @@ Dan set these rules for this version of Skim. When another document disagrees, t
 
 ## An AI browser with no ads
 
-Skim is an AI-powered web browser for Android. The app shows no ads of its own. It also blocks ads on the pages a person opens. The interface uses Material 3 Expressive.
+Skim is an AI-powered web browser for Android. The app shows no ads of its own. Blocking ads on the pages a person opens is deferred to a later phase. The interface uses Material 3 Expressive.
 
-Which filter lists to use, and whether that blocking stays on the device, is still an open choice. Do not invent a second proxy for it. The AI proxy stays the contract in `docs/deployment-guide.md`.
+This phase does not add a filter list or a request blocker. The AI proxy stays the contract in `docs/deployment-guide.md`.
 
 ## Android only
 
