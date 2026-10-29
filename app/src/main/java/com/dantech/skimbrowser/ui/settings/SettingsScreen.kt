@@ -1,6 +1,5 @@
 package com.dantech.skimbrowser.ui.settings
 
-import com.dantech.skimbrowser.ui.navigation.rememberShell
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import android.content.ActivityNotFoundException
 import android.util.Log
@@ -19,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -28,7 +26,6 @@ import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.toOpenPages
-import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.system.DefaultBrowser
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
@@ -80,31 +77,35 @@ fun SettingsRoute(navigator: SkimNavigator) {
 
 /** Search engine (15), over Settings. Choosing a row saves it and closes the dialog. */
 @Composable
-fun SearchEngineRoute(navigator: SkimNavigator) {
-    val shell = rememberShell()
-    val settings by shell.settings().settings.collectAsStateWithLifecycle(SkimSettings())
+fun SearchEngineRoute(
+    onFinished: () -> Unit,
+    model: SettingsViewModel = hiltViewModel(),
+) {
+    val state by model.state.collectAsStateWithLifecycle()
     SearchEngineDialog(
-        selected = settings.searchEngine,
+        selected = state.searchEngine,
         onSelect = { engine ->
-            shell.appScope().launch { shell.settings().setSearchEngine(engine) }
-            navigator.back()
+            model.setSearchEngine(engine)
+            onFinished()
         },
-        onDismiss = navigator::back,
+        onDismiss = onFinished,
     )
 }
 
 /** Theme (15), over Settings. Choosing a row applies it and closes the dialog. */
 @Composable
-fun ThemeRoute(navigator: SkimNavigator) {
-    val shell = rememberShell()
-    val settings by shell.settings().settings.collectAsStateWithLifecycle(SkimSettings())
+fun ThemeRoute(
+    onFinished: () -> Unit,
+    model: SettingsViewModel = hiltViewModel(),
+) {
+    val state by model.state.collectAsStateWithLifecycle()
     ThemeDialog(
-        selected = settings.theme,
+        selected = state.theme,
         onSelect = { theme ->
-            shell.appScope().launch { shell.settings().setTheme(theme) }
-            navigator.back()
+            model.setTheme(theme)
+            onFinished()
         },
-        onDismiss = navigator::back,
+        onDismiss = onFinished,
     )
 }
 

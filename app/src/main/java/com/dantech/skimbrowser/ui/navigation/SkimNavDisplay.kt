@@ -155,10 +155,10 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         entry<BookmarksKey> { key -> BookmarksRoute(key, navigator) }
         entry<LicensesKey> { LicensesRoute(navigator) }
         entry<SearchEngineDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            SearchEngineRoute(navigator)
+            SearchEngineRoute(onFinished = navigator::back)
         }
         entry<ThemeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            ThemeRoute(navigator)
+            ThemeRoute(onFinished = navigator::back)
         }
         entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ClearBrowsingDataRoute(navigator)
