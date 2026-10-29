@@ -67,7 +67,7 @@ class SnackbarActionsTest {
         app.tabs.manager.newTab(incognito = false, url = "https://example.com/")
         val behind = app.tabs.manager.newTab(incognito = false, url = "https://example.com/next", background = true)
 
-        interpret(SnackbarAction.SwitchToTab(behind), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.SwitchToTab(behind), app.navigator, undo, activityHost::startExternal)
 
         assertEquals(behind, app.tabs.manager.state.value.currentTabId)
         assertEquals(listOf<NavKey>(BrowserKey), app.backStack.toList())
@@ -79,8 +79,8 @@ class SnackbarActionsTest {
         val calls = mutableListOf<String>()
         val token = undo.register(UndoKind.BOOKMARK, undo = { calls += "undo" }, finalize = { calls += "finalize" })
 
-        interpret(SnackbarAction.Undo(token), app.navigator, undo, activityHost)
-        interpret(SnackbarAction.Undo(token), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.Undo(token), app.navigator, undo, activityHost::startExternal)
+        interpret(SnackbarAction.Undo(token), app.navigator, undo, activityHost::startExternal)
 
         assertEquals(listOf("undo"), calls)
         assertEquals(listOf<NavKey>(BrowserKey), app.backStack.toList())
@@ -90,7 +90,7 @@ class SnackbarActionsTest {
     fun editOpensEditBookmarkForTheBookmarkJustAdded() = runTest {
         val app = app(BrowserKey)
 
-        interpret(SnackbarAction.EditBookmark(7), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.EditBookmark(7), app.navigator, undo, activityHost::startExternal)
 
         assertEquals(listOf(BrowserKey, EditBookmarkKey(7)), app.backStack.toList())
     }
@@ -99,7 +99,7 @@ class SnackbarActionsTest {
     fun viewOpensBookmarksAtTheImportedFolder() = runTest {
         val app = app(BrowserKey, SettingsKey)
 
-        interpret(SnackbarAction.ViewImported(5), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.ViewImported(5), app.navigator, undo, activityHost::startExternal)
 
         assertEquals(listOf(BrowserKey, SettingsKey, BookmarksKey(folderId = 5)), app.backStack.toList())
     }
@@ -109,7 +109,7 @@ class SnackbarActionsTest {
         val app = app(BrowserKey)
         val file = Uri.parse("content://media/external/downloads/12")
 
-        interpret(SnackbarAction.OpenDownload(file, "application/pdf"), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.OpenDownload(file, "application/pdf"), app.navigator, undo, activityHost::startExternal)
 
         val intent = activityHost.started.single()
         assertEquals(Intent.ACTION_VIEW, intent.action)
@@ -124,7 +124,7 @@ class SnackbarActionsTest {
         val app = app(BrowserKey)
         activityHost.startFailure = ActivityNotFoundException("No app")
 
-        interpret(SnackbarAction.OpenDownload(Uri.parse("content://media/external/downloads/12"), "application/x-unknown"), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.OpenDownload(Uri.parse("content://media/external/downloads/12"), "application/x-unknown"), app.navigator, undo, activityHost::startExternal)
 
         assertTrue(activityHost.started.isEmpty())
         assertEquals(listOf<NavKey>(BrowserKey), app.backStack.toList())
@@ -135,7 +135,7 @@ class SnackbarActionsTest {
         val app = app(BrowserKey)
         activityHost.startFailure = SecurityException("Not exported")
 
-        interpret(SnackbarAction.OpenDownload(Uri.parse("content://media/external/downloads/12"), "text/plain"), app.navigator, undo, activityHost)
+        interpret(SnackbarAction.OpenDownload(Uri.parse("content://media/external/downloads/12"), "text/plain"), app.navigator, undo, activityHost::startExternal)
 
         assertTrue(activityHost.started.isEmpty())
     }

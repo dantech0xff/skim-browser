@@ -14,8 +14,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.dantech.skimbrowser.BuildConfig
-import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
 import com.dantech.skimbrowser.ui.ai.AskPageRoute
@@ -62,9 +62,9 @@ import com.dantech.skimbrowser.ui.shell.rememberSecureEntryDecorator
 fun SkimNavDisplay(
     backStack: NavBackStack<NavKey>,
     navigator: SkimNavigator,
+    secure: WindowPrivacy,
     modifier: Modifier = Modifier,
 ) {
-    val secure = LocalBrowserHost.current.secure
     val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
     val entries = remember(navigator) { skimEntries(navigator) }
     val strategies = remember { listOf(DialogSceneStrategy<NavKey>(), BottomSheetSceneStrategy<NavKey>()) }

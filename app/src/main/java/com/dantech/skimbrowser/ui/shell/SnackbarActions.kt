@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.util.Log
 import androidx.annotation.MainThread
-import com.dantech.skimbrowser.browser.ActivityHost
 import com.dantech.skimbrowser.ui.navigation.EditBookmarkKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
@@ -19,23 +18,28 @@ import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
  * runs each token at most once.
  */
 @MainThread
-fun interpret(action: SnackbarAction, navigator: SkimNavigator, undo: UndoRegistry, activityHost: ActivityHost) {
+fun interpret(
+    action: SnackbarAction,
+    navigator: SkimNavigator,
+    undo: UndoRegistry,
+    openExternal: (Intent) -> Unit,
+) {
     when (action) {
         is SnackbarAction.SwitchToTab -> navigator.showTab(action.tabId)
         is SnackbarAction.Undo -> undo.undo(action.token)
         is SnackbarAction.EditBookmark -> navigator.openDialog(EditBookmarkKey(action.bookmarkId))
-        is SnackbarAction.OpenDownload -> openDownload(action, activityHost)
+        is SnackbarAction.OpenDownload -> openDownload(action, openExternal)
         is SnackbarAction.ViewImported -> navigator.openBookmarks(action.folderId)
     }
 }
 
 /** Opens a finished download in the app the system picks for its type, with read access to it. */
-private fun openDownload(action: SnackbarAction.OpenDownload, activityHost: ActivityHost) {
+private fun openDownload(action: SnackbarAction.OpenDownload, openExternal: (Intent) -> Unit) {
     val intent = Intent(Intent.ACTION_VIEW)
         .setDataAndType(action.uri, action.mime)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     try {
-        activityHost.startExternal(intent)
+        openExternal(intent)
     } catch (e: ActivityNotFoundException) {
         Log.w(TAG, "No app opens the downloaded file: ${e.javaClass.simpleName}")
     } catch (e: SecurityException) {

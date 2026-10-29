@@ -24,9 +24,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.toOpenPages
+import com.dantech.skimbrowser.domain.browsing.OpenPages
 import com.dantech.skimbrowser.system.DefaultBrowser
+import com.dantech.skimbrowser.ui.shell.LocalOpenPages
 import com.dantech.skimbrowser.ui.components.IconTile
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
 import com.dantech.skimbrowser.ui.components.SectionLabel
@@ -110,12 +110,11 @@ fun ThemeRoute(
 }
 
 /**
- * Clear browsing data (15). The WebView pool is the Activity's, passed for this call only.
+ * Clear browsing data (15). [pages] are the activity's open pages, passed for this call only.
  * The clear runs on the app scope so it finishes after the dialog closes.
  */
 @Composable
-fun ClearBrowsingDataRoute(navigator: SkimNavigator) {
-    val pages = LocalBrowserHost.current.pool.toOpenPages()
+fun ClearBrowsingDataRoute(navigator: SkimNavigator, pages: OpenPages = LocalOpenPages.current) {
     val model = hiltViewModel<ClearBrowsingDataViewModel>()
     ClearBrowsingDataDialog(
         onClear = { history, cookies, cache ->
