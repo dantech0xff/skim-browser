@@ -233,7 +233,7 @@ def with_backend(body) -> None:
 
 
 def drive() -> None:
-    apk = ROOT / "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk"
+    apk = Path(os.environ.get("VERIFY_APK", str(ROOT / "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk")))
     if not apk.is_file():
         raise SystemExit(f"missing {apk}. Build :app:assembleReleaseSmoke first.")
 
