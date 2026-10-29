@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -230,20 +230,24 @@ fun TabsScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 state = gridState,
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = belowGrid),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(CARD_GAP),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 if (!searching && state.incognito) {
-                    item(key = "incognito-banner", span = { GridItemSpan(maxLineSpan) }) { IncognitoBanner() }
+                    item(key = "incognito-banner", span = { GridItemSpan(maxLineSpan) }) {
+                        Box(Modifier.padding(bottom = CARD_GAP)) { IncognitoBanner() }
+                    }
                 } else if (!searching && state.grouping != null) {
                     item(key = "grouping-banner", span = { GridItemSpan(maxLineSpan) }) {
-                        GroupingBanner(state.grouping, actions.onUndoGrouping)
+                        Box(Modifier.padding(bottom = CARD_GAP)) {
+                            GroupingBanner(state.grouping, actions.onUndoGrouping)
+                        }
                     }
                 }
                 if (state.empty && !searching) {
                     item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyTabs() }
                 }
-                state.sections.forEach { section ->
+                state.sections.forEachIndexed { sectionIndex, section ->
                     if (section.showHeader) {
                         item(key = headerKey(section), span = { GridItemSpan(maxLineSpan) }) {
                             SectionHeader(
@@ -254,23 +258,37 @@ fun TabsScreen(
                                 onRename = { section.group?.let { actions.onRename(it.id) } },
                                 onUngroup = { section.group?.let { actions.onUngroup(it.id) } },
                                 onCloseGroup = { section.group?.let { actions.onCloseGroup(it.id) } },
+                                modifier = Modifier.padding(
+                                    top = if (sectionIndex == 0) 0.dp else SECTION_GAP,
+                                    bottom = HEADER_GAP,
+                                ),
                             )
                         }
                     }
-                    items(section.tabs, key = { it.id }) { card ->
-                        SwipeCard(
-                            card = card,
-                            preview = previewOf(card.id, thumbnails),
-                            incognito = state.incognito,
-                            reorderEnabled = state.query == null,
-                            gridState = gridState,
-                            tabKeys = tabKeys,
-                            groupOf = groupOf,
-                            onOpen = { actions.onOpen(card.id) },
-                            onClose = { actions.onClose(card.id) },
-                            onMove = { index -> actions.onMove(card.id, index) },
-                            modifier = Modifier.animateItem(),
-                        )
+                    val lastRow = section.tabs.lastIndex / GRID_COLUMNS
+                    section.tabs.forEachIndexed { index, card ->
+                        val row = index / GRID_COLUMNS
+                        item(key = card.id) {
+                            SwipeCard(
+                                card = card,
+                                preview = previewOf(card.id, thumbnails),
+                                incognito = state.incognito,
+                                reorderEnabled = state.query == null,
+                                gridState = gridState,
+                                tabKeys = tabKeys,
+                                groupOf = groupOf,
+                                onOpen = { actions.onOpen(card.id) },
+                                onClose = { actions.onClose(card.id) },
+                                onMove = { index -> actions.onMove(card.id, index) },
+                                modifier = Modifier
+                                    .padding(
+                                        top = if (row == 0 && !section.showHeader && sectionIndex > 0) SECTION_GAP else 0.dp,
+                                        bottom = if (row == lastRow) 0.dp else CARD_GAP,
+                                    )
+                                    .testTag("tab-card")
+                                    .animateItem(),
+                            )
+                        }
                     }
                 }
             }
@@ -435,11 +453,12 @@ private fun SectionHeader(
     onRename: () -> Unit,
     onUngroup: () -> Unit,
     onCloseGroup: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val title = section.group?.title ?: stringResource(R.string.tabs_group_other)
     val colors = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+        modifier = modifier.testTag("tab-section-header").fillMaxWidth().heightIn(min = 40.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -561,6 +580,11 @@ private fun EmptyTabs() {
 }
 
 private fun headerKey(section: TabSection): String = "header-${section.group?.id ?: "other"}"
+
+private const val GRID_COLUMNS = 2
+private val CARD_GAP = 12.dp
+private val HEADER_GAP = 8.dp
+private val SECTION_GAP = 16.dp
 
 private fun topBanner(state: TabsUiState, searching: Boolean): Boolean =
     !searching && (state.incognito || state.grouping != null)
