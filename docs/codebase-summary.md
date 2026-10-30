@@ -1,49 +1,28 @@
 # Codebase summary
 
-Five Gradle modules. `:domain` is a Kotlin JVM library (`org.jetbrains.kotlin.jvm`, Java 11 bytecode) and holds the `domain` package. `:data` is an Android library: Room, DataStore, concrete repositories, bookmark import, and `AppStorage`. `:browser` is an Android library: the tab engine, WebView pool, downloads, site permissions, and page scripts. `:ai` is an Android library: the Claude adapter, chat sessions, and tab grouping. `:app` is the Android application; the Android Gradle Plugin compiles its Kotlin. Entry points are `SkimApplication` and `MainActivity`. `:data`, `:browser`, and `:ai` each hold the `@Binds` for their own implementations. `:app` holds `ProcessResourcesModule` (Room, DataStore, OkHttp, and the process scope), `UseCaseModule`, and `ClaudeClientFactory`, which stays there because it reads `BuildConfig`.
+Modules are declared in `settings.gradle.kts`.
 
-Hilt (`SingletonComponent`) is the process-wide container. `SkimApplication` is `@HiltAndroidApp`. Tests install a temporary `AppStorage` before Hilt first asks for it, so Room, DataStore, tab state, and thumbnails land in a temporary directory. Each test's `@After` calls `ReleaseProcessResources`, which stops the network monitor, shuts down OkHttp, closes the database, then cancels the process scope and waits for the settings store's job, so the next test method's component can open the same files.
-
-## Packages
-
-| Package | Role |
+| Module | Start here |
 |---|---|
-| `domain/` | The `:domain` module. Pure Kotlin. Models, repository interfaces, and use cases (`domain/usecase`, `domain/ai`). Subpackages: `history`, `bookmark`, `shortcut`, `chat`, `permission`, `tab`, `page`, `settings`, `url`, `ai`, `text`, `browsing`, `undo`. |
-| `ui/` | Compose screens and ViewModels. Subpackages match the screens: `onboarding`, `home`, `search`, `browsing`, `reader`, `tabs`, `history`, `bookmarks`, `skimhistory`, `settings`, `ai`, `shell`, `navigation`, `components`, `theme`. ViewModels take use cases or domain interfaces. |
-| `browser/` | The `:browser` module. Its Hilt bindings are in `com.dantech.skimbrowser.browser.di`. `TabManager` implements `domain.tab.TabsController` (process-wide tab list). `WebViewPool` (the Activity's WebViews) reaches it only through `TabEngineBridge`, `TabsController`, and `TabEventSink`. `BrowserHost`, `IncognitoSession`, downloads, site permissions, page scripts. Persistence goes through domain repository interfaces. Tab models live in `domain/tab`. |
-| `data/` | The `:data` module. Its Hilt bindings, including the `AppStorage` provider tests replace, are in `com.dantech.skimbrowser.data.di`. Room (`data/db`), concrete repositories (`data/repo`) that implement the domain interfaces and map entities, settings DataStore (`data/settings`), bookmark import (`BookmarkFiles`). `AppStorage` lives in this module. |
-| `ai/` | The `:ai` module. Its Hilt bindings are in `com.dantech.skimbrowser.ai.di`; only the `ClaudeClientProvider` provider stays in `:app` because it reads `BuildConfig`. `AiGate`, `SkimAiService` (`AiAssistant`), Claude streaming, chat sessions (`PageChats`), tab grouping. The only request builder is `SkimAiService`. SDK types stay in this package. Site, settings, and chat reads and writes use domain interfaces and use cases. |
-| `search/` | Suggestion fetches for the search field. |
-| `system/` | Share sheet, clipboard, share-image files. |
+| `:domain` | `domain/src/main/kotlin/com/dantech/skimbrowser/domain/`. Pure Kotlin. Models, repository interfaces, use cases. |
+| `:data` | `data/src/main/java/com/dantech/skimbrowser/data/`. Room, DataStore, repositories, bookmark import. `@Binds` in `data/src/main/java/com/dantech/skimbrowser/data/di/`. |
+| `:browser` | `browser/src/main/java/com/dantech/skimbrowser/browser/`. Tab engine, WebView pool, downloads, page scripts. `@Binds` in `browser/src/main/java/com/dantech/skimbrowser/browser/di/`. Depends on `:domain` and `:data`. |
+| `:ai` | `ai/src/main/java/com/dantech/skimbrowser/ai/`. Claude adapter, chat sessions, tab grouping. `@Binds` in `ai/src/main/java/com/dantech/skimbrowser/ai/di/`. Depends on `:domain` and `:browser`. |
+| `:app` | `SkimApplication` and `MainActivity`. Screens in `app/src/main/java/com/dantech/skimbrowser/ui/`. Process resources, use cases, and `ClaudeClientFactory` (it reads `BuildConfig`) in `app/src/main/java/com/dantech/skimbrowser/di/`. |
+| `:baselineprofile` | `baselineprofile/` |
+| `:macrobenchmark` | `macrobenchmark/` |
 
-Navigation keys live in `ui/navigation/SkimKeys.kt`. `SkimNavDisplay` registers an entry per destination. `SkimNavigator` is the only writer of the back stack once the app has started. `ui/shell/SkimAppViewModel` holds both, and the start up.
+`app/src/main/java/com/dantech/skimbrowser/ui/navigation/SkimKeys.kt` names destinations. `SkimNavigator` is the only writer of the back stack once the app has started. `app/src/main/java/com/dantech/skimbrowser/ui/shell/SkimAppViewModel.kt` holds that stack.
 
-## Persistence
-
-Room database `skim.db` (schema under `data/schemas`). Preferences DataStore `skim_settings.preferences_pb`. Tab state files in `tabstate/`, thumbnails in `thumbs/`. Incognito share files under `cache/shared/incognito`, removed when the session ends.
-
-Home shortcuts are seeded once from `data/src/main/assets/config/default-shortcuts.json` while that table is still empty. `ShortcutCatalog` is the source, so a remote config replaces the binding and not the seeder. The `shortcuts_seeded` preference is install bookkeeping, not a user setting. Removing every shortcut leaves the Add tile and does not seed again.
-
-Incognito tabs are not rows in Room. A chat id that is still negative (memory only) is stored as null (`TabRepository` keeps `chatId` only when it is positive).
-
-## AI
-
-`AiConfig` names the model `claude-haiku-5-5`, max tokens, and effort. Debug uses `BuildConfig.AI_BASE_URL` (`https://api.anthropic.com`) and `BuildConfig.ANTHROPIC_API_KEY` when `skim.anthropicApiKey` is set. Release sets the key field to null and the base URL to `skim.aiProxyUrl`. `releaseSmoke` uses `http://127.0.0.1:8787` and a null key.
-
-SSE fixtures used by unit tests and the release smoke test are in `ai/src/testFixtures/resources/sse/`. Unit tests load them as classpath resources. The androidTest source set exposes the same directory as assets.
+Boundaries and the decisions behind them are `docs/system-architecture.md`.
 
 ## Tests
 
-| Tree | Runs |
+| Tree | What it owns |
 |---|---|
-| `domain/src/test` | Use cases and pure model rules. |
-| `data/src/test` | Room, DataStore, repositories, and bookmark import. |
-| `browser/src/test` | The tab engine, WebView, downloads, and page scripts. |
-| `ai/src/test` | The Claude adapter, chat sessions, and tab grouping. |
-| `app/src/test` | Screens, ViewModels, search, system, and the Hilt container. Robolectric, Turbine, Roborazzi. `DomainBoundaryTest`, `BrowsingDataCleanerTest`, and `AiDataEraserTest` stay here because they name `ui`. |
+| `<module>/src/test` | Unit tests for that module. |
+| `<module>/src/testFixtures` | Fakes shared with `:app` tests. |
 | `app/src/androidTest` | Instrumented tests, including `ReleaseSmokeTest`. |
-| `app/src/test/screenshots` | Recorded goldens. Board images share names with `design/screens/`. |
+| `app/src/test/screenshots` | Roborazzi goldens. Board images share names with `design/screens/`. |
 
-Fakes shared with `:app` tests live in each module's test fixtures: `domain/src/testFixtures` (repository fakes, `RecordingTabs`, and `MainDispatcherRule`), `data/src/testFixtures` (the in-memory database), `browser/src/testFixtures` (`TabManagerFixture` and the WebView fakes), and `ai/src/testFixtures` (`FakeClaudeServer` and the session helpers). `:app:testDebugUnitTest` runs the four module suites first.
-
-`RestoreAcrossContainersTest` writes on one method, releases in `@After`, and restores on a second method that opens a new component against the same `@ClassRule` directory.
+`DomainBoundaryTest` is the layer check (`app/src/test/java/com/dantech/skimbrowser/domain/DomainBoundaryTest.kt`). `:app:testDebugUnitTest` runs the other modules' unit tests first. That dependency is in `app/build.gradle.kts`.

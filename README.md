@@ -2,9 +2,9 @@
 
 The product rules are in [Product vision](docs/product-vision.md).
 
-Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude (`claude-haiku-5-5`). The UI is Jetpack Compose and Material 3 Expressive.
+Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude. The model id lives in `ai/src/main/java/com/dantech/skimbrowser/ai/AiConfig.kt`. The UI is Jetpack Compose and Material 3 Expressive.
 
-`:domain` is a Kotlin JVM module: models, repository interfaces, and one use case per write. `:data` is an Android library: Room, DataStore, the concrete repositories, and bookmark import. `:browser` is an Android library: the tab engine, WebView pool, downloads, and page scripts. `:ai` is an Android library: the Claude adapter, chat sessions, and tab grouping. `:app` (`com.dantech.skimbrowser`, minSdk 26, targetSdk 37) is the Android application. Its screens and ViewModels depend on `:domain`. Hilt in `:app` binds the `:data` implementations, the browser engine, and the AI adapter. See `docs/system-architecture.md`.
+Where each module starts, and which package owns its Hilt bindings, is `docs/codebase-summary.md`. Boundaries are `docs/system-architecture.md`.
 
 ## What you need
 
@@ -97,13 +97,13 @@ Release is blocked until the proxy in `docs/deployment-guide.md` meets the secur
 
 ## Docs
 
-| File | What it covers |
+| File | What it owns |
 |---|---|
-| `docs/product-vision.md` | The rules for this version |
-| `docs/project-overview-pdr.md` | What the app is and what "done" means |
-| `docs/codebase-summary.md` | Packages and the main types |
-| `docs/code-standards.md` | How UI, data, and tests are written |
-| `docs/system-architecture.md` | Tabs, incognito, AI, storage |
-| `docs/design-guidelines.md` | How screens match `design/`, and the known gaps |
-| `docs/deployment-guide.md` | Build types, R8, and the proxy contract |
-| `docs/project-roadmap.md` | Decisions still open, and what was never designed |
+| `docs/product-vision.md` | Product rules. This page wins when another doc disagrees. |
+| `docs/project-overview-pdr.md` | Who it is for, what this version includes, and the release bar. |
+| `docs/code-standards.md` | Engineering constraints and the test bar. |
+| `docs/codebase-summary.md` | Where to start in each module. |
+| `docs/system-architecture.md` | Boundaries and the decision ledger. |
+| `docs/design-guidelines.md` | Design decisions the pixels do not explain, and the accepted visual gaps. |
+| `docs/deployment-guide.md` | When a release may ship, and the proxy contract. |
+| `docs/project-roadmap.md` | Work that is still open. |
