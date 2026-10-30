@@ -40,7 +40,8 @@ class SkimThemeTest {
     fun lightWithoutDynamicColorUsesTheBrandScheme() {
         val scheme = colorSchemeOf { SkimTheme(ThemeSetting.Light, dynamicColor = false, content = it) }
 
-        assertEquals(Color(0xFF004FD9), scheme.primary)
+        assertEquals(Color(0xFF0B57D0), scheme.primary)
+        assertEquals(Color(0xFFFFFFFF), scheme.surface)
     }
 
     @Test
@@ -49,7 +50,7 @@ class SkimThemeTest {
             SkimTheme(ThemeSetting.Light, incognito = true, dynamicColor = false, content = it)
         }
 
-        assertEquals(Color(0xFF07092F), scheme.surface)
+        assertEquals(Color(0xFF202124), scheme.surface)
     }
 
     @Test

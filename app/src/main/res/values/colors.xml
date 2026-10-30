@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The brand surface colors from ui/theme/Color.kt (SkimLightColors.surface, SkimDarkColors.surface). -->
-    <color name="skim_window_light">#F8F5FF</color>
-    <color name="skim_window_dark">#07092F</color>
+    <!-- Window behind the first frame. Matches SkimLightColors.surface and SkimDarkColors.surface. -->
+    <color name="skim_window_light">#FFFFFF</color>
+    <color name="skim_window_dark">#202124</color>
 </resources>

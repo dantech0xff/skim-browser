@@ -1,38 +1,38 @@
 # Skim tokens
 
-Material 3 Expressive. Android 12 and later use dynamic color from the wallpaper; the brand fallback is SchemeVibrant (spec 2025) from seed #1A56DB.
+Material 3 Expressive. Surfaces are neutral, in the same gray family as Chrome and Safari. Light accent is #0B57D0; dark accent is #8AB4F8. AI stays on the tertiary roles.
 Light is the default. Dark is used for incognito (09b, 09c) and for every screen when Theme is Dark (12).
 
 ## Color roles
 
 | Role | Light | Dark | Used for |
 |---|---|---|---|
-| primary | #004FD9 | #91AAFF | Links, Send, selected toggles, section labels, progress |
-| onPrimary | #F1F2FF | #002776 | Text and icons on primary |
-| primaryContainer | #7D9CFF | #7D9CFF | New tab FABs, link highlight, Default browser tile |
-| onPrimaryContainer | #001D5C | #001D5C | Text and icons on primaryContainer |
-| secondaryContainer | #CCCEFF | #3339A1 | Tonal buttons, chat bubbles, badges, list tiles |
-| onSecondaryContainer | #343AA2 | #CBCCFF | Text and icons on secondaryContainer |
-| inversePrimary | #638AFF | #0052E0 | Snackbar actions |
-| inverseSurface | #07092F | #FBF8FF | Snackbars |
+| primary | #0B57D0 | #8AB4F8 | Links, Send, selected toggles, section labels, progress, reader highlight at 32% |
+| onPrimary | #FFFFFF | #202124 | Text and icons on primary |
+| primaryContainer | #0B57D0 | #8AB4F8 | New tab FABs, Default browser tile |
+| onPrimaryContainer | #FFFFFF | #202124 | Text and icons on primaryContainer |
+| secondaryContainer | #E8EAED | #3C4043 | Tonal buttons, chat bubbles, badges, list tiles |
+| onSecondaryContainer | #202124 | #E8EAED | Text and icons on secondaryContainer |
+| inversePrimary | #8AB4F8 | #0B57D0 | Snackbar actions |
+| inverseSurface | #303134 | #E8EAED | Snackbars |
 | tertiary | #8E3A88 | #FFAFF2 | AI labels, the AI icon on 09, AI progress |
 | tertiaryContainer | #FC99EF | #FC99EF | AI FAB, Sunny tiles, AI hero card, AI banner |
 | onTertiaryContainer | #651162 | #651162 | Text and icons on AI surfaces |
-| inverseOnSurface | #9799C6 | #4F527A | Snackbar text |
-| error | #B41340 | #FF6E84 | Destructive actions in dialogs and on 10 |
-| errorContainer | #F74B6D | #A70138 | Delete tiles in lists (10, 12, 13) |
-| onErrorContainer | #510017 | #FFB2B9 | Icons on errorContainer |
+| inverseOnSurface | #E8EAED | #202124 | Snackbar text |
+| error | #B3261E | #F2B8B5 | Destructive actions in dialogs and on 10 |
+| errorContainer | #F9DEDC | #8C1D18 | Delete tiles in lists (10, 12, 13) |
+| onErrorContainer | #410E0B | #F9DEDC | Icons on errorContainer |
 | scrim | #000000 | #000000 | Behind sheets and dialogs, black at 32% |
-| surface | #F8F5FF | #07092F | Screen background |
+| surface | #FFFFFF | #202124 | Screen background |
 | surfaceContainerLowest | #FFFFFF | #000000 | List items, AI answer cards, tab previews |
-| surfaceContainerLow | #F1EFFF | #0B0E38 | List screens, sheets, tab cards, cards on surface |
-| surfaceContainer | #E7E6FF | #111442 | Floating toolbar (light), menus, unselected buttons |
-| surfaceContainerHigh | #E0E0FF | #161A4B | Address bar, search bar, input pill, dialogs, dark toolbar |
-| surfaceContainerHighest | #DADAFF | #1C1F55 | Shortcut tiles, favicon tiles, switch track off |
-| onSurface | #292B51 | #E4E3FF | Main text |
-| onSurfaceVariant | #565881 | #A6A7D5 | Supporting text and icons |
-| outline | #71739E | #70729D | Switch border and thumb when off, diagram lines |
-| outlineVariant | #A8A9D7 | #42456C | Outlined buttons, dividers, card borders |
+| surfaceContainerLow | #F8F9FA | #292A2D | List screens, sheets, tab cards, cards on surface |
+| surfaceContainer | #F1F3F4 | #303134 | Floating toolbar (light), menus, unselected buttons |
+| surfaceContainerHigh | #E8EAED | #303134 | Address bar, search bar, input pill, dialogs, dark toolbar |
+| surfaceContainerHighest | #DADCE0 | #3C4043 | Shortcut tiles, favicon tiles, switch track off |
+| onSurface | #202124 | #E8EAED | Main text |
+| onSurfaceVariant | #5F6368 | #9AA0A6 | Supporting text and icons |
+| outline | #747775 | #8E918F | Switch border and thumb when off, diagram lines |
+| outlineVariant | #C4C7C5 | #444746 | Outlined buttons, dividers, card borders |
 | disabled content | see note | see note | onSurface at 38%: disabled icons and text |
 | disabled container | see note | see note | onSurface at 10% (dark 12%): the disabled AI FAB |
 

@@ -222,7 +222,8 @@ private fun ReaderBlock(
     val color = if (quote || caption) colors.onSurfaceVariant else colors.onSurface
     val indent = if (block.tag == "li" || quote) 16.dp else 0.dp
     val text = if (block.tag == "li") "• ${block.text}" else block.text
-    val flash = MaterialTheme.colorScheme.primaryContainer
+    // Reader highlight is primary at 32%, so the sentence stays readable on the saturated accent.
+    val flash = colors.primary.copy(alpha = 0.32f)
     val wash = remember { Animatable(Color.Transparent) }
     LaunchedEffect(highlightNonce) {
         if (!highlighted) return@LaunchedEffect

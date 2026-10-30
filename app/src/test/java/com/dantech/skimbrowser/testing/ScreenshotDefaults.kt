@@ -25,8 +25,8 @@ const val PHONE_QUALIFIERS = "w412dp-h915dp-xhdpi"
 val BOARD_STATUS_BAR_HEIGHT: Dp = 24.dp
 
 /**
- * Sets [content] the way the boards are drawn: SkimTheme with the brand scheme (dynamic color off,
- * the boards use seed #1A56DB) and a status bar of [statusBarInset] at the top.
+ * Sets [content] the way the boards are drawn: SkimTheme with the neutral scheme (dynamic color off)
+ * and a status bar of [statusBarInset] at the top.
  *
  * Robolectric draws no system bars and reports zero insets, so the status bar inset is dispatched
  * to the composition once it is attached. `WindowInsets.statusBars` then reports it, and

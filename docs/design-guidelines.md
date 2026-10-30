@@ -6,7 +6,7 @@ Nguồn sự thật của thiết kế: `design/spec/*.md`, `design/html/*.html`
 
 ## Token
 
-App dùng `MaterialExpressiveTheme` và `MotionScheme.expressive()`. Màu, chữ, hình và khoảng cách lấy từ `design/spec/tokens.md` và `design/compose/` (`ui/theme/`). Từ Android 12, dynamic color bật; ảnh golden tắt dynamic color để so với PNG seed `#1A56DB`. Elevation giữ default của Compose (toolbar Level 1, FAB Level 2), như tokens.md, dù HTML vẽ bóng mức 3. Chữ tab count dùng `labelMediumEmphasized`. Vùng chạm tối thiểu 48 dp dù hình vẽ nhỏ hơn.
+App dùng `MaterialExpressiveTheme` và `MotionScheme.expressive()`. Chữ, hình và khoảng cách lấy từ `design/spec/tokens.md` và `design/compose/` (`ui/theme/`). Màu là scheme trung tính trong `ui/theme/Color.kt`: nền trắng và `#202124`, accent `#0B57D0` / `#8AB4F8`, không nhuộm xanh các surface. Dynamic color tắt trừ khi gọi `SkimTheme` với `dynamicColor = true`; ảnh golden tắt dynamic color. PNG trong `design/screens/` vẫn là board seed `#1A56DB`. Elevation giữ default của Compose (toolbar Level 1, FAB Level 2), như tokens.md, dù HTML vẽ bóng mức 3. Chữ tab count dùng `labelMediumEmphasized`. Vùng chạm tối thiểu 48 dp dù hình vẽ nhỏ hơn.
 
 ## Mâu thuẫn spec và HTML
 
