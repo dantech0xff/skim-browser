@@ -1,28 +1,24 @@
 package com.dantech.skimbrowser.ui.browsing
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicatorDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
@@ -31,13 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import com.dantech.skimbrowser.ui.components.AddressBar
-import com.dantech.skimbrowser.ui.components.AiFab
-import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
-import com.dantech.skimbrowser.ui.shell.AiFabMode
-import com.dantech.skimbrowser.ui.shell.aiFabContentDescription
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /** What the controls of the browsing screen do (05, 05c, 11). */
@@ -65,14 +58,14 @@ data class BrowsingActions(
 )
 
 /**
- * A tab's page (05): the status bar and the address bar on surface, then [page] (the tab's WebView)
- * down to the bottom edge, running under the floating toolbar and the navigation bar; the keyboard
- * pushes the page's bottom up. Find in page (05c) takes the address bar's place while it is open.
+ * A tab's page (05): [page] (the tab's WebView) fills the screen, under the status bar and the
+ * navigation bar. Address, find and the toolbar buttons are one floating cluster at the bottom.
+ * Find in page (05c) takes the address row's place. The keyboard lifts the cluster and shortens
+ * the page to the cluster's top; at rest the page stays full bleed.
  *
- * Pulling down at the top of the page reloads it, with the loading indicator coming down from under
- * the bar; with Remove animations on, the indicator is a still frame. The pull is off while the page
- * failed to load: Page failed to load (11) then covers the page, which stays where it is below it,
- * hidden from accessibility.
+ * Pulling down at the top of the page reloads it. The indicator clears the status bar. With Remove
+ * animations on, the indicator is a still frame. The pull is off while the page failed to load:
+ * Page failed to load (11) then covers the page, hidden from accessibility.
  */
 @Composable
 fun BrowsingScreen(
@@ -82,79 +75,52 @@ fun BrowsingScreen(
     page: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     Box(modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
-            Spacer(
-                Modifier
-                    .fillMaxWidth()
-                    .background(colors.surface)
-                    .windowInsetsTopHeight(WindowInsets.safeDrawing),
-            )
-            val find = state.find
-            if (find != null) {
-                FindInPageBar(
-                    query = findQuery,
-                    state = find,
-                    incognito = state.incognito,
-                    onPrevious = actions.onFindPrevious,
-                    onNext = actions.onFindNext,
-                    onClose = actions.onCloseFind,
-                )
-            } else {
-                AddressBar(
-                    address = state.address,
-                    indicator = state.indicator,
-                    readerAvailable = state.readerAvailable,
-                    loadProgress = state.progress,
-                    onSiteInfo = actions.onSiteInfo,
-                    onEditAddress = actions.onEditAddress,
-                    onReader = actions.onReader,
-                )
-            }
-            Box(Modifier.weight(1f).fillMaxWidth().imePadding()) {
-                val error = state.loadError
-                val pull = rememberPullToRefreshState()
-                PullToRefreshBox(
-                    isRefreshing = state.refreshing,
-                    onRefresh = actions.onRefresh,
-                    // While the error covers it, the page is out of reach for accessibility too.
-                    modifier = Modifier.fillMaxSize().then(if (error != null) Modifier.clearAndSetSemantics {} else Modifier),
-                    state = pull,
-                    indicator = { RefreshIndicator(pull, state.refreshing) },
-                    enabled = error == null,
-                ) {
-                    page()
-                }
-                if (error != null) {
-                    LoadErrorContent(error, onTryAgain = actions.onTryAgain, onInternetSettings = actions.onInternetSettings)
-                }
-            }
-        }
         Box(
             Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = ToolbarMetrics.BottomOffset),
+                .fillMaxSize()
+                .then(
+                    if (imeOpen) {
+                        Modifier
+                            .windowInsetsPadding(WindowInsets.ime)
+                            .padding(bottom = ToolbarMetrics.BrowsingClusterHeight + ToolbarMetrics.BottomOffset)
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            BrowserToolbar(
-                canGoBack = state.backEnabled,
-                canGoForward = state.forwardEnabled,
-                tabCount = state.tabCount,
-                incognito = state.incognito,
-                onBack = actions.onBack,
-                onForward = actions.onForward,
-                onTabs = actions.onTabs,
-                onMore = actions.onMore,
-                aiFab = {
-                    AiFab(
-                        enabled = state.aiFab == AiFabMode.Enabled,
-                        contentDescription = aiFabContentDescription(state.aiFab, isNewTabPage = false),
-                        onClick = actions.onAskPage,
-                    )
-                },
-            )
+            val error = state.loadError
+            val pull = rememberPullToRefreshState()
+            PullToRefreshBox(
+                isRefreshing = state.refreshing,
+                onRefresh = actions.onRefresh,
+                // While the error covers it, the page is out of reach for accessibility too.
+                modifier = Modifier.fillMaxSize().then(if (error != null) Modifier.clearAndSetSemantics {} else Modifier),
+                state = pull,
+                indicator = { RefreshIndicator(pull, state.refreshing) },
+                enabled = error == null,
+            ) {
+                page()
+            }
+            if (error != null) {
+                LoadErrorContent(error, onTryAgain = actions.onTryAgain, onInternetSettings = actions.onInternetSettings)
+            }
         }
+        BrowsingChrome(
+            state = state,
+            findQuery = findQuery,
+            actions = actions,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.navigationBars
+                        .union(WindowInsets.ime)
+                        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                )
+                .padding(bottom = ToolbarMetrics.BottomOffset)
+                .padding(horizontal = 16.dp),
+        )
     }
 }
 
@@ -166,7 +132,7 @@ fun BrowsingScreen(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun BoxScope.RefreshIndicator(pull: PullToRefreshState, refreshing: Boolean) {
-    val modifier = Modifier.align(Alignment.TopCenter)
+    val modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.statusBars)
     if (!rememberReducedMotion()) {
         PullToRefreshDefaults.LoadingIndicator(state = pull, isRefreshing = refreshing, modifier = modifier)
         return

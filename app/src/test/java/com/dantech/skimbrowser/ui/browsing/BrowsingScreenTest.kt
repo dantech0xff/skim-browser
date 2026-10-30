@@ -32,8 +32,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.unit.Velocity
@@ -143,6 +145,18 @@ class BrowsingScreenTest {
         assertEquals(listOf("siteInfo", "editAddress", "reader"), calls)
     }
 
+    @Test
+    fun theAddressSitsInTheBottomClusterAboveBack() {
+        show()
+
+        val root = composeRule.onRoot().getUnclippedBoundsInRoot()
+        val address = composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").getUnclippedBoundsInRoot()
+        val back = composeRule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot()
+        assertTrue(address.top > (root.bottom - root.top) / 2)
+        assertTrue(address.left > back.left)
+        assertTrue(address.top < back.bottom && back.top < address.bottom)
+    }
+
     // The toolbar
 
     @Test
@@ -153,15 +167,14 @@ class BrowsingScreenTest {
         composeRule.onNodeWithContentDescription("Forward").assertIsNotEnabled()
         composeRule.onNodeWithContentDescription("Back").performClick()
         composeRule.onNodeWithContentDescription("Tabs, 7 open").performClick()
-        composeRule.onNodeWithContentDescription("More options").performClick()
-        composeRule.onNodeWithContentDescription("Ask Skim about this page").performClick()
+        composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
 
         state = Loaded.copy(backEnabled = false, forwardEnabled = true)
         composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled()
         composeRule.onNodeWithContentDescription("Forward").performClick()
 
-        assertEquals(listOf("back", "tabs", "more", "askPage", "forward"), calls)
+        assertEquals(listOf("back", "tabs", "forward"), calls)
     }
 
     @Test
@@ -170,7 +183,7 @@ class BrowsingScreenTest {
         show(incognito = true)
 
         composeRule.onNodeWithContentDescription("Incognito tabs, 2 open").assertExists()
-        composeRule.onNodeWithContentDescription("Ask Skim, off in incognito").assertHasNoClickAction()
+        composeRule.onAllNodesWithContentDescription("Ask Skim, off in incognito").assertCountEquals(0)
         assertTrue(calls.isEmpty())
     }
 
@@ -179,7 +192,7 @@ class BrowsingScreenTest {
         state = Failed
         show()
 
-        composeRule.onNodeWithContentDescription("Ask Skim about this page, unavailable until the page loads").assertHasNoClickAction()
+        composeRule.onAllNodesWithContentDescription("Ask Skim about this page, unavailable until the page loads").assertCountEquals(0)
         composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
     }
 

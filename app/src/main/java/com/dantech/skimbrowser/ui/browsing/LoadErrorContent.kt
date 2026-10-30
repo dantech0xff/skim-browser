@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,8 +49,8 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
  * error). Each has the 128 dp art in primaryContainer, the title, the body naming the site, Try
  * again, and the error's code in bodySmall.
  *
- * The content is centered in the page's place above the floating toolbar and scrolls when the screen
- * is too short for it. It is opaque and takes every touch, so the page below gets none.
+ * The content is centered in the screen, clear of the status bar and the bottom cluster, and scrolls
+ * when the screen is too short for it. It is opaque and takes every touch, so the page below gets none.
  *
  * @param onInternetSettings opens Android's Internet panel; only No internet offers it.
  */
@@ -76,6 +77,7 @@ fun LoadErrorContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .heightIn(min = maxHeight)
+                .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(start = SideMargin, end = SideMargin, bottom = AboveToolbar),
             verticalArrangement = Arrangement.spacedBy(BlockGap, Alignment.CenterVertically),
@@ -162,8 +164,8 @@ private val ArtSize = 128.dp
 private val ArtIconSize = 56.dp
 private val ButtonColumnWidth = 280.dp
 
-/** Space kept under the content for the floating toolbar, as drawn: 120 above the bottom edge. */
-private val AboveToolbar = ToolbarMetrics.BottomOffset + ToolbarMetrics.Height + 32.dp
+/** Space kept under the content for the bottom cluster, above the navigation bar inset. */
+private val AboveToolbar = ToolbarMetrics.BottomOffset + ToolbarMetrics.BrowsingClusterHeight + 32.dp
 
 @PreviewLightDark
 @Composable

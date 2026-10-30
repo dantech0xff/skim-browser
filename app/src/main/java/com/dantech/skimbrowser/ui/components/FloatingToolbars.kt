@@ -57,6 +57,12 @@ object ToolbarMetrics {
 
     /** Gap between the toolbar and its FAB. */
     val FabGap = 8.dp
+
+    /** The single browsing pill: one row, 56 high. */
+    val AddressRowHeight = 56.dp
+
+    /** The browsing pill. It replaces the separate address band and toolbar on a page. */
+    val BrowsingClusterHeight = AddressRowHeight
 }
 
 /** Content at 38% for disabled controls, as drawn on every board. */
@@ -99,27 +105,45 @@ fun BrowserToolbar(
         fab = aiFab,
         modifier = modifier,
     ) {
-        ToolbarIconButton(R.drawable.ic_arrow_back, stringResource(R.string.cd_back), onBack, enabled = canGoBack)
-        ToolbarIconButton(
-            R.drawable.ic_arrow_forward,
-            stringResource(R.string.cd_forward),
-            onForward,
-            enabled = canGoForward,
-        )
-        val tabsLabel = pluralStringResource(
-            if (incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
-            tabCount,
-            tabCount,
-        )
-        IconButton(
-            onClick = onTabs,
-            modifier = Modifier.semantics { contentDescription = tabsLabel },
-            colors = toolbarIconButtonColors(LocalContentColor.current),
-        ) {
-            TabsCountIcon(tabCount)
-        }
-        ToolbarIconButton(R.drawable.ic_more_vert, stringResource(R.string.cd_more_options), onMore)
+        BrowserToolbarActions(canGoBack, canGoForward, tabCount, incognito, onBack, onForward, onTabs, onMore)
     }
+}
+
+/**
+ * Back, Forward, Tabs and More, without a container. [BrowserToolbar] draws these in its bar;
+ * the browsing cluster draws the same row under the address.
+ */
+@Composable
+internal fun BrowserToolbarActions(
+    canGoBack: Boolean,
+    canGoForward: Boolean,
+    tabCount: Int,
+    incognito: Boolean,
+    onBack: () -> Unit,
+    onForward: () -> Unit,
+    onTabs: () -> Unit,
+    onMore: () -> Unit,
+) {
+    ToolbarIconButton(R.drawable.ic_arrow_back, stringResource(R.string.cd_back), onBack, enabled = canGoBack)
+    ToolbarIconButton(
+        R.drawable.ic_arrow_forward,
+        stringResource(R.string.cd_forward),
+        onForward,
+        enabled = canGoForward,
+    )
+    val tabsLabel = pluralStringResource(
+        if (incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
+        tabCount,
+        tabCount,
+    )
+    IconButton(
+        onClick = onTabs,
+        modifier = Modifier.semantics { contentDescription = tabsLabel },
+        colors = toolbarIconButtonColors(LocalContentColor.current),
+    ) {
+        TabsCountIcon(tabCount)
+    }
+    ToolbarIconButton(R.drawable.ic_more_vert, stringResource(R.string.cd_more_options), onMore)
 }
 
 /**

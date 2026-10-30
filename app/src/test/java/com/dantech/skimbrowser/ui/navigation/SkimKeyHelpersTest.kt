@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.navigation
 
 import androidx.navigation3.runtime.NavKey
+import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -45,6 +46,20 @@ class SkimKeyHelpersTest {
         val keys = listOf(MoreMenuKey("tab-1"), ThemeDialogKey)
 
         assertEquals(keys, visibleKeys(keys))
+    }
+
+    @Test
+    fun aLoadedPageClearsTheBrowsingClusterAndOtherScreensKeepTheirPlacement() {
+        assertEquals(SnackbarPlacement.AboveToolbar, snackbarPlacement(listOf(BrowserKey), pageShowing = false))
+        assertEquals(SnackbarPlacement.AboveBrowsingChrome, snackbarPlacement(listOf(BrowserKey), pageShowing = true))
+        assertEquals(
+            SnackbarPlacement.AboveToolbar,
+            snackbarPlacement(listOf(BrowserKey, MoreMenuKey("tab-1")), pageShowing = true),
+        )
+        assertEquals(
+            SnackbarPlacement.AboveToolbar,
+            snackbarPlacement(listOf(ReaderKey("tab-1")), pageShowing = true),
+        )
     }
 
     @Test

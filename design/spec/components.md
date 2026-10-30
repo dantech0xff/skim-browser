@@ -38,10 +38,11 @@ FloatingToolbarDefaults.StandardFloatingActionButton(
 
 Screens: 05 to 05d, 06 to 06d, 11
 
-- 56 high, full radius, surfaceContainerHigh, with 8 by 16 padding around it.
+- On 05, 05c and 11 the address sits in the middle of one 56 dp pill with small Back and Forward, Reader view and Tabs. Ask Skim is hidden for now. It is not a band under the status bar.
 - Site information (lock, or error on 11), the address as a button, Reader view.
-- While a page loads, wavy progress in primary runs along its bottom edge.
+- While a page loads, wavy progress in primary runs along the bottom edge of that row.
 - Tapping the address opens 04b with the URL ready to edit.
+- 06 and 06d show the same pill and toolbar on the page behind the sheet or dialog.
 
 ```kotlin
 Surface(shape = CircleShape,

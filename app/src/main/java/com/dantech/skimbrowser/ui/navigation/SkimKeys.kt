@@ -167,3 +167,14 @@ fun visibleKeys(keys: List<NavKey>): List<SkimKey> {
 
 /** The top screen of [keys], under any sheet or dialog; null when there is none. */
 fun topScreen(keys: List<NavKey>): SkimKey? = keys.lastOrNull { it is SkimKey && !it.isOverlay } as SkimKey?
+
+/**
+ * Where the snackbar sits. A loaded page with nothing over it clears the browsing cluster.
+ * The New tab page, every other screen, and a sheet or dialog keep that screen's own placement.
+ */
+fun snackbarPlacement(keys: List<NavKey>, pageShowing: Boolean): SnackbarPlacement {
+    val top = topScreen(keys)
+    val overlayOpen = (keys.lastOrNull() as? SkimKey)?.isOverlay == true
+    if (top is BrowserKey && pageShowing && !overlayOpen) return SnackbarPlacement.AboveBrowsingChrome
+    return top?.placement ?: SnackbarPlacement.Bottom
+}

@@ -10,7 +10,7 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 
 ## Rules for every screen
 
-- Floating toolbar: On 04, 05, 05c, 06d, 08, 09c and 11. Back, Forward, Tabs, More options, then the AI FAB.
+- Floating toolbar: On 04, 08 and 09c. Back, Forward, Tabs, More options, then the AI FAB. On 05, 05c and 11 those controls share one bottom pill with the address. 06d shows that pill behind the dialog.
 - AI FAB (AI): Disabled in incognito (09b, 09c) and on 11 until the page loads.
 - Tab switcher: 09 and 09b swap the toolbar for tab actions and add a New tab or New incognito tab FAB.
 - Sheets and menus: Close on swipe down, scrim tap or Back. 08b has no scrim: tap the page instead.
@@ -19,7 +19,7 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 - Incognito: Dark scheme, no AI or history, FLAG_SECURE. Own WebView profile, deleted with the last tab.
 - Color: Dynamic color on 12+, brand seed otherwise. Skim AI always uses the tertiary roles.
 - Groups and lists: Connected button groups on 09, 09b and 08b. Segmented lists in menus, sheets and settings.
-- Edge to edge: Pad status and nav bars with WindowInsets. Pages scroll under the floating toolbar.
+- Edge to edge: On 05, 05c and 11 the page draws under the status bar and the navigation bar, and scrolls under one bottom pill. Other screens pad the status and navigation bars, and their pages scroll under the floating toolbar.
 - Process death: Restore tabs, scroll position, open sheets. Each tab keeps its Skim chat.
 - AI requests (AI): Page text over HTTPS, answer streamed back. Never sent from incognito tabs.
 

@@ -5,11 +5,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +34,10 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.ui.browsing.BrowsingActions
+import com.dantech.skimbrowser.ui.browsing.BrowsingChrome
+import com.dantech.skimbrowser.ui.browsing.BrowsingUiState
+import com.dantech.skimbrowser.ui.shell.AiFabMode
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.setSkimContent
@@ -102,7 +113,7 @@ class OverlaysScreenshotTest {
 
     private fun captureAiPermissionDialog(name: String, dark: Boolean) {
         composeRule.setSkimContent(dark = dark) {
-            PageBehind(toolbar = true)
+            PageBehind()
             SkimAlertDialog(
                 title = stringResource(R.string.ai_permission_title),
                 confirm = DialogAction(stringResource(R.string.action_allow), onClick = {}),
@@ -297,49 +308,55 @@ private fun ScreenBehind() {
 }
 
 /**
- * A page as 05 shows it under 06 and 06d: the status bar, the address bar on surface, then the page,
- * left blank here; with the floating toolbar for 06d.
+ * A page as 05 shows it under 06 and 06d: the page fills the screen, and the browsing cluster floats
+ * at the bottom. A sheet that reaches the bottom covers the cluster.
  */
 @Composable
-internal fun PageBehind(toolbar: Boolean = false) {
+internal fun PageBehind() {
     val colors = MaterialTheme.colorScheme
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(colors.surface),
-    ) {
-        Column(Modifier.statusBarsPadding()) {
-            AddressBar(
+    val findQuery = remember { TextFieldState() }
+    Box(Modifier.fillMaxSize().background(colors.surfaceContainerLowest)) {
+        BrowsingChrome(
+            state = BrowsingUiState(
                 address = PAGE_HOST,
                 indicator = SiteIndicator.Secure,
                 readerAvailable = true,
-                loadProgress = null,
+                progress = null,
+                loadError = null,
+                backEnabled = true,
+                forwardEnabled = false,
+                tabCount = 7,
+                incognito = false,
+                aiFab = AiFabMode.Enabled,
+                find = null,
+                refreshing = false,
+            ),
+            findQuery = findQuery,
+            actions = BrowsingActions(
                 onSiteInfo = {},
                 onEditAddress = {},
                 onReader = {},
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(colors.surfaceContainerLowest),
-            )
-        }
-        if (toolbar) {
-            BrowserToolbar(
-                canGoBack = true,
-                canGoForward = false,
-                tabCount = 7,
-                incognito = false,
+                onRefresh = {},
+                onTryAgain = {},
+                onInternetSettings = {},
+                onFindPrevious = {},
+                onFindNext = {},
+                onCloseFind = {},
                 onBack = {},
                 onForward = {},
                 onTabs = {},
                 onMore = {},
-                aiFab = { AiFab(enabled = true, stringResource(R.string.cd_ask_skim_about_page), onClick = {}) },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = ToolbarMetrics.BottomOffset),
-            )
-        }
+                onAskPage = {},
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.navigationBars
+                        .union(WindowInsets.ime)
+                        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                )
+                .padding(bottom = ToolbarMetrics.BottomOffset)
+                .padding(horizontal = 16.dp),
+        )
     }
 }

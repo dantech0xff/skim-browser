@@ -18,8 +18,7 @@ import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
-import com.dantech.skimbrowser.ui.navigation.topScreen
-import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
+import com.dantech.skimbrowser.ui.navigation.snackbarPlacement
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.isDark
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -85,7 +84,7 @@ fun SkimApp(
                 SkimNavDisplay(viewModel.backStack, navigator, tabs, secure)
                 SkimSnackbarHost(
                     controller = viewModel.snackbar,
-                    placement = topScreen(keys)?.placement ?: SnackbarPlacement.Bottom,
+                    placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
                     onAction = { action -> interpret(action, navigator, viewModel.undo, openExternal) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )

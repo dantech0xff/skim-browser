@@ -123,7 +123,7 @@ class AiPermissionDialogScreenshotTest {
     @Test
     fun firstTimeOnASite() {
         composeRule.setSkimContent {
-            PageBehind(toolbar = true)
+            PageBehind()
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = {},
                 properties = com.dantech.skimbrowser.ui.home.ShortcutDialogProperties,
