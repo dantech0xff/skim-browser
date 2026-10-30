@@ -1,14 +1,11 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import android.net.Uri
 import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
-import com.dantech.skimbrowser.browser.downloads.DownloadEvent
-import com.dantech.skimbrowser.browser.downloads.DownloadNames
-import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.domain.text.cutTo
 import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
@@ -18,7 +15,25 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+
+/** A download that ended, as the snackbar reports it. The activity maps the tracker into this. */
+sealed interface DownloadNotice {
+    val incognito: Boolean
+
+    data class Completed(
+        val fileName: String,
+        val uri: Uri,
+        val mime: String,
+        override val incognito: Boolean,
+    ) : DownloadNotice
+
+    data class Failed(
+        val fileName: String?,
+        override val incognito: Boolean,
+    ) : DownloadNotice
+}
 
 /**
  * Reports how each download ends with the app's snackbar, on whatever screen shows (15): "<file>
@@ -34,15 +49,15 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun DownloadSnackbarEffect(
-    tracker: DownloadTracker,
+    notices: Flow<DownloadNotice>,
     snackbar: SnackbarController,
-    secure: WindowPrivacy = LocalBrowserHost.current.secure,
+    secure: WindowPrivacy,
 ) {
-    LaunchedEffect(tracker, snackbar, secure) {
+    LaunchedEffect(notices, snackbar, secure) {
         val guard = IncognitoSnackbarGuard(secure, scope = this)
         try {
             launch { snackbar.current.collect { message -> guard.onScreen(message?.id) } }
-            tracker.events.collect { event ->
+            notices.collect { event ->
                 if (event.incognito) guard.hold()
                 show(event, snackbar)
                 if (event.incognito) guard.shown(snackbar.current.value?.id)
@@ -53,13 +68,13 @@ fun DownloadSnackbarEffect(
     }
 }
 
-private fun show(event: DownloadEvent, snackbar: SnackbarController) {
+private fun show(event: DownloadNotice, snackbar: SnackbarController) {
     when (event) {
-        is DownloadEvent.DownloadCompleted -> snackbar.show(
+        is DownloadNotice.Completed -> snackbar.show(
             UiText.Res(R.string.snackbar_downloaded, persistentListOf(shownFileName(event.fileName))),
             SnackbarAction.OpenDownload(event.uri, event.mime),
         )
-        is DownloadEvent.DownloadFailed -> snackbar.show(
+        is DownloadNotice.Failed -> snackbar.show(
             UiText.Res(R.string.snackbar_download_failed, persistentListOf(shownFileName(event.fileName))),
             isError = true,
         )
@@ -72,7 +87,7 @@ private fun show(event: DownloadEvent, snackbar: SnackbarController) {
  * [MAX_SHOWN_NAME] characters: a longer one keeps its start and its extension around an ellipsis.
  */
 internal fun shownFileName(name: String?): String {
-    val visible = name?.toVisibleText().orEmpty().ifEmpty { DownloadNames.FALLBACK_NAME }
+    val visible = name?.toVisibleText().orEmpty().ifEmpty { FALLBACK_FILE_NAME }
     if (visible.length <= MAX_SHOWN_NAME) return visible
     val dot = visible.lastIndexOf('.')
     val extension = if (dot > 0 && visible.length - dot <= MAX_SHOWN_EXTENSION + 1) visible.substring(dot) else ""
@@ -140,6 +155,9 @@ private class IncognitoSnackbarGuard(
 
 /** The longest file name a snackbar shows: with " downloaded" and Open, it still fits on one line. */
 private const val MAX_SHOWN_NAME = 32
+
+/** The name a snackbar uses when the download never had one. Same word the file is saved under. */
+private const val FALLBACK_FILE_NAME = "download"
 
 /** The longest extension a download's name keeps, as the downloads make names. */
 private const val MAX_SHOWN_EXTENSION = 16

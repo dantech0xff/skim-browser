@@ -3,7 +3,7 @@ package com.dantech.skimbrowser.browser
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebStorage
-import com.dantech.skimbrowser.data.normalizeHost
+import com.dantech.skimbrowser.domain.url.normalizeHost
 import com.dantech.skimbrowser.domain.browsing.OpenPages
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.history.HistoryRepository

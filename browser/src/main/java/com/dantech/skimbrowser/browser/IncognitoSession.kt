@@ -10,7 +10,7 @@ import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
-import com.dantech.skimbrowser.data.normalizeHost
+import com.dantech.skimbrowser.domain.url.normalizeHost
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject

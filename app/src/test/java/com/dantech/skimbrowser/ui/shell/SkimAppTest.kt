@@ -14,7 +14,7 @@ import com.dantech.skimbrowser.HiltRouteActivity
 import com.dantech.skimbrowser.ReleaseProcessResources
 import com.dantech.skimbrowser.TestStorage
 import com.dantech.skimbrowser.browser.LocalBrowserHost
-import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.ui.navigation.TabsKey
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -22,6 +22,8 @@ import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,7 +65,6 @@ class SkimAppTest {
     val composeRule = createAndroidComposeRule<HiltRouteActivity>()
 
     @Inject lateinit var resources: ReleaseProcessResources
-    @Inject lateinit var downloads: DownloadTracker
 
     private var shown by mutableStateOf(true)
 
@@ -111,7 +112,13 @@ class SkimAppTest {
         composeRule.setContent {
             if (shown) {
                 CompositionLocalProvider(LocalBrowserHost provides host) {
-                    SkimApp(host, downloads, Channel(), model)
+                    SkimApp(
+                        secure = host.secure,
+                        openExternal = {},
+                        downloadNotices = pendingNotices,
+                        pendingLinks = Channel(),
+                        viewModel = model,
+                    )
                 }
             }
         }
@@ -130,5 +137,8 @@ class SkimAppTest {
 
     private companion object {
         const val START_WAIT_MS = 10_000L
+
+        /** Stays open, as the activity's download notices do when none have ended. */
+        val pendingNotices: Flow<DownloadNotice> = flow { }
     }
 }

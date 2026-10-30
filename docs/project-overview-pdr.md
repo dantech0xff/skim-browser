@@ -1,5 +1,7 @@
 # Skim — product overview
 
+The product rules are in `docs/product-vision.md`.
+
 Skim is a phone browser. The person opens pages, keeps them in tabs, and can ask Skim about the page they are reading or about the normal tabs they have open. Answers come from Claude in the cloud. The app does not run a model on the device.
 
 The visual source is `design/`. Phone boards are 412×915 dp. Boards 16–18 are documentation (navigation map, tokens, components), not screens.
@@ -27,7 +29,7 @@ Listed in `design/README.md` under "Not designed yet", and repeated in `docs/pro
 
 - The debug app builds with `assembleDebug` and the main flows are implemented: browse, tabs, reader, settings, and Ask Skim against a configured endpoint.
 - Screens observe ViewModels. ViewModels hold UI state. Navigation and side effects go through `SkimNavigator` and Hilt-provided use cases, not through composables deciding policy.
-- Data access goes through repository interfaces and use cases in `domain/`. Concrete repositories in `data/` implement the interfaces and map Room and DataStore types there. Hilt constructs both. ViewModels do not depend on concrete `data` classes. `DomainBoundaryTest` keeps `domain` free of Android and outer layers, keeps `ui` off `data` and `ai` and off concrete `browser` types except the route files that attach the Activity host, and keeps `ai`, `browser`, and `data` from naming `ui`.
+- Data access goes through repository interfaces and use cases in `domain/`. Concrete repositories in `data/` implement the interfaces and map Room and DataStore types there. Hilt constructs both. ViewModels do not depend on concrete `data` classes. `DomainBoundaryTest` keeps `domain` free of Android and outer layers, keeps `ui` off `data` and `ai` and off concrete `browser` types except `BrowsingRoute`, `TabsScreen`, `LinkOptionsSheet`, and `SitePermissionDialog`, and keeps `ai`, `browser`, and `data` from naming `ui`.
 - Unit tests cover ViewModels, repositories, and the AI and browser logic. Coverage is measured with Kover. `:app` aggregates `:domain`, `:data`, `:browser`, and `:ai`. Generated classes are excluded. Composables are not excluded to inflate the number. The measured figure is reported with the build, not asserted as a failing Gradle rule.
 - UI follows `design/` (layout, color, type, spacing, icons). Remaining differences are listed in `docs/design-guidelines.md`.
 

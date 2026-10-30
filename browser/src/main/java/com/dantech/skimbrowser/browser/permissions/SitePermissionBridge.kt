@@ -13,7 +13,7 @@ import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.TabsState
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
-import com.dantech.skimbrowser.data.hostOf
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher

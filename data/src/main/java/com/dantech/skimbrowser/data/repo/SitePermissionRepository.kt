@@ -6,7 +6,7 @@ import com.dantech.skimbrowser.data.db.dao.SitePermissionDao
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
-import com.dantech.skimbrowser.data.normalizeHost
+import com.dantech.skimbrowser.domain.url.normalizeHost
 import com.dantech.skimbrowser.domain.permission.SitePermission
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository as SitePermissionStore
 import javax.inject.Inject

@@ -7,8 +7,8 @@ import org.junit.Test
 
 /**
  * Dependencies point inward. The check reads every source line, so a fully qualified name fails
- * the same way an import does. Route files that attach the Activity's browser host are the only
- * `ui` files that may name `browser`.
+ * the same way an import does. Route files that still draw a WebView, a tab thumbnail,
+ * or a site-permission prompt are the only `ui` files that may name `browser`.
  */
 class DomainBoundaryTest {
 
@@ -64,6 +64,15 @@ class DomainBoundaryTest {
             "data/repo/ChatRepository.kt" to "import com.dantech.skimbrowser.ui.snackbar.SnackbarController",
             "ai/TabsContext.kt" to "import com.dantech.skimbrowser.data.db.entity.SkimAiState",
             "ai/AiGate.kt" to "import com.dantech.skimbrowser.data.hostOf",
+            "browser/TabManager.kt" to "import com.dantech.skimbrowser.data.isWebUrl",
+            "browser/TabManager.kt" to "import com.dantech.skimbrowser.data.withoutFragment",
+            "browser/WebViewPool.kt" to "import com.dantech.skimbrowser.data.hostOf",
+            "browser/BrowsingDataCleaner.kt" to "import com.dantech.skimbrowser.data.normalizeHost",
+            "ui/settings/SettingsScreen.kt" to "import com.dantech.skimbrowser.browser.LocalBrowserHost",
+            "ui/shell/SkimApp.kt" to "import com.dantech.skimbrowser.browser.BrowserHost",
+            "ui/shell/SnackbarActions.kt" to "import com.dantech.skimbrowser.browser.ActivityHost",
+            "ui/navigation/SkimNavDisplay.kt" to "import com.dantech.skimbrowser.browser.LocalBrowserHost",
+            "ui/browsing/DownloadSnackbarEffect.kt" to "import com.dantech.skimbrowser.browser.downloads.DownloadTracker",
             "ai/AiGate.kt" to "val state = com.dantech.skimbrowser.data.db.entity.SkimAiState.ASK",
             "domain/tab/Tab.kt" to "import javax.inject.Inject",
             "domain/tab/Tab.kt" to "import dagger.Module",
@@ -84,8 +93,7 @@ class DomainBoundaryTest {
             assertTrue("$path should reject: $line", violation(path, line) != null)
         }
 
-        assertNull(violation("ui/settings/SettingsScreen.kt", "import com.dantech.skimbrowser.browser.LocalBrowserHost"))
-        assertNull(violation("browser/BrowsingDataCleaner.kt", "import com.dantech.skimbrowser.data.normalizeHost"))
+        assertNull(violation("browser/BrowsingDataCleaner.kt", "import com.dantech.skimbrowser.domain.url.normalizeHost"))
         assertNull(violation("domain/ai/AskPageAccess.kt", "package com.dantech.skimbrowser.domain.ai"))
         assertNull(violation("domain/ai/AskPageAccess.kt", "import com.dantech.skimbrowser.domain.tab.Tab"))
         assertNull(violation("domain/url/Host.kt", "import java.net.IDN"))
@@ -146,6 +154,11 @@ class DomainBoundaryTest {
         const val AI = "com.dantech.skimbrowser.ai"
         const val DATA_ENTITY = "com.dantech.skimbrowser.data.db.entity"
         const val DATA_HOST_OF = "com.dantech.skimbrowser.data.hostOf"
+        const val DATA_IS_WEB_URL = "com.dantech.skimbrowser.data.isWebUrl"
+        const val DATA_NORMALIZE_HOST = "com.dantech.skimbrowser.data.normalizeHost"
+        const val DATA_WITHOUT_FRAGMENT = "com.dantech.skimbrowser.data.withoutFragment"
+
+        val DATA_URL_HELPERS = listOf(DATA_HOST_OF, DATA_IS_WEB_URL, DATA_NORMALIZE_HOST, DATA_WITHOUT_FRAGMENT)
 
         val DOMAIN_FORBIDDEN = listOf(
             "android.",
@@ -162,19 +175,14 @@ class DomainBoundaryTest {
         )
 
         /**
-         * Routes and the shell attach the Activity host, a WebView, downloads, or a thumbnail
-         * bitmap. Screens and ViewModels are not on this list.
+         * These routes still name a WebView, a tab thumbnail, or a site-permission prompt.
+         * Screens and ViewModels are not on this list.
          */
         val BROWSER_WIRING = setOf(
-            "ui/browsing/DownloadSnackbarEffect.kt",
             "ui/browsing/BrowsingRoute.kt",
-            "ui/settings/SettingsScreen.kt",
             "ui/tabs/TabsScreen.kt",
-            "ui/navigation/SkimNavDisplay.kt",
             "ui/browsing/LinkOptionsSheet.kt",
             "ui/browsing/SitePermissionDialog.kt",
-            "ui/shell/SkimApp.kt",
-            "ui/shell/SnackbarActions.kt",
         )
 
         fun chatRepositoryOutsideData(path: String, line: String): Boolean {
@@ -208,10 +216,13 @@ class DomainBoundaryTest {
             "ai" -> when {
                 line.contains(UI) -> UI
                 line.contains(DATA_ENTITY) -> DATA_ENTITY
-                line.contains(DATA_HOST_OF) -> DATA_HOST_OF
-                else -> null
+                else -> DATA_URL_HELPERS.firstOrNull { line.contains(it) }
             }
-            "browser", "data" -> if (line.contains(UI)) UI else null
+            "browser" -> when {
+                line.contains(UI) -> UI
+                else -> DATA_URL_HELPERS.firstOrNull { line.contains(it) }
+            }
+            "data" -> if (line.contains(UI)) UI else null
             else -> null
         }
     }

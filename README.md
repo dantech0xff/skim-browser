@@ -1,5 +1,7 @@
 # Skim
 
+The product rules are in [Product vision](docs/product-vision.md).
+
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude (`claude-haiku-5-5`). The UI is Jetpack Compose and Material 3 Expressive.
 
 `:domain` is a Kotlin JVM module: models, repository interfaces, and one use case per write. `:data` is an Android library: Room, DataStore, the concrete repositories, and bookmark import. `:browser` is an Android library: the tab engine, WebView pool, downloads, and page scripts. `:ai` is an Android library: the Claude adapter, chat sessions, and tab grouping. `:app` (`com.dantech.skimbrowser`, minSdk 26, targetSdk 37) is the Android application. Its screens and ViewModels depend on `:domain`. Hilt in `:app` binds the `:data` implementations, the browser engine, and the AI adapter. See `docs/system-architecture.md`.
@@ -97,6 +99,7 @@ Release is blocked until the proxy in `docs/deployment-guide.md` meets the secur
 
 | File | What it covers |
 |---|---|
+| `docs/product-vision.md` | The rules for this version |
 | `docs/project-overview-pdr.md` | What the app is and what "done" means |
 | `docs/codebase-summary.md` | Packages and the main types |
 | `docs/code-standards.md` | How UI, data, and tests are written |

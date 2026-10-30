@@ -16,8 +16,8 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
-import com.dantech.skimbrowser.data.isWebUrl
-import com.dantech.skimbrowser.data.withoutFragment
+import com.dantech.skimbrowser.domain.url.isWebUrl
+import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository

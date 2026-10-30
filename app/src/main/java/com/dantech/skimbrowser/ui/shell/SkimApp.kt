@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.shell
 
+import android.content.Intent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dantech.skimbrowser.browser.BrowserHost
-import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
@@ -22,6 +23,7 @@ import com.dantech.skimbrowser.ui.snackbar.SnackbarPlacement
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.isDark
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The app in the main window, as [viewModel] holds it: the empty window in the app's colors until
@@ -34,20 +36,21 @@ import kotlinx.coroutines.channels.ReceiveChannel
  * opens in a new normal tab, shown at once.
  *
  * State, the back stack and the navigator come from [viewModel]. MainActivity hands in what a view
- * model may not hold or name: its [host], the [downloads] whose ends the snackbar tells, and the
- * links it received.
+ * model may not hold or name: the window's [secure] flag, how to [openExternal] apps, the
+ * [downloadNotices] the snackbar tells, and the links it received.
  */
 @Composable
 fun SkimApp(
-    host: BrowserHost,
-    downloads: DownloadTracker,
+    secure: WindowPrivacy,
+    openExternal: (Intent) -> Unit,
+    downloadNotices: Flow<DownloadNotice>,
     pendingLinks: ReceiveChannel<String>,
     viewModel: SkimAppViewModel = hiltViewModel(),
 ) {
     // The view model outlives this window; its navigator reaches the window only while it is composed.
-    DisposableEffect(viewModel, host.secure) {
-        viewModel.attachWindow(host.secure)
-        onDispose { viewModel.detachWindow(host.secure) }
+    DisposableEffect(viewModel, secure) {
+        viewModel.attachWindow(secure)
+        onDispose { viewModel.detachWindow(secure) }
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     if (!state.started) {
@@ -66,11 +69,11 @@ fun SkimApp(
         target = incognitoSurface,
         hasIncognitoTabs = tabs.tabs.any { it.incognito },
         armed = navigator.secureArming,
-        secure = host.secure,
+        secure = secure,
     )
     SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognitoSurface))
     // A download that ends is told on whatever screen is up, with the one snackbar host below.
-    DownloadSnackbarEffect(downloads, viewModel.snackbar, host.secure)
+    DownloadSnackbarEffect(downloadNotices, viewModel.snackbar, secure)
     LaunchedEffect(viewModel, pendingLinks) {
         // The channel belongs to the Activity, so each link is received here exactly once.
         for (url in pendingLinks) viewModel.openExternalLink(url)
@@ -79,11 +82,11 @@ fun SkimApp(
     SkimTheme(state.theme, incognito = incognitoSurface) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
-                SkimNavDisplay(viewModel.backStack, navigator, tabs)
+                SkimNavDisplay(viewModel.backStack, navigator, tabs, secure)
                 SkimSnackbarHost(
                     controller = viewModel.snackbar,
                     placement = topScreen(keys)?.placement ?: SnackbarPlacement.Bottom,
-                    onAction = { action -> interpret(action, navigator, viewModel.undo, host.activityHost) },
+                    onAction = { action -> interpret(action, navigator, viewModel.undo, openExternal) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
