@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.dantech.skimbrowser.browser.LocalBrowserHost
+import com.dantech.skimbrowser.browser.SkimWebView
 
 /**
  * Shows the WebView of tab [tabId] from the Activity's WebView pool ([LocalBrowserHost]).
@@ -19,7 +20,14 @@ import com.dantech.skimbrowser.browser.LocalBrowserHost
  * the tab's renderer crashed too often nothing is drawn, so the error screen above it shows.
  */
 @Composable
-fun WebViewHost(tabId: String, modifier: Modifier = Modifier) {
+fun WebViewHost(
+    tabId: String,
+    modifier: Modifier = Modifier,
+    /** CSS pixels of document padding above the page. It scrolls away under the status bar. */
+    contentTop: Int = 0,
+    /** CSS pixels of document padding below the page. It scrolls away under the bottom pill. */
+    contentBottom: Int = 0,
+) {
     val pool = LocalBrowserHost.current.pool
     val generation by remember(pool, tabId) { pool.generation(tabId) }.collectAsState()
     val current = generation ?: return
@@ -27,6 +35,7 @@ fun WebViewHost(tabId: String, modifier: Modifier = Modifier) {
         AndroidView(
             factory = { context -> pool.showInHost(tabId) ?: View(context) },
             modifier = modifier,
+            update = { view -> (view as? SkimWebView)?.setContentScrollPadding(contentTop, contentBottom) },
             onRelease = { view -> pool.releaseFromHost(tabId, view) },
         )
     }

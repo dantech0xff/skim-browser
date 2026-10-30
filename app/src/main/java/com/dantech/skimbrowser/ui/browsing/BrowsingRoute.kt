@@ -4,7 +4,11 @@ import com.dantech.skimbrowser.ui.navigation.rememberShell
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,12 +17,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.system.InternetPanel
+import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.browser.browserBack
 import com.dantech.skimbrowser.ui.browser.perform
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
@@ -90,7 +98,23 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onMore = { navigator.openMoreMenu(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
         ),
-        page = { WebViewHost(tab.id, Modifier.fillMaxSize()) },
+        page = {
+            val density = LocalDensity.current
+            // Insets are device pixels. A WebView's CSS px is one dp, so the page would pad by the
+            // screen density if these were passed through unchanged.
+            val top = density.cssPx(WindowInsets.statusBars.getTop(density))
+            // The keyboard already lifts the page. At rest the page fills the screen, so the document
+            // itself keeps the status bar and the pill clear, and that space scrolls away.
+            val bottom = if (WindowInsets.ime.getBottom(density) > 0) {
+                0
+            } else {
+                val pill = with(density) {
+                    (ToolbarMetrics.BottomOffset + ToolbarMetrics.BrowsingClusterHeight).roundToPx()
+                }
+                density.cssPx(WindowInsets.navigationBars.getBottom(density) + pill)
+            }
+            WebViewHost(tab.id, Modifier.fillMaxSize(), contentTop = top, contentBottom = bottom)
+        },
     )
     SitePermissionRequests(tab.id, host.sitePermissions)
     if (searching) {
@@ -112,3 +136,6 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
 
 /** The key prefix of the browsing view models in the browser destination's store. */
 private const val BROWSING_VIEW_MODEL_KEY = "browsing"
+
+/** Device pixels as CSS pixels. WebView lays a page out in dp. */
+private fun Density.cssPx(devicePx: Int): Int = (devicePx / density).roundToInt()

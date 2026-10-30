@@ -75,10 +75,37 @@ class SkimWebView @JvmOverloads constructor(
         }
     }
 
+    /** Document padding, in CSS pixels, so the page starts clear of the status bar and the bottom pill. */
+    internal var contentPadTop: Int = 0
+        private set
+
+    internal var contentPadBottom: Int = 0
+        private set
+
     init {
         isNestedScrollingEnabled = true
         setOnLongClickListener { onLongPress() }
         if (incognito) importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+    }
+
+    /**
+     * Pads the document, not the view. The padding is the start and end of the page, so it scrolls
+     * away and the page can draw under the status bar and the bottom pill. A later page load applies
+     * it again ([applyContentScrollPadding]).
+     */
+    fun setContentScrollPadding(topPx: Int, bottomPx: Int) {
+        val top = topPx.coerceIn(0, MAX_CONTENT_PAD)
+        val bottom = bottomPx.coerceIn(0, MAX_CONTENT_PAD)
+        if (top == contentPadTop && bottom == contentPadBottom) return
+        contentPadTop = top
+        contentPadBottom = bottom
+        if (url != null) applyContentScrollPadding()
+    }
+
+    /** Writes the current padding into the page that is showing. No-op until one is loaded. */
+    fun applyContentScrollPadding() {
+        if (url == null) return
+        evaluateJavascript(contentScrollPaddingScript(contentPadTop, contentPadBottom), null)
     }
 
     /**
@@ -261,6 +288,14 @@ class SkimWebView @JvmOverloads constructor(
         private const val VELOCITY_UNITS = 1_000
         private const val FOCUS_NODE_URL = "url"
         private const val FOCUS_NODE_TITLE = "title"
+        private const val MAX_CONTENT_PAD = 512
+
+        /** A style tag on `html`. The padding scrolls with the page; it is not a fixed inset. */
+        internal fun contentScrollPaddingScript(topPx: Int, bottomPx: Int): String =
+            "(function(){var id='skim-scroll-pad';var node=document.getElementById(id);" +
+                "if(!node){node=document.createElement('style');node.id=id;" +
+                "(document.head||document.documentElement).appendChild(node);}" +
+                "node.textContent='html{padding-top:${topPx}px !important;padding-bottom:${bottomPx}px !important;}';})();"
     }
 }
 

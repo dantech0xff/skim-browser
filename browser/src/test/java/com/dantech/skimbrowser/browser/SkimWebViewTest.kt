@@ -29,6 +29,20 @@ class SkimWebViewTest {
     private val hits = mutableListOf<HitTarget>()
 
     @Test
+    fun scrollPaddingIsDocumentSpaceThatScrollsAway() {
+        val script = SkimWebView.contentScrollPaddingScript(48, 160)
+
+        assertTrue(script.contains("padding-top:48px"))
+        assertTrue(script.contains("padding-bottom:160px"))
+        assertFalse(script.contains("position:fixed"))
+
+        view.setContentScrollPadding(48, 160)
+        assertEquals(48, view.contentPadTop)
+        assertEquals(160, view.contentPadBottom)
+        view.setContentScrollPadding(48, 160)
+    }
+
+    @Test
     fun itTakesPartInNestedScrolling() {
         assertTrue("pull to refresh only hears views that scroll nested", view.isNestedScrollingEnabled)
     }

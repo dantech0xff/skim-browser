@@ -55,10 +55,16 @@ class SkimWebViewClient(
         events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
     }
 
+    override fun onPageCommitVisible(view: WebView, url: String) {
+        if (detached) return
+        (view as? SkimWebView)?.applyContentScrollPadding()
+    }
+
     override fun onPageFinished(view: WebView, url: String?) {
         if (detached || url == null) return
         events.onPageFinished(tabId, url)
         events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
+        (view as? SkimWebView)?.applyContentScrollPadding()
     }
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
