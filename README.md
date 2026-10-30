@@ -1,6 +1,6 @@
 # Skim
 
-The product rules are in [Product vision](docs/product-vision.md).
+The product rules are in [Product vision](docs/product-vision.md). Behavior rules for agents are in [AGENTS.md](AGENTS.md).
 
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude. The model id lives in `ai/src/main/java/com/dantech/skimbrowser/ai/AiConfig.kt`. The UI is Jetpack Compose and Material 3 Expressive.
 
