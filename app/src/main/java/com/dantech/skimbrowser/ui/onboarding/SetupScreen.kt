@@ -6,6 +6,11 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,11 +57,15 @@ import com.dantech.skimbrowser.ui.components.SkimCard
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /**
  * Default browser and import (03): two optional steps, a privacy note and Start browsing. Set as
  * default turns into a disabled Done once Skim is the default browser ([SetupUiState.isDefault]).
  * The steps scroll when the text is too large for the screen; Start browsing stays at the bottom.
+ * The title, each step tile, each step's text and the privacy row ease in. The step buttons and
+ * Start browsing are already there. With Remove animations on, the settled layout is what shows.
+ * Set as default crossfades into Done.
  */
 @Composable
 fun SetupScreen(
@@ -64,6 +76,9 @@ fun SetupScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val reduced = rememberReducedMotion()
+    var settled by rememberSaveable { mutableStateOf(false) }
+    val still = reduced || settled
     Column(
         modifier
             .fillMaxSize()
@@ -79,16 +94,20 @@ fun SetupScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(R.string.setup_title),
-                    color = colors.onSurface,
-                    style = MaterialTheme.typography.headlineLargeEmphasized,
-                )
-                Text(
-                    stringResource(R.string.setup_body),
-                    color = colors.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                OnboardingPiece(index = 0, motion = PieceMotion.Rise, still = still) {
+                    Text(
+                        stringResource(R.string.setup_title),
+                        color = colors.onSurface,
+                        style = MaterialTheme.typography.headlineLargeEmphasized,
+                    )
+                }
+                OnboardingPiece(index = 1, motion = PieceMotion.Rise, still = still) {
+                    Text(
+                        stringResource(R.string.setup_body),
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SetupStep(
@@ -98,6 +117,10 @@ fun SetupScreen(
                     action = stringResource(if (state.isDefault) R.string.action_done else R.string.setup_set_as_default),
                     actionEnabled = !state.isDefault,
                     onAction = onSetDefault,
+                    still = still,
+                    reduced = reduced,
+                    tileIndex = 2,
+                    textIndex = 3,
                 )
                 SetupStep(
                     tile = SetupTile.Import,
@@ -106,20 +129,28 @@ fun SetupScreen(
                     action = stringResource(R.string.setup_choose_file),
                     actionEnabled = true,
                     onAction = onChooseFile,
+                    still = still,
+                    reduced = reduced,
+                    tileIndex = 4,
+                    textIndex = 5,
                 )
             }
             Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(
-                    painterResource(R.drawable.ic_verified_user),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = colors.onSurfaceVariant,
-                )
-                Text(
-                    stringResource(R.string.setup_privacy_note),
-                    color = colors.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                OnboardingPiece(index = 6, motion = PieceMotion.Pop, still = still) {
+                    Icon(
+                        painterResource(R.drawable.ic_verified_user),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = colors.onSurfaceVariant,
+                    )
+                }
+                OnboardingPiece(index = 7, motion = PieceMotion.Rise, still = still, onSettled = { settled = true }) {
+                    Text(
+                        stringResource(R.string.setup_privacy_note),
+                        color = colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
         Box(
@@ -204,8 +235,13 @@ private fun SetupStep(
     action: String,
     actionEnabled: Boolean,
     onAction: () -> Unit,
+    still: Boolean,
+    reduced: Boolean,
+    tileIndex: Int,
+    textIndex: Int,
 ) {
     val colors = MaterialTheme.colorScheme
+    val fade = if (reduced) snap<Float>() else MaterialTheme.motionScheme.defaultEffectsSpec()
     SkimCard(
         modifier = Modifier.fillMaxWidth(),
         radius = 28.dp,
@@ -213,26 +249,53 @@ private fun SetupStep(
         verticalArrangement = Arrangement.spacedBy(16.dp - ButtonFrameOverhang),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            when (tile) {
-                SetupTile.DefaultBrowser -> StepTile(
-                    MaterialShapes.Cookie4Sided, R.drawable.ic_public, colors.primaryContainer, colors.onPrimaryContainer,
-                )
-                SetupTile.Import -> StepTile(
-                    MaterialShapes.Clover4Leaf, R.drawable.ic_bookmarks, colors.secondaryContainer, colors.onSecondaryContainer,
-                )
+            OnboardingPiece(index = tileIndex, motion = PieceMotion.Pop, still = still) {
+                when (tile) {
+                    SetupTile.DefaultBrowser -> StepTile(
+                        MaterialShapes.Cookie4Sided, R.drawable.ic_public, colors.primaryContainer, colors.onPrimaryContainer,
+                    )
+                    SetupTile.Import -> StepTile(
+                        MaterialShapes.Clover4Leaf, R.drawable.ic_bookmarks, colors.secondaryContainer, colors.onSecondaryContainer,
+                    )
+                }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = colors.onSurface, style = MaterialTheme.typography.titleMediumEmphasized)
-                Text(body, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            if (still) {
+                StepCopy(title, body, Modifier.weight(1f))
+            } else {
+                OnboardingPiece(
+                    index = textIndex,
+                    motion = PieceMotion.Rise,
+                    still = false,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    StepCopy(title, body, Modifier.fillMaxWidth())
+                }
             }
         }
-        SkimButton(
-            text = action,
-            onClick = onAction,
+        AnimatedContent(
+            targetState = action to actionEnabled,
             modifier = Modifier.align(Alignment.End),
-            style = SkimButtonStyle.Tonal,
-            enabled = actionEnabled,
-        )
+            transitionSpec = { fadeIn(fade) togetherWith fadeOut(fade) },
+            label = "setup-action",
+        ) { (label, enabled) ->
+            val current = label == action && enabled == actionEnabled
+            SkimButton(
+                text = label,
+                onClick = { if (current) onAction() },
+                style = SkimButtonStyle.Tonal,
+                enabled = enabled,
+            )
+        }
+    }
+}
+
+/** The title and body of a step. [modifier] carries the row weight once the entrance has settled. */
+@Composable
+private fun StepCopy(title: String, body: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, color = colors.onSurface, style = MaterialTheme.typography.titleMediumEmphasized)
+        Text(body, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

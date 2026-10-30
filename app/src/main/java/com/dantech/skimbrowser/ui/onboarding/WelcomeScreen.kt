@@ -22,6 +22,10 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -37,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.ShapeArt
@@ -45,6 +50,7 @@ import com.dantech.skimbrowser.ui.components.SkimButtonSize
 import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /**
  * Welcome (01), on the first launch only: the Skim logo, the art, the promise, Get started and the
@@ -52,7 +58,9 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
  * through [onOpenLegal]; a link whose URL is empty (a debug build without them) is plain text.
  *
  * The middle block is centered in the space above the button and scrolls when the text is too large
- * for the screen.
+ * for the screen. On a visit, the mark, the wordmark, each shape and the promise ease in, in that
+ * order. Get started and the legal line are already there. The entrance runs once; with Remove
+ * animations on, the settled layout is what shows.
  */
 @Composable
 fun WelcomeScreen(
@@ -62,6 +70,9 @@ fun WelcomeScreen(
     privacyUrl: String,
     modifier: Modifier = Modifier,
 ) {
+    val reduced = rememberReducedMotion()
+    var settled by rememberSaveable { mutableStateOf(false) }
+    val still = reduced || settled
     Column(
         modifier
             .fillMaxSize()
@@ -78,9 +89,9 @@ fun WelcomeScreen(
                 verticalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Logo()
-                WelcomeArt()
-                Promise()
+                Logo(still)
+                WelcomeArt(still)
+                Promise(still) { settled = true }
             }
         }
         Column(
@@ -109,58 +120,94 @@ fun WelcomeScreen(
 
 /** The logo: the Sunny mark in primary (the brand, not an AI surface) beside the wordmark, 600. */
 @Composable
-private fun Logo() {
+private fun Logo(still: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        SunnyMark(size = 36.dp, iconSize = 20.dp, brand = true)
-        Text(
-            stringResource(R.string.app_name),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-        )
+        OnboardingPiece(index = 0, motion = PieceMotion.Pop, still = still) {
+            SunnyMark(size = 36.dp, iconSize = 20.dp, brand = true)
+        }
+        OnboardingPiece(index = 1, motion = PieceMotion.Rise, still = still) {
+            Text(
+                stringResource(R.string.app_name),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+            )
+        }
     }
 }
 
 /** The 300 by 240 art: an article, a search and the Skim AI shapes, overlapping as drawn. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun WelcomeArt() {
+private fun WelcomeArt(still: Boolean) {
     val colors = MaterialTheme.colorScheme
     Box(Modifier.size(300.dp, 240.dp).clearAndSetSemantics {}) {
-        ShapeArt(
-            MaterialShapes.Cookie9Sided, size = 104.dp, icon = R.drawable.ic_article, iconSize = 40.dp,
-            container = colors.primaryContainer, content = colors.onPrimaryContainer,
-            modifier = Modifier.offset(184.dp, 4.dp),
-        )
-        ShapeArt(
-            MaterialShapes.Clover4Leaf, size = 92.dp, icon = R.drawable.ic_travel_explore, iconSize = 36.dp,
-            container = colors.secondaryContainer, content = colors.onSecondaryContainer,
-            modifier = Modifier.offset(12.dp, 140.dp),
-        )
-        SunnyMark(size = 148.dp, iconSize = 60.dp, modifier = Modifier.offset(76.dp, 46.dp))
+        WelcomeBadge(index = 2, still = still, x = 184.dp, y = 4.dp) { placed ->
+            ShapeArt(
+                MaterialShapes.Cookie9Sided, size = 104.dp, icon = R.drawable.ic_article, iconSize = 40.dp,
+                container = colors.primaryContainer, content = colors.onPrimaryContainer,
+                modifier = placed,
+            )
+        }
+        WelcomeBadge(index = 3, still = still, x = 12.dp, y = 140.dp) { placed ->
+            ShapeArt(
+                MaterialShapes.Clover4Leaf, size = 92.dp, icon = R.drawable.ic_travel_explore, iconSize = 36.dp,
+                container = colors.secondaryContainer, content = colors.onSecondaryContainer,
+                modifier = placed,
+            )
+        }
+        WelcomeBadge(index = 4, still = still, x = 76.dp, y = 46.dp) { placed ->
+            SunnyMark(size = 148.dp, iconSize = 60.dp, modifier = placed)
+        }
+    }
+}
+
+/**
+ * A shape in the art. Once the entrance is over, the offset sits on the shape, as the board draws
+ * it. While it pops, the offset stays outside the scale so the shape grows around its own center.
+ */
+@Composable
+private fun WelcomeBadge(
+    index: Int,
+    still: Boolean,
+    x: Dp,
+    y: Dp,
+    badge: @Composable (Modifier) -> Unit,
+) {
+    val placed = Modifier.offset(x, y)
+    if (still) {
+        badge(placed)
+    } else {
+        OnboardingPiece(index = index, motion = PieceMotion.Pop, still = false, modifier = placed) {
+            badge(Modifier)
+        }
     }
 }
 
 /** The headline and the line under it, centered, at most 340 dp wide. */
 @Composable
-private fun Promise() {
+private fun Promise(still: Boolean, onSettled: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier.widthIn(max = 340.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.welcome_headline),
-            color = colors.onSurface,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.displaySmallEmphasized.copy(lineBreak = LineBreak.Heading),
-        )
-        Text(
-            stringResource(R.string.welcome_body),
-            color = colors.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        OnboardingPiece(index = 5, motion = PieceMotion.Rise, still = still) {
+            Text(
+                stringResource(R.string.welcome_headline),
+                color = colors.onSurface,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.displaySmallEmphasized.copy(lineBreak = LineBreak.Heading),
+            )
+        }
+        OnboardingPiece(index = 6, motion = PieceMotion.Rise, still = still, onSettled = onSettled) {
+            Text(
+                stringResource(R.string.welcome_body),
+                color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
 }
 
