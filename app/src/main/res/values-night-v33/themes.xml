@@ -1,0 +1,12 @@
+<resources>
+    <!--
+        UI mode outranks the API qualifier, so values-v33 does not apply at night. This restates
+        the night splash, including icon_preferred, which API 33+ needs when the start is not the launcher.
+    -->
+    <style name="Theme.SkimBrowser.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/skim_window_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.SkimBrowser</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+    </style>
+</resources>

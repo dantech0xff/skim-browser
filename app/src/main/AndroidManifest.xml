@@ -60,6 +60,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode|keyboard|keyboardHidden|navigation|density|fontScale|layoutDirection|locale|fontWeightAdjustment"
             android:exported="true"
             android:launchMode="singleTask"
+            android:theme="@style/Theme.SkimBrowser.Splash"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

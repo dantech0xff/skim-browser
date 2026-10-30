@@ -8,6 +8,8 @@ ksp = "2.3.12"                 # MC com/google/devtools/ksp/symbol-processing-gr
 composeBom = "2026.09.00"      # GM androidx/compose/compose-bom (Compose 1.12.1, material3 1.4.0)
 material3 = "1.5.0-beta01"     # GM androidx/compose/material3/material3; overrides the BOM for the Expressive APIs
 coreKtx = "1.19.1"             # GM androidx/core/core-ktx
+splashscreen = "1.2.0"         # GM androidx/core/core-splashscreen
+appcompatResources = "1.7.0"   # GM androidx/appcompat/appcompat-resources; the version core-splashscreen 1.2.0 pulls in
 activityCompose = "1.13.0"     # GM androidx/activity/activity-compose
 lifecycle = "2.11.0"           # GM androidx/lifecycle/lifecycle-viewmodel-compose (+ -navigation3, -savedstate)
 navigation3 = "1.2.0"          # GM androidx/navigation3/navigation3-runtime
@@ -38,6 +40,8 @@ kotlinMetadata = "2.4.21"      # MC org/jetbrains/kotlin/kotlin-metadata-jvm
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-appcompat-resources = { group = "androidx.appcompat", name = "appcompat-resources", version.ref = "appcompatResources" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activityCompose" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }

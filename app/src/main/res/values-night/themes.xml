@@ -3,4 +3,14 @@
         <item name="android:windowBackground">@color/skim_window_dark</item>
         <item name="colorControlNormal">?android:attr/colorControlNormal</item>
     </style>
+
+    <!--
+        A night style replaces the day style. The parent is not an item, so it is written again;
+        otherwise night falls back to the library icon and a post-splash theme that is the splash itself.
+    -->
+    <style name="Theme.SkimBrowser.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/skim_window_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.SkimBrowser</item>
+    </style>
 </resources>

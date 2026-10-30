@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.LocalBrowserHost
@@ -68,6 +69,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Applies postSplashScreenTheme before the window exists. Edge-to-edge reads that theme, so this stays first.
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")

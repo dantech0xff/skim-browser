@@ -11,4 +11,16 @@
         <item name="android:windowBackground">@color/skim_window_light</item>
         <item name="colorControlNormal">?android:attr/colorControlNormal</item>
     </style>
+
+    <!--
+        Cold start draws this before Compose. The unprefixed items are the compat library's, so
+        API 26–30 read them; Theme.SplashScreen copies them onto the platform attributes from API 31.
+        postSplashScreenTheme hands the window back to Theme.SkimBrowser. No icon disc: a second
+        circle would show on the dark window.
+    -->
+    <style name="Theme.SkimBrowser.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/skim_window_light</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.SkimBrowser</item>
+    </style>
 </resources>
