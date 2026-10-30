@@ -82,6 +82,12 @@ class SkimWebView @JvmOverloads constructor(
     internal var contentPadBottom: Int = 0
         private set
 
+    /**
+     * Called when the page scrolls. [dy] is the change in scroll Y: positive moves down the page.
+     * Cleared when the view leaves its host.
+     */
+    var onPageScroll: ((scrollY: Int, dy: Int) -> Unit)? = null
+
     init {
         isNestedScrollingEnabled = true
         setOnLongClickListener { onLongPress() }
@@ -191,6 +197,12 @@ class SkimWebView @JvmOverloads constructor(
 
     private fun movedBeyondSlop(event: MotionEvent): Boolean =
         abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop
+
+    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+        super.onScrollChanged(l, t, oldl, oldt)
+        val dy = t - oldt
+        if (dy != 0) onPageScroll?.invoke(t, dy)
+    }
 
     override fun onOverScrolled(scrollX: Int, scrollY: Int, clampedX: Boolean, clampedY: Boolean) {
         super.onOverScrolled(scrollX, scrollY, clampedX, clampedY)

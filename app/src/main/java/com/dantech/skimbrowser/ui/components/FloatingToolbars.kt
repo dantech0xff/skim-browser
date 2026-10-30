@@ -55,6 +55,9 @@ object ToolbarMetrics {
     /** Gap between the bottom of the toolbar and the navigation bar inset. */
     val BottomOffset = 24.dp
 
+    /** Side inset of the browsing pill, so it sits in from the screen edge. */
+    val BrowsingSideInset = 24.dp
+
     /** Gap between the toolbar and its FAB. */
     val FabGap = 8.dp
 

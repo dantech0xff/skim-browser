@@ -61,12 +61,9 @@ import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
-import com.dantech.skimbrowser.ui.navigation.AiPermissionKey
-import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.LinkOptionsKey
-import com.dantech.skimbrowser.ui.navigation.MoreMenuKey
 import com.dantech.skimbrowser.ui.navigation.ReaderKey
 import com.dantech.skimbrowser.ui.navigation.SiteInfoKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
@@ -294,26 +291,17 @@ class BrowsingRouteTest {
             "Site information, connection is secure",
             "Reader view",
             "Tabs, 1 open",
-            "More options",
-            "Ask Skim about this page",
         ).map { label ->
             composeRule.waitUntil(5_000) {
                 composeRule.onAllNodesWithContentDescription(label).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithContentDescription(label).performClick()
-            if (label == "Ask Skim about this page") {
-                composeRule.waitUntil(5_000) {
-                    gateDispatcher.scheduler.advanceUntilIdle()
-                    gateError?.let { throw it }
-                    keys().lastOrNull() is AiPermissionKey
-                }
-            }
             composeRule.waitForIdle()
             keys().last().also { navigator.back() }
         }
 
         assertEquals(
-            listOf(SiteInfoKey(id), ReaderKey(id), TabsKey(incognito = false), MoreMenuKey(id), AiPermissionKey(id)),
+            listOf(SiteInfoKey(id), ReaderKey(id), TabsKey(incognito = false)),
             opened,
         )
     }

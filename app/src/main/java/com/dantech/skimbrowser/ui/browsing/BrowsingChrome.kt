@@ -73,8 +73,8 @@ fun BrowsingChrome(
                     Modifier.fillMaxSize().padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    NavIcon(R.drawable.ic_arrow_back, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
-                    NavIcon(R.drawable.ic_arrow_forward, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
+                    NavIcon(R.drawable.ic_chevron_left, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
+                    NavIcon(R.drawable.ic_chevron_right, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
                     val find = state.find
                     if (find != null) {
                         FindInPageBar(
@@ -129,7 +129,7 @@ fun BrowsingChrome(
     }
 }
 
-/** A glyph for history, smaller than the other slots so the address keeps the width. */
+/** A chevron for history, narrower than an arrow so the address keeps the width. */
 @Composable
 private fun NavIcon(
     icon: Int,
@@ -146,6 +146,6 @@ private fun NavIcon(
             .clickable(enabled = enabled, onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(icon), description, Modifier.size(18.dp), tint = tint)
+        Icon(painterResource(icon), description, Modifier.size(20.dp), tint = tint)
     }
 }

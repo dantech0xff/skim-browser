@@ -1,5 +1,9 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,10 +29,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
@@ -66,6 +72,9 @@ data class BrowsingActions(
  * Pulling down at the top of the page reloads it. The indicator clears the status bar. With Remove
  * animations on, the indicator is a still frame. The pull is off while the page failed to load:
  * Page failed to load (11) then covers the page, hidden from accessibility.
+ *
+ * While [chromeCollapsed] and the page is showing, the pill scales down toward its bottom edge.
+ * Find, the keyboard and a failed page keep it full size.
  */
 @Composable
 fun BrowsingScreen(
@@ -74,8 +83,15 @@ fun BrowsingScreen(
     actions: BrowsingActions,
     page: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    chromeCollapsed: Boolean = false,
 ) {
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val shrink = chromeCollapsed && state.find == null && state.loadError == null && !imeOpen
+    val scale by animateFloatAsState(
+        targetValue = if (shrink) CollapsedChromeScale else 1f,
+        animationSpec = if (rememberReducedMotion()) snap() else spring(stiffness = Spring.StiffnessMediumLow),
+        label = "browsingPillScale",
+    )
     Box(modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -119,10 +135,17 @@ fun BrowsingScreen(
                         .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 )
                 .padding(bottom = ToolbarMetrics.BottomOffset)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = ToolbarMetrics.BrowsingSideInset)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                },
         )
     }
 }
+
+private const val CollapsedChromeScale = 0.84f
 
 /**
  * Pull to refresh's loading indicator, at the top center of the page: Material's, which morphs

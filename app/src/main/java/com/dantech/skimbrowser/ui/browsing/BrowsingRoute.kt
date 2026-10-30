@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.browser.LocalBrowserHost
@@ -68,6 +69,12 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
         search.clear()
     }
 
+    val density = LocalDensity.current
+    val chromeScroll = remember(tab.id, density.density) {
+        BrowsingChromeScroll(with(density) { 32.dp.roundToPx() })
+    }
+    var chromeCollapsed by remember(tab.id) { mutableStateOf(false) }
+
     BackHandler(enabled = state.find != null) { browsing.closeFind() }
     LaunchedEffect(shell, tab.id) {
         shell.tabManager().hitTargets.collect { (tabId, target) ->
@@ -98,8 +105,8 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onMore = { navigator.openMoreMenu(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
         ),
+        chromeCollapsed = chromeCollapsed,
         page = {
-            val density = LocalDensity.current
             // Insets are device pixels. A WebView's CSS px is one dp, so the page would pad by the
             // screen density if these were passed through unchanged.
             val top = density.cssPx(WindowInsets.statusBars.getTop(density))
@@ -113,7 +120,15 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
                 }
                 density.cssPx(WindowInsets.navigationBars.getBottom(density) + pill)
             }
-            WebViewHost(tab.id, Modifier.fillMaxSize(), contentTop = top, contentBottom = bottom)
+            WebViewHost(
+                tab.id,
+                Modifier.fillMaxSize(),
+                contentTop = top,
+                contentBottom = bottom,
+                onPageScroll = { scrollY, dy ->
+                    chromeScroll.onScrolled(scrollY, dy, chromeCollapsed)?.let { chromeCollapsed = it }
+                },
+            )
         },
     )
     SitePermissionRequests(tab.id, host.sitePermissions)

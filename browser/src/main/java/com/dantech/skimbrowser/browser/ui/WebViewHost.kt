@@ -27,6 +27,8 @@ fun WebViewHost(
     contentTop: Int = 0,
     /** CSS pixels of document padding below the page. It scrolls away under the bottom pill. */
     contentBottom: Int = 0,
+    /** Page scroll, in device pixels. The delta is positive when the page moves down. */
+    onPageScroll: ((scrollY: Int, dy: Int) -> Unit)? = null,
 ) {
     val pool = LocalBrowserHost.current.pool
     val generation by remember(pool, tabId) { pool.generation(tabId) }.collectAsState()
@@ -35,8 +37,16 @@ fun WebViewHost(
         AndroidView(
             factory = { context -> pool.showInHost(tabId) ?: View(context) },
             modifier = modifier,
-            update = { view -> (view as? SkimWebView)?.setContentScrollPadding(contentTop, contentBottom) },
-            onRelease = { view -> pool.releaseFromHost(tabId, view) },
+            update = { view ->
+                (view as? SkimWebView)?.let { web ->
+                    web.setContentScrollPadding(contentTop, contentBottom)
+                    web.onPageScroll = onPageScroll
+                }
+            },
+            onRelease = { view ->
+                (view as? SkimWebView)?.onPageScroll = null
+                pool.releaseFromHost(tabId, view)
+            },
         )
     }
 }

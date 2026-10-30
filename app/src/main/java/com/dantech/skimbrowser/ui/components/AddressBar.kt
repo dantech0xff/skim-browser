@@ -1,12 +1,14 @@
 package com.dantech.skimbrowser.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
@@ -67,8 +70,8 @@ enum class SiteIndicator {
  * @param address the text to show, already shortened by the caller (host on 05, URL without the
  *   scheme on 11).
  * @param loadProgress 0 to 1 while the page loads, null once it is done.
- * @param embedded the lock, address and Reader view as a row for the browsing pill, with no frame
- *   of its own. The framed bar is the default.
+ * @param embedded the lock, a centered domain inside a hairline field, and Reader view, as a row for
+ *   the browsing pill. The framed bar is the default.
  */
 @Composable
 fun AddressBar(
@@ -85,11 +88,7 @@ fun AddressBar(
     val colors = MaterialTheme.colorScheme
     val showReader = readerAvailable && indicator != SiteIndicator.Error
     if (embedded) {
-        AddressControls(
-            address, indicator, showReader, onSiteInfo, onEditAddress, onReader,
-            modifier.height(SlotSize),
-            compact = true,
-        )
+        CompactAddressField(address, indicator, showReader, onSiteInfo, onEditAddress, onReader, modifier.fillMaxHeight())
         return
     }
     Box(modifier.zIndex(1f)) {
@@ -123,14 +122,12 @@ private fun AddressControls(
     onEditAddress: () -> Unit,
     onReader: () -> Unit,
     modifier: Modifier,
-    compact: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val iconColors = IconButtonDefaults.iconButtonColors(contentColor = colors.onSurfaceVariant)
-    val slot = if (compact) SlotSize else IconSlot
     Row(
         // Without a trailing button the address keeps 16 dp from the end, as on 11.
-        modifier = modifier.padding(start = 4.dp, end = if (showReader || compact) 4.dp else 16.dp),
+        modifier = modifier.padding(start = 4.dp, end = if (showReader) 4.dp else 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -139,18 +136,12 @@ private fun AddressControls(
                 val secure = indicator == SiteIndicator.Secure
                 val siteLabel = stringResource(if (secure) R.string.cd_site_info_secure else R.string.cd_site_info)
                 val siteIcon = painterResource(if (secure) R.drawable.ic_lock else R.drawable.ic_public)
-                if (compact) {
-                    SlotButton(onClick = onSiteInfo, description = siteLabel) {
-                        Icon(siteIcon, null, Modifier.size(SiteIconSize), tint = colors.onSurfaceVariant)
-                    }
-                } else {
-                    IconButton(onClick = onSiteInfo, colors = iconColors) {
-                        Icon(siteIcon, siteLabel, Modifier.size(SiteIconSize))
-                    }
+                IconButton(onClick = onSiteInfo, colors = iconColors) {
+                    Icon(siteIcon, siteLabel, Modifier.size(SiteIconSize))
                 }
             }
 
-            SiteIndicator.Error -> Box(Modifier.size(slot), contentAlignment = Alignment.Center) {
+            SiteIndicator.Error -> Box(Modifier.size(IconSlot), contentAlignment = Alignment.Center) {
                 Icon(
                     painterResource(R.drawable.ic_error),
                     stringResource(R.string.cd_page_didnt_load),
@@ -164,7 +155,7 @@ private fun AddressControls(
             onClick = onEditAddress,
             modifier = Modifier
                 .weight(1f)
-                .height(slot)
+                .height(IconSlot)
                 .semantics { contentDescription = editLabel },
             colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurface),
             contentPadding = PaddingValues(0.dp),
@@ -180,14 +171,88 @@ private fun AddressControls(
         if (showReader) {
             val readerLabel = stringResource(R.string.cd_reader_view)
             val readerIcon = painterResource(R.drawable.ic_chrome_reader_mode)
-            if (compact) {
-                SlotButton(onClick = onReader, description = readerLabel) {
-                    Icon(readerIcon, null, Modifier.size(24.dp), tint = colors.onSurfaceVariant)
+            IconButton(onClick = onReader, colors = iconColors) {
+                Icon(readerIcon, readerLabel)
+            }
+        }
+    }
+}
+
+/**
+ * The address inside the browsing pill: the site mark, then the domain centered in a hairline field,
+ * then Reader view. The field is the part that opens the address for editing.
+ */
+@Composable
+private fun CompactAddressField(
+    address: String,
+    indicator: SiteIndicator,
+    showReader: Boolean,
+    onSiteInfo: () -> Unit,
+    onEditAddress: () -> Unit,
+    onReader: () -> Unit,
+    modifier: Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier.padding(horizontal = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when (indicator) {
+            SiteIndicator.Secure, SiteIndicator.NotSecure -> {
+                val secure = indicator == SiteIndicator.Secure
+                SlotButton(
+                    onClick = onSiteInfo,
+                    description = stringResource(if (secure) R.string.cd_site_info_secure else R.string.cd_site_info),
+                ) {
+                    Icon(
+                        painterResource(if (secure) R.drawable.ic_lock else R.drawable.ic_public),
+                        null,
+                        Modifier.size(SiteIconSize),
+                        tint = colors.onSurfaceVariant,
+                    )
                 }
-            } else {
-                IconButton(onClick = onReader, colors = iconColors) {
-                    Icon(readerIcon, readerLabel)
-                }
+            }
+
+            SiteIndicator.Error -> Box(Modifier.size(SlotSize), contentAlignment = Alignment.Center) {
+                Icon(
+                    painterResource(R.drawable.ic_error),
+                    stringResource(R.string.cd_page_didnt_load),
+                    Modifier.size(SiteIconSize),
+                    tint = colors.onSurfaceVariant,
+                )
+            }
+        }
+        val editLabel = stringResource(R.string.cd_edit_address, address)
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(vertical = 10.dp)
+                .border(1.dp, colors.outlineVariant, CircleShape)
+                .clip(CircleShape)
+                .clickable(onClick = onEditAddress, role = Role.Button)
+                .semantics { contentDescription = editLabel },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = address,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (showReader) {
+            SlotButton(onClick = onReader, description = stringResource(R.string.cd_reader_view)) {
+                Icon(
+                    painterResource(R.drawable.ic_chrome_reader_mode),
+                    null,
+                    Modifier.size(24.dp),
+                    tint = colors.onSurfaceVariant,
+                )
             }
         }
     }
