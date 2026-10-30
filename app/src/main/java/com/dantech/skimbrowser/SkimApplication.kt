@@ -14,9 +14,10 @@ class SkimApplication : Application() {
         super.onCreate()
         val entry = EntryPointAccessors.fromApplication(this, StartupEntryPoint::class.java)
         val scope = entry.appScope()
-        // The saved tabs are read once per process, before the first screen needs them.
-        // Purge does not wait for that read. Neither call opens storage on this thread.
+        // Tabs, preset shortcuts and the share purge start off this thread. None of them opens
+        // storage here; each call suspends onto its own dispatcher.
         scope.launch { entry.tabManager().restore() }
+        scope.launch { entry.shortcutSeeder().seed() }
         scope.launch(Dispatchers.IO) { purgeOldShares(cacheDir) }
     }
 }

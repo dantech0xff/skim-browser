@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "shortcuts": [
+    { "name": "Wikipedia", "url": "https://www.wikipedia.org" },
+    { "name": "YouTube", "url": "https://www.youtube.com" },
+    { "name": "Reddit", "url": "https://www.reddit.com" },
+    { "name": "TikTok", "url": "https://www.tiktok.com" },
+    { "name": "Grok", "url": "https://grok.com" },
+    { "name": "X", "url": "https://x.com" },
+    { "name": "GitHub", "url": "https://github.com" }
+  ]
+}

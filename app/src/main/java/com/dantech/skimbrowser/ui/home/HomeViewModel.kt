@@ -53,9 +53,9 @@ data class ContinueCard(
 )
 
 /**
- * What Home (04) shows. The first Home, before anything is browsed, needs no flag of its own: the
- * hero card hides while no tab shows a page ([showsHero]), Continue with Skim hides while there is no
- * page chat ([showsContinue]), and Shortcuts shows only its Add tile while [shortcuts] is empty.
+ * What Home (04) shows. The hero card hides while no tab shows a page ([showsHero]) and Continue
+ * with Skim hides while there is no page chat ([showsContinue]). Shortcuts shows only its Add tile
+ * while [shortcuts] is empty. A fresh install already has the preset shortcuts, so that list starts full.
  */
 @Immutable
 data class HomeUiState(

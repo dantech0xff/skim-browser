@@ -89,10 +89,11 @@ data class HomeActions(
  * "Summarize my N open tabs", Shortcuts with the Add tile, and Continue with Skim, over the floating
  * [toolbar].
  *
- * The first Home has none of the browsing parts: the hero card shows only while N is above 0,
- * Continue with Skim only while there is a page chat, and Shortcuts holds only the Add tile until
- * one is added. A long press on a shortcut opens its menu (15) under the tile, which turns
- * secondaryContainer meanwhile.
+ * The hero card shows only while N is above 0 and Continue with Skim only while there is a page
+ * chat. Shortcuts lists the saved shortcuts, then the Add tile; with none saved it holds only
+ * that tile. A fresh install already has the preset shortcuts, so the first Home is not an empty grid.
+ * A long press on a shortcut opens its menu (15) under the tile, which turns secondaryContainer
+ * meanwhile.
  *
  * The content scrolls, with room at its end for the toolbar, the 24 dp under it and the navigation
  * bar, so its last part can always be scrolled clear of the toolbar.

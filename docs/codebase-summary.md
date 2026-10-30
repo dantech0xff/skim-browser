@@ -22,6 +22,8 @@ Navigation keys live in `ui/navigation/SkimKeys.kt`. `SkimNavDisplay` registers 
 
 Room database `skim.db` (schema under `data/schemas`). Preferences DataStore `skim_settings.preferences_pb`. Tab state files in `tabstate/`, thumbnails in `thumbs/`. Incognito share files under `cache/shared/incognito`, removed when the session ends.
 
+Home shortcuts are seeded once from `data/src/main/assets/config/default-shortcuts.json` while that table is still empty. `ShortcutCatalog` is the source, so a remote config replaces the binding and not the seeder. The `shortcuts_seeded` preference is install bookkeeping, not a user setting. Removing every shortcut leaves the Add tile and does not seed again.
+
 Incognito tabs are not rows in Room. A chat id that is still negative (memory only) is stored as null (`TabRepository` keeps `chatId` only when it is positive).
 
 ## AI

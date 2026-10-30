@@ -19,6 +19,9 @@ abstract class ShortcutDao {
     @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM shortcuts")
     abstract suspend fun nextPosition(): Int
 
+    @Query("SELECT COUNT(*) FROM shortcuts")
+    abstract suspend fun count(): Int
+
     @Insert
     abstract suspend fun insert(shortcut: ShortcutEntity): Long
 
@@ -32,6 +35,19 @@ abstract class ShortcutDao {
     @Transaction
     open suspend fun add(name: String, url: String): Long =
         insert(ShortcutEntity(name = name, url = url, position = nextPosition()))
+
+    /**
+     * Writes [presets] at positions 0, 1, … when the table is empty. Returns false when a
+     * shortcut is already stored, and does not move it.
+     */
+    @Transaction
+    open suspend fun insertPresetsIfEmpty(presets: List<ShortcutEntity>): Boolean {
+        if (count() > 0) return false
+        presets.forEachIndexed { index, preset ->
+            insert(preset.copy(id = 0, position = index))
+        }
+        return true
+    }
 
     /** Deletes shortcut [id] and returns it, or returns null when it does not exist. */
     @Transaction

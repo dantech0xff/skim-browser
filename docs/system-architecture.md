@@ -77,7 +77,7 @@ Chats are stored when "Keep chat history" is on. A chat id stays negative until 
 |---|---|---|
 | Tabs, groups | Room `tabs`, `tab_groups` | Close (Undo, then delete), Clear browsing data |
 | History | Room | Remove one row, or clear browsing data |
-| Bookmarks, shortcuts | Room | Delete, or clear browsing data for shortcuts as that screen defines |
+| Bookmarks, shortcuts | Room. Shortcuts are seeded once from `default-shortcuts.json` while the table is empty | Delete, or clear browsing data for shortcuts as that screen defines. Deleting every shortcut does not seed again |
 | Skim chats | Room | Skim history delete, Clear Skim history, Delete all AI data |
 | Site AI choice | Room `site_permissions` | Delete all AI data. Clear Skim history keeps it |
 | Settings, install id | DataStore | Clear browsing data does not rotate the install id |
