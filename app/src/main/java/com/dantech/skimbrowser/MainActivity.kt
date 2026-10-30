@@ -17,13 +17,18 @@ import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.browser.TabManager
+import com.dantech.skimbrowser.browser.downloads.DownloadEvent
 import com.dantech.skimbrowser.browser.downloads.DownloadTracker
+import com.dantech.skimbrowser.browser.toOpenPages
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
+import com.dantech.skimbrowser.ui.browsing.DownloadNotice
+import com.dantech.skimbrowser.ui.shell.LocalOpenPages
 import dagger.hilt.android.AndroidEntryPoint
 import com.dantech.skimbrowser.ui.shell.IncomingIntents
 import com.dantech.skimbrowser.ui.shell.SkimApp
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.map
 
 /**
  * The only activity. Rotation, dark mode and font changes are declared in the manifest's
@@ -75,9 +80,19 @@ class MainActivity : ComponentActivity() {
         window.decorView.post { incognito.purgeStale() }
         // A recreated Activity gets the intent that started the first one again: that link was opened.
         if (savedInstanceState == null) receiveLink(intent)
+        val openPages = browserHost.pool.toOpenPages()
+        val downloadNotices = downloads.events.map { it.toNotice() }
         setContent {
-            CompositionLocalProvider(LocalBrowserHost provides browserHost) {
-                SkimApp(browserHost, pendingLinks)
+            CompositionLocalProvider(
+                LocalBrowserHost provides browserHost,
+                LocalOpenPages provides openPages,
+            ) {
+                SkimApp(
+                    secure = browserHost.secure,
+                    openExternal = browserHost.activityHost::startExternal,
+                    downloadNotices = downloadNotices,
+                    pendingLinks = pendingLinks,
+                )
             }
         }
     }
@@ -138,5 +153,10 @@ class MainActivity : ComponentActivity() {
         /** DownloadManager's signature permission: no other app can fake a finished download. */
         const val DOWNLOAD_COMPLETED_PERMISSION = "android.permission.SEND_DOWNLOAD_COMPLETED_INTENTS"
     }
+}
+
+private fun DownloadEvent.toNotice(): DownloadNotice = when (this) {
+    is DownloadEvent.DownloadCompleted -> DownloadNotice.Completed(fileName, uri, mime, incognito)
+    is DownloadEvent.DownloadFailed -> DownloadNotice.Failed(fileName, incognito)
 }
 

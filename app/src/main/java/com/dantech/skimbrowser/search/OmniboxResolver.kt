@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.search
 
-import com.dantech.skimbrowser.data.isWebUrl
+import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.data.settings.SearchEngine
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 

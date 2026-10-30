@@ -1,9 +1,13 @@
 package com.dantech.skimbrowser.ui.navigation
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
+import androidx.navigation3.scene.OverlayScene
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -14,8 +18,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.dantech.skimbrowser.BuildConfig
-import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.ui.ai.AiPermissionRoute
 import com.dantech.skimbrowser.ui.ai.AskPageRoute
@@ -58,16 +62,18 @@ import com.dantech.skimbrowser.ui.shell.rememberSecureEntryDecorator
  * Every destination has a key; its entry is registered in [skimEntries] by the part of the app that
  * draws it. A key without an entry yet shows nothing, and Back leaves it.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SkimNavDisplay(
     backStack: NavBackStack<NavKey>,
     navigator: SkimNavigator,
+    secure: WindowPrivacy,
     modifier: Modifier = Modifier,
 ) {
-    val secure = LocalBrowserHost.current.secure
     val tabs by rememberShell().tabs().state.collectAsStateWithLifecycle()
     val entries = remember(navigator) { skimEntries(navigator) }
     val strategies = remember { listOf(DialogSceneStrategy<NavKey>(), BottomSheetSceneStrategy<NavKey>()) }
+    val spatial = MaterialTheme.motionScheme.slowSpatialSpec<IntOffset>()
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
@@ -78,6 +84,27 @@ fun SkimNavDisplay(
             rememberSecureEntryDecorator(backStack.toList(), { entries(it).contentKey }, tabs, secure),
         ),
         sceneStrategies = strategies,
+        transitionSpec = {
+            screenTransition(
+                overlay = targetState is OverlayScene<*> || initialState is OverlayScene<*>,
+                forward = true,
+                spatial = spatial,
+            )
+        },
+        popTransitionSpec = {
+            screenTransition(
+                overlay = targetState is OverlayScene<*> || initialState is OverlayScene<*>,
+                forward = false,
+                spatial = spatial,
+            )
+        },
+        predictivePopTransitionSpec = { _ ->
+            screenTransition(
+                overlay = targetState is OverlayScene<*> || initialState is OverlayScene<*>,
+                forward = false,
+                spatial = spatial,
+            )
+        },
         entryProvider = entries,
     )
 }
@@ -155,10 +182,10 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         entry<BookmarksKey> { key -> BookmarksRoute(key, navigator) }
         entry<LicensesKey> { LicensesRoute(navigator) }
         entry<SearchEngineDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            SearchEngineRoute(navigator)
+            SearchEngineRoute(onFinished = navigator::back)
         }
         entry<ThemeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
-            ThemeRoute(navigator)
+            ThemeRoute(onFinished = navigator::back)
         }
         entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ClearBrowsingDataRoute(navigator)

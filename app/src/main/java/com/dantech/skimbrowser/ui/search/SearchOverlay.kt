@@ -5,6 +5,7 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.InterceptPlatformTextInput
@@ -94,9 +96,11 @@ fun searchViewModel(): SearchViewModel = hiltViewModel(key = SEARCH_VIEW_MODEL_K
  * page. Clear text empties the field and keeps the layer and the keyboard. Close search and system
  * Back call [onClose]: the layer is a window of its own, so Back reaches it before the browser's.
  *
- * The layer is a dialog window drawn edge to edge on surfaceContainerLow. In an incognito tab the
- * window is always secure, whatever the window under it is at that moment, and the keyboard is asked
- * not to learn from what is typed.
+ * The layer is a dialog window drawn edge to edge on surfaceContainerLow. It expands from the top
+ * with [androidx.compose.material3.MotionScheme.defaultSpatialSpec], and the field keeps the 04b
+ * insets (16 dp from the sides, 8 dp under the status bar). In an incognito tab the window is
+ * always secure, whatever the window under it is at that moment, and the keyboard is asked not to
+ * learn from what is typed.
  *
  * @param onAskSkim the Ask Skim row, with the text without its outer white space.
  */
@@ -123,6 +127,7 @@ fun SearchOverlay(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SearchLayer(
     search: SearchViewModel,
@@ -134,14 +139,19 @@ private fun SearchLayer(
     val state by search.state.collectAsStateWithLifecycle()
     val colors = MaterialTheme.colorScheme
     val focus = remember { FocusRequester() }
-    val fade = remember { Animatable(0f) }
-    val fadeSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    val expand = remember { Animatable(SEARCH_EXPAND_FROM) }
+    val expandSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     LaunchedEffect(Unit) { focus.requestFocus() }
-    LaunchedEffect(Unit) { fade.animateTo(1f, fadeSpec) }
+    LaunchedEffect(Unit) { expand.animateTo(1f, expandSpec) }
     Column(
         Modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = fade.value }
+            .graphicsLayer {
+                val scale = expand.value
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0.5f, 0f)
+            }
             .background(colors.surfaceContainerLow),
     ) {
         SearchField(
@@ -388,6 +398,9 @@ internal fun NoKeyboardLearning(enabled: Boolean, content: @Composable () -> Uni
 
 /** The key of [searchViewModel] in the browser destination's store. */
 internal const val SEARCH_VIEW_MODEL_KEY = "search"
+
+/** The suggestions layer starts just short of full size and grows from the top. */
+private const val SEARCH_EXPAND_FROM = 0.92f
 
 private val BarHeight = 56.dp
 

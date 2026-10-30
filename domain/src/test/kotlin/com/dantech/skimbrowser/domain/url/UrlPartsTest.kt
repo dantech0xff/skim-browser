@@ -1,4 +1,4 @@
-package com.dantech.skimbrowser.data
+package com.dantech.skimbrowser.domain.url
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

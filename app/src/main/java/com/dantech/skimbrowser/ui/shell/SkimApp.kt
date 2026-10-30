@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ui.shell
 
+import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -18,8 +19,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
-import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.di.ShellEntryPoint
+import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
@@ -38,6 +40,7 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import com.dantech.skimbrowser.ui.theme.isDark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -56,7 +59,12 @@ import kotlinx.coroutines.withTimeoutOrNull
  * opens in a new normal tab, shown at once.
  */
 @Composable
-fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
+fun SkimApp(
+    secure: WindowPrivacy,
+    openExternal: (Intent) -> Unit,
+    downloadNotices: Flow<DownloadNotice>,
+    pendingLinks: ReceiveChannel<String>,
+) {
     val shell = rememberShell()
     val settings by remember(shell) { shell.settings().settings }.collectAsStateWithLifecycle(initialValue = null)
     val onboarded by produceState<Boolean?>(initialValue = null, shell) { value = startUp(shell) }
@@ -77,10 +85,10 @@ fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
     val navigatorFactory = remember(context) {
         EntryPoints.get(context, NavigatorEntryPoint::class.java).navigatorFactory()
     }
-    val navigator = remember(backStack, scope, host.secure) {
+    val navigator = remember(backStack, scope, secure) {
         // A restored back stack may point at tabs that did not come back; it is fixed once, before it shows.
         backStack.reconcileWith(tabsState)
-        navigatorFactory.create(backStack, host.secure, scope)
+        navigatorFactory.create(backStack, secure, scope)
     }
     val keys = backStack.toList()
     val incognitoSurface = secureTarget(keys, tabsState)
@@ -89,11 +97,11 @@ fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
         target = incognitoSurface,
         hasIncognitoTabs = tabsState.tabs.any { it.incognito },
         armed = navigator.secureArming,
-        secure = host.secure,
+        secure = secure,
     )
     SystemBarsEffect(theme.isDark(isSystemInDarkTheme(), incognitoSurface))
     // A download that ends is told on whatever screen is up, with the one snackbar host below.
-    DownloadSnackbarEffect(shell.downloads(), shell.snackbar(), host.secure)
+    DownloadSnackbarEffect(downloadNotices, shell.snackbar(), secure)
     LaunchedEffect(navigator) {
         // The channel belongs to the Activity, so each link is received here exactly once.
         for (url in pendingLinks) {
@@ -105,11 +113,11 @@ fun SkimApp(host: BrowserHost, pendingLinks: ReceiveChannel<String>) {
     SkimTheme(theme, incognito = incognitoSurface) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
-                SkimNavDisplay(backStack, navigator)
+                SkimNavDisplay(backStack, navigator, secure)
                 SkimSnackbarHost(
                     controller = shell.snackbar(),
                     placement = topScreen(keys)?.placement ?: SnackbarPlacement.Bottom,
-                    onAction = { action -> interpret(action, navigator, shell.undo(), host.activityHost) },
+                    onAction = { action -> interpret(action, navigator, shell.undo(), openExternal) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }

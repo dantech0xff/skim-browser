@@ -95,7 +95,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.filterNotNull
+import android.os.Looper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -419,7 +419,15 @@ class NewTabPageRouteTest {
 
         composeRule.onNodeWithText("Wikipedia").performTouchInput { longClick() }
         composeRule.onNodeWithText("Remove").performClick()
-        val message = runBlocking { withTimeout(5_000) { snackbarController.current.filterNotNull().first() } }
+        // The delete resumes on the main looper after Room returns. waitUntil only polls, so idle
+        // the looper on each check. runBlocking here would hold that looper and the snackbar
+        // would never be posted.
+        composeRule.waitUntil(5_000) {
+            composeRule.waitForIdle()
+            shadowOf(Looper.getMainLooper()).idle()
+            snackbarController.current.value != null
+        }
+        val message = checkNotNull(snackbarController.current.value)
         assertEquals(UiText.Res(R.string.snackbar_shortcut_removed), message.text)
         assertTrue(message.action is SnackbarAction.Undo)
         assertTrue(runBlocking { withTimeout(5_000) { shortcutRepository.observe().first { it.isEmpty() } } }.isEmpty())
@@ -429,8 +437,13 @@ class NewTabPageRouteTest {
         composeRule.waitForIdle()
         destination.viewModelStore.clear()
         snackbarController.onActionClicked(message.id)
+        composeRule.waitUntil(5_000) {
+            composeRule.waitForIdle()
+            shadowOf(Looper.getMainLooper()).idle()
+            runBlocking { shortcutRepository.observe().first() }.isNotEmpty()
+        }
 
-        val back = runBlocking { withTimeout(5_000) { shortcutRepository.observe().first { it.isNotEmpty() } } }
+        val back = runBlocking { shortcutRepository.observe().first() }
         assertEquals(listOf("Wikipedia" to "https://www.wikipedia.org"), back.map { it.name to it.url })
     }
 
