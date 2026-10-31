@@ -165,7 +165,7 @@ private val ArtIconSize = 56.dp
 private val ButtonColumnWidth = 280.dp
 
 /** Space kept under the content for the bottom cluster, above the navigation bar inset. */
-private val AboveToolbar = ToolbarMetrics.BottomOffset + ToolbarMetrics.BrowsingClusterHeight + 32.dp
+private val AboveToolbar = ToolbarMetrics.BrowsingBottomOffset + ToolbarMetrics.BrowsingClusterHeight + 32.dp
 
 @PreviewLightDark
 @Composable

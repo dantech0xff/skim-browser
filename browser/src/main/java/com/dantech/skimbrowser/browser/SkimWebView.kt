@@ -96,8 +96,9 @@ class SkimWebView @JvmOverloads constructor(
 
     /**
      * Pads the document, not the view. The padding is the start and end of the page, so it scrolls
-     * away and the page can draw under the status bar and the bottom pill. A later page load applies
-     * it again ([applyContentScrollPadding]).
+     * away and the page can draw under the status bar and the bottom pill. A fixed or sticky bar
+     * pinned to the top of the viewport (YouTube's masthead) is moved down by the same amount and
+     * stays there. A later page load applies it again ([applyContentScrollPadding]).
      */
     fun setContentScrollPadding(topPx: Int, bottomPx: Int) {
         val top = topPx.coerceIn(0, MAX_CONTENT_PAD)
@@ -111,7 +112,7 @@ class SkimWebView @JvmOverloads constructor(
     /** Writes the current padding into the page that is showing. No-op until one is loaded. */
     fun applyContentScrollPadding() {
         if (url == null) return
-        evaluateJavascript(contentScrollPaddingScript(contentPadTop, contentPadBottom), null)
+        evaluateJavascript(contentScrollPaddingScript(contentPadTop, contentPadBottom, width), null)
     }
 
     /**
@@ -302,12 +303,163 @@ class SkimWebView @JvmOverloads constructor(
         private const val FOCUS_NODE_TITLE = "title"
         private const val MAX_CONTENT_PAD = 512
 
-        /** A style tag on `html`. The padding scrolls with the page; it is not a fixed inset. */
-        internal fun contentScrollPaddingScript(topPx: Int, bottomPx: Int): String =
-            "(function(){var id='skim-scroll-pad';var node=document.getElementById(id);" +
-                "if(!node){node=document.createElement('style');node.id=id;" +
-                "(document.head||document.documentElement).appendChild(node);}" +
-                "node.textContent='html{padding-top:${topPx}px !important;padding-bottom:${bottomPx}px !important;}';})();"
+        /**
+         * Document padding on `html`, in the page's own CSS pixels. [topDp] and [bottomDp] are dp.
+         * A page laid out wider than the screen uses more CSS pixels for the same gap.
+         *
+         * Top padding is skipped when `html` or `body` already clears `safe-area-inset-top`. An inline
+         * style beats a stylesheet that resets `html` padding. Fixed and sticky boxes pinned near the
+         * top (a masthead at `top: 0`, a player at `top: 56px`) move down by the same gap. A layer
+         * pinned to both top and bottom, such as a full-screen player, stays put. The document
+         * padding still scrolls away; the bars stay below the status bar.
+         */
+        internal fun contentScrollPaddingScript(topDp: Int, bottomDp: Int, viewWidthPx: Int): String =
+            """
+            (function(){
+              var root=document.documentElement;if(!root)return;
+              var XHTML='http://www.w3.org/1999/xhtml';
+              function px(v){var n=parseFloat(v);return n>0?n:0;}
+              function contained(el){
+                var p=el.parentElement;
+                while(p&&p!==root){
+                  var s=getComputedStyle(p);
+                  if(s.transform!=='none'||s.filter!=='none'||s.perspective!=='none')return true;
+                  if((s.willChange||'').indexOf('transform')>=0)return true;
+                  p=p.parentElement;
+                }
+                return false;
+              }
+              function positionedAncestor(el){
+                var p=el.parentElement;
+                while(p&&p!==root){
+                  if(getComputedStyle(p).position!=='static')return true;
+                  p=p.parentElement;
+                }
+                return false;
+              }
+              function clearTop(el){
+                el.style.removeProperty('top');
+                el.removeAttribute('data-skim-fixed-top');
+              }
+              function readBase(el){
+                var prev=el.style.getPropertyValue('top');
+                var pri=el.style.getPropertyPriority('top');
+                var marked=el.hasAttribute('data-skim-fixed-top');
+                if(marked)el.style.removeProperty('top');
+                var raw=getComputedStyle(el).top;
+                if(marked&&prev)el.style.setProperty('top',prev,pri);
+                return raw;
+              }
+              function syncOne(el,delta){
+                if(!el||el.nodeType!==1)return;
+                if(el.namespaceURI&&el.namespaceURI!==XHTML)return;
+                var marked=el.hasAttribute('data-skim-fixed-top');
+                if(delta<=0){if(marked)clearTop(el);return;}
+                var cs=getComputedStyle(el);
+                var pos=cs.position;
+                if(pos!=='fixed'&&pos!=='sticky'&&pos!=='absolute'){if(marked)clearTop(el);return;}
+                if(pos==='absolute'&&positionedAncestor(el)){if(marked)clearTop(el);return;}
+                if((pos==='fixed'||pos==='sticky')&&contained(el)){if(marked)clearTop(el);return;}
+                if(cs.top==='auto'){if(marked)clearTop(el);return;}
+                var base=parseFloat(marked?readBase(el):cs.top);
+                if(!(base>=0)||base>128){if(marked)clearTop(el);return;}
+                if(base<=0.5&&cs.bottom!=='auto'&&parseFloat(cs.bottom)<=0.5){if(marked)clearTop(el);return;}
+                var rect=el.getBoundingClientRect();
+                var vh=window.innerHeight||1;
+                if(base<=0.5&&rect.height>vh*0.85){if(marked)clearTop(el);return;}
+                var safe=root.__skimSafeTop||0;
+                if(!marked&&safe>0&&Math.abs(base-safe)<1)return;
+                var next=Math.round(base+delta);
+                el.style.setProperty('top',next+'px','important');
+                el.setAttribute('data-skim-fixed-top',String(Math.round(base)));
+              }
+              function syncAll(delta){
+                var seen=0;
+                function walk(node){
+                  if(!node||seen>8000)return;
+                  var kids=node.children;
+                  if(!kids)return;
+                  for(var i=0;i<kids.length;i++){
+                    if(seen>8000)return;
+                    var el=kids[i];
+                    seen++;
+                    syncOne(el,delta);
+                    if(el.shadowRoot)walk(el.shadowRoot);
+                    walk(el);
+                  }
+                }
+                if(document.body)walk(document.body);
+              }
+              var dpr=window.devicePixelRatio||1;
+              var viewDp=${viewWidthPx}>0?${viewWidthPx}/dpr:0;
+              var inner=window.innerWidth||0;
+              var cssPerDp=viewDp>0&&inner>0?inner/viewDp:1;
+              var topWanted=Math.round(${topDp}*cssPerDp);
+              var bottomWanted=Math.round(${bottomDp}*cssPerDp);
+              var probe=document.createElement('div');
+              probe.style.cssText='position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)';
+              root.appendChild(probe);
+              var safeTop=px(getComputedStyle(probe).paddingTop);
+              probe.remove();
+              var applied=px(root.getAttribute('data-skim-top'));
+              var foreign=Math.max(0,px(getComputedStyle(root).paddingTop)-applied);
+              if(document.body){
+                var bodyStyle=getComputedStyle(document.body);
+                foreign+=px(bodyStyle.paddingTop);
+                var bodyMargin=px(bodyStyle.marginTop);
+                if(safeTop>0&&bodyMargin+0.5>=safeTop)foreign+=bodyMargin;
+              }
+              var top=topWanted;
+              if(safeTop>0&&foreign+0.5>=Math.min(safeTop,topWanted))top=0;
+              root.__skimApplying=true;
+              try{
+                if(top>0){root.style.setProperty('padding-top',top+'px','important');root.setAttribute('data-skim-top',String(top));}
+                else{root.style.removeProperty('padding-top');root.removeAttribute('data-skim-top');}
+                root.style.setProperty('padding-bottom',bottomWanted+'px','important');
+                root.__skimTop=top;
+                root.__skimSafeTop=safeTop;
+                syncAll(top);
+              }finally{root.__skimApplying=false;}
+              if(!root.__skimPadHook){
+                root.__skimPadHook=1;
+                var queued=[];
+                var scheduled=false;
+                function flush(){
+                  scheduled=false;
+                  if(root.__skimApplying)return;
+                  var batch=queued;queued=[];
+                  var delta=root.__skimTop||0;
+                  root.__skimApplying=true;
+                  try{for(var i=0;i<batch.length;i++)syncOne(batch[i],delta);}
+                  finally{root.__skimApplying=false;}
+                }
+                function enqueue(el){
+                  if(!el||el.nodeType!==1||queued.length>2000)return;
+                  queued.push(el);
+                  var kids=el.children;
+                  if(kids)for(var i=0;i<kids.length;i++)enqueue(kids[i]);
+                  if(el.shadowRoot){
+                    var shadowKids=el.shadowRoot.children;
+                    for(var s=0;s<shadowKids.length;s++)enqueue(shadowKids[s]);
+                  }
+                }
+                new MutationObserver(function(records){
+                  if(root.__skimApplying)return;
+                  for(var i=0;i<records.length;i++){
+                    var rec=records[i];
+                    if(rec.type==='attributes')enqueue(rec.target);
+                    else{
+                      var added=rec.addedNodes;
+                      for(var j=0;j<added.length;j++)enqueue(added[j]);
+                    }
+                  }
+                  if(!queued.length||scheduled)return;
+                  scheduled=true;
+                  requestAnimationFrame(flush);
+                }).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+              }
+            })();
+            """.trimIndent()
     }
 }
 

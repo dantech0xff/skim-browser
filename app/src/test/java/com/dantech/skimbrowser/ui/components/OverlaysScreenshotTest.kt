@@ -355,7 +355,7 @@ internal fun PageBehind() {
                         .union(WindowInsets.ime)
                         .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 )
-                .padding(bottom = ToolbarMetrics.BottomOffset)
+                .padding(bottom = ToolbarMetrics.BrowsingBottomOffset)
                 .padding(horizontal = ToolbarMetrics.BrowsingSideInset),
         )
     }

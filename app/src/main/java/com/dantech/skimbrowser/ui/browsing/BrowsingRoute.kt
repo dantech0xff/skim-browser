@@ -116,7 +116,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
                 0
             } else {
                 val pill = with(density) {
-                    (ToolbarMetrics.BottomOffset + ToolbarMetrics.BrowsingClusterHeight).roundToPx()
+                    (ToolbarMetrics.BrowsingBottomOffset + ToolbarMetrics.BrowsingClusterHeight).roundToPx()
                 }
                 density.cssPx(WindowInsets.navigationBars.getBottom(density) + pill)
             }

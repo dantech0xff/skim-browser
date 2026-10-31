@@ -100,7 +100,7 @@ fun BrowsingScreen(
                     if (imeOpen) {
                         Modifier
                             .windowInsetsPadding(WindowInsets.ime)
-                            .padding(bottom = ToolbarMetrics.BrowsingClusterHeight + ToolbarMetrics.BottomOffset)
+                            .padding(bottom = ToolbarMetrics.BrowsingClusterHeight + ToolbarMetrics.BrowsingBottomOffset)
                     } else {
                         Modifier
                     },
@@ -134,7 +134,7 @@ fun BrowsingScreen(
                         .union(WindowInsets.ime)
                         .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
                 )
-                .padding(bottom = ToolbarMetrics.BottomOffset)
+                .padding(bottom = ToolbarMetrics.BrowsingBottomOffset)
                 .padding(horizontal = ToolbarMetrics.BrowsingSideInset)
                 .graphicsLayer {
                     scaleX = scale
@@ -145,7 +145,7 @@ fun BrowsingScreen(
     }
 }
 
-private const val CollapsedChromeScale = 0.84f
+private const val CollapsedChromeScale = 0.70f
 
 /**
  * Pull to refresh's loading indicator, at the top center of the page: Material's, which morphs

@@ -59,8 +59,8 @@ enum class SnackbarPlacement(val bottomOffset: Dp) {
     /** 8 above the floating toolbar: the toolbar sits 24 above the inset and is 64 high. */
     AboveToolbar(ToolbarMetrics.BottomOffset + ToolbarMetrics.Height + 8.dp),
 
-    /** 8 above the browsing pill: the 56 dp row sits 24 above the inset. */
-    AboveBrowsingChrome(ToolbarMetrics.BottomOffset + ToolbarMetrics.BrowsingClusterHeight + 8.dp),
+    /** 8 above the browsing pill: the 56 dp row sits 8 above the inset. */
+    AboveBrowsingChrome(ToolbarMetrics.BrowsingBottomOffset + ToolbarMetrics.BrowsingClusterHeight + 8.dp),
 
     /** Screens without a floating toolbar. */
     Bottom(16.dp),

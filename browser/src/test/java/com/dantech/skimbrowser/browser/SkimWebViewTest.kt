@@ -30,11 +30,18 @@ class SkimWebViewTest {
 
     @Test
     fun scrollPaddingIsDocumentSpaceThatScrollsAway() {
-        val script = SkimWebView.contentScrollPaddingScript(48, 160)
+        val script = SkimWebView.contentScrollPaddingScript(48, 160, 1080)
 
-        assertTrue(script.contains("padding-top:48px"))
-        assertTrue(script.contains("padding-bottom:160px"))
+        assertTrue(script.contains("padding-top"))
+        assertTrue(script.contains("padding-bottom"))
+        assertTrue(script.contains("48"))
+        assertTrue(script.contains("160"))
+        assertTrue(script.contains("safe-area-inset-top"))
+        assertTrue(script.contains("data-skim-fixed-top"))
+        assertTrue(script.contains("'fixed'"))
+        assertTrue(script.contains("'sticky'"))
         assertFalse(script.contains("position:fixed"))
+        assertFalse(script.contains("position: fixed"))
 
         view.setContentScrollPadding(48, 160)
         assertEquals(48, view.contentPadTop)
