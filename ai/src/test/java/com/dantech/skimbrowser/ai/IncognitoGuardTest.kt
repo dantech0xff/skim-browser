@@ -59,7 +59,7 @@ class IncognitoGuardTest {
             )
             val sites = SitePermissionRepository(db.sitePermissionDao(), db)
             val service = SkimAiService(
-                ClaudeClientProvider(server.baseUrl, "test-key") { "install" },
+                ClaudeClientProvider(server.baseUrl) { "install" },
                 sites,
                 settings,
             )
@@ -89,7 +89,7 @@ class IncognitoGuardTest {
             },
         )
         return SkimAiService(
-            ClaudeClientProvider(baseUrl, "test-key") { "install" },
+            ClaudeClientProvider(baseUrl) { "install" },
             SitePermissionRepository(db.sitePermissionDao(), db),
             settings,
         )

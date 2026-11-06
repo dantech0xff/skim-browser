@@ -25,7 +25,7 @@ interface SettingsRepository {
 
     /**
      * A random UUID created on first use and kept for the life of the installation (sent as
-     * `X-Skim-Install`). It is never logged and is not part of [SkimSettings].
+     * `X-Skim-Install` on every model request). It is never logged and is not part of [SkimSettings].
      */
     suspend fun installId(): String
 }

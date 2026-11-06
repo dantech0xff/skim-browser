@@ -10,10 +10,10 @@ You need JDK 17 or newer. The Gradle daemon in this repo is tested on JDK 25. Yo
 
 ```
 sdk.dir=/path/to/android-sdk
-skim.anthropicApiKey=
+skim.aiProxyUrl=
 ```
 
-Leave `skim.anthropicApiKey` empty unless you want live answers from a debug build. A debug APK embeds that key. Do not commit `local.properties`, a proxy URL, or a key. `gradle.properties` keeps `skim.aiProxyUrl` unset.
+Leave `skim.aiProxyUrl` empty unless you want live Ask Skim. No build embeds an Anthropic key. Do not commit `local.properties`, a proxy URL, or a key. `gradle.properties` keeps `skim.aiProxyUrl` unset. Local Ask Skim is [Run and deploy the AI proxy](docs/proxy.md).
 
 From the repo root, pass `--no-configuration-cache`. KSP does not serialize into the configuration cache.
 
@@ -71,4 +71,4 @@ Do not install a system image for this project. Instrumented tests run on the de
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on every push to `master`. The job runs unit tests, `:app:lintDebug`, the Kover line floor, and `:app:assembleReleaseSmoke`. It writes `local.properties` with an empty `skim.anthropicApiKey` and no proxy URL. It installs Android platform 37.0 and build-tools 36.0.0, which is the pair a clean SDK downloaded for `compileSdk { version = release(37) }`. Gradle dependencies are cached by `gradle/actions/setup-gradle`.
+`.github/workflows/ci.yml` runs on every pull request and on every push to `master`. The job runs unit tests, `:app:lintDebug`, the Kover line floor, and `:app:assembleReleaseSmoke`. It writes `local.properties` with an empty `skim.aiProxyUrl` and no key. It installs Android platform 37.0 and build-tools 36.0.0, which is the pair a clean SDK downloaded for `compileSdk { version = release(37) }`. Gradle dependencies are cached by `gradle/actions/setup-gradle`. `.github/workflows/proxy.yml` runs the Worker tests in `proxy/` with no secrets.

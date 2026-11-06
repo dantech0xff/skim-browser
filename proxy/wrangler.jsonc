@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "skim-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-06",
+  "upload_source_maps": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "INSTALL_QUOTA",
+        "class_name": "InstallQuota"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["InstallQuota"]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "skim-proxy",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "types": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.6.0",
+    "@msw/cloudflare": "^0.2.0",
+    "msw": "^3.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.158.0"
+  }
+}

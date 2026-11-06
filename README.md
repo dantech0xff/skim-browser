@@ -18,18 +18,16 @@ Where each module starts, and which package owns its Hilt bindings, is `docs/cod
 
 - JDK 17 or newer (the Gradle daemon in this repo is tested on 25).
 - Android SDK with compileSdk 37. `local.properties` points at it with `sdk.dir`. That file is gitignored.
-- A debug Anthropic key only if you want live answers. Tests use MockWebServer and do not need a key.
+- No Anthropic key. Live Ask Skim uses the proxy in `proxy/`. Tests use MockWebServer and do not need a key.
 
 ## local.properties
 
 ```
 sdk.dir=/path/to/android-sdk
-skim.anthropicApiKey=
+skim.aiProxyUrl=
 ```
 
-`skim.anthropicApiKey` is read only by the debug build, which calls `https://api.anthropic.com` directly. Use a key with a spend limit. Do not distribute a debug APK: the key is inside it. Leave the property empty to build and run without live AI; Ask Skim then fails closed.
-
-`skim.aiProxyUrl` may also live here for a local release build. Do not commit it. `gradle.properties` must keep `skim.aiProxyUrl` unset. `CheckSkimReleaseConfig` fails the release build if that property is set in the committed file.
+`skim.aiProxyUrl` is the Skim proxy for debug and for release. Leave it empty to build without live AI. Ask Skim then fails before it opens a connection. Debug may use `http://127.0.0.1:8787` for a local Worker. Release still requires https. Do not commit the URL. `gradle.properties` must keep `skim.aiProxyUrl` unset. How to run the Worker is [Run and deploy the AI proxy](docs/proxy.md).
 
 ## Legal URLs
 
@@ -116,3 +114,4 @@ Release is blocked until the proxy in `docs/deployment-guide.md` meets the secur
 | `docs/deployment-guide.md` | When a release may ship, and the proxy contract. |
 | `docs/project-roadmap.md` | Work that is still open. |
 | `docs/lightweight-budget.md` | Measured releaseSmoke size, the CI budget, and the size cuts that are not done yet. |
+| `docs/proxy.md` | How to run the AI proxy locally and how to deploy it. |

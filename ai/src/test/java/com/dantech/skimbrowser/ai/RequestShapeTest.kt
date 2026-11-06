@@ -21,6 +21,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -46,7 +47,7 @@ class RequestShapeTest {
             server.enqueue("summary-with-citations.sse")
             server.enqueue("answer-plain.sse")
             val session = allowedSession()
-            val service = service(server.baseUrl, apiKey = "test-key")
+            val service = service(server.baseUrl)
             service.summarize(session).toList()
             val summary = server.take()
             val summaryBody = summary.body.readUtf8()
@@ -75,9 +76,20 @@ class RequestShapeTest {
                 assertEquals(true, document["citations"]!!.jsonObject["enabled"]!!.jsonPrimitive.boolean)
                 assertEquals("ephemeral", document["cache_control"]!!.jsonObject["type"]!!.jsonPrimitive.content)
             }
-            assertEquals("test-key", summary.getHeader("x-api-key"))
-            assertNull(summary.getHeader("X-Skim-Install"))
+            assertNull(summary.getHeader("x-api-key"))
+            assertEquals("install-id", summary.getHeader("X-Skim-Install"))
             assertEquals(firstMessage(summaryBody), firstMessage(questionBody))
+        }
+    }
+
+    @Test
+    fun aBlankProxyUrlDoesNotOpenAConnection() = runBlocking {
+        val provider = ClaudeClientProvider("") { "install-id" }
+        try {
+            provider.client()
+            fail("A blank proxy URL opened a client.")
+        } catch (error: IllegalStateException) {
+            assertTrue(error.message!!.contains("proxy"))
         }
     }
 
@@ -85,14 +97,15 @@ class RequestShapeTest {
     fun aProxySendsTheInstallIdAndNoKey() = runBlocking {
         FakeClaudeServer().use { server ->
             server.enqueue("answer-plain.sse")
-            service(server.baseUrl, apiKey = null, installId = "install-1").summarize(allowedSession()).toList()
+            val installId = "11111111-1111-4111-8111-111111111111"
+            service(server.baseUrl, installId).summarize(allowedSession()).toList()
             val request = server.take()
             assertNull(request.getHeader("x-api-key"))
-            assertEquals("install-1", request.getHeader("X-Skim-Install"))
+            assertEquals(installId, request.getHeader("X-Skim-Install"))
         }
     }
 
-    private suspend fun service(baseUrl: String, apiKey: String?, installId: String = "install-id"): SkimAiService {
+    private suspend fun service(baseUrl: String, installId: String = "install-id"): SkimAiService {
         val db = inMemorySkimDatabase().also { databases += it }
         val settings = SettingsRepository(
             SettingsRepository.createDataStore(CoroutineScope(Dispatchers.IO)) {
@@ -102,7 +115,7 @@ class RequestShapeTest {
         val sites = SitePermissionRepository(db.sitePermissionDao(), db)
         settings.setAskBeforeSending(false)
         sites.setSkimAi(PAGE_HOST, SkimAiState.ALLOWED)
-        return SkimAiService(ClaudeClientProvider(baseUrl, apiKey) { installId }, sites, settings)
+        return SkimAiService(ClaudeClientProvider(baseUrl) { installId }, sites, settings)
     }
 }
 

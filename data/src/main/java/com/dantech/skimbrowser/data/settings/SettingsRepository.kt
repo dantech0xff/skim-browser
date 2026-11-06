@@ -68,7 +68,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
 
     /**
      * A random UUID created on first use and kept for the life of the installation (sent as
-     * `X-Skim-Install` to the release proxy). Creation happens inside one DataStore edit, so calls
+     * `X-Skim-Install` to the proxy). Creation happens inside one DataStore edit, so calls
      * racing on a fresh install all get the same id; a stored value that is not a UUID is replaced.
      * The id is never logged and is not part of [SkimSettings].
      */
