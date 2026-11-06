@@ -1,8 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.JsonOutputFormat
-import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.models.messages.OutputConfig
 import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
@@ -22,6 +19,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
+import kotlinx.serialization.json.JsonObject
 
 /**
  * The only builder of model requests, and the only place a request is allowed to open a connection.
@@ -44,9 +42,7 @@ class SkimAiService(
 
     override fun summarize(session: PageConversation): Flow<AiReply> {
         val chat = session as ChatSession
-        val params = base()
-            .addUserMessageOfBlockParams(chat.summaryOpening())
-            .build()
+        val params = request(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null, chat.summaryOpening())
         chat.lastParams = params
         return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
     }
@@ -60,9 +56,9 @@ class SkimAiService(
         val chat = session as ChatSession
         val wrapped = Prompts.question(question)
         val params = if (chat.opening == null) {
-            base().addUserMessageOfBlockParams(chat.questionOpening(wrapped)).build()
+            request(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null, chat.questionOpening(wrapped))
         } else {
-            followUpParams(base().addUserMessageOfBlockParams(chat.opening!!), chat, wrapped)
+            followUp(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null, chat.opening!!, chat, wrapped)
         }
         chat.lastParams = params
         return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
@@ -76,9 +72,7 @@ class SkimAiService(
         val chat = session as ChatSession
         val opening = chat.setOpening(overviewBlocks(context, prompt))
         chat.replaceSources(context.toSources())
-        val params = configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, TABS_OVERVIEW_FORMAT)
-            .addUserMessageOfBlockParams(opening)
-            .build()
+        val params = request(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, TABS_OVERVIEW_FORMAT, opening)
         chat.lastParams = params
         return send(params, chat.sources, Consent.TABS_ACTION, chat.approvedHost).toReplies(chat)
     }
@@ -91,9 +85,11 @@ class SkimAiService(
     override fun askTabs(session: PageConversation, question: String): Flow<AiReply> {
         val chat = session as ChatSession
         val opening = chat.opening ?: return flow { }
-        val params = followUpParams(
-            configured(AiConfig.EFFORT_TABS, AiConfig.MAX_TOKENS, format = null)
-                .addUserMessageOfBlockParams(opening),
+        val params = followUp(
+            AiConfig.EFFORT_TABS,
+            AiConfig.MAX_TOKENS,
+            format = null,
+            opening,
             chat,
             Prompts.question(question),
         )
@@ -108,9 +104,12 @@ class SkimAiService(
      * ignore, so a grouping request that is not allowed never becomes a layout.
      */
     suspend fun groupTabs(context: List<TabContext>): GroupingResult? {
-        val params = configured(AiConfig.EFFORT_GROUPING, AiConfig.GROUPING_MAX_TOKENS, GROUPING_FORMAT)
-            .addUserMessageOfBlockParams(groupingBlocks(context))
-            .build()
+        val params = request(
+            AiConfig.EFFORT_GROUPING,
+            AiConfig.GROUPING_MAX_TOKENS,
+            GROUPING_FORMAT,
+            groupingBlocks(context),
+        )
         val events = send(params, context.toSources(), Consent.TABS_ACTION, approvedHost = "").toList()
         val stop = events.filterIsInstance<AiEvent.Done>().lastOrNull()?.stopReason.orEmpty()
         val text = events.filterIsInstance<AiEvent.Text>().joinToString("") { it.delta }
@@ -132,7 +131,7 @@ class SkimAiService(
                     is AiEvent.Cite -> emit(AiReply.Cite(event.start, event.end, event.citedText))
                     is AiEvent.Done -> emit(AiReply.Done(event.stopReason))
                     is AiEvent.Final -> {
-                        session.stashReply(event.message)
+                        session.stashReply(event.text)
                         emit(AiReply.Finished)
                     }
                 }
@@ -145,7 +144,7 @@ class SkimAiService(
     }
 
     internal fun send(
-        params: MessageCreateParams,
+        params: SkimRequest,
         sources: List<AiSource>,
         consent: Consent,
         approvedHost: String,
@@ -169,46 +168,45 @@ class SkimAiService(
         emitAll(clients.client().streamEvents(params))
     }
 
-    private fun base(): MessageCreateParams.Builder =
-        configured(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null)
-
-    private fun configured(
-        effort: OutputConfig.Effort,
+    private fun request(
+        effort: String,
         maxTokens: Long,
-        format: JsonOutputFormat?,
-    ): MessageCreateParams.Builder {
-        val output = OutputConfig.builder().effort(effort)
-        if (format != null) output.format(format)
-        return MessageCreateParams.builder()
-            .model(AiConfig.MODEL_ID)
-            .maxTokens(maxTokens)
-            .outputConfig(output.build())
-            .system(Prompts.SYSTEM)
-    }
+        format: JsonObject?,
+        opening: List<WireBlock>,
+        turns: List<WireMessage> = emptyList(),
+    ): SkimRequest = SkimRequest.build(
+        maxTokens = maxTokens,
+        effort = effort,
+        format = format,
+        messages = listOf(WireMessage("user", WireContent.Blocks(opening))) + turns,
+    )
 
     /** Adds [wrapped] after the turns already sent, and remembers it unless that turn is already last. */
-    private fun followUpParams(
-        builder: MessageCreateParams.Builder,
+    private fun followUp(
+        effort: String,
+        maxTokens: Long,
+        format: JsonObject?,
+        opening: List<WireBlock>,
         chat: ChatSession,
         wrapped: String,
-    ): MessageCreateParams {
+    ): SkimRequest {
         val turns = chat.history
         val already = turns.lastOrNull().let { it is HistoryTurn.Text && it.role == MessageRole.USER && it.text == wrapped }
-        replay(builder, if (already) turns.dropLast(1) else turns)
-        builder.addUserMessage(wrapped)
-        if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
-        return builder.build()
-    }
-
-    private fun replay(builder: MessageCreateParams.Builder, turns: List<HistoryTurn>) {
-        for (turn in turns) {
+        val replay = (if (already) turns.dropLast(1) else turns).map { turn ->
             when (turn) {
-                is HistoryTurn.Live -> builder.addMessage(turn.message)
-                is HistoryTurn.Text -> when (turn.role) {
-                    MessageRole.USER -> builder.addUserMessage(turn.text)
-                    MessageRole.ASSISTANT -> builder.addAssistantMessage(turn.text)
-                }
+                is HistoryTurn.Text -> WireMessage(
+                    role = if (turn.role == MessageRole.USER) "user" else "assistant",
+                    content = WireContent.Text(turn.text),
+                )
             }
         }
+        if (!already) chat.addTurn(HistoryTurn.Text(MessageRole.USER, wrapped))
+        return request(
+            effort,
+            maxTokens,
+            format,
+            opening,
+            replay + WireMessage("user", WireContent.Text(wrapped)),
+        )
     }
 }

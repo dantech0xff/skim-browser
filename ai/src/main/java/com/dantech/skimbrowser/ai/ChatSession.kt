@@ -1,8 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.ContentBlockParam
-import com.anthropic.models.messages.Message
-import com.anthropic.models.messages.MessageCreateParams
 import com.dantech.skimbrowser.domain.ai.PageConversation
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
@@ -16,10 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 typealias ChatMessage = com.dantech.skimbrowser.domain.ai.ChatMessage
 
-/** A turn already sent, replayed on the next request. A live turn keeps the model's own message. */
+/** A turn already sent, replayed as text on the next request. */
 sealed interface HistoryTurn {
-    data class Live(val message: Message) : HistoryTurn
-
     data class Text(val role: MessageRole, val text: String) : HistoryTurn
 }
 
@@ -43,8 +38,8 @@ class ChatSession(
     override val tabCount: Int = 0,
 ) : PageConversation {
     private val sourcesRef = AtomicReference(sources)
-    private val openingRef = AtomicReference<List<ContentBlockParam>?>(null)
-    private val pendingReply = AtomicReference<Message?>(null)
+    private val openingRef = AtomicReference<List<WireBlock>?>(null)
+    private val pendingReply = AtomicReference<String?>(null)
     private val turns = mutableListOf<HistoryTurn>()
     private val turnLock = Any()
     private val messagesState = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -64,7 +59,7 @@ class ChatSession(
 
     /** The last request this chat built. Null until a summary or a question has been built. */
     @Volatile
-    internal var lastParams: MessageCreateParams? = null
+    internal var lastParams: SkimRequest? = null
 
     private var streamJob: Job? = null
 
@@ -86,7 +81,7 @@ class ChatSession(
     }
 
     /** The first user message, once a summary or a first question has built it. */
-    val opening: List<ContentBlockParam>? get() = openingRef.get()
+    val opening: List<WireBlock>? get() = openingRef.get()
 
     override val hasOpening: Boolean get() = opening != null
 
@@ -94,13 +89,13 @@ class ChatSession(
      * Keeps [blocks] as the first user message when none is set yet, and returns the message that
      * stays. A later call does not replace it, so a follow-up repeats the same documents.
      */
-    fun freezeOpening(blocks: List<ContentBlockParam>): List<ContentBlockParam> {
+    fun freezeOpening(blocks: List<WireBlock>): List<WireBlock> {
         openingRef.compareAndSet(null, blocks)
         return openingRef.get()!!
     }
 
     /** Replaces the first user message. An across-tabs overview does this, because that message is the request. */
-    fun setOpening(blocks: List<ContentBlockParam>): List<ContentBlockParam> {
+    fun setOpening(blocks: List<WireBlock>): List<WireBlock> {
         openingRef.set(blocks)
         return blocks
     }
@@ -114,18 +109,18 @@ class ChatSession(
     val history: List<HistoryTurn> get() = synchronized(turnLock) { turns.toList() }
 
     /** The document plus the summary instruction. Later calls return the same blocks. */
-    fun summaryOpening(): List<ContentBlockParam> = freezeOpening(
+    fun summaryOpening(): List<WireBlock> = freezeOpening(
         listOf(
-            ContentBlockParam.ofDocument(pageDocument(document)),
-            ContentBlockParam.ofText(Prompts.summaryInstruction(languageTag)),
+            pageDocument(document),
+            WireBlock.Text(Prompts.summaryInstruction(languageTag)),
         ),
     )
 
     /** The document plus [question], used when the page was never summarized. */
-    fun questionOpening(question: String): List<ContentBlockParam> = freezeOpening(
+    fun questionOpening(question: String): List<WireBlock> = freezeOpening(
         listOf(
-            ContentBlockParam.ofDocument(pageDocument(document)),
-            ContentBlockParam.ofText(question),
+            pageDocument(document),
+            WireBlock.Text(question),
         ),
     )
 
@@ -133,14 +128,14 @@ class ChatSession(
         synchronized(turnLock) { turns += turn }
     }
 
-    /** Holds the model's message until the sheet decides the turn should be kept. */
-    internal fun stashReply(message: Message) {
-        pendingReply.set(message)
+    /** Holds the model's text until the sheet decides the turn should be kept. */
+    internal fun stashReply(text: String) {
+        pendingReply.set(text)
     }
 
     override fun commitPendingReply(keep: Boolean) {
-        val message = pendingReply.getAndSet(null)
-        if (keep && message != null) addTurn(HistoryTurn.Live(message))
+        val text = pendingReply.getAndSet(null)
+        if (keep && text != null) addTurn(HistoryTurn.Text(MessageRole.ASSISTANT, text))
     }
 
     override fun rememberAssistantText(text: String) {

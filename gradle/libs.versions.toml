@@ -20,9 +20,8 @@ coroutines = "1.11.0"          # MC org/jetbrains/kotlinx/kotlinx-coroutines-cor
 serializationJson = "1.12.0"   # MC org/jetbrains/kotlinx/kotlinx-serialization-json
 collectionsImmutable = "0.5.2" # MC org/jetbrains/kotlinx/kotlinx-collections-immutable
 aboutLibraries = "15.3.0"      # GPP com/mikepenz/aboutlibraries/plugin + MC com/mikepenz/aboutlibraries-compose-m3
-anthropic = "2.73.0"           # MC com/anthropic/anthropic-java
 jsoup = "1.23.2"               # MC org/jsoup/jsoup
-okhttp = "4.12.0"              # MC com/squareup/okhttp3/okhttp; same version anthropic-java pulls in
+okhttp = "4.12.0"              # MC com/squareup/okhttp3/okhttp
 junit = "4.13.2"               # MC junit/junit
 junitVersion = "1.3.0"         # GM androidx/test/ext/junit
 androidxTestRunner = "1.7.0"   # GM androidx/test/runner
@@ -68,7 +67,6 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serializationJson" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
 aboutlibraries-compose-m3 = { group = "com.mikepenz", name = "aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
-anthropic-java = { group = "com.anthropic", name = "anthropic-java", version.ref = "anthropic" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }

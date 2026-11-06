@@ -1,6 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.MessageCreateParams
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.page.PageBlock
 import com.dantech.skimbrowser.browser.page.PageContent
@@ -8,12 +7,7 @@ import com.dantech.skimbrowser.browser.page.PageContent
 fun provider(baseUrl: String) =
     ClaudeClientProvider(baseUrl) { "install-id" }
 
-fun probeParams(): MessageCreateParams =
-    MessageCreateParams.builder()
-        .model(AiConfig.MODEL_ID)
-        .maxTokens(32)
-        .addUserMessage("Hello")
-        .build()
+fun probeParams(): SkimRequest = SkimRequest.probe()
 
 fun page(vararg paragraphs: String, url: String = PAGE_URL): PageContent = PageContent(
     url = url,

@@ -46,16 +46,15 @@ android {
 dependencies {
     api(project(":domain"))
     implementation(project(":browser"))
-    implementation(libs.anthropic.java)
+    implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
-    // FakeClaudeServer's public methods name MockWebServer types. probeParams returns an SDK params type.
+    // FakeClaudeServer's public methods name MockWebServer types.
     testFixturesApi(libs.okhttp.mockwebserver)
-    testFixturesApi(libs.anthropic.java)
     testFixturesImplementation(project(":browser"))
     testFixturesImplementation(libs.kotlinx.coroutines.android)
 

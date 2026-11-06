@@ -1,7 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.core.JsonValue
-import com.anthropic.models.messages.JsonOutputFormat
 import com.dantech.skimbrowser.domain.ai.decodeStoredOverview as domainDecodeStoredOverview
 import com.dantech.skimbrowser.domain.ai.encodeOverview as domainEncodeOverview
 import com.dantech.skimbrowser.domain.ai.groupingFromModel as domainGroupingFromModel
@@ -64,21 +62,9 @@ internal val GROUPING_SCHEMA_MAP: Map<String, Any> = objectSchema(
     required = listOf("groups"),
 )
 
-internal val TABS_OVERVIEW_SCHEMA: JsonOutputFormat.Schema = jsonSchema(TABS_OVERVIEW_SCHEMA_MAP)
+internal val TABS_OVERVIEW_FORMAT = jsonSchemaFormat(TABS_OVERVIEW_SCHEMA_MAP)
 
-internal val GROUPING_SCHEMA: JsonOutputFormat.Schema = jsonSchema(GROUPING_SCHEMA_MAP)
-
-internal val TABS_OVERVIEW_FORMAT: JsonOutputFormat =
-    JsonOutputFormat.builder().schema(TABS_OVERVIEW_SCHEMA).build()
-
-internal val GROUPING_FORMAT: JsonOutputFormat =
-    JsonOutputFormat.builder().schema(GROUPING_SCHEMA).build()
-
-internal fun jsonSchema(root: Map<String, Any>): JsonOutputFormat.Schema {
-    val builder = JsonOutputFormat.Schema.builder()
-    for ((name, value) in root) builder.putAdditionalProperty(name, JsonValue.from(value))
-    return builder.build()
-}
+internal val GROUPING_FORMAT = jsonSchemaFormat(GROUPING_SCHEMA_MAP)
 
 /** One line of at most [max] characters, or null when the line is not safe to show. */
 internal fun sanitizeShortText(text: String, max: Int = 60): String? = domainSanitizeShortText(text, max)

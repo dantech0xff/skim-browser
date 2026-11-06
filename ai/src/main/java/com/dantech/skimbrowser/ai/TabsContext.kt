@@ -1,6 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.ContentBlockParam
 import com.dantech.skimbrowser.domain.ai.CollectOpenTabs
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -32,34 +31,30 @@ internal fun List<TabContext>.toSources(): List<AiSource> =
  * The first user turn of an across-tabs answer: one document per tab, then [prompt]. Only the last
  * document is marked cacheable. Citations stay off.
  */
-internal fun overviewBlocks(context: List<TabContext>, prompt: String): List<ContentBlockParam> {
+internal fun overviewBlocks(context: List<TabContext>, prompt: String): List<WireBlock> {
     val last = context.lastIndex
     val documents = context.mapIndexed { index, tab ->
-        ContentBlockParam.ofDocument(
-            tabDocument(
-                title = tab.title.ifBlank { tab.host },
-                context = "ref ${tab.ref}, ${tab.host}",
-                text = tab.text ?: NO_PAGE_TEXT,
-                cache = index == last,
-            ),
+        tabDocument(
+            title = tab.title.ifBlank { tab.host },
+            context = "ref ${tab.ref}, ${tab.host}",
+            text = tab.text ?: NO_PAGE_TEXT,
+            cache = index == last,
         )
     }
-    return documents + ContentBlockParam.ofText(prompt)
+    return documents + WireBlock.Text(prompt)
 }
 
 /** A grouping request: one document of title and host per tab, then the grouping instruction. */
-internal fun groupingBlocks(context: List<TabContext>): List<ContentBlockParam> {
+internal fun groupingBlocks(context: List<TabContext>): List<WireBlock> {
     val documents = context.map { tab ->
-        ContentBlockParam.ofDocument(
-            tabDocument(
-                title = tab.title.ifBlank { tab.host },
-                context = "ref ${tab.ref}, ${tab.host}",
-                text = NO_PAGE_TEXT,
-                cache = false,
-            ),
+        tabDocument(
+            title = tab.title.ifBlank { tab.host },
+            context = "ref ${tab.ref}, ${tab.host}",
+            text = NO_PAGE_TEXT,
+            cache = false,
         )
     }
-    return documents + ContentBlockParam.ofText(GROUPING_INSTRUCTION)
+    return documents + WireBlock.Text(GROUPING_INSTRUCTION)
 }
 
 /** Identifies a set of tabs, so the same set is not grouped again. Order does not matter. */

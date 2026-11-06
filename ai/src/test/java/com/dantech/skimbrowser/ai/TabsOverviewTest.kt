@@ -21,8 +21,8 @@ class TabsOverviewTest {
     fun everyObjectRefusesExtraFields() {
         assertClosed(TABS_OVERVIEW_SCHEMA_MAP)
         assertClosed(GROUPING_SCHEMA_MAP)
-        assertTrue(TABS_OVERVIEW_FORMAT.schema().toString().isNotEmpty())
-        assertTrue(GROUPING_FORMAT.schema().toString().isNotEmpty())
+        assertTrue(TABS_OVERVIEW_FORMAT["schema"].toString().isNotEmpty())
+        assertTrue(GROUPING_FORMAT["schema"].toString().isNotEmpty())
     }
 
     @Test
