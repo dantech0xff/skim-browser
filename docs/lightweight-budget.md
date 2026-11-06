@@ -12,32 +12,34 @@ One assemble on JDK 25, Android Gradle Plugin 9.4.1, and R8 9.4.24 produced thes
 
 | Measure | Bytes |
 |---|---|
-| APK file size | 5,752,084 |
-| apkanalyzer download-size estimate | 5,341,980 |
-| Defined methods in `classes.dex` | 36,289 |
-| Method references in `classes.dex` | 40,239 |
+| APK file size | 4,033,448 |
+| apkanalyzer download-size estimate | 3,630,138 |
+| Defined methods in `classes.dex` | 36,269 |
+| Method references in `classes.dex` | 40,218 |
 
-There is one dex file. 40,239 references is under the 65,536 reference limit.
+The previous baseline, before the font subset, was an APK of 5,752,084 bytes (download estimate 5,341,980). This file is 1,718,636 bytes smaller.
 
-The file is not half this size because two entries already account for most of it.
+There is one dex file. 40,218 references is under the 65,536 reference limit.
+
+`classes.dex` is most of the file. The font is no longer the second half.
 
 | Entry | Compressed bytes in the APK | Uncompressed bytes |
 |---|---|---|
-| `classes.dex` | 3,274,757 | 6,583,216 |
-| `res/fU.ttf` (Google Sans Flex) | 1,809,451 | 3,910,784 |
-| `resources.arsc` | 272,540 | 272,540 |
+| `classes.dex` | 3,273,370 | 6,579,680 |
+| `resources.arsc` | 273,416 | 273,416 |
+| `res/fU.ttf` (Google Sans Flex, wght only) | 89,941 | 244,336 |
 | `res/` other than the font | 76,972 | 231,300 |
-| `META-INF/` | 39,814 | 106,073 |
 | Native libraries, all ABIs | 73,584 | 73,584 |
-| `assets/` | 47,686 | 125,474 |
+| `assets/` | 47,738 | 125,526 |
 | `okhttp3/` | 41,558 | 41,612 |
+| `META-INF/` | 39,812 | 106,073 |
 | Other entries | 15,943 | 66,113 |
 
-Compressed entry bytes sum to 5,652,305. The APK file is 99,779 bytes larger than that sum. That difference is the zip structure. The other entries are Kotlin built-in metadata, `AndroidManifest.xml`, and `DebugProbesKt.bin`.
+Compressed entry bytes sum to 3,932,334. The APK file is 101,114 bytes larger than that sum. That difference is the zip structure. The other entries are Kotlin built-in metadata, `AndroidManifest.xml`, and `DebugProbesKt.bin`.
 
-`res/fU.ttf` is `app/src/main/res/font/google_sans_flex.ttf`. zlib level 9 of that file is 1,809,458 bytes, which matches the APK entry within 7 bytes. The font is already Latin. It has 686 glyphs. The `gvar` table is 3,318,972 bytes of the 3,910,784 byte file. The axes are `opsz`, `wdth`, `wght`, `ROND`, and `slnt`. `Type.kt` builds the family at weights 400, 500, and 600 with `FontStyle.Normal`. It does not set optical size, width, or roundness.
+`res/fU.ttf` is `app/src/main/res/font/google_sans_flex.ttf`. The shipped file keeps the `wght` axis and drops `opsz`, `wdth`, `ROND`, and `slnt`, pinned to the source defaults (18, 100, 0, and 0). It has 637 glyphs: Latin, Vietnamese (precomposed and combining marks), and the punctuation the UI draws. `tools/subset_google_sans_flex.py` rebuilds it from `tools/fonts/GoogleSansFlex-full.ttf`. `Type.kt` still builds weights 400, 500, and 600 with `FontStyle.Normal`.
 
-Resource shrinking is already on. The `releaseSmoke` build ran `optimizeReleaseSmokeResources`, and `resources.txt` lists the resources R8 kept. Turning shrinking on is not a remaining cut. `resources.arsc` stays uncompressed in the APK because the platform reads it that way. apkanalyzer estimates its download size at 48,681 bytes.
+Resource shrinking is already on. The `releaseSmoke` build ran `optimizeReleaseSmokeResources`, and `resources.txt` lists the resources R8 kept. Turning shrinking on is not a remaining cut. `resources.arsc` stays uncompressed in the APK because the platform reads it that way.
 
 Native libraries are not split. Compressed size inside the universal APK:
 
@@ -50,7 +52,7 @@ Native libraries are not split. Compressed size inside the universal APK:
 
 ## Where the dex bytes go
 
-R8 obfuscates almost every class into the default package, so a package listing of the dex is not a library listing. The shares below map each obfuscated class through `mapping.txt` to its original name, then scale apkanalyzer's per-class size so the shares sum to the compressed `classes.dex` size of 3,274,757 bytes. R8 also merges classes. A merged class is charged to the original name on the mapping header, so a share can include a few bytes from another library. This is one run. It is an estimate of APK contribution, not a second build with the library removed.
+R8 obfuscates almost every class into the default package, so a package listing of the dex is not a library listing. The shares below were measured on the 5,752,084 byte APK, before the font subset. They map each obfuscated class through `mapping.txt` to its original name, then scale apkanalyzer's per-class size so the shares sum to the compressed `classes.dex` size of 3,274,757 bytes. R8 also merges classes. A merged class is charged to the original name on the mapping header, so a share can include a few bytes from another library. This is one run. It is an estimate of APK contribution, not a second build with the library removed. Compressed `classes.dex` on the current APK is 3,273,370 bytes.
 
 | Bucket | Classes | Methods | Scaled compressed dex bytes | Share of dex |
 |---|---|---|---|---|
@@ -71,9 +73,9 @@ The jars that entered R8 are much larger than these residues. `anthropic-java-co
 
 ## Ranked cuts
 
-None of these are implemented in this change. The estimates are for the next phase. A combined saving is not measured, because the two big cuts were not built together.
+The font cut is in the app. The dex estimate below is not, and a combined saving is not measured here.
 
-1. Drop the unused font axes. Pin `opsz` to 18, `wdth` to 100, `ROND` to 0, and `slnt` to 0, and keep `wght`. fontTools `instantiateVariableFont` produced a 279,124 byte file. zlib level 9 of that file is 106,141 bytes. Against the current 1,809,451 byte APK entry, the estimated saving is 1,703,310 bytes. Three static fonts at weights 400, 500, and 600 zlib to 136,109 bytes together, which saves less than one `wght` font. This assumes the UI keeps using only weight and a normal style.
+1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. The APK file fell from 5,752,084 bytes to 4,033,448 bytes, a drop of 1,718,636 bytes. The font entry fell from 1,809,451 compressed bytes to 89,941. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 
 2. Replace the Anthropic SDK with a thin HTTP client that still posts the proxy body in `docs/deployment-guide.md`. The estimated compressed dex that leaves with the SDK is Jackson 417,456 plus kotlin-reflect 379,522 plus the SDK 246,249, which is 1,043,227 bytes. OkHttp remains. The 39,136,463 byte core jar is the wrong number for this saving. The estimate assumes nothing else keeps Jackson or kotlin-reflect, and that the rest of the dex compresses in the same proportion.
 
@@ -102,4 +104,4 @@ The gate compares file size only. It does not compare the download estimate, met
 
 ## Rebuild spread
 
-Two clean `assembleReleaseSmoke` runs of this app code both wrote an APK of 5,752,084 bytes. The SHA-256 hashes differed. The gate compares the file size, not the hash. The size spread across the two runs was 0 bytes.
+Two clean `assembleReleaseSmoke` runs of the app before the font subset both wrote an APK of 5,752,084 bytes. The SHA-256 hashes differed. The gate compares the file size, not the hash. The size spread across those two runs was 0 bytes. The subset measurement above is one assemble.

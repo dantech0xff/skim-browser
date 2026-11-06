@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
   "variant": "releaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 5752084,
-  "downloadSizeBytes": 5341980,
+  "fileSizeBytes": 4033448,
+  "downloadSizeBytes": 3630138,
   "maxGrowthBytes": 8192,
-  "definedMethods": 36289,
-  "referencedMethods": 40239,
+  "definedMethods": 36269,
+  "referencedMethods": 40218,
   "dexFiles": 1,
-  "notes": "Universal APK. Native libraries for four ABIs are inside this one file. maxGrowthBytes is the allowed increase over fileSizeBytes. Update fileSizeBytes when a size change is intentional. See docs/lightweight-budget.md."
+  "notes": "Universal APK after subsetting Google Sans Flex to the wght axis and Latin plus Vietnamese. Native libraries for four ABIs are inside this one file. maxGrowthBytes is the allowed increase over fileSizeBytes. Update fileSizeBytes when a size change is intentional. See docs/lightweight-budget.md."
 }
