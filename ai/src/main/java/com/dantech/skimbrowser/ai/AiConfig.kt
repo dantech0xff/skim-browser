@@ -1,6 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.OutputConfig
 import com.dantech.skimbrowser.domain.ai.OpenTabLimits
 
 /** The one place the model and its limits are named. */
@@ -9,13 +8,13 @@ object AiConfig {
     const val MAX_TOKENS = 8192L
 
     /** Effort for a page summary and for questions about that page. */
-    val EFFORT_PAGE: OutputConfig.Effort = OutputConfig.Effort.MEDIUM
+    const val EFFORT_PAGE = "medium"
 
     /** Effort for an answer across open tabs. */
-    val EFFORT_TABS: OutputConfig.Effort = OutputConfig.Effort.MEDIUM
+    const val EFFORT_TABS = "medium"
 
     /** Effort for grouping tabs from their titles and hosts. */
-    val EFFORT_GROUPING: OutputConfig.Effort = OutputConfig.Effort.LOW
+    const val EFFORT_GROUPING = "low"
 
     const val GROUPING_MAX_TOKENS = 2048L
 

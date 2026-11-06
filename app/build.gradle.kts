@@ -63,8 +63,7 @@ android {
         release {
             // Release calls the Skim proxy, which adds the real key server-side. The app ships no key.
             buildConfigField("String", "AI_BASE_URL", javaString(skimProperty("skim.aiProxyUrl")))
-            // No packageScope: R8 optimizes every package, so the Anthropic SDK and its
-            // dependencies (Jackson, OkHttp, Kotlin reflect) are shrunk as well.
+            // No packageScope: R8 optimizes every package.
             optimization {
                 enable = true
             }

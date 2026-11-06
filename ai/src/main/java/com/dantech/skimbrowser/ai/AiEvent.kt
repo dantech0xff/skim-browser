@@ -1,7 +1,5 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.models.messages.Message
-
 /** One thing a streaming reply did, in the order the model produced it. */
 sealed interface AiEvent {
     /** More of the answer. Thinking never arrives here. */
@@ -13,6 +11,6 @@ sealed interface AiEvent {
     /** The model stopped. [stopReason] is the API value, such as `end_turn` or `refusal`. */
     data class Done(val stopReason: String) : AiEvent
 
-    /** The assembled assistant message, for the next turn of a live conversation. */
-    data class Final(val message: Message) : AiEvent
+    /** The assembled assistant text, for the next turn of a live conversation. */
+    data class Final(val text: String) : AiEvent
 }

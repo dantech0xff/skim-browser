@@ -14,18 +14,16 @@ A byte-for-byte rebuild has not been verified. The APK still depends on four str
 
 ## NonFreeNet
 
-Skim AI sends page text to the project's proxy, and the proxy calls a hosted model. That network service is not free software. F-Droid should mark the app NonFreeNet if the binary can make that call. The draft metadata says so in English.
+Skim AI sends page text to the project's proxy, and the proxy calls a hosted model. That network service is not free software. The draft metadata marks the app NonFreeNet. That anti-feature is accepted.
 
-The feature is off until the person allows a site. `askBeforeSending` defaults to true. Incognito tabs are never sent. An empty proxy URL fails before any connection. That is opt-in behavior. It does not remove the anti-feature, because the client is still in the binary.
+The feature is off until the person allows a site. `askBeforeSending` defaults to true. Incognito tabs are never sent. An empty proxy URL fails before any connection. There is one APK, and it includes Skim AI. A flavor that strips the client was considered and rejected. Asking first does not remove NonFreeNet, because the client stays in the binary.
 
-## Open decisions
+## Decisions
 
-These are not decided in this change.
+These are decided.
 
-1. A second product flavor with the AI client removed would be the way to publish a build that does not need NonFreeNet. It is a second APK, a second update track, and a second set of tests. This draft keeps one APK and accepts NonFreeNet. Recommendation: keep the single APK until there is a reason to ship a browser that cannot summarize.
+1. One APK, with Skim AI. Accept NonFreeNet. Do not add a flavor that removes the AI client.
+2. The application id stays `com.dantech.skimbrowser`.
+3. Google Sans Flex stays under OFL 1.1. Material Symbols stay under Apache-2.0.
 
-2. The application id stays `com.dantech.skimbrowser`. A second id would let an F-Droid build sit beside another store's build, and it would also split updates. Recommendation: one id.
-
-3. The font and the icon set are already under OFL 1.1 and Apache-2.0. No license change is required to ship them. Recommendation: leave the licenses as they are.
-
-4. The four release URLs are still unset in git. The fdroiddata recipe cannot be submitted until those public URLs are chosen and placed in the F-Droid build recipe, not in this repository.
+The four release URLs are still unset in git. The fdroiddata recipe cannot be submitted until those public URLs are chosen and placed in the F-Droid build recipe, not in this repository. Real phone screenshots are still missing.

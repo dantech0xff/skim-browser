@@ -1,58 +1,75 @@
 package com.dantech.skimbrowser.ai
 
-import com.anthropic.client.AnthropicClient
-import com.anthropic.core.http.AsyncStreamResponse
-import com.anthropic.helpers.MessageAccumulator
-import com.anthropic.models.messages.CitationsDelta
-import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.models.messages.RawMessageStreamEvent
-import java.util.Optional
+import java.io.IOException
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
- * The model's streaming reply as [AiEvent]s. Thinking is skipped. Closing the flow closes the HTTP
- * stream, which is how Stop ends a reply.
+ * Posts one request to the proxy and reads the event stream. Closing the flow cancels the call,
+ * which is how Stop ends a reply.
  */
-fun AnthropicClient.streamEvents(params: MessageCreateParams): Flow<AiEvent> = callbackFlow {
-    val accumulator = MessageAccumulator.create()
-    val response = async().messages().createStreaming(params)
-    response.subscribe(object : AsyncStreamResponse.Handler<RawMessageStreamEvent> {
-        override fun onNext(value: RawMessageStreamEvent) {
-            accumulator.accumulate(value)
-            if (value.isContentBlockDelta()) {
-                val delta = value.asContentBlockDelta().delta()
-                when {
-                    delta.isText() -> trySend(AiEvent.Text(delta.asText().text()))
-                    delta.isCitations() -> cite(delta.asCitations())?.let { trySend(it) }
+class ClaudeClient(
+    private val http: OkHttpClient,
+    private val baseUrl: String,
+    private val installId: String,
+) {
+    fun streamEvents(request: SkimRequest): Flow<AiEvent> = callbackFlow {
+        val call = http.newCall(httpRequest(request))
+        val reader = launch(Dispatchers.IO) {
+            try {
+                call.execute().use { response ->
+                    when {
+                        response.code == 429 -> throw ProxyLimited()
+                        !response.isSuccessful -> throw ProxyHttpException(response.code)
+                    }
+                    val parser = SseParser()
+                    val source = response.body?.source() ?: throw IOException("empty body")
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: break
+                        for (event in parser.push("$line\n")) {
+                            trySend(event)
+                        }
+                    }
+                    for (event in parser.push("\n")) {
+                        trySend(event)
+                    }
+                    close()
                 }
-            } else if (value.isMessageDelta()) {
-                value.asMessageDelta().delta().stopReason().orElse(null)?.let { reason ->
-                    trySend(AiEvent.Done(reason.asString()))
-                }
+            } catch (error: Throwable) {
+                close(error)
             }
         }
-
-        override fun onComplete(error: Optional<Throwable>) {
-            val failure = error.orElse(null)
-            if (failure != null) {
-                close(failure)
-            } else {
-                trySend(AiEvent.Final(accumulator.message()))
-                close()
-            }
+        awaitClose {
+            call.cancel()
+            reader.cancel()
         }
-    })
-    awaitClose { response.close() }
-}
+    }
 
-private fun cite(delta: CitationsDelta): AiEvent.Cite? {
-    val citation = delta.citation()
-    if (!citation.isContentBlockLocation()) return null
-    val location = citation.asContentBlockLocation()
-    val start = location.startBlockIndex()
-    val end = location.endBlockIndex()
-    if (start !in 0..Int.MAX_VALUE || end !in 0..Int.MAX_VALUE) return null
-    return AiEvent.Cite(start.toInt(), end.toInt(), location.citedText())
+    private fun httpRequest(request: SkimRequest): Request =
+        Request.Builder()
+            .url("$baseUrl/v1/messages")
+            .header("Content-Type", "application/json")
+            .header("Accept", "text/event-stream")
+            .header("X-Skim-Install", installId)
+            .post(request.bytes.toRequestBody(JSON))
+            .build()
+
+    companion object {
+        private val JSON = "application/json".toMediaType()
+
+        fun http(): OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.MINUTES)
+            .retryOnConnectionFailure(false)
+            .build()
+    }
 }
