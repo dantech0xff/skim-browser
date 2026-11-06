@@ -45,6 +45,11 @@ jobs:
             exit 1
           fi
 
+      - name: Check the UI font subset
+        run: |
+          python3 -m pip install --user 'fonttools>=4.54' 'uharfbuzz>=0.37'
+          python3 tools/subset_google_sans_flex.py --check
+
       - name: Assemble releaseSmoke
         run: ./gradlew :app:assembleReleaseSmoke --no-configuration-cache --stacktrace
 
