@@ -48,7 +48,9 @@ jobs:
           fi
 
       - name: Run unit tests
-        timeout-minutes: 40
+        # A healthy run finishes in about 7 minutes. A paused-looper hang used to sit here
+        # until 40 minutes. HungTestWatch dumps threads and kills the worker after 20 seconds.
+        timeout-minutes: 15
         run: |
           cat > /tmp/test-log.init.gradle << 'EOF'
           gradle.projectsLoaded {
