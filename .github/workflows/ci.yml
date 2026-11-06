@@ -16,7 +16,9 @@ concurrency:
 jobs:
   check:
     name: Unit tests, lint, coverage, releaseSmoke
-    runs-on: ubuntu-latest
+    # ubuntu-latest is 26.04. Robolectric native graphics deadlocks there inside
+    # Compose performClick. Pin the previous LTS image.
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
