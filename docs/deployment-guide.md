@@ -1,6 +1,6 @@
 # Deployment
 
-Release is blocked until a proxy outside this repository meets the contract below. A release APK built against a placeholder URL only proves that R8 and the key scan succeed. It is not permission to ship.
+The Worker that meets the contract below is `proxy/`. A release still waits until that Worker is deployed with its secret and the Anthropic spend cap, as [Run and deploy the AI proxy](proxy.md) describes. A release APK built against a placeholder URL only proves that R8 and the key scan succeed. It is not permission to ship.
 
 How to build, test, and pass the legal URLs is the README. This page is the ship rule.
 
@@ -10,14 +10,14 @@ The build types are in `app/build.gradle.kts`.
 
 | Variant | Role |
 |---|---|
-| `debug` | Calls Anthropic directly when a debug key is set. That key is inside the APK. Do not distribute a debug APK. |
-| `release` | Calls `skim.aiProxyUrl`. The API key field is null. R8 covers every package. |
+| `debug` | Calls `skim.aiProxyUrl`, the same property as release. http is allowed for a local Worker. An empty URL fails closed before any connection. The APK has no key. |
+| `release` | Calls `skim.aiProxyUrl` over https. The APK has no key. R8 covers every package. |
 | `releaseSmoke` | Minified like release, for `ReleaseSmokeTest`. Not a variant that ships. Select it with the `skim.testBuildType` property. The command is in the README section "Device checks". |
 | `benchmark` | For `:macrobenchmark`. Same local stand-in as `releaseSmoke`. Not a variant that ships. |
 
 `CheckSkimReleaseConfig` runs before a `release` build. It requires https values for `skim.aiProxyUrl`, `skim.termsUrl`, `skim.privacyUrl`, and `skim.aiDataPolicyUrl`, and it fails when `skim.aiProxyUrl` is set in the committed `gradle.properties`. `releaseSmoke` does not run that check. The task is `checkSkimReleaseConfig` in `app/build.gradle.kts`.
 
-The debug key and a local proxy URL belong in `local.properties` or in CI secrets (`-P` or `ORG_GRADLE_PROJECT_skim_aiProxyUrl`). They do not belong in `gradle.properties` or in git. `VerifyNoApiKey` scans non-debug APKs and AABs. `assemble` and `bundle` finalize with that task, and `check` depends on it. The needles live in that task, in `app/build.gradle.kts`.
+A local proxy URL belongs in `local.properties` or in CI (`-P` or `ORG_GRADLE_PROJECT_skim_aiProxyUrl`). It does not belong in `gradle.properties` or in git. The Anthropic key belongs only in the Worker secret. `VerifyNoApiKey` scans every variant, debug included, for the `sk-ant-` prefix. `assemble` finalizes that task. For a non-debug variant, `bundle` finalizes it too, and `check` depends on it. The needle lives in that task, in `app/build.gradle.kts`.
 
 R8 has no `packageScope`. The extra keep rule is the comment and the `-dontwarn` line in `app/src/main/keepRules/rules.keep`.
 
@@ -26,14 +26,14 @@ R8 has no `packageScope`. The extra keep rule is the comment and the `-dontwarn`
 1. The proxy meets the contract below.
 2. `:app:check` is green.
 3. `assembleRelease` and `bundleRelease` are green with the real proxy URL and the three legal URLs. The commands are in the README.
-4. `verifyNoApiKeyRelease` reports no match for both the APK and the AAB while a debug key is present in `local.properties`.
+4. `verifyNoApiKeyRelease` reports no `sk-ant-` match for both the APK and the AAB.
 5. `ReleaseSmokeTest` is green on `skim_api36`. Logcat has no `AnthropicInvalidDataException`, `ClassNotFoundException`, or `SerializationException`.
 6. `connectedDebugAndroidTest` is green on `skim_api36` (incognito tests not skipped) and on `skim_api28`. Device setup is the README section "Device checks".
 7. Process death, memory pressure, and `FLAG_SECURE` still need a manual pass on `skim_api36`. The checklist that used to describe those steps is not in the repo. A green instrumented test does not replace that pass.
 
 ## Proxy contract
 
-Skim is only the client. The proxy is not in this repository. It must do all of the following before a release build is distributed:
+Skim is only the client. The Worker in `proxy/` must do all of the following before a release build is distributed:
 
 - Accept `POST {proxy}/v1/messages`, forward a valid body unchanged, and insert `x-api-key` and `anthropic-version: 2023-06-01`. Do not buffer the SSE response.
 - Authenticate `X-Skim-Install` (one UUID per install). Apply a quota per install and a rate limit. A new install id is limited more tightly than an old one.

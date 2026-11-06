@@ -16,7 +16,6 @@ class ClaudeClientFactory @Inject constructor() {
     fun create(installId: suspend () -> String): ClaudeClientProvider =
         ClaudeClientProvider(
             baseUrl = BuildConfig.AI_BASE_URL,
-            apiKey = (BuildConfig.ANTHROPIC_API_KEY as String?).takeIf { !it.isNullOrBlank() },
             installId = installId,
         )
 }

@@ -89,7 +89,7 @@ The CI job fails when the `releaseSmoke` APK file is larger than `fileSizeBytes`
 
 `maxGrowthBytes` is a starting allowance. Two local clean builds had the same file size, so 8,192 bytes covers a small toolchain difference. A new library should fail the check. Set the allowance to 0 if any growth should fail.
 
-To update after an intentional size change, run the following from the repo root with an empty `skim.anthropicApiKey` and no proxy URL.
+To update after an intentional size change, run the following from the repo root with no proxy URL and no API key.
 
 ```
 ./gradlew :app:assembleReleaseSmoke --no-configuration-cache

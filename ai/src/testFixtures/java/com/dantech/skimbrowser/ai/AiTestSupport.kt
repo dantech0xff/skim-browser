@@ -5,8 +5,8 @@ import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.page.PageBlock
 import com.dantech.skimbrowser.browser.page.PageContent
 
-fun provider(baseUrl: String, apiKey: String? = "test-key") =
-    ClaudeClientProvider(baseUrl, apiKey) { "install-id" }
+fun provider(baseUrl: String) =
+    ClaudeClientProvider(baseUrl) { "install-id" }
 
 fun probeParams(): MessageCreateParams =
     MessageCreateParams.builder()

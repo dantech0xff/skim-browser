@@ -37,11 +37,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Write local.properties with an empty debug key
+      - name: Write local.properties with no proxy URL
         run: |
           sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           test -n "$sdk"
-          printf 'sdk.dir=%s\nskim.anthropicApiKey=\n' "$sdk" > local.properties
+          printf 'sdk.dir=%s\nskim.aiProxyUrl=\n' "$sdk" > local.properties
           if grep -E 'sk-ant-|aiProxyUrl=.+' local.properties; then
             echo "local.properties must not contain a key or a proxy URL" >&2
             exit 1

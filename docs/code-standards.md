@@ -36,7 +36,7 @@ Only `SkimAiService.send` opens a model connection. Do not add a second HTTP cli
 
 ## Secrets
 
-No API keys, proxy URLs, or machine paths in source, tests, docs, or `gradle.properties`. Where a debug key or a local proxy URL may live is the README section "local.properties". Tests talk to MockWebServer.
+No API keys, proxy URLs, or machine paths in source, tests, docs, or `gradle.properties`. The Anthropic key is a Worker secret. A local proxy URL may live in the README section "local.properties". Tests talk to MockWebServer.
 
 ## Tests
 

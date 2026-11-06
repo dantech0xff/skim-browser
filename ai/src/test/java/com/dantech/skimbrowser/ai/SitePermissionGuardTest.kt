@@ -74,7 +74,7 @@ class SitePermissionGuardTest {
         )
         val sites = SitePermissionRepository(db.sitePermissionDao(), db)
         val server = FakeClaudeServer()
-        val service = SkimAiService(ClaudeClientProvider(server.baseUrl, "test-key") { "install" }, sites, settings)
+        val service = SkimAiService(ClaudeClientProvider(server.baseUrl) { "install" }, sites, settings)
         return Rig(service, server, sites, settings)
     }
 

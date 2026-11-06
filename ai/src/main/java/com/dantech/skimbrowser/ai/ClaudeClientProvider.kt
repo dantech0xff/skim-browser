@@ -11,12 +11,11 @@ import kotlinx.coroutines.withContext
 
 /**
  * The one Claude client. It is built on first use, off the main thread, and then reused.
- * A debug build sends [apiKey]. A release build sends no key and names the install with
- * `X-Skim-Install` instead, so the proxy can recognize the app without holding a key.
+ * Every build sends no key and names the install with `X-Skim-Install`. The proxy holds the key.
+ * A blank [baseUrl] fails before any connection, so Ask Skim does not call out.
  */
 class ClaudeClientProvider(
     private val baseUrl: String,
-    private val apiKey: String?,
     private val installId: suspend () -> String,
 ) {
     private val gate = Mutex()
@@ -27,22 +26,20 @@ class ClaudeClientProvider(
     }
 
     private suspend fun build(): AnthropicClient {
+        if (baseUrl.isBlank()) {
+            throw IllegalStateException("The AI proxy URL is not set.")
+        }
         val timeout = Timeout.builder()
             .connect(Duration.ofSeconds(CONNECT_SECONDS))
             .read(Duration.ofSeconds(READ_SECONDS))
             .request(Duration.ofMinutes(REQUEST_MINUTES))
             .build()
-        val builder = AnthropicOkHttpClient.builder()
+        return AnthropicOkHttpClient.builder()
             .baseUrl(baseUrl)
             .timeout(timeout)
             .maxRetries(0)
-        val key = apiKey?.takeIf { it.isNotBlank() }
-        if (key != null) {
-            builder.apiKey(key)
-        } else {
-            builder.putHeader(INSTALL_HEADER, installId())
-        }
-        return builder.build()
+            .putHeader(INSTALL_HEADER, installId())
+            .build()
     }
 
     private companion object {
