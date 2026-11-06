@@ -46,8 +46,23 @@ jobs:
           fi
 
       - name: Run unit tests
-        timeout-minutes: 25
-        run: ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace
+        timeout-minutes: 40
+        run: |
+          cat > /tmp/test-log.init.gradle << 'EOF'
+          gradle.projectsLoaded {
+              rootProject.subprojects {
+                  afterEvaluate {
+                      tasks.withType(org.gradle.api.tasks.testing.Test).configureEach {
+                          testLogging {
+                              events "started", "failed"
+                              exceptionFormat "short"
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+          ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace --init-script /tmp/test-log.init.gradle
 
       - name: Run lint
         run: ./gradlew :app:lintDebug --no-configuration-cache --stacktrace

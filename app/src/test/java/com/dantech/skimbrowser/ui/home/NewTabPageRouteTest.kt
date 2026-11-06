@@ -526,7 +526,7 @@ class NewTabPageRouteTest {
         showHome()
 
         composeRule.onNodeWithContentDescription("Voice search").performClick()
-        composeRule.waitForIdle()
+        composeRule.pass(150)
 
         assertEquals(1, speech.launched.size)
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
@@ -539,7 +539,7 @@ class NewTabPageRouteTest {
         showHome()
 
         composeRule.onNodeWithContentDescription("Voice search").performClick()
-        composeRule.waitForIdle()
+        composeRule.pass(150)
 
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
         composeRule.onNodeWithText("Search or ask anything").assertExists()
