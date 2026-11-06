@@ -115,3 +115,4 @@ Release is blocked until the proxy in `docs/deployment-guide.md` meets the secur
 | `docs/design-guidelines.md` | Design decisions the pixels do not explain, and the accepted visual gaps. |
 | `docs/deployment-guide.md` | When a release may ship, and the proxy contract. |
 | `docs/project-roadmap.md` | Work that is still open. |
+| `docs/lightweight-budget.md` | Measured releaseSmoke size, the CI budget, and the size cuts that are not done yet. |
