@@ -1,0 +1,5 @@
+Skim is a web browser for Android. Pages open in the system WebView. The app does not show ads of its own.
+
+Skim AI can summarize the page you are reading, or answer a question about that page. It asks before sending a site, and you can refuse. Incognito tabs are never sent. The summary comes from a hosted model through the project's proxy, so a build that includes this feature should carry the NonFreeNet anti-feature.
+
+The source is free software under GPL-3.0-only.

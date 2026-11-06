@@ -1,0 +1,1 @@
+Trình duyệt Android, có thể tóm tắt trang đang mở.

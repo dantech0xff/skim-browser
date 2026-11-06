@@ -1,0 +1,52 @@
+# Draft only. Do not copy this into fdroiddata until the four release URLs
+# are chosen. skim.aiProxyUrl, skim.termsUrl, skim.privacyUrl, and
+# skim.aiDataPolicyUrl are required for assembleRelease and are not stored here.
+#
+# A byte-for-byte rebuild has not been verified. versionCode and versionName
+# are constants in app/build.gradle.kts. There is no Google Play dependency.
+
+Categories:
+  - Internet
+License: GPL-3.0-only
+AuthorName: dantech0xff
+SourceCode: https://github.com/dantech0xff/skim-browser
+IssueTracker: https://github.com/dantech0xff/skim-browser/issues
+
+AutoName: Skim
+Summary: Android browser with an optional summary of the open page
+Description: |-
+  Skim is a web browser for Android. Pages open in the system WebView.
+  The app does not show ads of its own.
+
+  Skim AI can summarize the page you are reading, or answer a question
+  about that page. It asks before sending a site, and you can refuse.
+  Incognito tabs are never sent. The summary comes from a hosted model
+  through the project's proxy.
+
+  The source is free software under GPL-3.0-only.
+
+RepoType: git
+Repo: https://github.com/dantech0xff/skim-browser.git
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    # Replace with the tag that is actually published. master is not a release.
+    commit: REPLACE_WITH_RELEASE_TAG
+    gradle:
+      - yes
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+    prebuild:
+      - echo sdk.dir=$ANDROID_HOME > local.properties
+    # assembleRelease also requires https values for skim.aiProxyUrl,
+    # skim.termsUrl, skim.privacyUrl, and skim.aiDataPolicyUrl.
+    # Add them as gradle properties in the published recipe. Do not commit them here.
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: '1.0'
+CurrentVersionCode: 1
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Skim AI can send the text of a page you allow to the project's proxy, which calls a hosted model. The app asks first. Incognito tabs are never sent. The model service is not free software.

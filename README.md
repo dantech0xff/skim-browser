@@ -10,7 +10,7 @@ Skim Browser is free software under the GNU General Public License, version 3.0 
 
 Third-party libraries keep their own licenses. The bundled Google Sans Flex font stays under the SIL Open Font License 1.1, in [OFL-GoogleSansFlex.txt](app/licenses/OFL-GoogleSansFlex.txt).
 
-How to build, test, and open a pull request is [CONTRIBUTING.md](CONTRIBUTING.md). The conduct rules are [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+How to build, test, and open a pull request is [CONTRIBUTING.md](CONTRIBUTING.md). The conduct rules are [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). A draft F-Droid listing, not a submission, is [F-Droid readiness](docs/fdroid.md).
 
 Where each module starts, and which package owns its Hilt bindings, is `docs/codebase-summary.md`. Boundaries are `docs/system-architecture.md`.
 

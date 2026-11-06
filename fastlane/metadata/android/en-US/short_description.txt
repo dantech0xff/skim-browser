@@ -1,0 +1,1 @@
+Android browser with an optional summary of the open page.
