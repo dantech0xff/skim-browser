@@ -19,7 +19,7 @@ The build types are in `app/build.gradle.kts`.
 
 A local proxy URL belongs in `local.properties` or in CI (`-P` or `ORG_GRADLE_PROJECT_skim_aiProxyUrl`). It does not belong in `gradle.properties` or in git. The Anthropic key belongs only in the Worker secret. `VerifyNoApiKey` scans every variant, debug included, for the `sk-ant-` prefix. `assemble` finalizes that task. For a non-debug variant, `bundle` finalizes it too, and `check` depends on it. The needle lives in that task, in `app/build.gradle.kts`.
 
-R8 has no `packageScope`. The extra keep rule is the comment and the `-dontwarn` line in `app/src/main/keepRules/rules.keep`.
+R8 has no `packageScope`. `app/src/main/keepRules/rules.keep` has no keep rules. The Anthropic SDK's `-dontwarn com.google.auto.value.AutoValue` line is gone with the SDK.
 
 ## Ship when all of these are true
 

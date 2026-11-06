@@ -1,6 +1,5 @@
 # Project specific R8 rules. AGP combines every keep rule file in src/main/keepRules and passes them to R8.
 # See https://d.android.com/r/tools/r8/keep-rules
-
-# opentelemetry-api (pulled in by anthropic-java) references the AutoValue annotation, which only exists
-# at compile time. Without this rule R8 stops the release build with a "Missing class" error.
--dontwarn com.google.auto.value.AutoValue
+#
+# The Anthropic Java SDK needed -dontwarn com.google.auto.value.AutoValue because opentelemetry-api
+# referenced that compile-only annotation. The SDK is gone, and this file has no keep rules.
