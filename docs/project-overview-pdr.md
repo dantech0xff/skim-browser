@@ -33,4 +33,4 @@ A release build must not contain an API key. It must call a proxy that meets `do
 
 UI follows `design/`. Accepted visual gaps are `docs/design-guidelines.md`.
 
-Coverage from `:app:koverHtmlReportDebug` is reported with the build. It is not a failing Gradle rule. The filters are the `kover` block in `app/build.gradle.kts`.
+Coverage from `:app:koverHtmlReportDebug` is reported with the build. The Gradle build does not fail on a percentage. CI fails when the aggregated line rate is under 80 percent. The check is `tools/check_line_coverage.py`. The filters are the `kover` block in `app/build.gradle.kts`.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Product rules
+    url: https://github.com/dantech0xff/skim-browser/blob/master/docs/product-vision.md
+    about: Read the product rules before you open a feature request.
+  - name: Contributing
+    url: https://github.com/dantech0xff/skim-browser/blob/master/CONTRIBUTING.md
+    about: Build, test, and pull request steps.

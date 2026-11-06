@@ -4,6 +4,14 @@ The product rules are in [Product vision](docs/product-vision.md). Behavior rule
 
 Skim is an Android browser. It shows one WebView per tab, keeps an incognito session in its own WebView profile, and answers questions about the open page with Claude. The model id lives in `ai/src/main/java/com/dantech/skimbrowser/ai/AiConfig.kt`. The UI is Jetpack Compose and Material 3 Expressive.
 
+## License
+
+Skim Browser is free software under the GNU General Public License, version 3.0 only. The terms are in [LICENSE](LICENSE). That file covers the whole tree. Source files have no per-file license header.
+
+Third-party libraries keep their own licenses. The bundled Google Sans Flex font stays under the SIL Open Font License 1.1, in [OFL-GoogleSansFlex.txt](app/licenses/OFL-GoogleSansFlex.txt).
+
+How to build, test, and open a pull request is [CONTRIBUTING.md](CONTRIBUTING.md). The conduct rules are [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
 Where each module starts, and which package owns its Hilt bindings, is `docs/codebase-summary.md`. Boundaries are `docs/system-architecture.md`.
 
 ## What you need

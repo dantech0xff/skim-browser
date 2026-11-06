@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Unit tests, lint, coverage, releaseSmoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up the Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platforms;android-37.0 build-tools;36.0.0 platform-tools
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Write local.properties with an empty debug key
+        run: |
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$sdk"
+          printf 'sdk.dir=%s\nskim.anthropicApiKey=\n' "$sdk" > local.properties
+          if grep -E 'sk-ant-|aiProxyUrl=.+' local.properties; then
+            echo "local.properties must not contain a key or a proxy URL" >&2
+            exit 1
+          fi
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace
+
+      - name: Run lint
+        run: ./gradlew :app:lintDebug --no-configuration-cache --stacktrace
+
+      - name: Write the Kover XML report
+        run: ./gradlew :app:koverXmlReportDebug --no-configuration-cache --stacktrace
+
+      - name: Check the 80 percent line floor
+        run: |
+          python3 tools/check_line_coverage.py --self-test
+          python3 tools/check_line_coverage.py app/build/reports/kover/reportDebug.xml
+
+      - name: Assemble releaseSmoke
+        run: ./gradlew :app:assembleReleaseSmoke --no-configuration-cache --stacktrace
+
+      - name: Upload reports after a failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-reports
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+          if-no-files-found: ignore
