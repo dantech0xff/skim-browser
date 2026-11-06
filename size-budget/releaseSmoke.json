@@ -1,0 +1,12 @@
+{
+  "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
+  "variant": "releaseSmoke",
+  "abiSplits": false,
+  "fileSizeBytes": 5752084,
+  "downloadSizeBytes": 5341980,
+  "maxGrowthBytes": 8192,
+  "definedMethods": 36289,
+  "referencedMethods": 40239,
+  "dexFiles": 1,
+  "notes": "Universal APK. Native libraries for four ABIs are inside this one file. maxGrowthBytes is the allowed increase over fileSizeBytes. Update fileSizeBytes when a size change is intentional. See docs/lightweight-budget.md."
+}
