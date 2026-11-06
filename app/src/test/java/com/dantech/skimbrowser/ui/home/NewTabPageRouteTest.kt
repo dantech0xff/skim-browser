@@ -642,11 +642,13 @@ class NewTabPageRouteTest {
             launched += contract.createIntent(app, input)
             val spoken = answer
             val code = if (spoken == null) Activity.RESULT_CANCELED else Activity.RESULT_OK
-            val data = spoken?.let {
-                Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(it))
+            val data = if (spoken == null) {
+                Intent()
+            } else {
+                Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(spoken))
             }
-            // Deliver after onLaunch returns. Dispatching inside onLaunch leaves the Compose
-            // clock busy, and waitForIdle never returns on the CI runner.
+            // Deliver after onLaunch returns. A null cancel Intent left Robolectric's looper
+            // paused on CI, so performClick never returned.
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 dispatchResult(requestCode, code, data)
             }
