@@ -46,25 +46,8 @@ jobs:
           fi
 
       - name: Run unit tests
-        timeout-minutes: 35
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb
-          cat > /tmp/test-log.init.gradle << 'EOF'
-          gradle.projectsLoaded {
-              rootProject.subprojects {
-                  afterEvaluate {
-                      tasks.withType(org.gradle.api.tasks.testing.Test).configureEach {
-                          testLogging {
-                              events "started", "failed"
-                              exceptionFormat "short"
-                          }
-                      }
-                  }
-              }
-          }
-          EOF
-          xvfb-run -a ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace --init-script /tmp/test-log.init.gradle
+        timeout-minutes: 25
+        run: ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace
 
       - name: Run lint
         run: ./gradlew :app:lintDebug --no-configuration-cache --stacktrace

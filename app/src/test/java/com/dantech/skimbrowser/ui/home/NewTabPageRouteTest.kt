@@ -641,10 +641,14 @@ class NewTabPageRouteTest {
             failure?.let { throw it }
             launched += contract.createIntent(app, input)
             val spoken = answer
-            if (spoken == null) {
-                dispatchResult(requestCode, Activity.RESULT_CANCELED, null)
-            } else {
-                dispatchResult(requestCode, Activity.RESULT_OK, Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(spoken)))
+            val code = if (spoken == null) Activity.RESULT_CANCELED else Activity.RESULT_OK
+            val data = spoken?.let {
+                Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(it))
+            }
+            // Deliver after onLaunch returns. Dispatching inside onLaunch leaves the Compose
+            // clock busy, and waitForIdle never returns on the CI runner.
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                dispatchResult(requestCode, code, data)
             }
         }
     }
