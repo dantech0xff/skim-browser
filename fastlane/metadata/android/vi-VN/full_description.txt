@@ -1,0 +1,5 @@
+Skim là trình duyệt web cho Android. Trang mở trong WebView của hệ thống. Ứng dụng không tự hiển thị quảng cáo.
+
+Skim AI có thể tóm tắt trang bạn đang đọc, hoặc trả lời câu hỏi về trang đó. Ứng dụng hỏi trước khi gửi một trang, và bạn có thể từ chối. Thẻ ẩn danh không bao giờ được gửi. Bản tóm tắt do một mô hình trên mạng tạo ra thông qua proxy của dự án, nên bản dựng có tính năng này nên mang cờ NonFreeNet.
+
+Mã nguồn là phần mềm tự do theo GPL-3.0-only.
