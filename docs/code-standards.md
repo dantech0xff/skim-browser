@@ -44,4 +44,4 @@ Test the rule Skim owns, at the lowest layer that can prove it. A JVM test of a 
 
 Unit tests use JUnit 4 and `runTest`. Do not lower a timeout, delete an assertion, or drop a test to make a red build pass. Every use case has a unit test against a fake of its repository interface in `domain/src/testFixtures`. ViewModel tests use those fakes.
 
-Kover reports coverage. It does not fail the build on a percentage. Filters are the `kover` block in `app/build.gradle.kts`.
+Kover reports coverage. The Gradle build does not fail on a percentage. CI fails when the aggregated line rate is under 80 percent. The check is `tools/check_line_coverage.py`. Filters are the `kover` block in `app/build.gradle.kts`.

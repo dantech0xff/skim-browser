@@ -526,7 +526,7 @@ class NewTabPageRouteTest {
         showHome()
 
         composeRule.onNodeWithContentDescription("Voice search").performClick()
-        composeRule.waitForIdle()
+        composeRule.pass(150)
 
         assertEquals(1, speech.launched.size)
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
@@ -539,7 +539,7 @@ class NewTabPageRouteTest {
         showHome()
 
         composeRule.onNodeWithContentDescription("Voice search").performClick()
-        composeRule.waitForIdle()
+        composeRule.pass(150)
 
         composeRule.onAllNodesWithContentDescription("Close search").assertCountEquals(0)
         composeRule.onNodeWithText("Search or ask anything").assertExists()
@@ -641,10 +641,16 @@ class NewTabPageRouteTest {
             failure?.let { throw it }
             launched += contract.createIntent(app, input)
             val spoken = answer
-            if (spoken == null) {
-                dispatchResult(requestCode, Activity.RESULT_CANCELED, null)
+            val code = if (spoken == null) Activity.RESULT_CANCELED else Activity.RESULT_OK
+            val data = if (spoken == null) {
+                Intent()
             } else {
-                dispatchResult(requestCode, Activity.RESULT_OK, Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(spoken)))
+                Intent().putStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS, arrayListOf(spoken))
+            }
+            // Deliver after onLaunch returns. A null cancel Intent left Robolectric's looper
+            // paused on CI, so performClick never returned.
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                dispatchResult(requestCode, code, data)
             }
         }
     }
