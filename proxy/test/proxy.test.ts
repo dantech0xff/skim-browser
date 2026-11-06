@@ -22,9 +22,10 @@ function body(extra: Record<string, unknown> = {}, maxTokens = 1024): string {
   });
 }
 
-function request(init: { install?: string | null; json?: string; headers?: HeadersInit } = {}): Request {
+function request(init: { install?: string | null; json?: string; headers?: HeadersInit; ip?: string } = {}): Request {
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json");
+  headers.set("CF-Connecting-IP", init.ip ?? crypto.randomUUID());
   if (init.install !== null) {
     headers.set("X-Skim-Install", init.install ?? INSTALL);
   }

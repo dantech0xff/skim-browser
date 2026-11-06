@@ -13,6 +13,10 @@
       {
         "name": "INSTALL_QUOTA",
         "class_name": "InstallQuota"
+      },
+      {
+        "name": "ABUSE_LEDGER",
+        "class_name": "AbuseLedger"
       }
     ]
   },
@@ -20,6 +24,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["InstallQuota"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["AbuseLedger"]
     }
   ]
 }

@@ -227,6 +227,12 @@ private fun OverviewBlock(overview: TabsOverviewState, actions: AskTabsActions) 
             body = stringResource(R.string.ai_offline_body),
             onRetry = actions.onRetry,
         )
+        TabsOverviewState.DailyLimit -> AiNoticeCard(
+            icon = R.drawable.ic_info,
+            title = stringResource(R.string.ai_daily_limit_title),
+            body = stringResource(R.string.ai_daily_limit_body),
+            onRetry = actions.onRetry,
+        )
         TabsOverviewState.ServerError -> AiNoticeCard(
             icon = R.drawable.ic_error,
             title = stringResource(R.string.ai_server_error_title),
@@ -340,6 +346,12 @@ private fun FollowUpBlock(turn: TabsAnswer) {
 private fun AnswerProblem(error: AnswerError?, onRetry: () -> Unit) {
     if (error == null) return
     when (error) {
+        AnswerError.DailyLimit -> AiNoticeCard(
+            icon = R.drawable.ic_info,
+            title = stringResource(R.string.ai_daily_limit_title),
+            body = stringResource(R.string.ai_daily_limit_body),
+            onRetry = onRetry,
+        )
         AnswerError.Server -> AiNoticeCard(
             icon = R.drawable.ic_error,
             title = stringResource(R.string.ai_server_error_title),

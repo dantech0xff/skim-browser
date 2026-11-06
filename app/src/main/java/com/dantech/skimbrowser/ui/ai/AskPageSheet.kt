@@ -283,6 +283,12 @@ private fun QuestionBlock(turn: QaTurn, state: AskPageUiState, actions: AskPageA
 private fun AnswerProblem(error: AnswerError?, onRetry: () -> Unit) {
     if (error == null) return
     when (error) {
+        AnswerError.DailyLimit -> AiNoticeCard(
+            icon = R.drawable.ic_info,
+            title = stringResource(R.string.ai_daily_limit_title),
+            body = stringResource(R.string.ai_daily_limit_body),
+            onRetry = onRetry,
+        )
         AnswerError.Server -> AiNoticeCard(
             icon = R.drawable.ic_error,
             title = stringResource(R.string.ai_server_error_title),

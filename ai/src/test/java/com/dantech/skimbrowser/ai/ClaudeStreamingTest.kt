@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.ai
 
+import com.dantech.skimbrowser.domain.ai.AiFailure
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -24,6 +25,20 @@ class ClaudeStreamingTest {
             assertEquals(AiEvent.Done("end_turn"), events.filterIsInstance<AiEvent.Done>().single())
             assertTrue(events.last() is AiEvent.Final)
             assertTrue(events.indexOf(text.single()) < events.indexOf(cites.single()))
+        }
+    }
+
+    @Test
+    fun aProxyLimitIsADailyLimit() = runBlocking {
+        FakeClaudeServer().use { server ->
+            server.enqueueStatus(429)
+            val failure = try {
+                provider(server.baseUrl).client().streamEvents(probeParams()).toList()
+                null
+            } catch (error: Throwable) {
+                error.toAiFailure()
+            }
+            assertTrue(failure is AiFailure.DailyLimit)
         }
     }
 

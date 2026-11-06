@@ -153,6 +153,16 @@ internal fun SummaryNotice(summary: SummaryState, onRetry: () -> Unit): (@Compos
                 )
             }
         }
+        SummaryState.DailyLimit -> {
+            {
+                AiNoticeCard(
+                    icon = R.drawable.ic_info,
+                    title = stringResource(R.string.ai_daily_limit_title),
+                    body = stringResource(R.string.ai_daily_limit_body),
+                    onRetry = onRetry,
+                )
+            }
+        }
         SummaryState.ServerError -> {
             {
                 AiNoticeCard(
