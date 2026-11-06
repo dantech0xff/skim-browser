@@ -6,7 +6,10 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
-        bindings: { ANTHROPIC_API_KEY: "test-proxy-secret" },
+        bindings: {
+          ANTHROPIC_API_KEY: "test-proxy-secret",
+          IP_HASH_SALT: "test-ip-salt",
+        },
       },
     }),
   ],

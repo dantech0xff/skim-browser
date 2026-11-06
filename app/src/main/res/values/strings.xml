@@ -337,6 +337,8 @@
         Copy needs design review: minimal copy for states the design does not cover yet,
         each one reusing the closest drawn pattern.
     -->
+    <string name="ai_daily_limit_title">Daily limit reached</string>
+    <string name="ai_daily_limit_body">Skim has answered as much as it can for now. Try again later.</string>
     <string name="ai_server_error_title">Skim couldn\'t answer</string>
     <string name="ai_server_error_body">Something went wrong on Skim\'s side. Try again in a moment.</string>
     <string name="ai_refusal_title">Skim can\'t help with this</string>

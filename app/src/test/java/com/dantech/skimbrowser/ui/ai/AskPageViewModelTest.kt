@@ -156,6 +156,19 @@ class AskPageViewModelTest {
     }
 
     @Test
+    fun aDailyLimitShowsTheLimitCard() = runTest(main.testDispatcher) {
+        server.enqueueStatus(429)
+        val open = ready(this, longPageJson())
+        open.allow()
+        val model = open.model(AskPageKey(tabId = open.id, approvedHost = PAGE_HOST))
+
+        val shown = model.state.first { it.summary is SummaryState.DailyLimit }
+        assertTrue(shown.inputEnabled)
+        assertFalse(shown.generating)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
     fun aServerErrorShowsTheErrorCard() = runTest(main.testDispatcher) {
         server.enqueueStatus(500)
         val open = ready(this, longPageJson())

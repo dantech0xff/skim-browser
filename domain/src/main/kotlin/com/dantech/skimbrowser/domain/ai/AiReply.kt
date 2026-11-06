@@ -20,6 +20,9 @@ sealed interface AiFailure {
 
     data object Server : AiFailure
 
+    /** The proxy answered 429. The daily cap or a rate limit was already reached. */
+    data object DailyLimit : AiFailure
+
     data object Refused : AiFailure
 
     /** The site is not allowed, or [hostChanged] when the page moved to another site. */

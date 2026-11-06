@@ -66,6 +66,8 @@ sealed interface TabsOverviewState {
 
     data object ServerError : TabsOverviewState
 
+    data object DailyLimit : TabsOverviewState
+
     data object Refused : TabsOverviewState
 }
 
@@ -400,6 +402,7 @@ class AskTabsViewModel @AssistedInject constructor(
         val overview = when (failure) {
             AiFailure.Offline -> TabsOverviewState.Offline
             AiFailure.Refused -> TabsOverviewState.Refused
+            AiFailure.DailyLimit -> TabsOverviewState.DailyLimit
             AiFailure.Server, is AiFailure.NotAllowed -> TabsOverviewState.ServerError
         }
         publish(current, overviewOverride = overview)
@@ -409,6 +412,7 @@ class AskTabsViewModel @AssistedInject constructor(
         val answer = when (failure) {
             AiFailure.Offline -> AnswerError.Offline
             AiFailure.Refused -> AnswerError.Refused
+            AiFailure.DailyLimit -> AnswerError.DailyLimit
             AiFailure.Server, is AiFailure.NotAllowed -> AnswerError.Server
         }
         publish(current, answerError = answer)

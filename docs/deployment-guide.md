@@ -36,7 +36,7 @@ R8 has no `packageScope`. The extra keep rule is the comment and the `-dontwarn`
 Skim is only the client. The Worker in `proxy/` must do all of the following before a release build is distributed:
 
 - Accept `POST {proxy}/v1/messages`, forward a valid body unchanged, and insert `x-api-key` and `anthropic-version: 2023-06-01`. Do not buffer the SSE response.
-- Authenticate `X-Skim-Install` (one UUID per install). Apply a quota per install and a rate limit. A new install id is limited more tightly than an old one.
+- Authenticate `X-Skim-Install` (one UUID per install). Apply a quota per install and a rate limit. A new install id is limited more tightly than an old one. Also rate limit by client IP, and enforce a 24 hour spend cap per install, per IP, and globally. The numbers live in `proxy/src/policy.ts`.
 - Enforce a server allowlist: `model` is `claude-haiku-5-5`; `max_tokens` is at most 8192; the body has no `tools`, `tool_choice`, `mcp_servers`, `thinking`, or sampling fields; no beta headers; a body size limit; only the keys Skim sends (`model`, `max_tokens`, `system`, `messages`, `output_config`, `stream`). The shape the client sends is `ai/src/test/java/com/dantech/skimbrowser/ai/RequestShapeTest.kt`. The model id and token ceiling in the app are `ai/src/main/java/com/dantech/skimbrowser/ai/AiConfig.kt`.
 - Put a spend cap on the Anthropic key the proxy uses, and alert when the cap is crossed.
 - Play Integrity (a standard request) is recommended before the app is distributed widely. The app does not send an integrity token today.

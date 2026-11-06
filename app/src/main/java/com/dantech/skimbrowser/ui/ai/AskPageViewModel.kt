@@ -70,6 +70,8 @@ sealed interface SummaryState {
 
     data object ServerError : SummaryState
 
+    data object DailyLimit : SummaryState
+
     data object Refused : SummaryState
 
     /** A summary that was stopped. [text] is the part that arrived. */
@@ -77,7 +79,7 @@ sealed interface SummaryState {
 }
 
 /** Why the latest question has no answer. */
-enum class AnswerError { Server, Offline, Refused }
+enum class AnswerError { Server, Offline, Refused, DailyLimit }
 
 /** One question and, once it exists, the answer under it. */
 @Immutable
@@ -418,6 +420,11 @@ class AskPageViewModel @AssistedInject constructor(
                 publish(opened, summaryOverride = SummaryState.ServerError)
             } else {
                 publish(opened, answerError = AnswerError.Server)
+            }
+            AiFailure.DailyLimit -> if (kind == MessageKind.SUMMARY) {
+                publish(opened, summaryOverride = SummaryState.DailyLimit)
+            } else {
+                publish(opened, answerError = AnswerError.DailyLimit)
             }
             AiFailure.Refused -> if (kind == MessageKind.SUMMARY) {
                 publish(opened, summaryOverride = SummaryState.Refused)
