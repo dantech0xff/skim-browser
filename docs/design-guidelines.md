@@ -22,6 +22,7 @@ Mỗi dòng là một lệch có thật giữa golden và PNG, hoặc một tr�
 
 | Board/component | Lệch | Lý do | Nguồn |
 |---|---|---|---|
+| AI & privacy (10) | Thêm công tắc Send ratings dưới Keep chat history. Bản vẽ 10 chưa có hàng này. | Người dùng phải đồng ý trước khi một like hoặc dislike rời máy. Tắt công tắc không gửi các đánh giá đã có. | `docs/proxy.md` (Ratings); `10-ai-privacy-settings.png` |
 | Floating toolbar, AI FAB (04, 05, 05c, 06d, 08, 09, 09b, 09c, 11) | Bóng nhạt hơn bản vẽ. Bản vẽ dùng bóng mức 3 (`0 1 3`, `0 4 8 3`) cho toolbar và FAB; app giữ elevation mặc định của Compose: toolbar Level 1, FAB của toolbar Level 2. FAB tắt không có bóng, như bản vẽ. | `design/spec/tokens.md` (Elevation): giữ default của component Compose. | `design/html/05-browsing--loading.html` (box-shadow); `browser-toolbar-05.png` |
 | Nút Tabs: số đếm (04, 05, 09c, 11) | Số vẽ 12/16 weight 600 (`labelMediumEmphasized`); bản vẽ HTML 12/12 weight 700. | Token thắng: bảng Type của tokens.md ghi "the tab count" dùng `labelMediumEmphasized`. | `design/spec/tokens.md` (Type); `design/html/05-browsing--loading.html`; `browser-toolbar-05.png` |
 | Nút Tabs: từ 100 tab (chưa vẽ) | Hiện `99+` (`tabs_count_overflow`); ô rộng ra quá 22 dp (giữ tối thiểu 22, đệm 3 dp mỗi bên) để chữ không đè viền. | Trạng thái chưa có trong bản vẽ. | `browser-toolbar-tab-count-overflow.png` |

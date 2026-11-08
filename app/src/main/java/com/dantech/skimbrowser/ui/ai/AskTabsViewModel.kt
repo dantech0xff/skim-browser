@@ -10,6 +10,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.ai.AiAssistant
+import com.dantech.skimbrowser.domain.ai.FeedbackFollowUp
+import com.dantech.skimbrowser.domain.ai.FeedbackSurface
+import com.dantech.skimbrowser.domain.ai.MessageFeedbackSync
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
 import com.dantech.skimbrowser.domain.ai.ChatMessage
@@ -88,6 +91,7 @@ data class AskTabsUiState(
     val generating: Boolean = false,
     val inputEnabled: Boolean = true,
     val answerError: AnswerError? = null,
+    val askToSendRatings: Boolean = false,
 ) {
     val showSubtitle: Boolean get() = tabCount > 0
 }
@@ -103,6 +107,7 @@ class AskTabsViewModel @AssistedInject constructor(
     private val assistant: AiAssistant,
     private val collectOpenTabs: CollectOpenTabs,
     private val network: NetworkAvailability,
+    private val ratings: MessageFeedbackSync,
     private val savedState: SavedStateHandle,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -116,6 +121,7 @@ class AskTabsViewModel @AssistedInject constructor(
     val state: StateFlow<AskTabsUiState> = _state.asStateFlow()
 
     private var session: PageConversation? = null
+    private var pendingRatingId: Long? = null
     private var job: Job? = null
 
     init {
@@ -194,6 +200,27 @@ class AskTabsViewModel @AssistedInject constructor(
         viewModelScope.launch {
             sessions.setFeedback(current, ready.messageId, next)
             publish(current)
+            when (ratings.afterLocalChange(current, ready.messageId, FeedbackSurface.TABS)) {
+                FeedbackFollowUp.NEEDS_CONSENT -> {
+                    pendingRatingId = ready.messageId
+                    _state.value = _state.value.copy(askToSendRatings = true)
+                }
+                FeedbackFollowUp.LOCAL_ONLY, FeedbackFollowUp.QUEUED -> Unit
+            }
+        }
+    }
+
+    /** The person answered the rating disclosure. Agreeing sends only the rating just chosen. */
+    fun resolveSendRatings(allow: Boolean) {
+        val current = session
+        val messageId = pendingRatingId
+        pendingRatingId = null
+        _state.value = _state.value.copy(askToSendRatings = false)
+        viewModelScope.launch {
+            ratings.rememberConsent(allow)
+            if (allow && current != null && messageId != null) {
+                ratings.sendAfterConsent(current, messageId, FeedbackSurface.TABS)
+            }
         }
     }
 

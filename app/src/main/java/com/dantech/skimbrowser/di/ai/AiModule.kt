@@ -2,13 +2,14 @@ package com.dantech.skimbrowser.di.ai
 
 import com.dantech.skimbrowser.BuildConfig
 import com.dantech.skimbrowser.ai.ClaudeClientProvider
+import com.dantech.skimbrowser.ai.FeedbackVersion
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import dagger.Module
 import dagger.Provides
+import javax.inject.Singleton
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Builds the Claude client. The credential expression stays in this package. */
 @Singleton
@@ -27,4 +28,9 @@ object AiModule {
     @Singleton
     fun claudeClients(factory: ClaudeClientFactory, settings: SettingsRepository): ClaudeClientProvider =
         factory.create(settings::installId)
+
+    @Provides
+    @Singleton
+    @FeedbackVersion
+    fun feedbackAppVersion(): String = BuildConfig.VERSION_NAME
 }

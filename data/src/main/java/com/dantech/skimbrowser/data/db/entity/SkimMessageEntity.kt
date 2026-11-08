@@ -39,4 +39,7 @@ data class SkimMessageEntity(
     /** Follow-up questions offered with a tabs overview, as JSON. */
     val suggestedQuestionsJson: String? = null,
     val createdAt: Long,
+    val feedbackAnswerId: String? = null,
+    val feedbackRevision: Int = 0,
+    val feedbackSentRevision: Int = 0,
 )

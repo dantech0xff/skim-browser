@@ -37,6 +37,24 @@ interface ChatRepository {
 
     suspend fun updateMessage(message: SavedMessage)
 
+    /** Saved messages whose rating has not yet been accepted at the current revision. */
+    suspend fun unsentFeedback(): List<SavedMessage>
+
+    /**
+     * Advances the sent revision when the row is still [answerId], [revision], and [feedback].
+     * A newer rating is left untouched. Returns true when a row changed.
+     */
+    suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean
+
+    /** Writes the rating column only. Text and revisions stay as they are. */
+    suspend fun setMessageFeedback(id: Long, feedback: MessageFeedback): Boolean
+
+    /**
+     * Moves the row to [revision] when the stored revision is lower. Does not change the rating
+     * or the message text.
+     */
+    suspend fun advanceFeedbackRevision(id: Long, answerId: String, revision: Int, sentRevision: Int): Boolean
+
     /**
      * Deletes every chat, then signals [removals] with null even when nothing was saved, so chats
      * kept only in memory go too.

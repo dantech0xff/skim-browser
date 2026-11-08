@@ -3,9 +3,13 @@ package com.dantech.skimbrowser.ai.di
 import com.dantech.skimbrowser.ai.AiDataEraser
 import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.ai.ChatSessionStore
+import com.dantech.skimbrowser.ai.FeedbackRelay
+import com.dantech.skimbrowser.ai.ProxyFeedbackSender
 import com.dantech.skimbrowser.ai.SkimAiService
 import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AskPageAccess
+import com.dantech.skimbrowser.domain.ai.FeedbackSender
+import com.dantech.skimbrowser.domain.ai.MessageFeedbackSync
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.SkimDataEraser
 import dagger.Binds
@@ -21,4 +25,6 @@ internal abstract class AiBindingsModule {
     @Binds abstract fun askPageAccess(impl: AiGate): AskPageAccess
     @Binds abstract fun pageChats(impl: ChatSessionStore): PageChats
     @Binds abstract fun skimDataEraser(impl: AiDataEraser): SkimDataEraser
+    @Binds abstract fun feedbackSender(impl: ProxyFeedbackSender): FeedbackSender
+    @Binds abstract fun feedbackSync(impl: FeedbackRelay): MessageFeedbackSync
 }

@@ -52,10 +52,12 @@ internal fun SavedChat.toEntity() = SkimChatEntity(id, kind, url, host, title, t
 
 internal fun SkimMessageEntity.toDomain() = SavedMessage(
     id, chatId, role, kind, text, citationsJson, feedback, status, suggestedQuestionsJson, createdAt,
+    feedbackAnswerId, feedbackRevision, feedbackSentRevision,
 )
 
 internal fun SavedMessage.toEntity() = SkimMessageEntity(
     id, chatId, role, kind, text, citationsJson, feedback, status, suggestedQuestionsJson, createdAt,
+    feedbackAnswerId, feedbackRevision, feedbackSentRevision,
 )
 
 internal fun ChatListItem.toDomain() = ChatSummary(chat.toDomain(), questionCount, hasSummary, answerCount)

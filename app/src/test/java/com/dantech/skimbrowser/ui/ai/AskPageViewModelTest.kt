@@ -260,6 +260,26 @@ class AskPageViewModelTest {
     }
 
     @Test
+    fun aThumbAsksBeforeSendingAndStillKeepsTheLocalRating() = runTest(main.testDispatcher) {
+        server.enqueueStatus(500)
+        val open = shell(this)
+        val chatId = open.savedChat()
+        val ratings = RecordingFeedback()
+        val model = open.model(AskPageKey(savedChatId = chatId), ratings = ratings)
+        model.state.first { it.summary is SummaryState.Done }
+
+        model.feedback(good = true)
+        val asked = model.state.first { it.askToSendRatings && (it.summary as? SummaryState.Done)?.feedback == com.dantech.skimbrowser.domain.chat.MessageFeedback.GOOD }
+        val done = asked.summary as SummaryState.Done
+        assertEquals(com.dantech.skimbrowser.domain.chat.MessageFeedback.GOOD, done.feedback)
+        assertFalse(ratings.sent)
+        model.resolveSendRatings(allow = true)
+        advanceUntilIdle()
+        assertTrue(ratings.sent)
+        assertFalse(model.state.value.askToSendRatings)
+    }
+
+    @Test
     fun aSavedChatLoadsOnTheCurrentNormalTab() = runTest(main.testDispatcher) {
         server.enqueueStatus(500)
         val open = shell(this)
@@ -336,7 +356,11 @@ class AskPageViewModelTest {
         return chatId
     }
 
-    private fun Open.model(key: AskPageKey, saved: SavedStateHandle = SavedStateHandle()): AskPageViewModel {
+    private fun Open.model(
+        key: AskPageKey,
+        saved: SavedStateHandle = SavedStateHandle(),
+        ratings: com.dantech.skimbrowser.domain.ai.MessageFeedbackSync = IdleFeedback,
+    ): AskPageViewModel {
         val store = ViewModelStore().also { stores += it }
         val factory = viewModelFactory {
             initializer {
@@ -348,6 +372,7 @@ class AskPageViewModelTest {
                     network = fixture.network,
                     readerHighlights = ReaderHighlights(),
                     chats = chats,
+                    ratings = ratings,
                     savedState = saved,
                     appScope = appScope,
                 )

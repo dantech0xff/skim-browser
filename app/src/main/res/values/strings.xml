@@ -153,6 +153,12 @@
     <string name="settings_section_privacy">Privacy</string>
     <string name="ai_settings_ask_before_sending">Ask before sending a page to the cloud</string>
     <string name="ai_settings_ask_before_sending_summary">Shows a prompt the first time you use AI on a site</string>
+    <string name="ai_feedback_consent_title">Send ratings to Skim?</string>
+    <string name="ai_feedback_consent_body">Only the rating is sent, not the page or the answer. The rating on this phone is kept either way. If the network fails, Skim does not treat it as delivered. Incognito ratings are never sent.</string>
+    <string name="ai_feedback_consent_allow">Send ratings</string>
+    <string name="ai_feedback_consent_not_now">Not now</string>
+    <string name="ai_settings_send_ratings">Send ratings</string>
+    <string name="ai_settings_send_ratings_summary">Sends a like or dislike to Skim. The page and the answer stay on this phone.</string>
     <string name="ai_settings_keep_history">Keep chat history on this device</string>
     <string name="ai_settings_keep_history_summary">Never synced. Delete it anytime below.</string>
     <plurals name="ai_settings_conversations">

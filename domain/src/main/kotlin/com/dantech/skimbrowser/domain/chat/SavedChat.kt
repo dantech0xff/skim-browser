@@ -25,6 +25,9 @@ data class SavedMessage(
     val status: MessageStatus,
     val suggestedQuestionsJson: String? = null,
     val createdAt: Long,
+    val feedbackAnswerId: String? = null,
+    val feedbackRevision: Int = 0,
+    val feedbackSentRevision: Int = 0,
 )
 
 /** A row of Skim history: the chat and the counts its subtitle needs. */

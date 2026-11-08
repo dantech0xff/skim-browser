@@ -21,6 +21,9 @@ internal fun ChatMessage.toSaved(chatId: Long, createdAt: Long) = SavedMessage(
     status = status,
     suggestedQuestionsJson = encodeList(suggestedQuestions, String.serializer()),
     createdAt = createdAt,
+    feedbackAnswerId = feedbackAnswerId,
+    feedbackRevision = feedbackRevision,
+    feedbackSentRevision = feedbackSentRevision,
 )
 
 internal fun SavedMessage.toMessage() = ChatMessage(
@@ -32,6 +35,9 @@ internal fun SavedMessage.toMessage() = ChatMessage(
     feedback = feedback,
     status = status,
     suggestedQuestions = decodeList(suggestedQuestionsJson, String.serializer()),
+    feedbackAnswerId = feedbackAnswerId,
+    feedbackRevision = feedbackRevision,
+    feedbackSentRevision = feedbackSentRevision,
 )
 
 /** The first summary line, without its bullet, for the Continue card. */

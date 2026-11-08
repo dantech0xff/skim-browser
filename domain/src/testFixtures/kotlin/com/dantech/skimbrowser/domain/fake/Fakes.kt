@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.ChatSummary
 import com.dantech.skimbrowser.domain.chat.DeletedChat
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
@@ -56,6 +57,8 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
     override suspend fun setAskBeforeSending(enabled: Boolean) = update { it.copy(askBeforeSending = enabled) }
 
     override suspend fun setKeepChatHistory(enabled: Boolean) = update { it.copy(keepChatHistory = enabled) }
+
+    override suspend fun setSendRatings(enabled: Boolean) = update { it.copy(sendRatings = enabled) }
 
     override suspend fun setReaderTextScale(percent: Int) =
         update { it.copy(readerTextScalePercent = percent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)) }
@@ -398,6 +401,47 @@ class FakeChatRepository : ChatRepository {
     override suspend fun updateMessage(message: SavedMessage) {
         val index = storedMessages.indexOfFirst { it.id == message.id }
         if (index >= 0) storedMessages[index] = message
+    }
+
+    override suspend fun unsentFeedback(): List<SavedMessage> {
+        val rows = storedMessages.filter { it.feedbackAnswerId != null && it.feedbackRevision > it.feedbackSentRevision }.take(20)
+        beforeUnsent?.let { hook ->
+            beforeUnsent = null
+            hook()
+        }
+        return rows
+    }
+
+    override suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        val row = storedMessages[index]
+        if (row.feedbackAnswerId != answerId || row.feedbackRevision != revision || row.feedback != feedback) return false
+        if (row.feedbackSentRevision >= revision) return false
+        storedMessages[index] = row.copy(feedbackSentRevision = revision)
+        return true
+    }
+
+    var beforeUnsent: (suspend () -> Unit)? = null
+
+    override suspend fun setMessageFeedback(id: Long, feedback: MessageFeedback): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        storedMessages[index] = storedMessages[index].copy(feedback = feedback)
+        return true
+    }
+
+    override suspend fun advanceFeedbackRevision(id: Long, answerId: String, revision: Int, sentRevision: Int): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        val row = storedMessages[index]
+        if (row.feedbackRevision >= revision) return false
+        storedMessages[index] = row.copy(
+            feedbackAnswerId = answerId,
+            feedbackRevision = revision,
+            feedbackSentRevision = sentRevision.coerceAtMost(revision),
+        )
+        return true
     }
 
     override suspend fun deleteAll() {

@@ -62,6 +62,8 @@ fun AskPageRoute(key: AskPageKey, navigator: SkimNavigator) {
                 model.highlight(paragraph)
                 scope.launch { sheet?.partialExpand() }
             },
+            onAllowRatings = { model.resolveSendRatings(allow = true) },
+            onDeclineRatings = { model.resolveSendRatings(allow = false) },
         ),
     )
 }

@@ -33,6 +33,12 @@ export const POLICY = {
   installCapMicro: 1_000_000,
   ipCapMicro: 2_000_000,
   globalCapMicro: 20_000_000,
+  /** A rating body is a few fields. Anything larger is not a rating. */
+  feedbackMaxBodyBytes: 512,
+  /** Rows older than this leave the ledger. 90 days. */
+  feedbackRetentionMs: 90 * 24 * 60 * 60 * 1000,
+  feedbackPerMinute: 10,
+  feedbackPerDay: 60,
 } as const;
 
 export type LimitPair = { perMinute: number; perDay: number };

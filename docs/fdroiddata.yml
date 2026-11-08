@@ -49,4 +49,4 @@ CurrentVersionCode: 1
 
 AntiFeatures:
   NonFreeNet:
-    en-US: Skim AI can send the text of a page you allow to the project's proxy, which calls a hosted model. The app asks first. Incognito tabs are never sent. The model service is not free software.
+    en-US: Skim AI can send the text of a page you allow to the project's proxy, which calls a hosted model. The app asks first. A like or dislike can also be sent after you agree, without the page or the answer. Incognito tabs are never sent. The model service is not free software.

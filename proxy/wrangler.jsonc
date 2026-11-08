@@ -17,6 +17,10 @@
       {
         "name": "ABUSE_LEDGER",
         "class_name": "AbuseLedger"
+      },
+      {
+        "name": "FEEDBACK",
+        "class_name": "FeedbackStore"
       }
     ]
   },
@@ -28,6 +32,10 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["AbuseLedger"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["FeedbackStore"]
     }
   ]
 }

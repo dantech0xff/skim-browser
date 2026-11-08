@@ -172,16 +172,36 @@ class ChatSessionStore(
             }
             message.copy(id = id)
         }
-        chat.replaceMessages(chat.messages.value + stored)
+        chat.appendMessage(stored)
     }
 
     override suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback) {
         val chat = session as ChatSession
-        val updated = chat.messages.value.map { if (it.id == messageId) it.copy(feedback = feedback) else it }
-        chat.replaceMessages(updated)
+        chat.editMessage(messageId) { it.copy(feedback = feedback) }
         if (chat.chatId <= 0) return
-        val saved = chats.messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
-        chats.updateMessage(saved.copy(feedback = feedback))
+        chats.setMessageFeedback(messageId, feedback)
+    }
+
+    override suspend fun stampFeedback(
+        session: PageConversation,
+        messageId: Long,
+        answerId: String,
+        revision: Int,
+        sentRevision: Int,
+    ) {
+        val chat = session as ChatSession
+        var previousRevision = -1
+        val installed = chat.editMessage(messageId) { current ->
+            previousRevision = current.feedbackRevision
+            mergeStamp(current, answerId, revision, sentRevision)
+        } ?: return
+        if (chat.chatId <= 0) return
+        val answer = installed.feedbackAnswerId ?: return
+        if (installed.feedbackRevision > previousRevision) {
+            chats.advanceFeedbackRevision(messageId, answer, installed.feedbackRevision, installed.feedbackSentRevision)
+        } else if (installed.feedbackSentRevision >= installed.feedbackRevision) {
+            chats.ackFeedback(messageId, answer, installed.feedbackRevision, installed.feedback)
+        }
     }
 
     private suspend fun onNavigated(event: PageEvent.Navigated) {

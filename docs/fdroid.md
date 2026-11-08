@@ -18,6 +18,8 @@ Skim AI sends page text to the project's proxy, and the proxy calls a hosted mod
 
 The feature is off until the person allows a site. `askBeforeSending` defaults to true. Incognito tabs are never sent. An empty proxy URL fails before any connection. There is one APK, and it includes Skim AI. A flavor that strips the client was considered and rejected. Asking first does not remove NonFreeNet, because the client stays in the binary.
 
+A like or dislike can also be sent to that proxy, and only after the person agrees. The rating is the good, poor, or cleared state, a random id for that answer, a revision, the surface (one page or open tabs), and the app version. The page and the answer are not included. Incognito ratings are not sent. The draft metadata already marks NonFreeNet for the proxy. This does not add a network dependency.
+
 ## Decisions
 
 These are decided.

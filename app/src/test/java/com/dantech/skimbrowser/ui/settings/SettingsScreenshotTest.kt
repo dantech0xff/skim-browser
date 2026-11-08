@@ -73,6 +73,7 @@ class SettingsScreenshotTest {
                 onBack = {},
                 onAskBeforeSending = {},
                 onKeepChatHistory = {},
+                onSendRatings = {},
                 onSkimHistory = {},
                 onDeleteAll = {},
                 onDataPolicy = {},

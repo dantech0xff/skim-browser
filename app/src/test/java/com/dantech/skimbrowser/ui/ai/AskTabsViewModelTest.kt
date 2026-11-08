@@ -343,6 +343,7 @@ class AskTabsViewModelTest {
                     assistant = ai,
                     collectOpenTabs = CollectOpenTabs(fixture.manager, sites),
                     network = fixture.network,
+                    ratings = IdleFeedback,
                     savedState = saved,
                     appScope = appScope,
                 )

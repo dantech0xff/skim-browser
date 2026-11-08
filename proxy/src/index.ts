@@ -1,21 +1,27 @@
 import { checkBody, checkInstall, type Reject } from "./allowlist";
+import { FeedbackStore, handleFeedback } from "./feedback";
 import { AbuseLedger, clientIp, hashIp, type Gate } from "./ledger";
 import { POLICY } from "./policy";
 import { InstallQuota, type QuotaDecision } from "./quota";
 import { costMicro, createUsageTap, reserveMicro, type Usage } from "./usage";
 
-export { AbuseLedger, InstallQuota };
+export { AbuseLedger, FeedbackStore, InstallQuota };
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
   IP_HASH_SALT: string;
+  FEEDBACK_READ_TOKEN?: string;
   INSTALL_QUOTA: DurableObjectNamespace<InstallQuota>;
   ABUSE_LEDGER: DurableObjectNamespace<AbuseLedger>;
+  FEEDBACK: DurableObjectNamespace<FeedbackStore>;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/v1/feedback" || url.pathname === "/v1/feedback/summary") {
+      return handleFeedback(request, env, url.pathname);
+    }
     if (url.pathname !== "/v1/messages") {
       return reject(404, "path");
     }

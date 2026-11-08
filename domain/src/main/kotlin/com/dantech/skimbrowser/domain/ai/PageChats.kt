@@ -21,4 +21,16 @@ interface PageChats {
     suspend fun record(session: PageConversation, message: ChatMessage)
 
     suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback)
+
+    /**
+     * Records the proxy id and revisions for [messageId]. [sentRevision] is the newest revision
+     * the proxy accepted. A memory-only chat keeps this on the session and not in the database.
+     */
+    suspend fun stampFeedback(
+        session: PageConversation,
+        messageId: Long,
+        answerId: String,
+        revision: Int,
+        sentRevision: Int,
+    )
 }

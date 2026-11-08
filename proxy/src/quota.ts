@@ -58,4 +58,47 @@ export class InstallQuota extends DurableObject {
     await this.ctx.storage.put("counters", counters);
     return { ok: true };
   }
+
+  /**
+   * A separate window for rating posts. It does not spend the model quota, and the
+   * install id is only this object's name. The rating ledger never receives it.
+   */
+  async reserveFeedback(now: number): Promise<QuotaDecision> {
+    const stored = await this.ctx.storage.get<Counters>("feedback");
+    const counters: Counters = stored ?? {
+      firstSeen: now,
+      minuteStart: now,
+      minuteCount: 0,
+      dayStart: now,
+      dayCount: 0,
+    };
+    if (now - counters.minuteStart >= POLICY.minuteMs) {
+      counters.minuteStart = now;
+      counters.minuteCount = 0;
+    }
+    if (now - counters.dayStart >= POLICY.dayMs) {
+      counters.dayStart = now;
+      counters.dayCount = 0;
+    }
+    if (counters.minuteCount >= POLICY.feedbackPerMinute) {
+      return {
+        ok: false,
+        status: 429,
+        code: "rate_limited",
+        retryAfter: Math.max(1, Math.ceil((POLICY.minuteMs - (now - counters.minuteStart)) / 1000)),
+      };
+    }
+    if (counters.dayCount >= POLICY.feedbackPerDay) {
+      return {
+        ok: false,
+        status: 429,
+        code: "quota",
+        retryAfter: Math.max(1, Math.ceil((POLICY.dayMs - (now - counters.dayStart)) / 1000)),
+      };
+    }
+    counters.minuteCount += 1;
+    counters.dayCount += 1;
+    await this.ctx.storage.put("feedback", counters);
+    return { ok: true };
+  }
 }

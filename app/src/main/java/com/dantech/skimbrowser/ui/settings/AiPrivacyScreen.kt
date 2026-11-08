@@ -44,6 +44,7 @@ fun AiPrivacyRoute(navigator: SkimNavigator) {
         onBack = navigator::back,
         onAskBeforeSending = model::setAskBeforeSending,
         onKeepChatHistory = model::setKeepChatHistory,
+        onSendRatings = model::setSendRatings,
         onSkimHistory = navigator::openSkimHistory,
         onDeleteAll = { navigator.push(DeleteAiDataKey) },
         onDataPolicy = BuildConfig.AI_DATA_POLICY_URL.takeIf { it.isNotBlank() }?.let { url ->
@@ -69,8 +70,9 @@ fun DeleteAiDataRoute(navigator: SkimNavigator) {
 fun AiPrivacyScreen(
     state: AiPrivacyUiState,
     onBack: () -> Unit,
-    onAskBeforeSending: (Boolean) -> Unit,
-    onKeepChatHistory: (Boolean) -> Unit,
+        onAskBeforeSending: (Boolean) -> Unit,
+        onKeepChatHistory: (Boolean) -> Unit,
+        onSendRatings: (Boolean) -> Unit,
     onSkimHistory: () -> Unit,
     onDeleteAll: () -> Unit,
     onDataPolicy: (() -> Unit)?,
@@ -91,6 +93,7 @@ fun AiPrivacyScreen(
                     icon = R.drawable.ic_cloud_upload,
                     checked = state.askBeforeSending,
                     index = 0,
+                    count = PRIVACY_ROWS,
                     onCheckedChange = onAskBeforeSending,
                 )
                 SwitchRow(
@@ -99,7 +102,17 @@ fun AiPrivacyScreen(
                     icon = R.drawable.ic_history,
                     checked = state.keepChatHistory,
                     index = 1,
+                    count = PRIVACY_ROWS,
                     onCheckedChange = onKeepChatHistory,
+                )
+                SwitchRow(
+                    headline = stringResource(R.string.ai_settings_send_ratings),
+                    supporting = stringResource(R.string.ai_settings_send_ratings_summary),
+                    icon = R.drawable.ic_thumb_up,
+                    checked = state.sendRatings,
+                    index = 2,
+                    count = PRIVACY_ROWS,
+                    onCheckedChange = onSendRatings,
                 )
                 SkimListItem(
                     headline = stringResource(R.string.skim_history_title),
@@ -108,8 +121,8 @@ fun AiPrivacyScreen(
                         state.conversationCount,
                         state.conversationCount,
                     ),
-                    index = 2,
-                    count = 3,
+                    index = 3,
+                    count = PRIVACY_ROWS,
                     onClick = onSkimHistory,
                     leading = { SunnyMark(size = 40.dp, iconSize = 20.dp) },
                 )
@@ -165,6 +178,7 @@ private fun ColumnScope.SwitchRow(
     @DrawableRes icon: Int,
     checked: Boolean,
     index: Int,
+    count: Int,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -172,10 +186,12 @@ private fun ColumnScope.SwitchRow(
         headline = headline,
         supporting = supporting,
         index = index,
-        count = 3,
+        count = count,
         onClick = null,
         modifier = Modifier.toggleableRow(checked, onCheckedChange),
         leading = { IconTile(icon, colors.secondaryContainer, colors.onSecondaryContainer) },
         trailing = { SkimSwitch(checked = checked, onCheckedChange = null) },
     )
 }
+
+private const val PRIVACY_ROWS = 4

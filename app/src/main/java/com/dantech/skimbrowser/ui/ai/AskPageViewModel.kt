@@ -13,6 +13,9 @@ import com.dantech.skimbrowser.domain.ai.AiAssistant
 import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
 import com.dantech.skimbrowser.domain.ai.ChatMessage
+import com.dantech.skimbrowser.domain.ai.FeedbackFollowUp
+import com.dantech.skimbrowser.domain.ai.FeedbackSurface
+import com.dantech.skimbrowser.domain.ai.MessageFeedbackSync
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import com.dantech.skimbrowser.domain.ai.PageChats
 import com.dantech.skimbrowser.domain.ai.PageConversation
@@ -103,6 +106,7 @@ data class AskPageUiState(
     val waitingForAnswer: Boolean = false,
     val citationsEnabled: Boolean = false,
     val answerError: AnswerError? = null,
+    val askToSendRatings: Boolean = false,
 )
 
 /** The sheet asks the route to replace itself with the permission dialog. */
@@ -124,6 +128,7 @@ class AskPageViewModel @AssistedInject constructor(
     private val network: NetworkAvailability,
     private val readerHighlights: ReaderHighlights,
     private val chats: ChatRepository,
+    private val ratings: MessageFeedbackSync,
     private val savedState: SavedStateHandle,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -140,6 +145,7 @@ class AskPageViewModel @AssistedInject constructor(
     val effects: SharedFlow<AskPageEffect> = _effects.asSharedFlow()
 
     private var session: PageConversation? = null
+    private var pendingRatingId: Long? = null
     private var job: Job? = null
     private var runtimeJob: Job? = null
     private val citedText = mutableMapOf<Int, String>()
@@ -246,6 +252,27 @@ class AskPageViewModel @AssistedInject constructor(
         viewModelScope.launch {
             sessions.setFeedback(current, done.messageId, next)
             publish(current)
+            when (ratings.afterLocalChange(current, done.messageId, FeedbackSurface.PAGE)) {
+                FeedbackFollowUp.NEEDS_CONSENT -> {
+                    pendingRatingId = done.messageId
+                    _state.value = _state.value.copy(askToSendRatings = true)
+                }
+                FeedbackFollowUp.LOCAL_ONLY, FeedbackFollowUp.QUEUED -> Unit
+            }
+        }
+    }
+
+    /** The person answered the rating disclosure. Agreeing sends only the rating just chosen. */
+    fun resolveSendRatings(allow: Boolean) {
+        val current = session
+        val messageId = pendingRatingId
+        pendingRatingId = null
+        _state.value = _state.value.copy(askToSendRatings = false)
+        viewModelScope.launch {
+            ratings.rememberConsent(allow)
+            if (allow && current != null && messageId != null) {
+                ratings.sendAfterConsent(current, messageId, FeedbackSurface.PAGE)
+            }
         }
     }
 

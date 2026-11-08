@@ -6,6 +6,7 @@ import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
@@ -191,6 +192,70 @@ class ChatRepositoryTest {
         assertEquals(messageId, updated.id)
         assertEquals("Full answer", updated.text)
         assertEquals(MessageStatus.COMPLETE, updated.status)
+    }
+
+    @Test
+    fun anUnackedRatingIsListedUntilTheSentRevisionCatchesUp() = runTest {
+        val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
+        val id = chats.addMessage(
+            message(chatId, MessageKind.SUMMARY, MessageRole.ASSISTANT).copy(
+                feedback = MessageFeedback.GOOD,
+                feedbackAnswerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                feedbackRevision = 2,
+                feedbackSentRevision = 1,
+            ),
+        )
+        assertEquals(listOf(id), chats.unsentFeedback().map { it.id })
+        chats.updateMessage(chats.messages(chatId).single().copy(feedbackSentRevision = 2))
+        assertTrue(chats.unsentFeedback().isEmpty())
+    }
+
+    @Test
+    fun acknowledgingAnOldRevisionDoesNotReplaceANewerRating() = runTest {
+        val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
+        val id = chats.addMessage(
+            message(chatId, MessageKind.SUMMARY, MessageRole.ASSISTANT).copy(
+                feedback = MessageFeedback.GOOD,
+                feedbackAnswerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                feedbackRevision = 1,
+                feedbackSentRevision = 0,
+            ),
+        )
+        chats.updateMessage(
+            chats.messages(chatId).single().copy(
+                feedback = MessageFeedback.POOR,
+                feedbackRevision = 2,
+                text = "Kept",
+            ),
+        )
+        assertTrue(!chats.ackFeedback(id, "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", 1, MessageFeedback.GOOD))
+        val row = chats.messages(chatId).single()
+        assertEquals(MessageFeedback.POOR, row.feedback)
+        assertEquals(2, row.feedbackRevision)
+        assertEquals(0, row.feedbackSentRevision)
+        assertEquals("Kept", row.text)
+    }
+
+    @Test
+    fun aRatingWriteDoesNotChangeTextOrRevision() = runTest {
+        val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
+        val id = chats.addMessage(
+            message(chatId, MessageKind.SUMMARY, MessageRole.ASSISTANT).copy(
+                text = "Kept",
+                feedback = MessageFeedback.NONE,
+                feedbackAnswerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                feedbackRevision = 2,
+                feedbackSentRevision = 1,
+            ),
+        )
+        assertTrue(chats.setMessageFeedback(id, MessageFeedback.POOR))
+        val row = chats.messages(chatId).single()
+        assertEquals(MessageFeedback.POOR, row.feedback)
+        assertEquals("Kept", row.text)
+        assertEquals(2, row.feedbackRevision)
+        assertEquals(1, row.feedbackSentRevision)
+        assertTrue(!chats.advanceFeedbackRevision(id, "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", 2, 2))
+        assertEquals("Kept", chats.messages(chatId).single().text)
     }
 
     @Test
