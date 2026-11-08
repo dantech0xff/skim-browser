@@ -21,6 +21,12 @@ class ClaudeClientProvider(
         cached ?: withContext(Dispatchers.Default) { build() }.also { cached = it }
     }
 
+    /** The proxy origin and install id, or null when the proxy URL is blank. */
+    suspend fun endpoint(): Pair<String, String>? {
+        if (baseUrl.isBlank()) return null
+        return baseUrl.trimEnd('/') to installId()
+    }
+
     private suspend fun build(): ClaudeClient {
         if (baseUrl.isBlank()) {
             throw IllegalStateException("The AI proxy URL is not set.")

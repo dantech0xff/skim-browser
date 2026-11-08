@@ -67,6 +67,12 @@ interface SkimChatDao {
     @Update
     suspend fun updateMessage(message: SkimMessageEntity)
 
+    @Query(
+        "SELECT * FROM skim_messages WHERE feedbackAnswerId IS NOT NULL " +
+            "AND feedbackRevision > feedbackSentRevision ORDER BY id LIMIT :limit",
+    )
+    suspend fun unsentFeedback(limit: Int): List<SkimMessageEntity>
+
     /** Deletes a chat; its messages go with it through the foreign key. */
     @Query("DELETE FROM skim_chats WHERE id = :id")
     suspend fun deleteChat(id: Long)

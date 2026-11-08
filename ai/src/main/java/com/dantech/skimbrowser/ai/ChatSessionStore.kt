@@ -184,6 +184,39 @@ class ChatSessionStore(
         chats.updateMessage(saved.copy(feedback = feedback))
     }
 
+    override suspend fun stampFeedback(
+        session: PageConversation,
+        messageId: Long,
+        answerId: String,
+        revision: Int,
+        sentRevision: Int,
+    ) {
+        val chat = session as ChatSession
+        val updated = chat.messages.value.map { message ->
+            if (message.id != messageId) {
+                message
+            } else {
+                message.copy(
+                    feedbackAnswerId = answerId,
+                    feedbackRevision = revision,
+                    feedbackSentRevision = sentRevision,
+                )
+            }
+        }
+        chat.replaceMessages(updated)
+        if (chat.chatId <= 0) return
+        val current = updated.firstOrNull { it.id == messageId } ?: return
+        val saved = chats.messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
+        chats.updateMessage(
+            saved.copy(
+                feedback = current.feedback,
+                feedbackAnswerId = answerId,
+                feedbackRevision = revision,
+                feedbackSentRevision = sentRevision,
+            ),
+        )
+    }
+
     private suspend fun onNavigated(event: PageEvent.Navigated) {
         if (event.isSameDocument) return
         val session = byTab[event.tabId] ?: return

@@ -16,4 +16,10 @@ data class ChatMessage(
     val status: MessageStatus,
     /** Follow-up questions offered with an across-tabs overview. */
     val suggestedQuestions: List<String> = emptyList(),
+    /** Random id for a rating sent to the proxy. Null until the person agrees to send one. */
+    val feedbackAnswerId: String? = null,
+    /** How many times this answer's rating changed. Retries reuse the same number. */
+    val feedbackRevision: Int = 0,
+    /** The newest revision the proxy has accepted. Lower means a send is still owed. */
+    val feedbackSentRevision: Int = 0,
 )

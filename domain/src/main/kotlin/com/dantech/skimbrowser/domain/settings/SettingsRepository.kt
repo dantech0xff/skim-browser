@@ -14,6 +14,9 @@ interface SettingsRepository {
 
     suspend fun setKeepChatHistory(enabled: Boolean)
 
+    /** [enabled] false declines. The value is no longer "not asked". */
+    suspend fun setSendRatings(enabled: Boolean)
+
     /** Stores [percent] clamped to [SkimSettings.READER_TEXT_SCALE_RANGE]. */
     suspend fun setReaderTextScale(percent: Int)
 

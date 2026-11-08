@@ -11,6 +11,7 @@ The Worker in `proxy/` is the Skim AI proxy. Debug and release both call `skim.a
 | Worker code | `proxy/` |
 | Rate and quota counters | One Durable Object per install id |
 | IP rate, IP spend, install spend, global spend | Durable Object class `AbuseLedger` (migration `v2`) |
+| Like and dislike ratings | Durable Object class `FeedbackStore` (migration `v3`), one ledger for every rating |
 | Anthropic key, deployed | Worker secret `ANTHROPIC_API_KEY` |
 | IP hash salt, deployed | Worker secret `IP_HASH_SALT` |
 | IP hash salt, on your machine | `IP_HASH_SALT=` in `proxy/.dev.vars` |
@@ -26,6 +27,26 @@ A client IP, from `CF-Connecting-IP`, gets 40 requests a minute and 500 a day, a
 Spend is a Haiku estimate: $1 per million input tokens and $5 per million output tokens, including cache tokens with input. Each of these has to pass, over a fixed 24 hour window: $1 per install id, $2 per IP, and $20 for the whole Worker. Before the upstream call the Worker reserves the output `max_tokens` plus one input token per 3 body bytes. After the stream it replaces that reservation with the usage from `message_start` and `message_delta`. A failed upstream call refunds the reservation. A cap responds with 429 and `{"error":"install_cap"}`, `ip_cap`, or `global_cap`, plus `Retry-After`. The app shows "Daily limit reached" for any 429.
 
 The Anthropic console spend cap is separate, and you still set it there.
+
+## Ratings
+
+`POST /v1/feedback` records a like or dislike. The body is only `answerId`, `revision`, `rating` (`good`, `poor`, or `none`), `surface` (`page` or `tabs`), and `appVersion`. `none` is a cleared rating. The page, the title, the prompt, and the answer are not accepted. An extra field is rejected.
+
+`answerId` is a random UUID the app creates for that answer. It is not the install id. `revision` starts at 1 and grows when the person changes the rating. The ledger keeps one row per answer. A retry of the same revision does not add a row. An older revision does not replace a newer one. The same revision with a different rating is a conflict.
+
+`X-Skim-Install` is checked so one install cannot flood the ledger. The id is the name of the existing quota object and is not a column in the ratings table. The client IP is not read on this path.
+
+Rows older than 90 days are deleted by the ledger's alarm. That window is `feedbackRetentionMs` in `proxy/src/policy.ts`.
+
+The app asks before the first send. A declined choice, an incognito tab, and a rating chosen before the person agreed are not sent. A failed send leaves the rating on the phone and does not show it as delivered. While chat history is on, an unsent revision is tried again later. While chat history is off, a retry lasts only as long as that chat stays open.
+
+`GET /v1/feedback/summary` returns the current counts (`good`, `poor`, `none`, and the same counts by surface and by app version). It needs `Authorization: Bearer` matching the Worker secret `FEEDBACK_READ_TOKEN`. The app does not have that secret. Counts are rows, not events, so a toggle does not inflate them. `none` is a rating that was cleared and has not expired yet.
+
+```
+curl -s -H "Authorization: Bearer $FEEDBACK_READ_TOKEN" https://<proxy>/v1/feedback/summary
+```
+
+Set `FEEDBACK_READ_TOKEN` with `npx wrangler secret put FEEDBACK_READ_TOKEN` before that read works on a deploy. Local `proxy/.dev.vars` can hold a throwaway token. Do not commit it.
 
 ## Run Ask Skim on a device
 

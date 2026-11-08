@@ -57,6 +57,8 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override suspend fun setKeepChatHistory(enabled: Boolean) = update { it.copy(keepChatHistory = enabled) }
 
+    override suspend fun setSendRatings(enabled: Boolean) = update { it.copy(sendRatings = enabled) }
+
     override suspend fun setReaderTextScale(percent: Int) =
         update { it.copy(readerTextScalePercent = percent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)) }
 
@@ -399,6 +401,9 @@ class FakeChatRepository : ChatRepository {
         val index = storedMessages.indexOfFirst { it.id == message.id }
         if (index >= 0) storedMessages[index] = message
     }
+
+    override suspend fun unsentFeedback(): List<SavedMessage> =
+        storedMessages.filter { it.feedbackAnswerId != null && it.feedbackRevision > it.feedbackSentRevision }.take(20)
 
     override suspend fun deleteAll() {
         chats.value = emptyList()

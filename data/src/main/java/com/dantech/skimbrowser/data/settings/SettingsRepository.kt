@@ -49,6 +49,10 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.KEEP_CHAT_HISTORY] = b }
     }
 
+    override suspend fun setSendRatings(b: Boolean) {
+        dataStore.edit { it[Keys.SEND_RATINGS] = b }
+    }
+
     /** Stores [p] clamped to [SkimSettings.READER_TEXT_SCALE_RANGE]. */
     override suspend fun setReaderTextScale(p: Int) {
         dataStore.edit { it[Keys.READER_TEXT_SCALE] = p.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE) }
@@ -93,6 +97,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             theme = enumOrDefault(read(Keys.THEME), defaults.theme),
             askBeforeSending = read(Keys.ASK_BEFORE_SENDING) ?: defaults.askBeforeSending,
             keepChatHistory = read(Keys.KEEP_CHAT_HISTORY) ?: defaults.keepChatHistory,
+            sendRatings = read(Keys.SEND_RATINGS),
             readerTextScalePercent = (read(Keys.READER_TEXT_SCALE) ?: defaults.readerTextScalePercent)
                 .coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE),
             readerFont = enumOrDefault(read(Keys.READER_FONT), defaults.readerFont),
@@ -106,6 +111,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val THEME = stringPreferencesKey("theme")
         val ASK_BEFORE_SENDING = booleanPreferencesKey("ask_before_sending")
         val KEEP_CHAT_HISTORY = booleanPreferencesKey("keep_chat_history")
+        val SEND_RATINGS = booleanPreferencesKey("send_ratings")
         val READER_TEXT_SCALE = intPreferencesKey("reader_text_scale_percent")
         val READER_FONT = stringPreferencesKey("reader_font")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")

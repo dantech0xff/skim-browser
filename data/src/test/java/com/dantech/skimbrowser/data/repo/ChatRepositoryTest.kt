@@ -6,6 +6,7 @@ import com.dantech.skimbrowser.data.db.SkimDatabase
 import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageStatus
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
@@ -191,6 +192,22 @@ class ChatRepositoryTest {
         assertEquals(messageId, updated.id)
         assertEquals("Full answer", updated.text)
         assertEquals(MessageStatus.COMPLETE, updated.status)
+    }
+
+    @Test
+    fun anUnackedRatingIsListedUntilTheSentRevisionCatchesUp() = runTest {
+        val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
+        val id = chats.addMessage(
+            message(chatId, MessageKind.SUMMARY, MessageRole.ASSISTANT).copy(
+                feedback = MessageFeedback.GOOD,
+                feedbackAnswerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                feedbackRevision = 2,
+                feedbackSentRevision = 1,
+            ),
+        )
+        assertEquals(listOf(id), chats.unsentFeedback().map { it.id })
+        chats.updateMessage(chats.messages(chatId).single().copy(feedbackSentRevision = 2))
+        assertTrue(chats.unsentFeedback().isEmpty())
     }
 
     @Test

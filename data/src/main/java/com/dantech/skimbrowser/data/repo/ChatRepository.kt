@@ -69,6 +69,8 @@ class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase)
 
     override suspend fun updateMessage(message: SavedMessage) = dao.updateMessage(message.toEntity())
 
+    override suspend fun unsentFeedback(): List<SavedMessage> = dao.unsentFeedback(20).map { it.toDomain() }
+
     /**
      * Deletes chat [id] with its messages, then emits [id] on [removals]. Returns what was deleted,
      * for Undo, or null when there was no such chat. Finishes even if the caller is cancelled, so a

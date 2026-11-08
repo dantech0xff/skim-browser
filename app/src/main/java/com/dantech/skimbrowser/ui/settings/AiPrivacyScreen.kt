@@ -44,6 +44,7 @@ fun AiPrivacyRoute(navigator: SkimNavigator) {
         onBack = navigator::back,
         onAskBeforeSending = model::setAskBeforeSending,
         onKeepChatHistory = model::setKeepChatHistory,
+        onSendRatings = model::setSendRatings,
         onSkimHistory = navigator::openSkimHistory,
         onDeleteAll = { navigator.push(DeleteAiDataKey) },
         onDataPolicy = BuildConfig.AI_DATA_POLICY_URL.takeIf { it.isNotBlank() }?.let { url ->
@@ -69,8 +70,9 @@ fun DeleteAiDataRoute(navigator: SkimNavigator) {
 fun AiPrivacyScreen(
     state: AiPrivacyUiState,
     onBack: () -> Unit,
-    onAskBeforeSending: (Boolean) -> Unit,
-    onKeepChatHistory: (Boolean) -> Unit,
+        onAskBeforeSending: (Boolean) -> Unit,
+        onKeepChatHistory: (Boolean) -> Unit,
+        onSendRatings: (Boolean) -> Unit,
     onSkimHistory: () -> Unit,
     onDeleteAll: () -> Unit,
     onDataPolicy: (() -> Unit)?,
@@ -101,6 +103,14 @@ fun AiPrivacyScreen(
                     index = 1,
                     onCheckedChange = onKeepChatHistory,
                 )
+                SwitchRow(
+                    headline = stringResource(R.string.ai_settings_send_ratings),
+                    supporting = stringResource(R.string.ai_settings_send_ratings_summary),
+                    icon = R.drawable.ic_thumb_up,
+                    checked = state.sendRatings,
+                    index = 2,
+                    onCheckedChange = onSendRatings,
+                )
                 SkimListItem(
                     headline = stringResource(R.string.skim_history_title),
                     supporting = pluralStringResource(
@@ -108,8 +118,8 @@ fun AiPrivacyScreen(
                         state.conversationCount,
                         state.conversationCount,
                     ),
-                    index = 2,
-                    count = 3,
+                    index = 3,
+                    count = 4,
                     onClick = onSkimHistory,
                     leading = { SunnyMark(size = 40.dp, iconSize = 20.dp) },
                 )

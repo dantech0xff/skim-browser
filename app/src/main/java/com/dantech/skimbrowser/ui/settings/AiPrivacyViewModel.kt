@@ -19,6 +19,7 @@ data class AiPrivacyUiState(
     val loaded: Boolean = false,
     val askBeforeSending: Boolean = true,
     val keepChatHistory: Boolean = true,
+    val sendRatings: Boolean = false,
     val conversationCount: Int = 0,
 )
 
@@ -38,6 +39,7 @@ class AiPrivacyViewModel @Inject constructor(
             loaded = true,
             askBeforeSending = stored.askBeforeSending,
             keepChatHistory = stored.keepChatHistory,
+            sendRatings = stored.sendRatings == true,
             conversationCount = count,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AiPrivacyUiState())
@@ -48,5 +50,10 @@ class AiPrivacyViewModel @Inject constructor(
 
     fun setKeepChatHistory(enabled: Boolean) {
         viewModelScope.launch { settings.setKeepChatHistory(enabled) }
+    }
+
+    /** Turning this on does not send ratings the person already chose. */
+    fun setSendRatings(enabled: Boolean) {
+        viewModelScope.launch { settings.setSendRatings(enabled) }
     }
 }

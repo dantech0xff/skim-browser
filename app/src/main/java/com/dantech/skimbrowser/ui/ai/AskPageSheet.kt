@@ -49,8 +49,11 @@ import com.dantech.skimbrowser.ui.components.AnswerText
 import com.dantech.skimbrowser.ui.components.ChatInputPill
 import com.dantech.skimbrowser.ui.components.CitationChip
 import com.dantech.skimbrowser.ui.components.CompactIconButton
+import androidx.compose.ui.window.Dialog
+import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimButton
 import com.dantech.skimbrowser.ui.components.SkimButtonStyle
+import com.dantech.skimbrowser.ui.components.SkimDialogContent
 import com.dantech.skimbrowser.ui.components.SkimSnackbar
 import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.UserBubble
@@ -68,6 +71,8 @@ data class AskPageActions(
     val onGood: () -> Unit,
     val onPoor: () -> Unit,
     val onCitation: (Int) -> Unit,
+    val onAllowRatings: () -> Unit = {},
+    val onDeclineRatings: () -> Unit = {},
 )
 
 /**
@@ -131,6 +136,9 @@ fun AskPageSheet(
                     onStop = actions.onStop,
                 )
             }
+        }
+        if (state.askToSendRatings) {
+            FeedbackConsentDialog(onAllow = actions.onAllowRatings, onNotNow = actions.onDeclineRatings)
         }
         SnackbarHost(
             hostState = snackbar,
@@ -305,6 +313,20 @@ private fun AnswerProblem(error: AnswerError?, onRetry: () -> Unit) {
             icon = R.drawable.ic_info,
             title = stringResource(R.string.ai_refusal_title),
             body = stringResource(R.string.ai_refusal_body),
+        )
+    }
+}
+
+@Composable
+internal fun FeedbackConsentDialog(onAllow: () -> Unit, onNotNow: () -> Unit) {
+    Dialog(onDismissRequest = onNotNow) {
+        SkimDialogContent(
+            title = stringResource(R.string.ai_feedback_consent_title),
+            confirm = DialogAction(stringResource(R.string.ai_feedback_consent_allow), onAllow),
+            dismiss = DialogAction(stringResource(R.string.ai_feedback_consent_not_now), onNotNow),
+            text = {
+                Text(stringResource(R.string.ai_feedback_consent_body), style = MaterialTheme.typography.bodyMedium)
+            },
         )
     }
 }

@@ -9,6 +9,7 @@ export default defineConfig({
         bindings: {
           ANTHROPIC_API_KEY: "test-proxy-secret",
           IP_HASH_SALT: "test-ip-salt",
+          FEEDBACK_READ_TOKEN: "test-read-token",
         },
       },
     }),

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.room.useWriterConnection
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dantech.skimbrowser.data.db.dao.BookmarkDao
@@ -42,7 +43,7 @@ import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
         SkimMessageEntity::class,
         SitePermissionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class SkimDatabase : RoomDatabase() {
@@ -85,7 +86,15 @@ abstract class SkimDatabase : RoomDatabase() {
 
 /** Adds the callbacks every Skim database needs, on disk or in memory. */
 fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<SkimDatabase> =
-    addCallback(SkimDatabaseCallback)
+    addMigrations(MIGRATION_1_2).addCallback(SkimDatabaseCallback)
+
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE skim_messages ADD COLUMN feedbackAnswerId TEXT")
+        db.execSQL("ALTER TABLE skim_messages ADD COLUMN feedbackRevision INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE skim_messages ADD COLUMN feedbackSentRevision INTEGER NOT NULL DEFAULT 0")
+    }
+}
 
 private object SkimDatabaseCallback : RoomDatabase.Callback() {
 

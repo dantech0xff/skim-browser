@@ -75,6 +75,8 @@ data class AskTabsActions(
     val onGood: () -> Unit,
     val onPoor: () -> Unit,
     val onOpenGroup: (String) -> Unit,
+    val onAllowRatings: () -> Unit = {},
+    val onDeclineRatings: () -> Unit = {},
 )
 
 /** Ask Skim about the open tabs (06b), for [key]'s prompt or a saved chat. */
@@ -111,6 +113,8 @@ fun AskTabsRoute(key: AskTabsKey, navigator: SkimNavigator) {
                 navigator.back()
                 navigator.openTabs(incognito = false, focusTabId = tabId)
             },
+            onAllowRatings = { model.resolveSendRatings(allow = true) },
+            onDeclineRatings = { model.resolveSendRatings(allow = false) },
         ),
     )
 }
@@ -168,6 +172,9 @@ fun AskTabsSheet(
                     onStop = actions.onStop,
                 )
             }
+        }
+        if (state.askToSendRatings) {
+            FeedbackConsentDialog(onAllow = actions.onAllowRatings, onNotNow = actions.onDeclineRatings)
         }
         SnackbarHost(
             hostState = snackbar,

@@ -9,6 +9,11 @@ data class SkimSettings(
     val theme: ThemeSetting = ThemeSetting.System,
     val askBeforeSending: Boolean = true,
     val keepChatHistory: Boolean = true,
+    /**
+     * Whether a like or dislike may be sent to the proxy. Null until the person is asked.
+     * False means they declined. Turning it on does not send ratings already on the phone.
+     */
+    val sendRatings: Boolean? = null,
     /** Always within [READER_TEXT_SCALE_RANGE]. */
     val readerTextScalePercent: Int = DEFAULT_READER_TEXT_SCALE,
     val readerFont: ReaderFont = ReaderFont.SANS_SERIF,

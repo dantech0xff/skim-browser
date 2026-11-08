@@ -37,6 +37,9 @@ interface ChatRepository {
 
     suspend fun updateMessage(message: SavedMessage)
 
+    /** Saved messages whose rating has not yet been accepted at the current revision. */
+    suspend fun unsentFeedback(): List<SavedMessage>
+
     /**
      * Deletes every chat, then signals [removals] with null even when nothing was saved, so chats
      * kept only in memory go too.
