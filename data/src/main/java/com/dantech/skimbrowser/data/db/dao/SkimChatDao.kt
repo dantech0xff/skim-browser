@@ -85,6 +85,15 @@ interface SkimChatDao {
     )
     suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Int
 
+    @Query("UPDATE skim_messages SET feedback = :feedback WHERE id = :id")
+    suspend fun setFeedback(id: Long, feedback: MessageFeedback): Int
+
+    @Query(
+        "UPDATE skim_messages SET feedbackAnswerId = :answerId, feedbackRevision = :revision, " +
+            "feedbackSentRevision = :sentRevision WHERE id = :id AND feedbackRevision < :revision",
+    )
+    suspend fun advanceFeedbackRevision(id: Long, answerId: String, revision: Int, sentRevision: Int): Int
+
     /** Deletes a chat; its messages go with it through the foreign key. */
     @Query("DELETE FROM skim_chats WHERE id = :id")
     suspend fun deleteChat(id: Long)

@@ -403,8 +403,14 @@ class FakeChatRepository : ChatRepository {
         if (index >= 0) storedMessages[index] = message
     }
 
-    override suspend fun unsentFeedback(): List<SavedMessage> =
-        storedMessages.filter { it.feedbackAnswerId != null && it.feedbackRevision > it.feedbackSentRevision }.take(20)
+    override suspend fun unsentFeedback(): List<SavedMessage> {
+        val rows = storedMessages.filter { it.feedbackAnswerId != null && it.feedbackRevision > it.feedbackSentRevision }.take(20)
+        beforeUnsent?.let { hook ->
+            beforeUnsent = null
+            hook()
+        }
+        return rows
+    }
 
     override suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean {
         val index = storedMessages.indexOfFirst { it.id == id }
@@ -413,6 +419,28 @@ class FakeChatRepository : ChatRepository {
         if (row.feedbackAnswerId != answerId || row.feedbackRevision != revision || row.feedback != feedback) return false
         if (row.feedbackSentRevision >= revision) return false
         storedMessages[index] = row.copy(feedbackSentRevision = revision)
+        return true
+    }
+
+    var beforeUnsent: (suspend () -> Unit)? = null
+
+    override suspend fun setMessageFeedback(id: Long, feedback: MessageFeedback): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        storedMessages[index] = storedMessages[index].copy(feedback = feedback)
+        return true
+    }
+
+    override suspend fun advanceFeedbackRevision(id: Long, answerId: String, revision: Int, sentRevision: Int): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        val row = storedMessages[index]
+        if (row.feedbackRevision >= revision) return false
+        storedMessages[index] = row.copy(
+            feedbackAnswerId = answerId,
+            feedbackRevision = revision,
+            feedbackSentRevision = sentRevision.coerceAtMost(revision),
+        )
         return true
     }
 

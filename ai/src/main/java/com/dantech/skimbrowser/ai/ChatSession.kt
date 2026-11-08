@@ -43,6 +43,7 @@ class ChatSession(
     private val turns = mutableListOf<HistoryTurn>()
     private val turnLock = Any()
     private val messagesState = MutableStateFlow<List<ChatMessage>>(emptyList())
+    private val messageLock = Any()
     private val stopSaved = AtomicBoolean(false)
 
     @Volatile
@@ -145,7 +146,37 @@ class ChatSession(
     override fun stoppedMessage(): ChatMessage = com.dantech.skimbrowser.ai.stoppedMessage(this)
 
     fun replaceMessages(messages: List<ChatMessage>) {
-        messagesState.value = messages
+        synchronized(messageLock) { messagesState.value = messages }
+    }
+
+    /** Appends [message] onto the list held now. A list read earlier is not written back. */
+    fun appendMessage(message: ChatMessage) {
+        synchronized(messageLock) { messagesState.value = messagesState.value + message }
+    }
+
+    /**
+     * Applies [transform] to the current row and installs only its rating fields.
+     * Text and the other message content stay on the row held inside this lock, so a transform
+     * cannot put an older copy of the message back. A lower revision is refused.
+     * Returns the installed row, or null when nothing changed.
+     */
+    fun editMessage(id: Long, transform: (ChatMessage) -> ChatMessage?): ChatMessage? {
+        synchronized(messageLock) {
+            val current = messagesState.value.firstOrNull { it.id == id } ?: return null
+            val proposed = transform(current) ?: return null
+            if (proposed.feedbackRevision < current.feedbackRevision) return null
+            val sent = maxOf(current.feedbackSentRevision, proposed.feedbackSentRevision)
+                .coerceAtMost(proposed.feedbackRevision)
+            val installed = current.copy(
+                feedback = proposed.feedback,
+                feedbackAnswerId = proposed.feedbackAnswerId ?: current.feedbackAnswerId,
+                feedbackRevision = proposed.feedbackRevision,
+                feedbackSentRevision = sent,
+            )
+            if (installed == current) return null
+            messagesState.value = messagesState.value.map { if (it.id == id) installed else it }
+            return installed
+        }
     }
 
     override fun beginStream(job: Job, kind: MessageKind) {

@@ -100,29 +100,17 @@ class FeedbackRelayTest {
     @Test
     fun aStaleAckKeepsTheNewerRevisionAndRating() = runTest {
         val harness = harness(this, sendRatings = true)
-        harness.chats.beforeApply = { _, revision, sent ->
-            if (sent == revision) {
-                harness.chats.beforeApply = null
-                val current = harness.message()
-                harness.session.replaceMessages(
-                    listOf(
-                        current.copy(
-                            feedback = MessageFeedback.POOR,
-                            feedbackAnswerId = current.feedbackAnswerId,
-                            feedbackRevision = revision + 1,
-                            feedbackSentRevision = 0,
-                        ),
-                    ),
-                )
-            }
-        }
         harness.rate(MessageFeedback.GOOD)
+        harness.relay.afterLocalChange(harness.session, 7, FeedbackSurface.PAGE)
+        testScheduler.advanceUntilIdle()
+        harness.rate(MessageFeedback.POOR)
         harness.relay.afterLocalChange(harness.session, 7, FeedbackSurface.PAGE)
         testScheduler.advanceUntilIdle()
         assertEquals(MessageFeedback.POOR, harness.message().feedback)
         assertEquals(2, harness.message().feedbackRevision)
-        assertEquals(0, harness.message().feedbackSentRevision)
-        assertEquals(MessageFeedback.GOOD, harness.sender.reports.single().rating)
+        assertEquals(2, harness.message().feedbackSentRevision)
+        assertEquals("A summary", harness.message().text)
+        assertEquals(listOf(1, 2), harness.sender.reports.map { it.revision })
     }
 
     @Test
@@ -291,8 +279,6 @@ private class ScriptSender(
 }
 
 private class MemoryChats(private val session: ChatSession) : PageChats {
-    var beforeApply: (suspend (answerId: String, revision: Int, sentRevision: Int) -> Unit)? = null
-
     fun setLocal(feedback: MessageFeedback) {
         session.replaceMessages(session.messages.value.map { it.copy(feedback = feedback) })
     }
@@ -306,9 +292,6 @@ private class MemoryChats(private val session: ChatSession) : PageChats {
     override suspend fun record(session: PageConversation, message: ChatMessage) = Unit
     override suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback) = Unit
     override suspend fun stampFeedback(session: PageConversation, messageId: Long, answerId: String, revision: Int, sentRevision: Int) {
-        beforeApply?.invoke(answerId, revision, sentRevision)
-        val live = this.session.messages.value.first { it.id == messageId }
-        val merged = mergeStamp(live, answerId, revision, sentRevision) ?: return
-        this.session.replaceMessages(this.session.messages.value.map { if (it.id == messageId) merged else it })
+        this.session.editMessage(messageId) { mergeStamp(it, answerId, revision, sentRevision) }
     }
 }

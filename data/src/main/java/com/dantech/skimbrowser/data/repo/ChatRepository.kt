@@ -75,6 +75,12 @@ class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase)
     override suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean =
         dao.ackFeedback(id, answerId, revision, feedback) == 1
 
+    override suspend fun setMessageFeedback(id: Long, feedback: MessageFeedback): Boolean =
+        dao.setFeedback(id, feedback) == 1
+
+    override suspend fun advanceFeedbackRevision(id: Long, answerId: String, revision: Int, sentRevision: Int): Boolean =
+        dao.advanceFeedbackRevision(id, answerId, revision, sentRevision) == 1
+
     /**
      * Deletes chat [id] with its messages, then emits [id] on [removals]. Returns what was deleted,
      * for Undo, or null when there was no such chat. Finishes even if the caller is cancelled, so a

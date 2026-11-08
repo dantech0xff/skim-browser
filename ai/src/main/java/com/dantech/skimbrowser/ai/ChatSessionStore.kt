@@ -172,16 +172,14 @@ class ChatSessionStore(
             }
             message.copy(id = id)
         }
-        chat.replaceMessages(chat.messages.value + stored)
+        chat.appendMessage(stored)
     }
 
     override suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback) {
         val chat = session as ChatSession
-        val updated = chat.messages.value.map { if (it.id == messageId) it.copy(feedback = feedback) else it }
-        chat.replaceMessages(updated)
+        chat.editMessage(messageId) { it.copy(feedback = feedback) }
         if (chat.chatId <= 0) return
-        val saved = chats.messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
-        chats.updateMessage(saved.copy(feedback = feedback))
+        chats.setMessageFeedback(messageId, feedback)
     }
 
     override suspend fun stampFeedback(
@@ -192,27 +190,18 @@ class ChatSessionStore(
         sentRevision: Int,
     ) {
         val chat = session as ChatSession
-        val live = chat.messages.value.firstOrNull { it.id == messageId } ?: return
-        val merged = mergeStamp(live, answerId, revision, sentRevision) ?: return
-        chat.replaceMessages(chat.messages.value.map { if (it.id == messageId) merged else it })
+        var previousRevision = -1
+        val installed = chat.editMessage(messageId) { current ->
+            previousRevision = current.feedbackRevision
+            mergeStamp(current, answerId, revision, sentRevision)
+        } ?: return
         if (chat.chatId <= 0) return
-        val saved = chats.messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
-        val fresh = chat.messages.value.firstOrNull { it.id == messageId } ?: return
-        if (fresh.feedbackAnswerId != merged.feedbackAnswerId || fresh.feedbackRevision != merged.feedbackRevision) return
-        if (saved.feedbackRevision > fresh.feedbackRevision) return
-        val sent = if (saved.feedbackRevision == fresh.feedbackRevision) {
-            maxOf(saved.feedbackSentRevision, fresh.feedbackSentRevision)
-        } else {
-            fresh.feedbackSentRevision
+        val answer = installed.feedbackAnswerId ?: return
+        if (installed.feedbackRevision > previousRevision) {
+            chats.advanceFeedbackRevision(messageId, answer, installed.feedbackRevision, installed.feedbackSentRevision)
+        } else if (installed.feedbackSentRevision >= installed.feedbackRevision) {
+            chats.ackFeedback(messageId, answer, installed.feedbackRevision, installed.feedback)
         }
-        chats.updateMessage(
-            saved.copy(
-                feedback = fresh.feedback,
-                feedbackAnswerId = fresh.feedbackAnswerId,
-                feedbackRevision = fresh.feedbackRevision,
-                feedbackSentRevision = sent,
-            ),
-        )
     }
 
     private suspend fun onNavigated(event: PageEvent.Navigated) {
