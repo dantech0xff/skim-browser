@@ -41,6 +41,12 @@ interface ChatRepository {
     suspend fun unsentFeedback(): List<SavedMessage>
 
     /**
+     * Advances the sent revision when the row is still [answerId], [revision], and [feedback].
+     * A newer rating is left untouched. Returns true when a row changed.
+     */
+    suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean
+
+    /**
      * Deletes every chat, then signals [removals] with null even when nothing was saved, so chats
      * kept only in memory go too.
      */

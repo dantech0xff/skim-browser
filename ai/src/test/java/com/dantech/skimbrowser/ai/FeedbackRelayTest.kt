@@ -97,12 +97,122 @@ class FeedbackRelayTest {
         assertEquals(MessageFeedback.POOR, harness.message().feedback)
     }
 
+    @Test
+    fun aStaleAckKeepsTheNewerRevisionAndRating() = runTest {
+        val harness = harness(this, sendRatings = true)
+        harness.chats.beforeApply = { _, revision, sent ->
+            if (sent == revision) {
+                harness.chats.beforeApply = null
+                val current = harness.message()
+                harness.session.replaceMessages(
+                    listOf(
+                        current.copy(
+                            feedback = MessageFeedback.POOR,
+                            feedbackAnswerId = current.feedbackAnswerId,
+                            feedbackRevision = revision + 1,
+                            feedbackSentRevision = 0,
+                        ),
+                    ),
+                )
+            }
+        }
+        harness.rate(MessageFeedback.GOOD)
+        harness.relay.afterLocalChange(harness.session, 7, FeedbackSurface.PAGE)
+        testScheduler.advanceUntilIdle()
+        assertEquals(MessageFeedback.POOR, harness.message().feedback)
+        assertEquals(2, harness.message().feedbackRevision)
+        assertEquals(0, harness.message().feedbackSentRevision)
+        assertEquals(MessageFeedback.GOOD, harness.sender.reports.single().rating)
+    }
+
+    @Test
+    fun aStartupFlushDoesNotReplaceANewerRating() = runTest {
+        val saved = FakeChatRepository()
+        val chatId = saved.createChat(
+            com.dantech.skimbrowser.domain.chat.SavedChat(
+                kind = com.dantech.skimbrowser.domain.chat.ChatKind.PAGE,
+                url = "https://example.com",
+                host = "example.com",
+                title = "Example",
+                createdAt = 1,
+                updatedAt = 1,
+            ),
+        )
+        saved.addMessage(
+            com.dantech.skimbrowser.domain.chat.SavedMessage(
+                chatId = chatId,
+                role = MessageRole.ASSISTANT,
+                kind = MessageKind.SUMMARY,
+                text = "A summary",
+                feedback = MessageFeedback.GOOD,
+                status = MessageStatus.COMPLETE,
+                createdAt = 1,
+                feedbackAnswerId = "answer-1",
+                feedbackRevision = 1,
+                feedbackSentRevision = 0,
+            ),
+        )
+        val hold = CompletableDeferred<Unit>()
+        val sender = ScriptSender(failTimes = 0, holdFirst = hold)
+        val settings = FakeSettingsRepository(SkimSettings(sendRatings = true))
+        FeedbackRelay(
+            sessions = MemoryChats(ChatSession(
+                chatId = chatId,
+                tabId = "tab",
+                pageUrl = "https://example.com",
+                approvedHost = "example.com",
+                sources = emptyList(),
+                document = articlePage(),
+                languageTag = "en",
+            )),
+            chats = saved,
+            settings = settings,
+            sender = sender,
+            appVersion = "1.0",
+            scope = this,
+        )
+        testScheduler.advanceUntilIdle()
+        val newer = saved.messages(chatId).single().copy(
+            feedback = MessageFeedback.POOR,
+            feedbackRevision = 2,
+            feedbackSentRevision = 0,
+            text = "A newer summary",
+        )
+        saved.updateMessage(newer)
+        hold.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        val row = saved.messages(chatId).single()
+        assertEquals(MessageFeedback.POOR, row.feedback)
+        assertEquals(2, row.feedbackRevision)
+        assertEquals(0, row.feedbackSentRevision)
+        assertEquals("A newer summary", row.text)
+        assertEquals(1, sender.reports.single().revision)
+        assertEquals(MessageFeedback.GOOD, sender.reports.single().rating)
+    }
+
+    @Test
+    fun revokingConsentStopsTheRetryAndKeepsTheLocalRating() = runTest {
+        val hold = CompletableDeferred<Unit>()
+        val harness = harness(this, sendRatings = true, holdFirst = hold, failAfterHold = true)
+        harness.rate(MessageFeedback.POOR)
+        harness.relay.afterLocalChange(harness.session, 7, FeedbackSurface.PAGE)
+        testScheduler.advanceUntilIdle()
+        harness.settings.setSendRatings(false)
+        hold.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, harness.sender.reports.size)
+        assertEquals(MessageFeedback.POOR, harness.message().feedback)
+        assertEquals(1, harness.message().feedbackRevision)
+        assertEquals(1, harness.message().feedbackSentRevision)
+    }
+
     private fun harness(
         scope: CoroutineScope,
         sendRatings: Boolean?,
         incognito: Boolean = false,
         failTimes: Int = 0,
         holdFirst: CompletableDeferred<Unit>? = null,
+        failAfterHold: Boolean = false,
     ): Harness {
         val session = ChatSession(
             chatId = 4,
@@ -125,17 +235,18 @@ class FeedbackRelayTest {
             ),
         )
         val chats = MemoryChats(session)
-        val sender = ScriptSender(failTimes, holdFirst)
+        val sender = ScriptSender(failTimes, holdFirst, failAfterHold)
+        val settings = FakeSettingsRepository(SkimSettings(sendRatings = sendRatings))
         val relay = FeedbackRelay(
             sessions = chats,
             chats = FakeChatRepository(),
-            settings = FakeSettingsRepository(SkimSettings(sendRatings = sendRatings)),
+            settings = settings,
             sender = sender,
             appVersion = "1.0",
             scope = scope,
         )
         relay.ids = { "answer-1" }
-        return Harness(relay, session, chats, sender)
+        return Harness(relay, session, chats, sender, settings)
     }
 
     private class Harness(
@@ -143,6 +254,7 @@ class FeedbackRelayTest {
         val session: ChatSession,
         val chats: MemoryChats,
         val sender: ScriptSender,
+        val settings: FakeSettingsRepository,
     ) {
         fun rate(feedback: MessageFeedback) {
             chats.setLocal(feedback)
@@ -155,6 +267,7 @@ class FeedbackRelayTest {
 private class ScriptSender(
     private var failTimes: Int,
     private val holdFirst: CompletableDeferred<Unit>?,
+    private val failAfterHold: Boolean = false,
 ) : FeedbackSender {
     val reports = CopyOnWriteArrayList<FeedbackReport>()
     val started = CompletableDeferred<Unit>()
@@ -166,6 +279,7 @@ private class ScriptSender(
             started.complete(Unit)
             holdFirst?.await()
         }
+        if (failAfterHold && holdFirst != null && reports.size == 1) return FeedbackDelivery.Failed
         if (failTimes > 0) {
             failTimes -= 1
             return FeedbackDelivery.Failed
@@ -177,6 +291,8 @@ private class ScriptSender(
 }
 
 private class MemoryChats(private val session: ChatSession) : PageChats {
+    var beforeApply: (suspend (answerId: String, revision: Int, sentRevision: Int) -> Unit)? = null
+
     fun setLocal(feedback: MessageFeedback) {
         session.replaceMessages(session.messages.value.map { it.copy(feedback = feedback) })
     }
@@ -190,11 +306,9 @@ private class MemoryChats(private val session: ChatSession) : PageChats {
     override suspend fun record(session: PageConversation, message: ChatMessage) = Unit
     override suspend fun setFeedback(session: PageConversation, messageId: Long, feedback: MessageFeedback) = Unit
     override suspend fun stampFeedback(session: PageConversation, messageId: Long, answerId: String, revision: Int, sentRevision: Int) {
-        this.session.replaceMessages(
-            this.session.messages.value.map { message ->
-                if (message.id != messageId) message
-                else message.copy(feedbackAnswerId = answerId, feedbackRevision = revision, feedbackSentRevision = sentRevision)
-            },
-        )
+        beforeApply?.invoke(answerId, revision, sentRevision)
+        val live = this.session.messages.value.first { it.id == messageId }
+        val merged = mergeStamp(live, answerId, revision, sentRevision) ?: return
+        this.session.replaceMessages(this.session.messages.value.map { if (it.id == messageId) merged else it })
     }
 }

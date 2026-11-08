@@ -192,27 +192,25 @@ class ChatSessionStore(
         sentRevision: Int,
     ) {
         val chat = session as ChatSession
-        val updated = chat.messages.value.map { message ->
-            if (message.id != messageId) {
-                message
-            } else {
-                message.copy(
-                    feedbackAnswerId = answerId,
-                    feedbackRevision = revision,
-                    feedbackSentRevision = sentRevision,
-                )
-            }
-        }
-        chat.replaceMessages(updated)
+        val live = chat.messages.value.firstOrNull { it.id == messageId } ?: return
+        val merged = mergeStamp(live, answerId, revision, sentRevision) ?: return
+        chat.replaceMessages(chat.messages.value.map { if (it.id == messageId) merged else it })
         if (chat.chatId <= 0) return
-        val current = updated.firstOrNull { it.id == messageId } ?: return
         val saved = chats.messages(chat.chatId).firstOrNull { it.id == messageId } ?: return
+        val fresh = chat.messages.value.firstOrNull { it.id == messageId } ?: return
+        if (fresh.feedbackAnswerId != merged.feedbackAnswerId || fresh.feedbackRevision != merged.feedbackRevision) return
+        if (saved.feedbackRevision > fresh.feedbackRevision) return
+        val sent = if (saved.feedbackRevision == fresh.feedbackRevision) {
+            maxOf(saved.feedbackSentRevision, fresh.feedbackSentRevision)
+        } else {
+            fresh.feedbackSentRevision
+        }
         chats.updateMessage(
             saved.copy(
-                feedback = current.feedback,
-                feedbackAnswerId = answerId,
-                feedbackRevision = revision,
-                feedbackSentRevision = sentRevision,
+                feedback = fresh.feedback,
+                feedbackAnswerId = fresh.feedbackAnswerId,
+                feedbackRevision = fresh.feedbackRevision,
+                feedbackSentRevision = sent,
             ),
         )
     }

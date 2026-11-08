@@ -16,9 +16,11 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -82,37 +84,70 @@ class FeedbackRelay @Inject constructor(
         jobs.remove(answerId)?.cancel()
         jobs[answerId] = scope.launch {
             repeat(ATTEMPTS) { attempt ->
+                if (!consent()) {
+                    retire(session, messageId, answerId)
+                    return@launch
+                }
                 val latest = session.messages.value.firstOrNull { it.id == messageId } ?: return@launch
                 if (latest.feedbackAnswerId != answerId || latest.feedbackSentRevision >= latest.feedbackRevision) return@launch
                 val report = report(latest.feedbackAnswerId ?: return@launch, latest.feedbackRevision, latest.feedback, surface)
                 when (val result = sender.send(report)) {
                     is FeedbackDelivery.Accepted -> {
-                        val current = session.messages.value.firstOrNull { it.id == messageId } ?: return@launch
-                        if (result.storedRevision >= current.feedbackRevision) {
-                            sessions.stampFeedback(session, messageId, answerId, current.feedbackRevision, current.feedbackRevision)
+                        coroutineContext.ensureActive()
+                        if (result.storedRevision >= report.revision) {
+                            ack(session, messageId, answerId, report.revision)
                         }
                         return@launch
                     }
                     FeedbackDelivery.Rejected -> return@launch
-                    FeedbackDelivery.Failed -> if (attempt < ATTEMPTS - 1) delay(PAUSE_MS * (attempt + 1))
+                    FeedbackDelivery.Failed -> {
+                        if (!consent()) {
+                            retire(session, messageId, answerId)
+                            return@launch
+                        }
+                        if (attempt < ATTEMPTS - 1) delay(PAUSE_MS * (attempt + 1))
+                    }
                 }
             }
         }
     }
 
     private suspend fun flushSaved() {
-        if (settings.settings.first().sendRatings != true) return
+        if (!consent()) return
         for (message in chats.unsentFeedback()) {
             val answerId = message.feedbackAnswerId ?: continue
             val surface = if (message.kind == MessageKind.TABS_OVERVIEW) FeedbackSurface.TABS else FeedbackSurface.PAGE
+            jobs.remove(answerId)?.cancel()
             jobs[answerId] = scope.launch {
+                if (!consent()) return@launch
                 val report = report(answerId, message.feedbackRevision, message.feedback, surface)
-                if (sender.send(report) is FeedbackDelivery.Accepted) {
-                    chats.updateMessage(message.copy(feedbackSentRevision = message.feedbackRevision))
+                val result = sender.send(report)
+                coroutineContext.ensureActive()
+                if (result is FeedbackDelivery.Accepted && result.storedRevision >= report.revision && consent()) {
+                    chats.ackFeedback(message.id, answerId, report.revision, report.rating)
+                } else if (!consent()) {
+                    chats.ackFeedback(message.id, answerId, report.revision, report.rating)
                 }
             }
         }
     }
+
+    /** Marks [report]'s revision sent only while that revision is still the live one. */
+    private suspend fun ack(session: PageConversation, messageId: Long, answerId: String, revision: Int) {
+        val current = session.messages.value.firstOrNull { it.id == messageId } ?: return
+        if (current.feedbackAnswerId != answerId || current.feedbackRevision != revision) return
+        if (current.feedbackSentRevision >= revision) return
+        sessions.stampFeedback(session, messageId, answerId, revision, revision)
+    }
+
+    /** Stops a send the person no longer allows, without changing the rating or a newer revision. */
+    private suspend fun retire(session: PageConversation, messageId: Long, answerId: String) {
+        val current = session.messages.value.firstOrNull { it.id == messageId } ?: return
+        if (current.feedbackAnswerId != answerId || current.feedbackSentRevision >= current.feedbackRevision) return
+        sessions.stampFeedback(session, messageId, answerId, current.feedbackRevision, current.feedbackRevision)
+    }
+
+    private suspend fun consent(): Boolean = settings.settings.first().sendRatings == true
 
     private fun report(answerId: String, revision: Int, rating: com.dantech.skimbrowser.domain.chat.MessageFeedback, surface: FeedbackSurface) =
         FeedbackReport(answerId, revision, rating, surface, appVersion.take(32).ifBlank { "0" })

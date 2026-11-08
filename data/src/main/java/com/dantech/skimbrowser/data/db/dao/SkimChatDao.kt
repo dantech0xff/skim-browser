@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.dantech.skimbrowser.data.db.entity.ChatKind
+import com.dantech.skimbrowser.data.db.entity.MessageFeedback
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
 import com.dantech.skimbrowser.data.db.entity.SkimMessageEntity
 import kotlinx.coroutines.flow.Flow
@@ -72,6 +73,17 @@ interface SkimChatDao {
             "AND feedbackRevision > feedbackSentRevision ORDER BY id LIMIT :limit",
     )
     suspend fun unsentFeedback(limit: Int): List<SkimMessageEntity>
+
+    /**
+     * Advances only the sent revision, and only while the rating row is still the one that was sent.
+     * A newer revision or a different rating matches nothing.
+     */
+    @Query(
+        "UPDATE skim_messages SET feedbackSentRevision = :revision " +
+            "WHERE id = :id AND feedbackAnswerId = :answerId AND feedbackRevision = :revision " +
+            "AND feedback = :feedback AND feedbackSentRevision < :revision",
+    )
+    suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Int
 
     /** Deletes a chat; its messages go with it through the foreign key. */
     @Query("DELETE FROM skim_chats WHERE id = :id")

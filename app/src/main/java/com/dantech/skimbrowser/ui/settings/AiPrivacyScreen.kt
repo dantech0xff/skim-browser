@@ -93,6 +93,7 @@ fun AiPrivacyScreen(
                     icon = R.drawable.ic_cloud_upload,
                     checked = state.askBeforeSending,
                     index = 0,
+                    count = PRIVACY_ROWS,
                     onCheckedChange = onAskBeforeSending,
                 )
                 SwitchRow(
@@ -101,6 +102,7 @@ fun AiPrivacyScreen(
                     icon = R.drawable.ic_history,
                     checked = state.keepChatHistory,
                     index = 1,
+                    count = PRIVACY_ROWS,
                     onCheckedChange = onKeepChatHistory,
                 )
                 SwitchRow(
@@ -109,6 +111,7 @@ fun AiPrivacyScreen(
                     icon = R.drawable.ic_thumb_up,
                     checked = state.sendRatings,
                     index = 2,
+                    count = PRIVACY_ROWS,
                     onCheckedChange = onSendRatings,
                 )
                 SkimListItem(
@@ -119,7 +122,7 @@ fun AiPrivacyScreen(
                         state.conversationCount,
                     ),
                     index = 3,
-                    count = 4,
+                    count = PRIVACY_ROWS,
                     onClick = onSkimHistory,
                     leading = { SunnyMark(size = 40.dp, iconSize = 20.dp) },
                 )
@@ -175,6 +178,7 @@ private fun ColumnScope.SwitchRow(
     @DrawableRes icon: Int,
     checked: Boolean,
     index: Int,
+    count: Int,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -182,10 +186,12 @@ private fun ColumnScope.SwitchRow(
         headline = headline,
         supporting = supporting,
         index = index,
-        count = 3,
+        count = count,
         onClick = null,
         modifier = Modifier.toggleableRow(checked, onCheckedChange),
         leading = { IconTile(icon, colors.secondaryContainer, colors.onSecondaryContainer) },
         trailing = { SkimSwitch(checked = checked, onCheckedChange = null) },
     )
 }
+
+private const val PRIVACY_ROWS = 4

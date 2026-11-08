@@ -211,6 +211,32 @@ class ChatRepositoryTest {
     }
 
     @Test
+    fun acknowledgingAnOldRevisionDoesNotReplaceANewerRating() = runTest {
+        val chatId = chats.createChat(chat("Kotlin", updatedAt = 1))
+        val id = chats.addMessage(
+            message(chatId, MessageKind.SUMMARY, MessageRole.ASSISTANT).copy(
+                feedback = MessageFeedback.GOOD,
+                feedbackAnswerId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                feedbackRevision = 1,
+                feedbackSentRevision = 0,
+            ),
+        )
+        chats.updateMessage(
+            chats.messages(chatId).single().copy(
+                feedback = MessageFeedback.POOR,
+                feedbackRevision = 2,
+                text = "Kept",
+            ),
+        )
+        assertTrue(!chats.ackFeedback(id, "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", 1, MessageFeedback.GOOD))
+        val row = chats.messages(chatId).single()
+        assertEquals(MessageFeedback.POOR, row.feedback)
+        assertEquals(2, row.feedbackRevision)
+        assertEquals(0, row.feedbackSentRevision)
+        assertEquals("Kept", row.text)
+    }
+
+    @Test
     fun skimHistoryRowsCanBeFilteredAndCounted() = runTest {
         savedChatWithMessages("Kotlin 2.2 release notes", host = "kotlinlang.org", updatedAt = 2)
         savedChatWithMessages("Why heat pumps are winning", host = "daylightjournal.com", updatedAt = 1)

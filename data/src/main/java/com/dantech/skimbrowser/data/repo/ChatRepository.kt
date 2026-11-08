@@ -7,6 +7,7 @@ import com.dantech.skimbrowser.data.db.dao.SkimChatDao
 import com.dantech.skimbrowser.data.db.entity.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository as ChatStore
 import com.dantech.skimbrowser.domain.chat.ChatSummary
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.chat.SavedMessage
 import javax.inject.Inject
@@ -70,6 +71,9 @@ class ChatRepository(private val dao: SkimChatDao, private val db: SkimDatabase)
     override suspend fun updateMessage(message: SavedMessage) = dao.updateMessage(message.toEntity())
 
     override suspend fun unsentFeedback(): List<SavedMessage> = dao.unsentFeedback(20).map { it.toDomain() }
+
+    override suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean =
+        dao.ackFeedback(id, answerId, revision, feedback) == 1
 
     /**
      * Deletes chat [id] with its messages, then emits [id] on [removals]. Returns what was deleted,

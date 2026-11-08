@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.domain.chat.ChatKind
 import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.ChatSummary
 import com.dantech.skimbrowser.domain.chat.DeletedChat
+import com.dantech.skimbrowser.domain.chat.MessageFeedback
 import com.dantech.skimbrowser.domain.chat.MessageKind
 import com.dantech.skimbrowser.domain.chat.MessageRole
 import com.dantech.skimbrowser.domain.chat.MessageStatus
@@ -404,6 +405,16 @@ class FakeChatRepository : ChatRepository {
 
     override suspend fun unsentFeedback(): List<SavedMessage> =
         storedMessages.filter { it.feedbackAnswerId != null && it.feedbackRevision > it.feedbackSentRevision }.take(20)
+
+    override suspend fun ackFeedback(id: Long, answerId: String, revision: Int, feedback: MessageFeedback): Boolean {
+        val index = storedMessages.indexOfFirst { it.id == id }
+        if (index < 0) return false
+        val row = storedMessages[index]
+        if (row.feedbackAnswerId != answerId || row.feedbackRevision != revision || row.feedback != feedback) return false
+        if (row.feedbackSentRevision >= revision) return false
+        storedMessages[index] = row.copy(feedbackSentRevision = revision)
+        return true
+    }
 
     override suspend fun deleteAll() {
         chats.value = emptyList()
