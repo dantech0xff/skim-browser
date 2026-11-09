@@ -175,7 +175,7 @@ private fun rememberSolidChrome(): Boolean {
     val context = LocalContext.current
     val manager = remember(context) { context.getSystemService(AccessibilityManager::class.java) }
     var solid by remember { mutableStateOf(highContrastText(manager)) }
-    if (Build.VERSION.SDK_INT >= 34 && manager != null) {
+    if (Build.VERSION.SDK_INT >= 36 && manager != null) {
         DisposableEffect(manager) {
             val listener = AccessibilityManager.HighContrastTextStateChangeListener { enabled -> solid = enabled }
             manager.addHighContrastTextStateChangeListener(context.mainExecutor, listener)
@@ -186,7 +186,7 @@ private fun rememberSolidChrome(): Boolean {
 }
 
 private fun highContrastText(manager: AccessibilityManager?): Boolean =
-    manager != null && Build.VERSION.SDK_INT >= 34 && manager.isHighContrastTextEnabled
+    manager != null && Build.VERSION.SDK_INT >= 36 && manager.isHighContrastTextEnabled
 
 /** A chevron for history, narrower than an arrow so the address keeps the width. */
 @Composable
