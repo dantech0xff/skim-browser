@@ -1,5 +1,8 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import android.os.Build
+import android.view.accessibility.AccessibilityManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -9,16 +12,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -37,7 +48,7 @@ import com.dantech.skimbrowser.ui.components.isDarkScheme
 
 private val Slot = 32.dp
 private val NavSlot = 22.dp
-private val PillShadow = 3.dp
+private val PillShadow = 6.dp
 
 /**
  * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view
@@ -51,7 +62,12 @@ fun BrowsingChrome(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val content = colors.onSurfaceVariant
+    val content = colors.onSurface
+    val dark = isDarkScheme()
+    val solid = rememberSolidChrome()
+    val fill = (if (dark) colors.surfaceContainerHigh else colors.surfaceContainer)
+        .copy(alpha = glassChromeAlpha(dark, solid))
+    val highlight = if (dark) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.72f)
     Box(
         modifier
             .fillMaxWidth()
@@ -60,14 +76,22 @@ fun BrowsingChrome(
                 traversalIndex = -1f
             },
     ) {
-        Surface(
-            shape = CircleShape,
-            color = if (isDarkScheme()) colors.surfaceContainerHigh else colors.surfaceContainer,
-            contentColor = content,
-            shadowElevation = PillShadow,
-            modifier = Modifier.fillMaxWidth().height(ToolbarMetrics.AddressRowHeight),
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(ToolbarMetrics.AddressRowHeight)
+                .shadow(PillShadow, CircleShape)
+                .background(fill, CircleShape)
+                .clip(CircleShape),
         ) {
             Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .align(Alignment.TopCenter)
+                    .background(Brush.verticalGradient(listOf(highlight, Color.Transparent))),
+            )
             CompositionLocalProvider(LocalContentColor provides content) {
                 Row(
                     Modifier.fillMaxSize().padding(horizontal = 4.dp),
@@ -128,6 +152,41 @@ fun BrowsingChrome(
         }
     }
 }
+
+/**
+ * How opaque the browsing pill is. High contrast text asks for a nearly solid bar so the address
+ * and icons stay readable. Otherwise the bar is a frosted tint: the page shows through, and the
+ * tint is still strong enough on a white page, a dark page, or a photograph.
+ *
+ * A live blur of the WebView is not used. The page is a hardware surface, so the public blur
+ * (`Modifier.blur`, `RenderEffect`) cannot see it, and copying that surface every frame would
+ * stall scrolling. A second window with blur-behind would blur a rectangle behind this pill and
+ * would split Find, the keyboard, and scroll-to-hide out of this composition.
+ */
+internal fun glassChromeAlpha(dark: Boolean, highContrast: Boolean): Float = when {
+    highContrast && dark -> 0.94f
+    highContrast -> 0.96f
+    dark -> 0.80f
+    else -> 0.84f
+}
+
+@Composable
+private fun rememberSolidChrome(): Boolean {
+    val context = LocalContext.current
+    val manager = remember(context) { context.getSystemService(AccessibilityManager::class.java) }
+    var solid by remember { mutableStateOf(highContrastText(manager)) }
+    if (Build.VERSION.SDK_INT >= 34 && manager != null) {
+        DisposableEffect(manager) {
+            val listener = AccessibilityManager.HighContrastTextStateChangeListener { enabled -> solid = enabled }
+            manager.addHighContrastTextStateChangeListener(context.mainExecutor, listener)
+            onDispose { manager.removeHighContrastTextStateChangeListener(listener) }
+        }
+    }
+    return solid
+}
+
+private fun highContrastText(manager: AccessibilityManager?): Boolean =
+    manager != null && Build.VERSION.SDK_INT >= 34 && manager.isHighContrastTextEnabled
 
 /** A chevron for history, narrower than an arrow so the address keeps the width. */
 @Composable
