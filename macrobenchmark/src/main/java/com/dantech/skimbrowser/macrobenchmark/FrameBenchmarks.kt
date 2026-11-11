@@ -11,8 +11,10 @@ import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
+import java.io.InputStream
 import java.net.InetAddress
 import java.net.ServerSocket
+import java.net.SocketTimeoutException
 import kotlin.concurrent.thread
 import org.junit.Rule
 import org.junit.Test
@@ -58,9 +60,10 @@ class FrameBenchmarks {
             // Home fits on a Pixel 7, so it has no scrollable node. A local page is tall enough
             // to fling, and it does not depend on a network.
             val page = serveLongPage()
+            // The process is killed first, so every iteration delivers the URL to onCreate.
+            // A live singleTask activity would only see onNewIntent and might keep Home.
+            killProcess()
             pressHome()
-            // Cold start straight into the page, so onCreate receives the link. A second start
-            // only delivers onNewIntent and the document sometimes never replaces Home.
             startActivityAndWait(
                 Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:$page/scroll"))
                     .setPackage(PACKAGE),
@@ -154,6 +157,14 @@ class FrameBenchmarks {
                 while (!server.isClosed) {
                     try {
                         server.accept().use { socket ->
+                            socket.soTimeout = 2_000
+                            // Read the request first. Closing with unread bytes sends a TCP reset
+                            // and WebView retries or fails the page.
+                            try {
+                                drainRequest(socket.getInputStream())
+                            } catch (_: Exception) {
+                                // The header may already have been consumed.
+                            }
                             socket.getOutputStream().apply {
                                 write(header)
                                 write(body)
@@ -161,11 +172,39 @@ class FrameBenchmarks {
                             }
                         }
                     } catch (_: Exception) {
-                        break
+                        if (server.isClosed) break
                     }
                 }
             }
             return server.localPort
+        }
+
+        private fun drainRequest(input: InputStream) {
+            val buffer = ByteArray(2048)
+            var total = 0
+            while (total < buffer.size) {
+                val read = try {
+                    input.read(buffer, total, buffer.size - total)
+                } catch (_: SocketTimeoutException) {
+                    break
+                }
+                if (read < 0) break
+                total += read
+                if (headerEnded(buffer, total)) break
+            }
+        }
+
+        private fun headerEnded(buffer: ByteArray, total: Int): Boolean {
+            for (index in 0 until total - 3) {
+                if (buffer[index] == '\r'.code.toByte() &&
+                    buffer[index + 1] == '\n'.code.toByte() &&
+                    buffer[index + 2] == '\r'.code.toByte() &&
+                    buffer[index + 3] == '\n'.code.toByte()
+                ) {
+                    return true
+                }
+            }
+            return false
         }
     }
 }
