@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -51,6 +51,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -120,6 +121,7 @@ class SavedArticleViewModel @AssistedInject constructor(
     private val article = MutableStateFlow<SavedArticle?>(null)
     private val summarizing = MutableStateFlow(false)
     private val needsPermission = MutableStateFlow(false)
+    private var request: Job? = null
 
     val state: StateFlow<SavedReaderState> = kotlinx.coroutines.flow.combine(
         loaded,
@@ -163,14 +165,32 @@ class SavedArticleViewModel @AssistedInject constructor(
     /** Asks for three points and keeps them on the article. No chat row is written. */
     fun summarize() {
         val current = article.value ?: return
-        if (summarizing.value) return
-        viewModelScope.launch {
-            if (!siteAllowed(current.host)) {
-                needsPermission.value = true
-                return@launch
-            }
+        if (request?.isActive == true) return
+        request?.cancel()
+        request = viewModelScope.launch { runSummary(current) }
+    }
+
+    /** Remembers that this site may be read, then summarizes. A request already running is left alone. */
+    fun allowAndSummarize() {
+        val host = article.value?.host ?: return
+        if (request?.isActive == true) return
+        request?.cancel()
+        request = viewModelScope.launch {
+            sites.setSkimAi(host, SkimAiState.ALLOWED)
             needsPermission.value = false
-            summarizing.value = true
+            val current = article.value ?: return@launch
+            runSummary(current)
+        }
+    }
+
+    private suspend fun runSummary(current: SavedArticle) {
+        if (!siteAllowed(current.host)) {
+            needsPermission.value = true
+            return
+        }
+        needsPermission.value = false
+        summarizing.value = true
+        try {
             val text = StringBuilder()
             var failed = false
             assistant.summarizeSaved(
@@ -193,17 +213,8 @@ class SavedArticleViewModel @AssistedInject constructor(
                 saved.setSummary(current.id, text.toString())
                 article.value = current.copy(summary = text.toString())
             }
+        } finally {
             summarizing.value = false
-        }
-    }
-
-    /** Remembers that this site may be read, then summarizes. */
-    fun allowAndSummarize() {
-        val host = article.value?.host ?: return
-        viewModelScope.launch {
-            sites.setSkimAi(host, SkimAiState.ALLOWED)
-            needsPermission.value = false
-            summarize()
         }
     }
 
@@ -283,9 +294,9 @@ fun SavedArticleRoute(articleId: Long, navigator: SkimNavigator) {
             aiFab = {},
             )
             if (current.needsPermission) {
-                Box(
-                    Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)),
-                    contentAlignment = Alignment.Center,
+                Dialog(
+                    onDismissRequest = model::dismissPermission,
+                    properties = DialogProperties(usePlatformDefaultWidth = false),
                 ) {
                     AiPermissionDialog(
                         host = current.article.host,
