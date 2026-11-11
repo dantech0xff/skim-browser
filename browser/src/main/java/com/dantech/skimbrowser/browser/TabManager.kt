@@ -717,10 +717,7 @@ class TabManager(
         val groups = (restoredGroups + before.groups.filterNot { group -> restoredGroups.any { it.id == group.id } })
             .sortedWith(compareBy({ it.position }, { it.id }))
         val tabs = restored + before.tabs.filterNot { it.id in restoredIds }
-        restored.forEach { tab ->
-            val fallback = tab.url?.takeIf { httpsUpgrade(it) != null }
-            runtimes.getOrPut(tab.id) { MutableStateFlow(TabRuntime(httpFallback = fallback)) }
-        }
+        restored.forEach { runtimes.getOrPut(it.id) { MutableStateFlow(TabRuntime()) } }
         nextGroupId = maxOf(nextGroupId, (groups.maxOfOrNull { it.id } ?: 0L) + 1)
         val current = before.currentTabId
             ?: loaded.lastTabId?.takeIf { it in restoredIds }

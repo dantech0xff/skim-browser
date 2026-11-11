@@ -55,7 +55,28 @@ fun httpsUpgrade(url: String): String? {
     if (!trimmed.startsWith("http://", ignoreCase = true)) return null
     val host = hostOf(trimmed) ?: return null
     if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") return null
-    return "https://" + trimmed.substring(trimmed.indexOf("://") + 3)
+    val rest = trimmed.substring(trimmed.indexOf("://") + 3)
+    return "https://" + withoutHttpDefaultPort(rest)
+}
+
+/** Drops an explicit port 80. https on port 80 is not the service that answered http. */
+private fun withoutHttpDefaultPort(rest: String): String {
+    val split = rest.indexOfAny(charArrayOf('/', '?', '#'))
+    val authorityEnd = if (split < 0) rest.length else split
+    val authority = rest.substring(0, authorityEnd)
+    val tail = rest.substring(authorityEnd)
+    val at = authority.lastIndexOf('@')
+    val userInfo = if (at < 0) "" else authority.substring(0, at + 1)
+    val hostPort = if (at < 0) authority else authority.substring(at + 1)
+    val hostOnly = if (hostPort.startsWith("[")) {
+        val bracket = hostPort.indexOf(']')
+        if (bracket >= 0 && hostPort.substring(bracket + 1) == ":80") hostPort.substring(0, bracket + 1) else hostPort
+    } else if (hostPort.endsWith(":80")) {
+        hostPort.removeSuffix(":80")
+    } else {
+        hostPort
+    }
+    return userInfo + hostOnly + tail
 }
 
 /**

@@ -17,7 +17,6 @@ import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.domain.tab.TabsController
-import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
@@ -525,9 +524,11 @@ class WebViewPool(
         var loadedFresh = false
         if (!restored && navigation !is Pending.Load) {
             // Only a web page loads by itself; a tab on the New tab page shows nothing until asked.
+            // Load the address the tab already has. A new navigation upgrades before it is stored
+            // here, and an explicit HTTP choice must not be upgraded again when the WebView is recreated.
             val url = tabs.state.value.tab(entry.tabId)?.url
             if (url != null && isWebUrl(url)) {
-                entry.view.loadUrl(httpsUpgrade(url) ?: url)
+                entry.view.loadUrl(url)
                 loadedFresh = true
             }
         }
