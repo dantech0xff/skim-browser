@@ -52,6 +52,7 @@ import com.dantech.skimbrowser.ui.components.CompactIconButton
 import androidx.compose.ui.window.Dialog
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimButton
+import com.dantech.skimbrowser.ui.components.SkimButtonSize
 import com.dantech.skimbrowser.ui.components.SkimButtonStyle
 import com.dantech.skimbrowser.ui.components.SkimDialogContent
 import com.dantech.skimbrowser.ui.components.SkimSnackbar
@@ -73,6 +74,8 @@ data class AskPageActions(
     val onCitation: (Int) -> Unit,
     val onAllowRatings: () -> Unit = {},
     val onDeclineRatings: () -> Unit = {},
+    val onTranslate: () -> Unit = {},
+    val onSpeak: (String, String?) -> Unit = { _, _ -> },
 )
 
 /**
@@ -210,8 +213,27 @@ private fun SummaryTextCard(
         SummaryLabel()
         SummaryBullets(lines)
         if (actions != null) {
+            PageTools(actions, lines.joinToString("\n"))
             FeedbackRow(actions, feedback)
         }
+    }
+}
+
+@Composable
+private fun PageTools(actions: AskPageActions, summaryText: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SkimButton(
+            text = stringResource(R.string.ai_translate_vietnamese),
+            onClick = actions.onTranslate,
+            size = SkimButtonSize.XS,
+            style = SkimButtonStyle.Tonal,
+        )
+        SkimButton(
+            text = stringResource(R.string.ai_read_aloud),
+            onClick = { actions.onSpeak(summaryText, null) },
+            size = SkimButtonSize.XS,
+            style = SkimButtonStyle.Tonal,
+        )
     }
 }
 
@@ -271,9 +293,19 @@ private fun SuggestedQuestions(onChip: (String) -> Unit) {
 private fun QuestionBlock(turn: QaTurn, state: AskPageUiState, actions: AskPageActions) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         UserBubble(turn.question)
-        if (turn.answer != null) {
+        val answer = turn.answer
+        val stillStreaming = state.generating && turn == state.turns.lastOrNull()
+        if (answer != null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnswerText(turn.answer)
+                AnswerText(answer)
+                if (!stillStreaming && turn.question == stringResource(R.string.ai_translate_prompt)) {
+                    SkimButton(
+                        text = stringResource(R.string.ai_read_aloud),
+                        onClick = { actions.onSpeak(answer, "vi") },
+                        size = SkimButtonSize.XS,
+                        style = SkimButtonStyle.Tonal,
+                    )
+                }
                 turn.paragraphs.forEach { paragraph ->
                     CitationChip(
                         paragraph = paragraph,
