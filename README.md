@@ -85,6 +85,16 @@ ANDROID_SERIAL=emulator-5580 ./gradlew :app:connectedReleaseSmokeAndroidTest --n
 
 On API 36 every incognito test must run. A skip means the device gate failed. On API 28, if `MULTI_PROFILE` is absent, `IncognitoUnavailableTest` must run and pass. Read the `SkimGate` line from `DeviceCapabilitiesReportTest`.
 
+Cold start, warm start, and a fling of a local page:
+
+```
+ANDROID_SERIAL=<serial> tools/bench_phone.sh
+```
+
+Use a mid-range phone for numbers you keep. `skim_api36` can run the same command as a smoke check; a software GPU is not a jank result. The script header says where the JSON lands and how to generate a baseline profile on that phone. Do not commit a profile produced on an emulator.
+
+Deferring tab restore until the main thread went idle was measured with this harness and did not shorten time to initial display, so `Application.onCreate` still starts that work. A WebView is not created until a page needs one: the pool belongs to the Activity, and warming Chromium before the first page competes with the frame the benchmark measures.
+
 `ReleaseSmokeTest` points the minified app at `http://127.0.0.1:8787` and answers with the shared SSE fixtures. Cleartext to that host is allowed by `network_security_config.xml`.
 
 ## Release
