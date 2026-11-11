@@ -10,6 +10,7 @@ import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.normalizeHost
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,8 @@ class RequestShield private constructor(
 
     private val persisted = MutableStateFlow<Set<String>>(emptySet())
     private val incognitoOff = ConcurrentHashMap.newKeySet<String>()
+    /** False until the stored exceptions have been read. Blocking before that would ignore a site the user turned off. */
+    private val choicesReady = AtomicBoolean(settings == null)
     private val gate = Any()
     private var loaded: HostBlocklist? = null
 
@@ -51,7 +54,10 @@ class RequestShield private constructor(
     init {
         if (settings != null && scope != null) {
             scope.launch {
-                settings.shieldDisabledHosts.collect { persisted.value = it }
+                settings.shieldDisabledHosts.collect {
+                    persisted.value = it
+                    choicesReady.set(true)
+                }
             }
         }
     }
@@ -69,6 +75,7 @@ class RequestShield private constructor(
     }
 
     override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean): Boolean {
+        if (!choicesReady.get()) return false
         val requestHost = hostOf(requestUrl) ?: return false
         val documentHost = documentUrl?.let(::hostOf)
         if (documentHost != null && isOff(documentHost, incognito)) return false

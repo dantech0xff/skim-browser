@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.domain.shield
 
+import com.dantech.skimbrowser.domain.url.normalizeHost
 import java.io.BufferedReader
 
 /**
@@ -59,7 +60,7 @@ class HostBlocklist internal constructor(
             val allowThird = ArrayList<Long>()
             reader.forEachLine { line ->
                 if (line.length < 3 || line[0] == '#') return@forEachLine
-                val host = line.substring(2)
+                val host = normalizeHost(line.substring(2))
                 if (!host.contains('.')) return@forEachLine
                 val hash = fnv64(host)
                 when (line[0]) {
@@ -88,7 +89,7 @@ class HostBlocklist internal constructor(
         }
 
         private fun hashes(hosts: Set<String>): LongArray =
-            hosts.map(::fnv64).toLongArray().also { it.sort() }
+            hosts.map { fnv64(normalizeHost(it)) }.toLongArray().also { it.sort() }
 
         private fun contains(sorted: LongArray, hash: Long): Boolean =
             java.util.Arrays.binarySearch(sorted, hash) >= 0

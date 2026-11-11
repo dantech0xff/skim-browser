@@ -46,8 +46,8 @@ class SkimWebViewClient(
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
 ) : WebViewClient() {
 
-    private var detached = false
-    private var documentUrl: String? = null
+    @Volatile private var detached = false
+    @Volatile private var documentUrl: String? = null
     private val blockedCount = AtomicInteger()
     private val documentGeneration = AtomicInteger()
     private val countPosted = AtomicBoolean(false)

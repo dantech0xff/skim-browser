@@ -97,6 +97,8 @@ def accept(line: str) -> tuple[str, str] | None:
                 return None
             if part == "third-party":
                 third = True
+    if host.startswith("www.") and "." in host[4:]:
+        host = host[4:]
     if exception:
         return ("X" if third else "A", host)
     return ("T" if third else "B", host)

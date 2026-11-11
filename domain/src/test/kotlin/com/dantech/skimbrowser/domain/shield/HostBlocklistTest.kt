@@ -58,6 +58,15 @@ class HostBlocklistTest {
     }
 
     @Test
+    fun aWwwPrefixOnTheListMatchesTheHostKey() {
+        val list = HostBlocklist.of(blockAll = setOf("www.tracker.example"))
+        assertTrue(list.blocks("news.example", "tracker.example"))
+        assertTrue(list.blocks("news.example", "ads.tracker.example"))
+        val loaded = HostBlocklist.load(StringReader("B www.1-cl0ud.com\n").buffered())
+        assertTrue(loaded.blocks("example.com", "1-cl0ud.com"))
+    }
+
+    @Test
     fun lookupsStayUnderAMicrosecondOnALargeList() {
         val hosts = (0 until 20_000).map { "h$it.tracker.example" }.toSet()
         val list = HostBlocklist.of(blockAll = hosts)

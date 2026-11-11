@@ -187,6 +187,8 @@ class SiteInfoViewModel @AssistedInject constructor(
         viewModelScope.launch {
             shield.setDisabled(host, incognitoTab, disabled = !on)
             if (incognitoTab) revision.update { it + 1 }
+            // Resources already answered empty stay empty until the page loads again.
+            tabs.reload(tabId)
         }
     }
 
