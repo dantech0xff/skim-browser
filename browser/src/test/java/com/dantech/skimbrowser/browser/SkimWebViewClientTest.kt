@@ -16,6 +16,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.RecordingEvents.Event
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
+import kotlinx.coroutines.runBlocking
 import org.robolectric.shadows.ShadowLooper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,6 +69,54 @@ class SkimWebViewClientTest {
         assertEquals(null, main)
         assertEquals(null, sameSite)
         assertEquals(200, tracker?.statusCode)
+        assertEquals(listOf(Event.ShieldCount(TAB, 1)), events.eventsOf<Event.ShieldCount>())
+    }
+
+    @Test
+    fun aMainFrameInterceptIsTheDocumentBeforePageStarted() = runBlocking {
+        val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("google-analytics.com")))
+        shield.setDisabled("daylightjournal.com", incognito = true, disabled = true)
+        val client = client(shield, incognito = true)
+        val tracker = "https://www.google-analytics.com/g/collect"
+
+        val early = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        val onThisPage = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.shouldInterceptRequest(view, request(NEXT, mainFrame = true))
+        val onTheNextPage = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+
+        assertEquals("no document yet, so a third-party tracker is still blocked", 200, early?.statusCode)
+        assertEquals("the shield is off for the page the main frame just named", null, onThisPage)
+        assertEquals("leaving that page blocks the tracker before onPageStarted", 200, onTheNextPage?.statusCode)
+    }
+
+    @Test
+    fun blocksBeforePageStartedStillReachTheCount() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("tracker.example")))
+        val events = RecordingEvents()
+        val client = client(shield, events)
+        val tracker = "https://tracker.example/pixel"
+
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.onPageStarted(view, PAGE, null)
+
+        assertEquals(listOf(Event.ShieldCount(TAB, 1)), events.eventsOf<Event.ShieldCount>())
+    }
+
+    @Test
+    fun aBlockedCountQueuedForThePreviousPageDoesNotDropTheNextPage() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("tracker.example")))
+        val events = RecordingEvents()
+        val client = client(shield, events)
+        val tracker = "https://tracker.example/pixel"
+
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.onPageStarted(view, NEXT, null)
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        ShadowLooper.idleMainLooper()
+
         assertEquals(listOf(Event.ShieldCount(TAB, 1)), events.eventsOf<Event.ShieldCount>())
     }
 
@@ -264,8 +313,23 @@ class SkimWebViewClientTest {
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
         TestWebResourceRequest(url, mainFrame, gesture)
 
+    private fun client(
+        shield: RequestShield,
+        events: RecordingEvents = this.events,
+        incognito: Boolean = false,
+    ) = SkimWebViewClient(
+        tabId = TAB,
+        incognito = incognito,
+        events = events,
+        activityHost = host,
+        loadInTab = { _, _ -> },
+        shield = shield,
+        onRendererGone = { _, _, _ -> },
+    )
+
     private companion object {
         const val TAB = "tab-1"
         const val PAGE = "https://daylightjournal.com/energy/heat-pumps-cold"
+        const val NEXT = "https://example.com/next"
     }
 }
