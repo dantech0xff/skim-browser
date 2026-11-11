@@ -46,6 +46,18 @@ fun hostOf(url: String): String? {
 /** [url] without its `#fragment`, which never changes the page a chat is about. */
 fun withoutFragment(url: String): String = url.substringBefore('#')
 
+/**
+ * The https form of an http URL. Null when [url] is not http, or when its host is loopback:
+ * a local page is left on http because nothing there is listening on https.
+ */
+fun httpsUpgrade(url: String): String? {
+    val trimmed = url.trim()
+    if (!trimmed.startsWith("http://", ignoreCase = true)) return null
+    val host = hostOf(trimmed) ?: return null
+    if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") return null
+    return "https://" + trimmed.substring(trimmed.indexOf("://") + 3)
+}
+
 /** Lowercases [host] and drops a leading "www.", the form every host-keyed table stores. */
 fun normalizeHost(host: String): String {
     val lower = host.trim().lowercase()

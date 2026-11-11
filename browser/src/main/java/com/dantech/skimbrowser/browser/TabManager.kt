@@ -16,6 +16,7 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
+import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.di.AppScope
@@ -227,10 +228,12 @@ class TabManager(
         val now = clock()
         val id = newTabId()
         check(isStorableTabId(id) && _state.value.tab(id) == null && id !in pendingCloseIds()) { "Tab ids must be new" }
+        val requested = url?.trim()?.takeIf { isWebUrl(it) || it == ABOUT_BLANK }
+        val upgraded = requested?.let { httpsUpgrade(it) }
         val tab = Tab(
             id = id,
             incognito = incognito,
-            url = url?.trim()?.takeIf { isWebUrl(it) || it == ABOUT_BLANK },
+            url = upgraded ?: requested,
             title = "",
             groupId = null,
             position = nextOtherPosition(incognito),
@@ -241,7 +244,7 @@ class TabManager(
             lastAccessedAt = now,
         )
         if (url != null && tab.url == null) Log.w(TAG, "A new tab got a URL it cannot open; it shows the New tab page")
-        runtimes[id] = MutableStateFlow(TabRuntime())
+        runtimes[id] = MutableStateFlow(TabRuntime(httpFallback = if (upgraded != null) requested else null))
         _state.update { it.copy(tabs = sortTabs(it.tabs + tab, it.groups)) }
         persistTab(id)
         if (!background || _state.value.currentTabId == null) select(id)
@@ -283,15 +286,35 @@ class TabManager(
             Log.w(TAG, "Only http and https URLs load in a tab")
             return
         }
-        updateTab(tabId) { it.copy(url = target, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
-        updateRuntime(tabId) { it.copy(loadError = null, find = null) }
+        val upgraded = httpsUpgrade(target)
+        val actual = upgraded ?: target
+        updateTab(tabId) { it.copy(url = actual, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
+        updateRuntime(tabId) { it.copy(loadError = null, find = null, httpFallback = if (upgraded != null) target else null) }
         persistTab(tabId)
         val current = engine.value
         if (current != null) {
-            current.load(tabId, target)
+            current.load(tabId, actual)
         } else {
             pendingReloads.remove(tabId)
-            pendingLoads[tabId] = target
+            pendingLoads[tabId] = actual
+        }
+    }
+
+    /** Opens the http page remembered for [tabId], without upgrading it again. */
+    @MainThread
+    override fun loadHttpFallback(tabId: String) {
+        val http = runtimeOf(tabId).httpFallback ?: return
+        if (!http.startsWith("http://", ignoreCase = true)) return
+        openTab(tabId) ?: return
+        updateTab(tabId) { it.copy(url = http) }
+        updateRuntime(tabId) { it.copy(loadError = null, find = null, httpFallback = null) }
+        persistTab(tabId)
+        val current = engine.value
+        if (current != null) {
+            current.load(tabId, http)
+        } else {
+            pendingReloads.remove(tabId)
+            pendingLoads[tabId] = http
         }
     }
 
@@ -709,6 +732,10 @@ class TabManager(
 
     private fun runtimeOf(tabId: String): TabRuntime = runtimes[tabId]?.value ?: TabRuntime()
 
+    /** True when [a] and [b] name the same page, ignoring one trailing slash. */
+    private fun sameNavigation(a: String, b: String): Boolean =
+        a.trim().trimEnd('/') == b.trim().trimEnd('/')
+
     private fun updateRuntime(tabId: String, transform: (TabRuntime) -> TabRuntime): TabRuntime =
         runtimes[tabId]?.updateAndGet(transform) ?: TabRuntime()
 
@@ -936,7 +963,12 @@ class TabManager(
         override fun onLoadError(tabId: String, errorCode: Int, description: String?, url: String) {
             openTab(tabId) ?: return
             val error = loadErrorOf(errorCode, description, url, network.hasActiveNetwork)
-            updateRuntime(tabId) { it.copy(loadError = error, progress = null) }
+            updateRuntime(tabId) { runtime ->
+                val fallback = runtime.httpFallback
+                val upgraded = fallback?.let { httpsUpgrade(it) }
+                val keep = upgraded != null && sameNavigation(upgraded, url)
+                runtime.copy(loadError = error, progress = null, httpFallback = if (keep) fallback else null)
+            }
         }
 
         override fun onNavigationState(tabId: String, canGoBack: Boolean, canGoForward: Boolean) {

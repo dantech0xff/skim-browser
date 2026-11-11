@@ -63,6 +63,8 @@ data class BrowsingUiState(
     val find: FindUiState?,
     /** The pull to refresh indicator shows while the page reloads after a pull. */
     val refreshing: Boolean,
+    /** The http URL to offer when the https upgrade failed. */
+    val httpFallback: String? = null,
 )
 
 /**
@@ -163,6 +165,9 @@ class BrowsingViewModel @AssistedInject constructor(
     @MainThread
     fun tryAgain() = tabs.reload(tabId)
 
+    /** Opens the http page after https could not connect. */
+    fun openHttpFallback() = tabs.loadHttpFallback(tabId)
+
     @MainThread
     fun goForward() = tabs.goForward(tabId)
 
@@ -261,6 +266,7 @@ internal fun browsingUiState(
         tabCount = all.tabs.count { it.incognito == tab.incognito },
         incognito = tab.incognito,
         aiFab = aiFabMode(tab, runtime),
+        httpFallback = if (error != null) runtime.httpFallback else null,
         find = if (findOpen && error == null) {
             FindUiState(
                 countedText = find?.query,

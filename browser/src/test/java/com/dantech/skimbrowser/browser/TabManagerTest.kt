@@ -740,6 +740,25 @@ class TabManagerTest {
         assertNull(f.lastTabId())
     }
 
+    @Test
+    fun anHttpPageLoadsOverHttpsUntilThePersonOpensTheHttpVersion() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+
+        f.manager.load(id, "http://example.com/story")
+
+        assertEquals("https://example.com/story", f.tab(id)?.url)
+        assertEquals("http://example.com/story", f.manager.runtime(id).value.httpFallback)
+        assertEquals(FakeTabEngine.Call.Load(id, "https://example.com/story"), f.engine.calls.last())
+
+        f.manager.loadHttpFallback(id)
+
+        assertEquals("http://example.com/story", f.tab(id)?.url)
+        assertNull(f.manager.runtime(id).value.httpFallback)
+        assertEquals(FakeTabEngine.Call.Load(id, "http://example.com/story"), f.engine.calls.last())
+    }
+
     private fun TestScope.fixture(
         db: SkimDatabase = inMemorySkimDatabase(),
         supportsIncognito: Boolean = true,

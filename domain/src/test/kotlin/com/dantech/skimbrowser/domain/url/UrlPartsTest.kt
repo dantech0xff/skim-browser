@@ -74,6 +74,16 @@ class UrlPartsTest {
     }
 
     @Test
+    fun httpPagesUpgradeToHttpsExceptOnLoopback() {
+        assertEquals("https://example.com/a?q=1#f", httpsUpgrade("http://example.com/a?q=1#f"))
+        assertEquals("https://Example.com/A", httpsUpgrade("HTTP://Example.com/A"))
+        assertNull(httpsUpgrade("https://example.com/"))
+        assertNull(httpsUpgrade("http://127.0.0.1:8787/article"))
+        assertNull(httpsUpgrade("http://localhost/x"))
+        assertNull(httpsUpgrade("http://[::1]/x"))
+    }
+
+    @Test
     fun withoutFragmentDropsOnlyTheFragment() {
         assertEquals("https://a.example/page?q=1", withoutFragment("https://a.example/page?q=1#section-2"))
         assertEquals("https://a.example/", withoutFragment("https://a.example/#"))

@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.annotation.MainThread
@@ -461,6 +462,8 @@ class WebViewPool(
             allowContentAccess = false
             setGeolocationEnabled(true)
         }
+        // First-party cookies stay. A page cannot read cookies set by another site.
+        CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.overScrollMode = View.OVER_SCROLL_NEVER
         view.setFindListener { activeMatchOrdinal, numberOfMatches, isDoneCounting ->
             events.onFindResult(tab.id, activeMatchOrdinal, numberOfMatches)

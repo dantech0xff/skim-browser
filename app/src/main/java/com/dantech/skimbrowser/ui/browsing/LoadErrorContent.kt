@@ -59,6 +59,7 @@ fun LoadErrorContent(
     error: LoadError,
     onTryAgain: () -> Unit,
     onInternetSettings: () -> Unit,
+    onOpenHttp: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -120,6 +121,16 @@ fun LoadErrorContent(
                     size = SkimButtonSize.M,
                     icon = R.drawable.ic_refresh,
                 )
+                if (onOpenHttp != null) {
+                    SkimButton(
+                        text = stringResource(R.string.error_open_http),
+                        onClick = onOpenHttp,
+                        modifier = Modifier.fillMaxWidth(),
+                        size = SkimButtonSize.M,
+                        style = SkimButtonStyle.Tonal,
+                        icon = R.drawable.ic_public,
+                    )
+                }
                 if (error is LoadError.NoInternet) {
                     SkimButton(
                         text = stringResource(R.string.error_internet_settings),

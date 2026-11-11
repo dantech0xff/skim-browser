@@ -104,6 +104,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onTabs = { navigator.openTabs(tab.incognito) },
             onMore = { navigator.openMoreMenu(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
+            onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
         ),
         chromeCollapsed = chromeCollapsed,
         page = {

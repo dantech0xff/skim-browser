@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import com.dantech.skimbrowser.system.confirmIncognito
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -198,13 +199,22 @@ fun LinkOptionsRoute(key: LinkOptionsKey, navigator: SkimNavigator) {
         val url = linkTargetUrl(key.target)
         when (row) {
             LinkRow.OpenNewTab, LinkRow.OpenIncognito, LinkRow.OpenImage -> {
-                val id = navigator.openInBackground(url, opensIncognito(tab.incognito, row))
-                navigator.back()
-                if (id != null) {
-                    shell.snackbar().show(
-                        UiText.Res(R.string.snackbar_opened_in_new_tab),
-                        SnackbarAction.SwitchToTab(id),
-                    )
+                val incognito = opensIncognito(tab.incognito, row)
+                val open = {
+                    val id = navigator.openInBackground(url, incognito)
+                    navigator.back()
+                    if (id != null) {
+                        shell.snackbar().show(
+                            UiText.Res(R.string.snackbar_opened_in_new_tab),
+                            SnackbarAction.SwitchToTab(id),
+                        )
+                    }
+                }
+                if (incognito) {
+                    val session = shell.tabs().state.value.tabs.any { it.incognito }
+                    context.confirmIncognito(session, open)
+                } else {
+                    open()
                 }
             }
             LinkRow.CopyLink -> {

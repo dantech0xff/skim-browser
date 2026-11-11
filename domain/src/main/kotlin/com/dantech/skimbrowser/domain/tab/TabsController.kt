@@ -29,8 +29,11 @@ interface TabsController {
     /** Makes [tabId] the current tab. */
     fun select(tabId: String)
 
-    /** Loads [url] in [tabId]. A URL that is not http or https is ignored. */
+    /** Loads [url] in [tabId]. A URL that is not http or https is ignored. An http URL loads as https. */
     fun load(tabId: String, url: String)
+
+    /** Loads the http page kept after an https upgrade. Does nothing when this load has no fallback. */
+    fun loadHttpFallback(tabId: String) {}
 
     /** Back on the first page of a tab started from the New tab page: the tab shows it again. */
     fun returnToNewTabPage(tabId: String)

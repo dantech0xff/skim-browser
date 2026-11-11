@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.dantech.skimbrowser.system.confirmIncognito
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -211,6 +212,7 @@ private fun menuState(tab: Tab, bookmark: Bookmark?, known: Boolean): MoreMenuUi
 /** The [MoreMenuKey] destination. Its view model goes away with the sheet. */
 @Composable
 fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
+    val shell = com.dantech.skimbrowser.ui.navigation.rememberShell()
     val menu = hiltViewModel<MoreMenuViewModel, MoreMenuViewModel.Factory> { factory ->
         factory.create(key.tabId)
     }
@@ -235,7 +237,10 @@ fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
         },
         onDesktop = menu::toggleDesktop,
         onNewTab = { navigator.openNewTab(incognito = false) },
-        onNewIncognito = { navigator.openNewTab(incognito = true) },
+        onNewIncognito = {
+            val open = shell.tabs().state.value.tabs.any { it.incognito }
+            context.confirmIncognito(open) { navigator.openNewTab(incognito = true) }
+        },
         onBookmarks = { navigator.replaceTop(BookmarksKey()) },
         onHistory = { navigator.replaceTop(HistoryKey) },
         onSettings = { navigator.replaceTop(SettingsKey) },
