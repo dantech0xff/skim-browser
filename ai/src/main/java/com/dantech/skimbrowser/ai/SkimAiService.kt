@@ -40,6 +40,41 @@ class SkimAiService(
         settings: SettingsRepository,
     ) : this(clients, sites, settings, resolveConsent = ResolveSkimAiConsent())
 
+    override fun summarizeSaved(
+        host: String,
+        url: String,
+        title: String,
+        paragraphs: List<String>,
+        languageTag: String,
+    ): Flow<AiReply> = flow {
+        val opening = listOf(
+            WireBlock.Document(
+                title = title,
+                context = url,
+                paragraphs = paragraphs,
+                citations = false,
+                cache = false,
+            ),
+            WireBlock.Text(Prompts.summaryInstruction(languageTag)),
+        )
+        val params = request(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null, opening)
+        val source = AiSource(tabId = "saved", incognito = false, host = host)
+        try {
+            send(params, listOf(source), Consent.SITE_APPROVED, host).collect { event ->
+                when (event) {
+                    is AiEvent.Text -> emit(AiReply.Text(event.delta))
+                    is AiEvent.Cite -> Unit
+                    is AiEvent.Done -> emit(AiReply.Done(event.stopReason))
+                    is AiEvent.Final -> emit(AiReply.Finished)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            emit(AiReply.Failed(e.toAiFailure()))
+        }
+    }
+
     override fun summarize(session: PageConversation): Flow<AiReply> {
         val chat = session as ChatSession
         val params = request(AiConfig.EFFORT_PAGE, AiConfig.MAX_TOKENS, format = null, chat.summaryOpening())

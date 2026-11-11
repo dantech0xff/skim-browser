@@ -87,6 +87,8 @@ fun ReaderRoute(key: ReaderKey, navigator: SkimNavigator) {
                     },
                     onTabs = { navigator.openTabs(tab?.incognito == true) },
                     onMore = { navigator.openMoreMenu(key.tabId) },
+                    onSave = if (tab?.incognito == true) null else model::save,
+                    onOpenSaved = if (tab?.incognito == true) null else navigator::openReadLater,
                 ),
                 listState = listState,
                 highlightIndex = highlightIndex.takeIf { it >= 0 },

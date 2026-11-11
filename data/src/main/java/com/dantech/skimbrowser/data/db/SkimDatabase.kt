@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.room.useWriterConnection
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dantech.skimbrowser.data.db.dao.BookmarkDao
+import com.dantech.skimbrowser.data.db.dao.SavedArticleDao
 import com.dantech.skimbrowser.data.db.dao.HistoryDao
 import com.dantech.skimbrowser.data.db.dao.ShortcutDao
 import com.dantech.skimbrowser.data.db.dao.SitePermissionDao
@@ -17,6 +18,7 @@ import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.db.entity.FolderKind
 import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
+import com.dantech.skimbrowser.data.db.entity.SavedArticleEntity
 import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
 import com.dantech.skimbrowser.data.db.entity.SitePermissionEntity
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
@@ -42,8 +44,9 @@ import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
         SkimChatEntity::class,
         SkimMessageEntity::class,
         SitePermissionEntity::class,
+        SavedArticleEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class SkimDatabase : RoomDatabase() {
@@ -59,6 +62,8 @@ abstract class SkimDatabase : RoomDatabase() {
     abstract fun skimChatDao(): SkimChatDao
 
     abstract fun sitePermissionDao(): SitePermissionDao
+
+    abstract fun savedArticleDao(): SavedArticleDao
 
     /**
      * Copies everything in the write-ahead log into the database file and truncates the log to
@@ -86,7 +91,19 @@ abstract class SkimDatabase : RoomDatabase() {
 
 /** Adds the callbacks every Skim database needs, on disk or in memory. */
 fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<SkimDatabase> =
-    addMigrations(MIGRATION_1_2).addCallback(SkimDatabaseCallback)
+    addMigrations(MIGRATION_1_2, MIGRATION_2_3).addCallback(SkimDatabaseCallback)
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `saved_articles` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`url` TEXT NOT NULL, `host` TEXT NOT NULL, `title` TEXT NOT NULL, `byline` TEXT, " +
+                "`blocksJson` TEXT NOT NULL, `savedAt` INTEGER NOT NULL, `summary` TEXT)",
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_saved_articles_url` ON `saved_articles` (`url`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_articles_savedAt` ON `saved_articles` (`savedAt`)")
+    }
+}
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {

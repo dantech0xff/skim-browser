@@ -57,6 +57,9 @@ class ReaderActions(
     val onForward: () -> Unit,
     val onTabs: () -> Unit,
     val onMore: () -> Unit,
+    val onSave: (() -> Unit)? = null,
+    val onOpenSaved: (() -> Unit)? = null,
+    val onSummarize: (() -> Unit)? = null,
 )
 
 /**
@@ -67,6 +70,8 @@ class ReaderActions(
 @Composable
 fun ReaderScreen(
     article: ReaderArticle,
+    summary: String? = null,
+    summarizing: Boolean = false,
     scalePercent: Int,
     font: ReaderFont,
     panelOpen: Boolean,
@@ -91,7 +96,22 @@ fun ReaderScreen(
     val typeface = readerTypeface(font)
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
-            TitleRow(panelOpen, actions.onExit, actions.onToggleTextSize)
+            TitleRow(
+                panelOpen,
+                actions.onExit,
+                actions.onToggleTextSize,
+                actions.onSave,
+                actions.onOpenSaved,
+                actions.onSummarize,
+                summarizing,
+            )
+            if (!summary.isNullOrBlank()) {
+                Text(
+                    summary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -158,7 +178,15 @@ fun ReaderScreen(
 }
 
 @Composable
-private fun TitleRow(panelOpen: Boolean, onExit: () -> Unit, onToggleTextSize: (Boolean) -> Unit) {
+private fun TitleRow(
+    panelOpen: Boolean,
+    onExit: () -> Unit,
+    onToggleTextSize: (Boolean) -> Unit,
+    onSave: (() -> Unit)?,
+    onOpenSaved: (() -> Unit)?,
+    onSummarize: (() -> Unit)?,
+    summarizing: Boolean,
+) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp),
@@ -172,7 +200,36 @@ private fun TitleRow(panelOpen: Boolean, onExit: () -> Unit, onToggleTextSize: (
                 tint = colors.onSurface,
             )
         }
-        TextSizeToggle(checked = panelOpen, onCheckedChange = onToggleTextSize)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onSave != null) {
+                IconButton(onClick = onSave) {
+                    Icon(
+                        painterResource(R.drawable.ic_article),
+                        contentDescription = stringResource(R.string.cd_save_article),
+                        tint = colors.onSurface,
+                    )
+                }
+            }
+            if (onOpenSaved != null) {
+                IconButton(onClick = onOpenSaved) {
+                    Icon(
+                        painterResource(R.drawable.ic_bookmarks),
+                        contentDescription = stringResource(R.string.read_later_title),
+                        tint = colors.onSurface,
+                    )
+                }
+            }
+            if (onSummarize != null) {
+                IconButton(onClick = onSummarize, enabled = !summarizing) {
+                    Icon(
+                        painterResource(R.drawable.ic_auto_awesome),
+                        contentDescription = stringResource(R.string.cd_summarize_article),
+                        tint = colors.onSurface,
+                    )
+                }
+            }
+            TextSizeToggle(checked = panelOpen, onCheckedChange = onToggleTextSize)
+        }
     }
 }
 

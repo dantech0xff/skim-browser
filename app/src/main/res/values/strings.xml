@@ -93,6 +93,10 @@
     <string name="ai_ask_about_page">Ask about this page</string>
     <string name="ai_translate_vietnamese">Translate to Vietnamese</string>
     <string name="ai_read_aloud">Read aloud</string>
+    <string name="read_later_title">Read later</string>
+    <string name="read_later_empty">Saved articles show up here, and they open without a connection.</string>
+    <string name="cd_save_article">Save article</string>
+    <string name="cd_summarize_article">Summarize saved article</string>
     <string name="ai_translate_prompt">Hãy dịch tài liệu này sang tiếng Việt. Viết đúng 3 đoạn ngắn.</string>
     <string name="cd_read_aloud">Read the answer aloud</string>
     <string name="ai_summary">Summary</string>

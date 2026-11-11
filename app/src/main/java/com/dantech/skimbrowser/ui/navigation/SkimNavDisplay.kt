@@ -122,6 +122,8 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
             SetupRoute(navigator)
         }
         entry<ReaderKey> { key -> ReaderRoute(key, navigator) }
+        entry<ReadLaterKey> { com.dantech.skimbrowser.ui.reading.SavedArticlesRoute(navigator) }
+        entry<SavedArticleKey> { key -> com.dantech.skimbrowser.ui.reading.SavedArticleRoute(key.articleId, navigator) }
         entry<BrowserKey> {
             BrowserRoute(
                 navigator = navigator,

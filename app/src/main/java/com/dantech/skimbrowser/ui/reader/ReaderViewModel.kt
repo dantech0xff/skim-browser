@@ -9,6 +9,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.tab.TabsController
+import com.dantech.skimbrowser.domain.reading.SavedArticleRepository
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,7 @@ class ReaderViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
     private val tabs: TabsController,
     private val settings: SettingsRepository,
+    private val saved: SavedArticleRepository,
     @AppScope private val writes: CoroutineScope,
 ) : ViewModel() {
 
@@ -73,6 +75,17 @@ class ReaderViewModel @AssistedInject constructor(
             val page = tabs.extractPage(tabId)
             val article = page?.let(::articleOf)
             load.value = if (article == null) Load.Failed else Load.Article(article)
+        }
+    }
+
+    /** Keeps the open article on the phone. An incognito tab is never saved. */
+    fun save() {
+        val article = (load.value as? Load.Article)?.article ?: return
+        val tab = tabs.state.value.tab(tabId) ?: return
+        if (tab.incognito) return
+        val url = tab.url ?: return
+        writes.launch {
+            saved.save(url, article.host, article.title, article.byline, article.blocks)
         }
     }
 
