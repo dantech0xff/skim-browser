@@ -16,6 +16,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -69,9 +70,13 @@ class RequestShield private constructor(
         if (key.isEmpty()) return
         if (incognito) {
             if (disabled) incognitoOff += key else incognitoOff -= key
-        } else {
-            settings?.setShieldDisabled(key, disabled)
+            return
         }
+        val store = settings ?: return
+        store.setShieldDisabled(key, disabled)
+        // The reload that follows this call reads [persisted]. Wait until the collector has
+        // applied the write, so the new load does not use the previous choice.
+        persisted.first { (key in it) == disabled }
     }
 
     override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean): Boolean {
