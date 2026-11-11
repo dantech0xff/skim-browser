@@ -121,6 +121,44 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun aMainFrameThatAlreadyStartedDoesNotStickTheNextPage() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("tracker.example")))
+        val events = RecordingEvents()
+        val client = client(shield, events)
+        val tracker = "https://tracker.example/pixel"
+
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.onPageStarted(view, NEXT, null)
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        ShadowLooper.idleMainLooper()
+
+        assertEquals(listOf(Event.ShieldCount(TAB, 1)), events.eventsOf<Event.ShieldCount>())
+    }
+
+    @Test
+    fun aMainFrameThatFailsLeavesTheCommittedPage() = runBlocking {
+        val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("google-analytics.com")))
+        shield.setDisabled("daylightjournal.com", incognito = true, disabled = true)
+        val client = client(shield, incognito = true)
+        val download = "https://files.example/guide.pdf"
+        val tracker = "https://www.google-analytics.com/g/collect"
+
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(download, mainFrame = true))
+        client.onReceivedError(view, request(download, mainFrame = true), TestWebResourceError(WebViewClient.ERROR_FAILED_SSL_HANDSHAKE, null))
+        val afterError = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+
+        client.shouldInterceptRequest(view, request(download, mainFrame = true))
+        client.abandonLoad(download)
+        val afterDownload = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+
+        assertEquals(null, afterError)
+        assertEquals(null, afterDownload)
+    }
+
+    @Test
     fun theMainFramesMilestonesReachTheTabInTheirOrder() {
         shadowOf(view).pushEntryToHistory("https://daylightjournal.com/")
         shadowOf(view).pushEntryToHistory(PAGE)

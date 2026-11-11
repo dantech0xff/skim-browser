@@ -47,13 +47,14 @@ class SkimWebViewClient(
 ) : WebViewClient() {
 
     @Volatile private var detached = false
-    /** The main frame currently being loaded. Subresources are often intercepted before [onPageStarted]. */
+    /** The page [onPageStarted] reported. A main-frame intercept alone does not change it. */
     @Volatile private var documentUrl: String? = null
+    /** A main frame that has been fetched and has not started, failed, or been abandoned. */
+    @Volatile private var loadingUrl: String? = null
     private val blockedCount = AtomicInteger()
+    private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
     private val countPosted = AtomicBoolean(false)
-    /** True once a main-frame intercept has started a load that [onPageStarted] has not reported yet. */
-    private val countForPendingLoad = AtomicBoolean(false)
     private val documentGate = Any()
     private val mainThread = Handler(Looper.getMainLooper())
 
@@ -63,32 +64,29 @@ class SkimWebViewClient(
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-        val continued = synchronized(documentGate) {
-            val pending = countForPendingLoad.getAndSet(false)
-            if (!pending) {
-                documentUrl = url
-                blockedCount.set(0)
-                documentGeneration.incrementAndGet()
-            } else if (url != null) {
-                // The main frame was intercepted first and may already have been counted.
-                documentUrl = url
-            }
-            pending
+        val early = synchronized(documentGate) {
+            val carried = if (url != null && url == loadingUrl) loadingBlocked.get() else 0
+            documentUrl = url
+            loadingUrl = null
+            loadingBlocked.set(0)
+            blockedCount.set(carried)
+            documentGeneration.incrementAndGet()
+            carried
         }
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
-        val count = blockedCount.get()
-        if (continued && count > 0) events.onShieldCount(tabId, count)
+        if (early > 0) events.onShieldCount(tabId, early)
     }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         if (detached) return null
         val url = request.url?.toString() ?: return null
         if (request.isForMainFrame) {
-            beginLoad(url)
+            noteMainFrame(url)
             return null
         }
-        if (!shield.blocks(documentUrl, url, incognito)) return null
+        val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
+        if (!shield.blocks(document, url, incognito)) return null
         noteBlocked()
         return emptyResponse()
     }
@@ -113,7 +111,10 @@ class SkimWebViewClient(
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         // A failed image or frame leaves the page usable; only the page itself failing is an error.
-        if (detached || !request.isForMainFrame) return
+        if (!request.isForMainFrame) return
+        // This navigation did not become the page. Later requests stay on the page that is showing.
+        request.url?.toString()?.let(::abandonLoad)
+        if (detached) return
         events.onLoadError(tabId, error.errorCode, error.description?.toString(), request.url.toString())
     }
 
@@ -123,8 +124,12 @@ class SkimWebViewClient(
         if (!request.isForMainFrame) return false
         return when (val navigation = externalNavigation(request.url, request.hasGesture(), incognito, view.context.packageName)) {
             ExternalNav.InWebView -> false
-            ExternalNav.Blocked -> true
+            ExternalNav.Blocked -> {
+                request.url?.toString()?.let(::abandonLoad)
+                true
+            }
             is ExternalNav.Launch -> {
+                request.url?.toString()?.let(::abandonLoad)
                 launch(navigation)
                 true
             }
@@ -141,19 +146,41 @@ class SkimWebViewClient(
         return true
     }
 
-    /** A main-frame request is the document for the subresources that follow it, including ones that arrive before [onPageStarted]. */
-    private fun beginLoad(url: String) {
+    /**
+     * [url] was intercepted as a main frame and has not started. A frame that already started is
+     * this page: intercepting it again must not replace the document or keep the next start from
+     * resetting the blocked count.
+     */
+    private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
-            documentUrl = url
-            blockedCount.set(0)
-            documentGeneration.incrementAndGet()
-            countForPendingLoad.set(true)
+            if (url == documentUrl) return
+            loadingUrl = url
+            loadingBlocked.set(0)
+        }
+    }
+
+    /**
+     * [url] did not become the page (a download, a cancelled navigation, or a main-frame error).
+     * The committed document is left as it is.
+     */
+    fun abandonLoad(url: String) {
+        synchronized(documentGate) {
+            if (loadingUrl != url) return
+            loadingUrl = null
+            loadingBlocked.set(0)
         }
     }
 
     private fun noteBlocked() {
-        blockedCount.incrementAndGet()
-        val generation = documentGeneration.get()
+        val pending = synchronized(documentGate) {
+            if (loadingUrl != null) {
+                loadingBlocked.incrementAndGet()
+                null
+            } else {
+                blockedCount.incrementAndGet() to documentGeneration.get()
+            }
+        } ?: return
+        val generation = pending.second
         if (!countPosted.compareAndSet(false, true)) return
         mainThread.post {
             countPosted.set(false)

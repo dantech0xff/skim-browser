@@ -472,11 +472,13 @@ class WebViewPool(
             live[tab.id]?.takeIf { it.view === view }?.findSteps?.reported(isDoneCounting)?.forEach(view::findNext)
         }
         view.onHitTarget = { target -> events.onHitTarget(tab.id, target) }
-        view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            downloads.start(tab.id, url, userAgent, contentDisposition, mimeType, view)
-        }
         val client = SkimWebViewClient(tab.id, tab.incognito, events, activityHost, tabs::load, shield) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
+        }
+        view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+            // A download is not a page. The document stays the one that is showing.
+            client.abandonLoad(url)
+            downloads.start(tab.id, url, userAgent, contentDisposition, mimeType, view)
         }
         val chrome = SkimChromeClient(
             tabId = tab.id,
