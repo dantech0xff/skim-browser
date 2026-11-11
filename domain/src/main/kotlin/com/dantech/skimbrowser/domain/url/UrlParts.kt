@@ -58,6 +58,26 @@ fun httpsUpgrade(url: String): String? {
     return "https://" + trimmed.substring(trimmed.indexOf("://") + 3)
 }
 
+/**
+ * True when [a] and [b] are the same navigation. The host and scheme are compared without letter
+ * case, a fragment is ignored, and one trailing slash does not make them different. The path and
+ * query keep their case, which is how a WebView reports the page it tried to load.
+ */
+fun sameNavigation(a: String, b: String): Boolean = navigationKey(a) == navigationKey(b)
+
+private fun navigationKey(url: String): String {
+    val noHash = url.trim().substringBefore('#').trimEnd('/')
+    val marker = "://"
+    val split = noHash.indexOf(marker)
+    if (split < 0) return noHash.lowercase()
+    val scheme = noHash.substring(0, split).lowercase()
+    val rest = noHash.substring(split + marker.length)
+    val slash = rest.indexOf('/')
+    val authority = (if (slash < 0) rest else rest.substring(0, slash)).lowercase()
+    val pathAndQuery = if (slash < 0) "" else rest.substring(slash)
+    return "$scheme://$authority$pathAndQuery"
+}
+
 /** Lowercases [host] and drops a leading "www.", the form every host-keyed table stores. */
 fun normalizeHost(host: String): String {
     val lower = host.trim().lowercase()

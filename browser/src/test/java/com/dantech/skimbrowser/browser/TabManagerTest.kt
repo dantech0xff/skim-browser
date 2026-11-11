@@ -746,17 +746,22 @@ class TabManagerTest {
         f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = false)
 
-        f.manager.load(id, "http://example.com/story")
+        f.manager.load(id, "HTTP://Example.com/story#section")
 
-        assertEquals("https://example.com/story", f.tab(id)?.url)
-        assertEquals("http://example.com/story", f.manager.runtime(id).value.httpFallback)
-        assertEquals(FakeTabEngine.Call.Load(id, "https://example.com/story"), f.engine.calls.last())
+        assertEquals("HTTP://Example.com/story#section", f.tab(id)?.url)
+        assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
+        assertEquals(FakeTabEngine.Call.Load(id, "https://Example.com/story#section"), f.engine.calls.last())
+        f.settle()
+        assertEquals("HTTP://Example.com/story#section", f.openRows().single { it.id == id }.url)
+
+        f.manager.events.onLoadError(id, android.webkit.WebViewClient.ERROR_CONNECT, "net::ERR_CONNECTION_REFUSED", "https://example.com/story")
+        assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
 
         f.manager.loadHttpFallback(id)
 
-        assertEquals("http://example.com/story", f.tab(id)?.url)
+        assertEquals("HTTP://Example.com/story#section", f.tab(id)?.url)
         assertNull(f.manager.runtime(id).value.httpFallback)
-        assertEquals(FakeTabEngine.Call.Load(id, "http://example.com/story"), f.engine.calls.last())
+        assertEquals(FakeTabEngine.Call.Load(id, "HTTP://Example.com/story#section"), f.engine.calls.last())
     }
 
     private fun TestScope.fixture(

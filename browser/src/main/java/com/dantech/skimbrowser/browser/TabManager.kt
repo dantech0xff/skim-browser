@@ -18,6 +18,7 @@ import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
+import com.dantech.skimbrowser.domain.url.sameNavigation
 import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.history.HistoryRepository
@@ -233,7 +234,8 @@ class TabManager(
         val tab = Tab(
             id = id,
             incognito = incognito,
-            url = upgraded ?: requested,
+            // The http address stays stored until https commits, so a restart can try https again.
+            url = requested,
             title = "",
             groupId = null,
             position = nextOtherPosition(incognito),
@@ -288,7 +290,7 @@ class TabManager(
         }
         val upgraded = httpsUpgrade(target)
         val actual = upgraded ?: target
-        updateTab(tabId) { it.copy(url = actual, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
+        updateTab(tabId) { it.copy(url = target, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
         updateRuntime(tabId) { it.copy(loadError = null, find = null, httpFallback = if (upgraded != null) target else null) }
         persistTab(tabId)
         val current = engine.value
@@ -704,7 +706,10 @@ class TabManager(
         val groups = (restoredGroups + before.groups.filterNot { group -> restoredGroups.any { it.id == group.id } })
             .sortedWith(compareBy({ it.position }, { it.id }))
         val tabs = restored + before.tabs.filterNot { it.id in restoredIds }
-        restored.forEach { runtimes.getOrPut(it.id) { MutableStateFlow(TabRuntime()) } }
+        restored.forEach { tab ->
+            val fallback = tab.url?.takeIf { httpsUpgrade(it) != null }
+            runtimes.getOrPut(tab.id) { MutableStateFlow(TabRuntime(httpFallback = fallback)) }
+        }
         nextGroupId = maxOf(nextGroupId, (groups.maxOfOrNull { it.id } ?: 0L) + 1)
         val current = before.currentTabId
             ?: loaded.lastTabId?.takeIf { it in restoredIds }
@@ -731,10 +736,6 @@ class TabManager(
     private fun openTab(tabId: String): Tab? = _state.value.tab(tabId)
 
     private fun runtimeOf(tabId: String): TabRuntime = runtimes[tabId]?.value ?: TabRuntime()
-
-    /** True when [a] and [b] name the same page, ignoring one trailing slash. */
-    private fun sameNavigation(a: String, b: String): Boolean =
-        a.trim().trimEnd('/') == b.trim().trimEnd('/')
 
     private fun updateRuntime(tabId: String, transform: (TabRuntime) -> TabRuntime): TabRuntime =
         runtimes[tabId]?.updateAndGet(transform) ?: TabRuntime()
@@ -888,6 +889,9 @@ class TabManager(
             val nonce = ++lastLoadNonce
             pageStartedSinceVisit += tabId
             historyTitleUpdates.remove(tabId)
+            val fallback = runtimeOf(tabId).httpFallback
+            val upgraded = fallback?.let { httpsUpgrade(it) }
+            val upgradeAttempt = upgraded != null && sameNavigation(upgraded, url)
             updateRuntime(tabId) {
                 it.copy(
                     loadError = null,
@@ -899,8 +903,12 @@ class TabManager(
                     isSecure = isHttps(url),
                 )
             }
-            if (tab.url != url || tab.title.isNotEmpty()) {
+            // Keep the stored http address until https commits. A restart can then offer it again.
+            if (!upgradeAttempt && (tab.url != url || tab.title.isNotEmpty())) {
                 updateTab(tabId) { it.copy(url = url, title = "") }
+                persistTab(tabId)
+            } else if (upgradeAttempt && tab.title.isNotEmpty()) {
+                updateTab(tabId) { it.copy(title = "") }
                 persistTab(tabId)
             }
             _pageEvents.tryEmit(PageEvent.PageStarted(tabId, url, nonce))
@@ -935,10 +943,19 @@ class TabManager(
         override fun onVisitedHistory(tabId: String, url: String) {
             val tab = openTab(tabId) ?: return
             val sameDocument = !pageStartedSinceVisit.remove(tabId)
+            val runtime = runtimeOf(tabId)
             // A failed load commits an error page for its URL; that is no visit.
-            val failed = runtimeOf(tabId).loadError?.url == url
-            updateRuntime(tabId) { it.copy(committedUrl = url, isSecure = isHttps(url)) }
-            if (tab.url != url) {
+            val failed = runtime.loadError?.url?.let { sameNavigation(it, url) } == true
+            val upgraded = runtime.httpFallback?.let { httpsUpgrade(it) }
+            val upgradeAttempt = upgraded != null && sameNavigation(upgraded, url)
+            updateRuntime(tabId) {
+                it.copy(
+                    committedUrl = url,
+                    isSecure = isHttps(url),
+                    httpFallback = if (!failed && upgradeAttempt) null else it.httpFallback,
+                )
+            }
+            if (!(failed && upgradeAttempt) && tab.url != url) {
                 updateTab(tabId) { it.copy(url = url) }
                 persistTab(tabId)
             }

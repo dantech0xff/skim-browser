@@ -84,6 +84,13 @@ class UrlPartsTest {
     }
 
     @Test
+    fun aCanonicalErrorUrlStillMatchesTheHttpsUpgrade() {
+        assertTrue(sameNavigation("https://Example.com/story#section", "https://example.com/story"))
+        assertTrue(sameNavigation("https://example.com/story/", "https://example.com/story"))
+        assertFalse(sameNavigation("https://example.com/story", "https://example.com/other"))
+    }
+
+    @Test
     fun withoutFragmentDropsOnlyTheFragment() {
         assertEquals("https://a.example/page?q=1", withoutFragment("https://a.example/page?q=1#section-2"))
         assertEquals("https://a.example/", withoutFragment("https://a.example/#"))

@@ -180,7 +180,14 @@ fun TabsRoute(key: TabsKey, navigator: SkimNavigator) {
                 model.closeAll()
                 if (key.incognito) navigator.replaceTop(TabsKey(incognito = false))
             },
-            onNewTab = { navigator.openNewTab(incognito = key.incognito) },
+            onNewTab = {
+                if (key.incognito) {
+                    val open = shell.tabs().state.value.tabs.any { it.incognito }
+                    context.confirmIncognito(open) { navigator.openNewTab(incognito = true) }
+                } else {
+                    navigator.openNewTab(incognito = false)
+                }
+            },
         ),
         thumbnails = shell.thumbnails(),
     )
