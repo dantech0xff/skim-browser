@@ -784,6 +784,7 @@ class TabManagerTest {
         val f = fixture()
         f.engines.attach(f.engine)
         val id = f.manager.newTab(incognito = false)
+        val runtime = f.manager.runtime(id)
         f.manager.load(id, "http://example.com/story")
 
         val token = f.manager.close(listOf(id))
@@ -791,7 +792,7 @@ class TabManagerTest {
         f.settle()
 
         assertEquals("https://example.com/story", f.tab(id)?.url)
-        assertEquals("http://example.com/story", f.manager.runtime(id).value.httpFallback)
+        assertEquals("http://example.com/story", runtime.value.httpFallback)
         assertEquals("http://example.com/story", f.openRows().single { it.id == id }.url)
     }
 

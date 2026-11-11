@@ -448,7 +448,10 @@ class TabManager(
 
         val restored = placeRestoredTabs(restorable, groupIds, nextOtherPosition(incognito = false))
         restored.forEach { tab ->
-            runtimes[tab.id] = MutableStateFlow(TabRuntime(httpFallback = pending.httpFallbacks[tab.id]))
+            // Write into the flow close emptied. Screens already collecting that flow must see the fallback.
+            val restoredRuntime = TabRuntime(httpFallback = pending.httpFallbacks[tab.id])
+            val existing = runtimes[tab.id]
+            if (existing != null) existing.value = restoredRuntime else runtimes[tab.id] = MutableStateFlow(restoredRuntime)
         }
         val restoredIds = restored.map { it.id }.toSet()
         val current = currentAfterUndo(
