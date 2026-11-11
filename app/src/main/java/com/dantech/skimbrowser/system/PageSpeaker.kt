@@ -46,12 +46,13 @@ class PageSpeaker(context: Context) {
 
     private fun say(text: String, languageTag: String?) {
         val speaker = engine ?: return
-        if (languageTag != null) {
-            val locale = Locale.forLanguageTag(languageTag)
-            if (speaker.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) {
-                speaker.language = locale
-            }
+        val requested = if (languageTag != null) Locale.forLanguageTag(languageTag) else Locale.getDefault()
+        val locale = if (speaker.isLanguageAvailable(requested) >= TextToSpeech.LANG_AVAILABLE) {
+            requested
+        } else {
+            Locale.getDefault()
         }
+        speaker.language = locale
         speaker.speak(text, TextToSpeech.QUEUE_FLUSH, null, "skim-read-aloud")
     }
 }

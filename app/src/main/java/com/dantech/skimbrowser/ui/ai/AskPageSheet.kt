@@ -293,13 +293,15 @@ private fun SuggestedQuestions(onChip: (String) -> Unit) {
 private fun QuestionBlock(turn: QaTurn, state: AskPageUiState, actions: AskPageActions) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         UserBubble(turn.question)
-        if (turn.answer != null) {
+        val answer = turn.answer
+        val stillStreaming = state.generating && turn == state.turns.lastOrNull()
+        if (answer != null) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                AnswerText(turn.answer)
-                if (turn.question == stringResource(R.string.ai_translate_prompt)) {
+                AnswerText(answer)
+                if (!stillStreaming && turn.question == stringResource(R.string.ai_translate_prompt)) {
                     SkimButton(
                         text = stringResource(R.string.ai_read_aloud),
-                        onClick = { actions.onSpeak(turn.answer, "vi") },
+                        onClick = { actions.onSpeak(answer, "vi") },
                         size = SkimButtonSize.XS,
                         style = SkimButtonStyle.Tonal,
                     )
