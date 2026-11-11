@@ -186,6 +186,9 @@
     <string name="error_timed_out_title">This site is taking too long</string>
     <string name="error_timed_out_body">%s didn\'t respond. It may be busy or briefly down.</string>
     <string name="error_internet_settings">Internet settings</string>
+    <string name="error_open_http">Open the HTTP version</string>
+    <string name="incognito_lock_title">Unlock incognito</string>
+    <string name="incognito_lock_body">Confirm it\'s you before opening a private tab.</string>
     <string name="error_code_name_not_resolved" translatable="false">ERR_NAME_NOT_RESOLVED</string>
     <string name="error_code_internet_disconnected" translatable="false">ERR_INTERNET_DISCONNECTED</string>
     <string name="error_code_connection_timed_out" translatable="false">ERR_CONNECTION_TIMED_OUT</string>

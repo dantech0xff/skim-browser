@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Normal permission. The incognito lock asks the platform biometric prompt. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Requested only when a site asks, through the site permission dialog. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

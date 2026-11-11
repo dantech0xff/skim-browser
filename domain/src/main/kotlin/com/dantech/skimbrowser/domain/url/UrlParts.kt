@@ -46,6 +46,59 @@ fun hostOf(url: String): String? {
 /** [url] without its `#fragment`, which never changes the page a chat is about. */
 fun withoutFragment(url: String): String = url.substringBefore('#')
 
+/**
+ * The https form of an http URL. Null when [url] is not http, or when its host is loopback:
+ * a local page is left on http because nothing there is listening on https.
+ */
+fun httpsUpgrade(url: String): String? {
+    val trimmed = url.trim()
+    if (!trimmed.startsWith("http://", ignoreCase = true)) return null
+    val host = hostOf(trimmed) ?: return null
+    if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") return null
+    val rest = trimmed.substring(trimmed.indexOf("://") + 3)
+    return "https://" + withoutHttpDefaultPort(rest)
+}
+
+/** Drops an explicit port 80. https on port 80 is not the service that answered http. */
+private fun withoutHttpDefaultPort(rest: String): String {
+    val split = rest.indexOfAny(charArrayOf('/', '?', '#'))
+    val authorityEnd = if (split < 0) rest.length else split
+    val authority = rest.substring(0, authorityEnd)
+    val tail = rest.substring(authorityEnd)
+    val at = authority.lastIndexOf('@')
+    val userInfo = if (at < 0) "" else authority.substring(0, at + 1)
+    val hostPort = if (at < 0) authority else authority.substring(at + 1)
+    val hostOnly = if (hostPort.startsWith("[")) {
+        val bracket = hostPort.indexOf(']')
+        if (bracket >= 0 && hostPort.substring(bracket + 1) == ":80") hostPort.substring(0, bracket + 1) else hostPort
+    } else if (hostPort.endsWith(":80")) {
+        hostPort.removeSuffix(":80")
+    } else {
+        hostPort
+    }
+    return userInfo + hostOnly + tail
+}
+
+/**
+ * True when [a] and [b] are the same navigation. The host and scheme are compared without letter
+ * case, a fragment is ignored, and one trailing slash does not make them different. The path and
+ * query keep their case, which is how a WebView reports the page it tried to load.
+ */
+fun sameNavigation(a: String, b: String): Boolean = navigationKey(a) == navigationKey(b)
+
+private fun navigationKey(url: String): String {
+    val noHash = url.trim().substringBefore('#').trimEnd('/')
+    val marker = "://"
+    val split = noHash.indexOf(marker)
+    if (split < 0) return noHash.lowercase()
+    val scheme = noHash.substring(0, split).lowercase()
+    val rest = noHash.substring(split + marker.length)
+    val slash = rest.indexOf('/')
+    val authority = (if (slash < 0) rest else rest.substring(0, slash)).lowercase()
+    val pathAndQuery = if (slash < 0) "" else rest.substring(slash)
+    return "$scheme://$authority$pathAndQuery"
+}
+
 /** Lowercases [host] and drops a leading "www.", the form every host-keyed table stores. */
 fun normalizeHost(host: String): String {
     val lower = host.trim().lowercase()

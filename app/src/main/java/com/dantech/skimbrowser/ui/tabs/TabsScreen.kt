@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.tabs
 
+import androidx.compose.ui.platform.LocalContext
+import com.dantech.skimbrowser.system.confirmIncognito
 import com.dantech.skimbrowser.ui.navigation.rememberShell
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.BackHandler
@@ -109,6 +111,7 @@ class TabsActions(
 /** Tabs (09) or Incognito tabs (09b), from [key]. */
 @Composable
 fun TabsRoute(key: TabsKey, navigator: SkimNavigator) {
+    val context = LocalContext.current
     val shell = rememberShell()
     val model = hiltViewModel<TabsViewModel, TabsViewModel.Factory>(key = "tabs-${key.incognito}") { factory ->
         factory.create(
@@ -165,12 +168,26 @@ fun TabsRoute(key: TabsKey, navigator: SkimNavigator) {
             onCloseGroup = model::closeGroup,
             onUndoGrouping = model::undoGrouping,
             onAskSkim = navigator::openAskTabs,
-            onNewIncognitoTab = if (key.incognito) null else ({ navigator.openNewTab(incognito = true) }),
+            onNewIncognitoTab = if (key.incognito) {
+                null
+            } else {
+                {
+                    val open = shell.tabs().state.value.tabs.any { it.incognito }
+                    context.confirmIncognito(open) { navigator.openNewTab(incognito = true) }
+                }
+            },
             onCloseAll = {
                 model.closeAll()
                 if (key.incognito) navigator.replaceTop(TabsKey(incognito = false))
             },
-            onNewTab = { navigator.openNewTab(incognito = key.incognito) },
+            onNewTab = {
+                if (key.incognito) {
+                    val open = shell.tabs().state.value.tabs.any { it.incognito }
+                    context.confirmIncognito(open) { navigator.openNewTab(incognito = true) }
+                } else {
+                    navigator.openNewTab(incognito = false)
+                }
+            },
         ),
         thumbnails = shell.thumbnails(),
     )

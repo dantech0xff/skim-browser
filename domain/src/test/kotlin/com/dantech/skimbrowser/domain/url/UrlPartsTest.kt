@@ -74,6 +74,26 @@ class UrlPartsTest {
     }
 
     @Test
+    fun httpPagesUpgradeToHttpsExceptOnLoopback() {
+        assertEquals("https://example.com/a?q=1#f", httpsUpgrade("http://example.com/a?q=1#f"))
+        assertEquals("https://Example.com/A", httpsUpgrade("HTTP://Example.com/A"))
+        assertEquals("https://example.com/a", httpsUpgrade("http://example.com:80/a"))
+        assertEquals("https://user@example.com/a", httpsUpgrade("http://user@example.com:80/a"))
+        assertEquals("https://example.com:8080/a", httpsUpgrade("http://example.com:8080/a"))
+        assertNull(httpsUpgrade("https://example.com/"))
+        assertNull(httpsUpgrade("http://127.0.0.1:8787/article"))
+        assertNull(httpsUpgrade("http://localhost/x"))
+        assertNull(httpsUpgrade("http://[::1]/x"))
+    }
+
+    @Test
+    fun aCanonicalErrorUrlStillMatchesTheHttpsUpgrade() {
+        assertTrue(sameNavigation("https://Example.com/story#section", "https://example.com/story"))
+        assertTrue(sameNavigation("https://example.com/story/", "https://example.com/story"))
+        assertFalse(sameNavigation("https://example.com/story", "https://example.com/other"))
+    }
+
+    @Test
     fun withoutFragmentDropsOnlyTheFragment() {
         assertEquals("https://a.example/page?q=1", withoutFragment("https://a.example/page?q=1#section-2"))
         assertEquals("https://a.example/", withoutFragment("https://a.example/#"))

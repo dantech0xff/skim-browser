@@ -61,6 +61,8 @@ data class BrowsingActions(
     val onMore: () -> Unit,
     /** The AI FAB, while it is on. */
     val onAskPage: () -> Unit,
+    /** Opens the http page when https, tried first, could not connect. */
+    val onOpenHttp: (() -> Unit)? = null,
 )
 
 /**
@@ -120,7 +122,12 @@ fun BrowsingScreen(
                 page()
             }
             if (error != null) {
-                LoadErrorContent(error, onTryAgain = actions.onTryAgain, onInternetSettings = actions.onInternetSettings)
+                LoadErrorContent(
+                    error,
+                    onTryAgain = actions.onTryAgain,
+                    onInternetSettings = actions.onInternetSettings,
+                    onOpenHttp = actions.onOpenHttp,
+                )
             }
         }
         BrowsingChrome(

@@ -77,6 +77,8 @@ data class TabRuntime(
     /** True when the committed page was loaded over https. */
     val isSecure: Boolean = false,
     val loadError: LoadError? = null,
+    /** The http URL replaced by https for this load. Offered again when that https page cannot connect. */
+    val httpFallback: String? = null,
     /** True when the page looks like an article Reader view can show. */
     val readerable: Boolean = false,
     /** Find in page, while its bar is open. */

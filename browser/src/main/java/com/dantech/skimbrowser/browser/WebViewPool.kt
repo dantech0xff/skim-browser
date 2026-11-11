@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.annotation.MainThread
@@ -461,6 +462,8 @@ class WebViewPool(
             allowContentAccess = false
             setGeolocationEnabled(true)
         }
+        // First-party cookies stay. A page cannot read cookies set by another site.
+        CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.overScrollMode = View.OVER_SCROLL_NEVER
         view.setFindListener { activeMatchOrdinal, numberOfMatches, isDoneCounting ->
             events.onFindResult(tab.id, activeMatchOrdinal, numberOfMatches)
@@ -521,6 +524,8 @@ class WebViewPool(
         var loadedFresh = false
         if (!restored && navigation !is Pending.Load) {
             // Only a web page loads by itself; a tab on the New tab page shows nothing until asked.
+            // Load the address the tab already has. A new navigation upgrades before it is stored
+            // here, and an explicit HTTP choice must not be upgraded again when the WebView is recreated.
             val url = tabs.state.value.tab(entry.tabId)?.url
             if (url != null && isWebUrl(url)) {
                 entry.view.loadUrl(url)

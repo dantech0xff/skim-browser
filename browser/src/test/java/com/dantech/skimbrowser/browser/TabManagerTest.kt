@@ -740,6 +740,62 @@ class TabManagerTest {
         assertNull(f.lastTabId())
     }
 
+    @Test
+    fun anHttpPageLoadsOverHttpsUntilThePersonOpensTheHttpVersion() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+
+        f.manager.load(id, "HTTP://Example.com/story#section")
+
+        assertEquals("https://Example.com/story#section", f.tab(id)?.url)
+        assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
+        assertEquals(FakeTabEngine.Call.Load(id, "https://Example.com/story#section"), f.engine.calls.last())
+        f.settle()
+        assertEquals("HTTP://Example.com/story#section", f.openRows().single { it.id == id }.url)
+
+        f.manager.events.onLoadError(id, android.webkit.WebViewClient.ERROR_CONNECT, "net::ERR_CONNECTION_REFUSED", "https://example.com/story")
+        assertEquals("https://Example.com/story#section", f.tab(id)?.url)
+        assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
+
+        f.manager.loadHttpFallback(id)
+
+        assertEquals("HTTP://Example.com/story#section", f.tab(id)?.url)
+        assertNull(f.manager.runtime(id).value.httpFallback)
+        assertEquals(FakeTabEngine.Call.Load(id, "HTTP://Example.com/story#section"), f.engine.calls.last())
+    }
+
+    @Test
+    fun aCommittedHttpsPageReplacesTheStoredHttpAddress() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+        f.manager.load(id, "http://example.com/story")
+
+        f.manager.events.onVisitedHistory(id, "https://example.com/story")
+        f.settle()
+
+        assertNull(f.manager.runtime(id).value.httpFallback)
+        assertEquals("https://example.com/story", f.openRows().single { it.id == id }.url)
+    }
+
+    @Test
+    fun undoingACloseKeepsTheHttpAddressForAFailedUpgrade() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+        val runtime = f.manager.runtime(id)
+        f.manager.load(id, "http://example.com/story")
+
+        val token = f.manager.close(listOf(id))
+        f.manager.undoClose(token)
+        f.settle()
+
+        assertEquals("https://example.com/story", f.tab(id)?.url)
+        assertEquals("http://example.com/story", runtime.value.httpFallback)
+        assertEquals("http://example.com/story", f.openRows().single { it.id == id }.url)
+    }
+
     private fun TestScope.fixture(
         db: SkimDatabase = inMemorySkimDatabase(),
         supportsIncognito: Boolean = true,
