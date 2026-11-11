@@ -13,7 +13,7 @@ object Prompts {
 
     /** The first user turn of a summary. [languageTag] is the phone's language, not part of [SYSTEM]. */
     fun summaryInstruction(languageTag: String): String =
-        "Summarize the document in 3 to 5 points. Each point is one line starting with \"- \". " +
+        "Summarize the document in exactly 3 points. Each point is one line starting with \"- \". " +
             "Write in the language of this tag: $languageTag."
 
     /** A question about the page. The wording of [text] decides the language of the answer. */

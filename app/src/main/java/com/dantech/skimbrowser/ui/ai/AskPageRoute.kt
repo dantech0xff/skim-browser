@@ -4,6 +4,7 @@ import com.dantech.skimbrowser.ui.navigation.rememberShell
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -14,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.system.Clipboard
+import com.dantech.skimbrowser.system.PageSpeaker
 import com.dantech.skimbrowser.ui.navigation.AiPermissionKey
 import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.navigation.LocalSkimSheetState
@@ -34,6 +36,11 @@ fun AskPageRoute(key: AskPageKey, navigator: SkimNavigator) {
     val sheet = LocalSkimSheetState.current
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.snackbar_copied)
+    val translatePrompt = stringResource(R.string.ai_translate_prompt)
+    val speaker = remember(context) { PageSpeaker(context) }
+    DisposableEffect(speaker) {
+        onDispose { speaker.shutdown() }
+    }
     LaunchedEffect(model) {
         model.effects.collect { effect ->
             when (effect) {
@@ -64,6 +71,8 @@ fun AskPageRoute(key: AskPageKey, navigator: SkimNavigator) {
             },
             onAllowRatings = { model.resolveSendRatings(allow = true) },
             onDeclineRatings = { model.resolveSendRatings(allow = false) },
+            onTranslate = { model.ask(translatePrompt) },
+            onSpeak = { text, language -> speaker.speak(text, language) },
         ),
     )
 }
