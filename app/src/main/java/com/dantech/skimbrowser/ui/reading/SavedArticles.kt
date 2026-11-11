@@ -1,11 +1,13 @@
 package com.dantech.skimbrowser.ui.reading
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,11 +22,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.ai.AiAssistant
+import com.dantech.skimbrowser.domain.ai.AiFailure
 import com.dantech.skimbrowser.domain.ai.AiReply
 import com.dantech.skimbrowser.domain.page.PageBlock
+import com.dantech.skimbrowser.domain.permission.ResolveSkimAiConsent
+import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
+import com.dantech.skimbrowser.domain.permission.SkimAiAudience
+import com.dantech.skimbrowser.domain.permission.SkimAiConsent
+import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.reading.SavedArticle
 import com.dantech.skimbrowser.domain.reading.SavedArticleRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.ui.ai.AiPermissionDialog
+import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
+import com.dantech.skimbrowser.ui.components.SegmentedColumn
 import com.dantech.skimbrowser.ui.components.SkimListItem
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.reader.ReaderArticle
@@ -40,6 +51,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -58,26 +70,31 @@ class SavedArticlesViewModel @Inject constructor(
 fun SavedArticlesRoute(navigator: SkimNavigator) {
     val model = hiltViewModel<SavedArticlesViewModel>()
     val articles by model.articles.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize().padding(top = 24.dp)) {
-        Text(
-            stringResource(R.string.read_later_title),
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-        )
+    LargeTitleScaffold(
+        title = stringResource(R.string.read_later_title),
+        onBack = navigator::back,
+    ) {
         if (articles.isEmpty()) {
-            Text(
-                stringResource(R.string.read_later_empty),
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-        }
-        LazyColumn {
-            items(articles, key = { it.id }) { article ->
-                SkimListItem(
-                    headline = article.title,
-                    supporting = article.host,
-                    index = 0,
-                    count = 1,
-                    onClick = { navigator.openSavedArticle(article.id) },
+            item {
+                Text(
+                    stringResource(R.string.read_later_empty),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        } else {
+            item {
+                SegmentedColumn {
+                    articles.forEachIndexed { index, article ->
+                        SkimListItem(
+                            headline = article.title,
+                            supporting = article.host,
+                            index = index,
+                            count = articles.size,
+                            onClick = { navigator.openSavedArticle(article.id) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -88,22 +105,30 @@ class SavedArticleViewModel @AssistedInject constructor(
     @Assisted private val articleId: Long,
     private val saved: SavedArticleRepository,
     private val settings: SettingsRepository,
+    private val sites: SitePermissionRepository,
     private val assistant: AiAssistant,
 ) : ViewModel() {
+
+    private val resolveConsent = ResolveSkimAiConsent()
 
     @AssistedFactory
     interface Factory {
         fun create(articleId: Long): SavedArticleViewModel
     }
 
+    private val loaded = MutableStateFlow(false)
     private val article = MutableStateFlow<SavedArticle?>(null)
     private val summarizing = MutableStateFlow(false)
+    private val needsPermission = MutableStateFlow(false)
 
     val state: StateFlow<SavedReaderState> = kotlinx.coroutines.flow.combine(
+        loaded,
         article,
         settings.settings,
         summarizing,
-    ) { savedArticle, prefs, busy ->
+        needsPermission,
+    ) { ready, savedArticle, prefs, busy, ask ->
+        if (!ready) return@combine SavedReaderState.Loading
         val current = savedArticle ?: return@combine SavedReaderState.Missing
         SavedReaderState.Ready(
             article = ReaderArticle(
@@ -114,13 +139,17 @@ class SavedArticleViewModel @AssistedInject constructor(
             ),
             summary = current.summary,
             summarizing = busy,
+            needsPermission = ask,
             scalePercent = prefs.readerTextScalePercent,
             font = prefs.readerFont,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SavedReaderState.Loading)
 
     init {
-        viewModelScope.launch { article.value = saved.article(articleId) }
+        viewModelScope.launch {
+            article.value = saved.article(articleId)
+            loaded.value = true
+        }
     }
 
     fun setScale(percent: Int) {
@@ -136,8 +165,14 @@ class SavedArticleViewModel @AssistedInject constructor(
         val current = article.value ?: return
         if (summarizing.value) return
         viewModelScope.launch {
+            if (!siteAllowed(current.host)) {
+                needsPermission.value = true
+                return@launch
+            }
+            needsPermission.value = false
             summarizing.value = true
             val text = StringBuilder()
+            var failed = false
             assistant.summarizeSaved(
                 host = current.host,
                 url = current.url,
@@ -145,14 +180,41 @@ class SavedArticleViewModel @AssistedInject constructor(
                 paragraphs = current.blocks.map(PageBlock::text),
                 languageTag = Locale.getDefault().toLanguageTag(),
             ).collect { reply ->
-                if (reply is AiReply.Text) text.append(reply.delta)
+                when (reply) {
+                    is AiReply.Text -> text.append(reply.delta)
+                    is AiReply.Failed -> {
+                        failed = true
+                        if (reply.failure is AiFailure.NotAllowed) needsPermission.value = true
+                    }
+                    else -> Unit
+                }
             }
-            if (text.isNotEmpty()) {
+            if (!failed && text.isNotEmpty()) {
                 saved.setSummary(current.id, text.toString())
                 article.value = current.copy(summary = text.toString())
             }
             summarizing.value = false
         }
+    }
+
+    /** Remembers that this site may be read, then summarizes. */
+    fun allowAndSummarize() {
+        val host = article.value?.host ?: return
+        viewModelScope.launch {
+            sites.setSkimAi(host, SkimAiState.ALLOWED)
+            needsPermission.value = false
+            summarize()
+        }
+    }
+
+    fun dismissPermission() {
+        needsPermission.value = false
+    }
+
+    private suspend fun siteAllowed(host: String): Boolean {
+        val state = sites.get(host)?.skimAi ?: SkimAiState.UNSET
+        val askFirst = settings.settings.first().askBeforeSending
+        return resolveConsent(state, askFirst, SkimAiAudience.PAGE) == SkimAiConsent.Allowed
     }
 }
 
@@ -163,6 +225,7 @@ sealed interface SavedReaderState {
         val article: ReaderArticle,
         val summary: String?,
         val summarizing: Boolean,
+        val needsPermission: Boolean,
         val scalePercent: Int,
         val font: com.dantech.skimbrowser.domain.settings.ReaderFont,
     ) : SavedReaderState
@@ -178,8 +241,20 @@ fun SavedArticleRoute(articleId: Long, navigator: SkimNavigator) {
     val state by model.state.collectAsStateWithLifecycle()
     var panelOpen by rememberSaveable { mutableStateOf(false) }
     when (val current = state) {
-        SavedReaderState.Loading, SavedReaderState.Missing -> Unit
-        is SavedReaderState.Ready -> ReaderScreen(
+        SavedReaderState.Loading -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+        SavedReaderState.Missing -> LargeTitleScaffold(
+            title = stringResource(R.string.read_later_title),
+            onBack = navigator::back,
+        ) {
+            item {
+                Text(
+                    stringResource(R.string.saved_article_missing),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                )
+            }
+        }
+        is SavedReaderState.Ready -> Box(Modifier.fillMaxSize()) {
+            ReaderScreen(
             article = current.article,
             summary = current.summary,
             summarizing = current.summarizing,
@@ -206,6 +281,19 @@ fun SavedArticleRoute(articleId: Long, navigator: SkimNavigator) {
             highlightIndex = null,
             highlightNonce = 0,
             aiFab = {},
-        )
+            )
+            if (current.needsPermission) {
+                Box(
+                    Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AiPermissionDialog(
+                        host = current.article.host,
+                        onAllow = model::allowAndSummarize,
+                        onNotNow = model::dismissPermission,
+                    )
+                }
+            }
+        }
     }
 }
