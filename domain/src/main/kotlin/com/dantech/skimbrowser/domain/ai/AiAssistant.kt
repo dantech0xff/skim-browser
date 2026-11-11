@@ -9,6 +9,18 @@ import kotlinx.coroutines.flow.Flow
 interface AiAssistant {
     fun summarize(session: PageConversation): Flow<AiReply>
 
+    /**
+     * Summarizes a saved article. The reply is not written into a Skim chat. [host] is the site
+     * the text was saved from, and it must already be allowed for Skim AI.
+     */
+    fun summarizeSaved(
+        host: String,
+        url: String,
+        title: String,
+        paragraphs: List<String>,
+        languageTag: String,
+    ): Flow<AiReply>
+
     fun ask(session: PageConversation, question: String): Flow<AiReply>
 
     fun retry(session: PageConversation): Flow<AiReply>

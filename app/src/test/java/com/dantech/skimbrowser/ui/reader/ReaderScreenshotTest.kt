@@ -127,5 +127,7 @@ class ReaderScreenshotTest {
         onForward = {},
         onTabs = {},
         onMore = {},
+        onSave = {},
+        onOpenSaved = {},
     )
 }

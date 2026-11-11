@@ -9,6 +9,11 @@ import com.dantech.skimbrowser.browser.FakePageScripts
 import com.dantech.skimbrowser.browser.FakeTabEngine
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
+import com.dantech.skimbrowser.domain.page.PageBlock
+import com.dantech.skimbrowser.domain.reading.SavedArticle
+import com.dantech.skimbrowser.domain.reading.SavedArticleRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import com.dantech.skimbrowser.domain.settings.ReaderFont
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -126,6 +131,7 @@ class ReaderViewModelTest {
                     tabId,
                     fixture.manager,
                     settings,
+                    MemoryArticles(),
                     scope,
                 )
             }
@@ -135,6 +141,14 @@ class ReaderViewModelTest {
 
     private fun json(readerable: Boolean) =
         """{"title":"$TITLE","byline":"Marta Lindqvist","readerable":$readerable,"blocks":[{"id":"1","tag":"h1","text":"$TITLE"},{"id":"2","tag":"p","text":"The numbers."}]}"""
+
+    private class MemoryArticles : SavedArticleRepository {
+        override val articles: Flow<List<SavedArticle>> = MutableStateFlow(emptyList())
+        override suspend fun save(url: String, host: String, title: String, byline: String?, blocks: List<PageBlock>) = 1L
+        override suspend fun article(id: Long): SavedArticle? = null
+        override suspend fun setSummary(id: Long, summary: String) = Unit
+        override suspend fun delete(id: Long) = Unit
+    }
 
     private companion object {
         const val URL = "https://daylightjournal.com/cold"

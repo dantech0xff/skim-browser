@@ -70,6 +70,14 @@ data object AiPrivacyKey : SkimKey
 @Serializable
 data object HistoryKey : SkimKey
 
+/** Articles saved for offline Reader view. */
+@Serializable
+data object ReadLaterKey : SkimKey
+
+/** One saved article, opened without the network. */
+@Serializable
+data class SavedArticleKey(val articleId: Long) : SkimKey
+
 /** 14 Bookmarks, at the top level or in folder [folderId]. */
 @Serializable
 data class BookmarksKey(val folderId: Long? = null) : SkimKey

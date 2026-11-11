@@ -114,6 +114,8 @@ class SkimKeySerializationTest {
             SettingsKey,
             AiPrivacyKey,
             HistoryKey,
+            ReadLaterKey,
+            SavedArticleKey(articleId = 4),
             BookmarksKey(folderId = 42),
             SkimHistoryKey,
             LicensesKey,

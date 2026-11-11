@@ -71,7 +71,9 @@ Those shares are why the SDK left. `anthropic-java-core` declared dependencies o
 
 ## Ranked cuts
 
-Both of the large cuts are in this APK. The file fell from 5,752,084 bytes to 3,004,741 bytes before rating sync. Sending a like or dislike added the feedback client. One later assemble measured 3,023,837 bytes, 19,096 bytes above 3,004,741. The download-size estimate moved from 2,616,255 to 2,628,238. Defined methods are 23,214 and references are 26,549. That is the current baseline.
+Both of the large cuts are in this APK. The file fell from 5,752,084 bytes to 3,004,741 bytes before rating sync. Sending a like or dislike added the feedback client. One later assemble measured 3,023,837 bytes, 19,096 bytes above 3,004,741. The download-size estimate moved from 2,616,255 to 2,628,238. Defined methods are 23,214 and references are 26,549.
+
+Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. That is Room storage for the article text, the list screen, and the one-shot summary call. No new library was added. The download-size estimate was not remeasured. 3,043,601 is the current baseline. `maxGrowthBytes` stays 8,192.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 

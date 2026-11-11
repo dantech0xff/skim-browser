@@ -138,6 +138,10 @@ class SkimNavigator @AssistedInject constructor(
 
     fun openReader(tabId: String) = push(ReaderKey(tabId))
 
+    fun openReadLater() = push(ReadLaterKey)
+
+    fun openSavedArticle(articleId: Long) = push(SavedArticleKey(articleId))
+
     fun openMoreMenu(tabId: String) = push(MoreMenuKey(tabId))
 
     fun openLinkOptions(tabId: String, target: HitTarget) = push(LinkOptionsKey(tabId, target))
