@@ -56,15 +56,13 @@ class SkimWebViewClientTest {
             shield = shield,
             onRendererGone = { _, _, _ -> },
         )
-        client.onPageStarted(view, PAGE, null)
-
         val main = client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
         val sameSite = client.shouldInterceptRequest(view, request("https://daylightjournal.com/app.js", mainFrame = false))
         val tracker = client.shouldInterceptRequest(
             view,
             request("https://www.google-analytics.com/g/collect", mainFrame = false),
         )
-        ShadowLooper.idleMainLooper()
+        client.onPageStarted(view, PAGE, null)
 
         assertEquals(null, main)
         assertEquals(null, sameSite)
@@ -151,11 +149,27 @@ class SkimWebViewClientTest {
         val afterError = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
 
         client.shouldInterceptRequest(view, request(download, mainFrame = true))
-        client.abandonLoad(download)
+        client.abandonLoad()
         val afterDownload = client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
 
         assertEquals(null, afterError)
-        assertEquals(null, afterDownload)
+        assertEquals("a download is dropped even when its final URL differs", null, afterDownload)
+    }
+
+    @Test
+    fun aReloadKeepsBlocksThatArriveBeforePageStarted() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("tracker.example")))
+        val events = RecordingEvents()
+        val client = client(shield, events)
+        val tracker = "https://tracker.example/pixel"
+
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.shouldInterceptRequest(view, request(tracker, mainFrame = false))
+        client.onPageStarted(view, PAGE, null)
+
+        assertEquals(listOf(Event.ShieldCount(TAB, 2)), events.eventsOf<Event.ShieldCount>())
     }
 
     @Test

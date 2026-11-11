@@ -112,8 +112,9 @@ class SkimWebViewClient(
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         // A failed image or frame leaves the page usable; only the page itself failing is an error.
         if (!request.isForMainFrame) return
-        // This navigation did not become the page. Later requests stay on the page that is showing.
-        request.url?.toString()?.let(::abandonLoad)
+        // A failed main frame did not become the page. The reported URL can be a redirect hop,
+        // so the in-flight frame is dropped even when the strings differ.
+        abandonLoad()
         if (detached) return
         events.onLoadError(tabId, error.errorCode, error.description?.toString(), request.url.toString())
     }
@@ -125,11 +126,11 @@ class SkimWebViewClient(
         return when (val navigation = externalNavigation(request.url, request.hasGesture(), incognito, view.context.packageName)) {
             ExternalNav.InWebView -> false
             ExternalNav.Blocked -> {
-                request.url?.toString()?.let(::abandonLoad)
+                abandonLoad()
                 true
             }
             is ExternalNav.Launch -> {
-                request.url?.toString()?.let(::abandonLoad)
+                abandonLoad()
                 launch(navigation)
                 true
             }
@@ -147,25 +148,24 @@ class SkimWebViewClient(
     }
 
     /**
-     * [url] was intercepted as a main frame and has not started. A frame that already started is
-     * this page: intercepting it again must not replace the document or keep the next start from
-     * resetting the blocked count.
+     * [url] was intercepted as a main frame and has not started. A reload intercepts the same URL
+     * again, so that request is a new in-flight document. [onPageStarted] carries its blocked
+     * count only when the URL matches, and a different page still starts at zero.
      */
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
-            if (url == documentUrl) return
             loadingUrl = url
             loadingBlocked.set(0)
         }
     }
 
     /**
-     * [url] did not become the page (a download, a cancelled navigation, or a main-frame error).
+     * The in-flight main frame did not become the page. A download or error often reports the URL
+     * after a redirect, which is not the URL that was intercepted, so this does not compare them.
      * The committed document is left as it is.
      */
-    fun abandonLoad(url: String) {
+    fun abandonLoad() {
         synchronized(documentGate) {
-            if (loadingUrl != url) return
             loadingUrl = null
             loadingBlocked.set(0)
         }

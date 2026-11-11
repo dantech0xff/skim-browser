@@ -476,8 +476,8 @@ class WebViewPool(
             onRendererGone(tab.id, gone, action, didCrash)
         }
         view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
-            // A download is not a page. The document stays the one that is showing.
-            client.abandonLoad(url)
+            // A download is not a page, and its URL may be the one after a redirect.
+            client.abandonLoad()
             downloads.start(tab.id, url, userAgent, contentDisposition, mimeType, view)
         }
         val chrome = SkimChromeClient(
