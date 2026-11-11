@@ -9,12 +9,14 @@ import com.dantech.skimbrowser.browser.TabEngineAttachment
 import com.dantech.skimbrowser.browser.TabEngineBridge
 import com.dantech.skimbrowser.browser.TabEngineSource
 import com.dantech.skimbrowser.browser.TabEventSink
+import com.dantech.skimbrowser.browser.RequestShield
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WebViewProfiles
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.PageScripts
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.domain.tab.TabRestore
@@ -40,6 +42,7 @@ internal abstract class BrowserBindingsModule {
     @Binds abstract fun profiles(impl: WebViewProfiles): BrowserProfiles
     @Binds abstract fun pageScripts(impl: PageScripts): PageScriptSource
     @Binds abstract fun siteDataCleaner(impl: BrowsingDataCleaner): SiteDataCleaner
+    @Binds abstract fun shieldChoices(impl: RequestShield): ShieldChoices
 
     companion object {
         /** Where the WebView layer reports what happens in the tabs. */

@@ -15,6 +15,8 @@ import android.webkit.WebViewClient
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.RecordingEvents.Event
+import com.dantech.skimbrowser.domain.shield.HostBlocklist
+import org.robolectric.shadows.ShadowLooper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -39,6 +41,35 @@ class SkimWebViewClientTest {
         loadInTab = { tabId, url -> loads += tabId to url },
         onRendererGone = { webView, action, didCrash -> gone += Triple(webView, action, didCrash) },
     )
+
+    @Test
+    fun aTrackerRequestIsAnsweredEmptyAndTheMainFrameIsNot() {
+        val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("google-analytics.com")))
+        val events = RecordingEvents()
+        val client = SkimWebViewClient(
+            tabId = TAB,
+            incognito = false,
+            events = events,
+            activityHost = host,
+            loadInTab = { _, _ -> },
+            shield = shield,
+            onRendererGone = { _, _, _ -> },
+        )
+        client.onPageStarted(view, PAGE, null)
+
+        val main = client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        val sameSite = client.shouldInterceptRequest(view, request("https://daylightjournal.com/app.js", mainFrame = false))
+        val tracker = client.shouldInterceptRequest(
+            view,
+            request("https://www.google-analytics.com/g/collect", mainFrame = false),
+        )
+        ShadowLooper.idleMainLooper()
+
+        assertEquals(null, main)
+        assertEquals(null, sameSite)
+        assertEquals(200, tracker?.statusCode)
+        assertEquals(listOf(Event.ShieldCount(TAB, 1)), events.eventsOf<Event.ShieldCount>())
+    }
 
     @Test
     fun theMainFramesMilestonesReachTheTabInTheirOrder() {

@@ -50,6 +50,14 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override val settings: Flow<SkimSettings> = current
 
+    private val shieldOff = MutableStateFlow<Set<String>>(emptySet())
+
+    override val shieldDisabledHosts: Flow<Set<String>> = shieldOff
+
+    override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
+        shieldOff.update { current -> if (disabled) current + host else current - host }
+    }
+
     override suspend fun setSearchEngine(engine: SearchEngine) = update { it.copy(searchEngine = engine) }
 
     override suspend fun setTheme(theme: ThemeSetting) = update { it.copy(theme = theme) }

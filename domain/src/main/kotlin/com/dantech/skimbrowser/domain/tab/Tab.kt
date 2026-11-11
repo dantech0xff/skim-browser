@@ -89,6 +89,8 @@ data class TabRuntime(
     val committedUrl: String? = null,
     /** Identifies the current document: a new one on every document load, unchanged by SPA navigation. */
     val loadNonce: Long = 0,
+    /** Requests the shield answered empty for the current document. */
+    val blockedCount: Int = 0,
 )
 
 /** Why a main-frame load failed: the states of Page failed to load (11). */

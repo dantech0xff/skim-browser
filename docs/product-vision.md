@@ -4,9 +4,9 @@ Dan set these rules for this version of Skim. When another document disagrees, t
 
 ## An AI browser with no ads
 
-Skim is an AI-powered web browser for Android. The app shows no ads of its own. Blocking ads on the pages a person opens is deferred to a later phase. The interface uses Material 3 Expressive.
+Skim is an AI-powered web browser for Android. The app shows no ads of its own. Pages also drop requests whose hosts are on the compiled EasyList and EasyPrivacy snapshot. The interface uses Material 3 Expressive.
 
-This phase does not add a filter list or a request blocker. The AI proxy stays the contract in `docs/deployment-guide.md`.
+The snapshot is built by `tools/compile_blocklist.py` from a pinned upstream commit and shipped as host hashes. EasyList and EasyPrivacy are dual-licensed; Skim uses the GPL-3.0-or-later option and attributes The EasyList authors (https://easylist.to/). The app does not download a newer list, so a refresh is a new APK and the install does not contact EasyList. Element-hiding rules are not applied. The AI proxy stays the contract in `docs/deployment-guide.md`.
 
 ## Android only
 

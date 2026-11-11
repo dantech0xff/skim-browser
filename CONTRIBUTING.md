@@ -65,7 +65,7 @@ Do not install a system image for this project. Instrumented tests run on the de
 1. Read the product vision and AGENTS.md before you change behavior.
 2. Keep the pull request to one change. UI copy stays in `app/src/main/res/values/strings.xml`, in English, with real plurals.
 3. A ViewModel owns consent, incognito, tab layout, and deletion. A composable reads state and sends events.
-4. Do not add a second page engine, an ad blocker, or a non-Android client.
+4. Do not add a second page engine or a non-Android client. Request blocking stays the compiled EasyList and EasyPrivacy host list.
 5. Do not add a license header to each file. The root LICENSE file covers the tree.
 6. Run the unit tests for the code you touched. Fill in the pull request template. CI on the pull request has to be green with no secrets.
 

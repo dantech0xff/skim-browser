@@ -3,13 +3,20 @@ package com.dantech.skimbrowser.browser
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.MainThread
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import java.io.ByteArrayInputStream
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The [WebViewClient] of one tab's WebView: reports the main frame's milestones to [events] in the
@@ -33,11 +40,18 @@ class SkimWebViewClient(
     private val activityHost: ActivityHost,
     /** Loads a URL in a tab through the tab manager, which accepts only http and https. */
     private val loadInTab: (tabId: String, url: String) -> Unit,
+    /** Ad and tracker hosts. [ShieldChoices.AllowAll] blocks nothing. */
+    private val shield: ShieldChoices = ShieldChoices.AllowAll,
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
 ) : WebViewClient() {
 
     private var detached = false
+    private var documentUrl: String? = null
+    private val blockedCount = AtomicInteger()
+    private val documentGeneration = AtomicInteger()
+    private val countPosted = AtomicBoolean(false)
+    private val mainThread = Handler(Looper.getMainLooper())
 
     /** The WebView is being destroyed: nothing it reports from now on reaches the tab. */
     fun detach() {
@@ -45,8 +59,19 @@ class SkimWebViewClient(
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+        documentUrl = url
+        blockedCount.set(0)
+        documentGeneration.incrementAndGet()
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
+    }
+
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+        if (detached || request.isForMainFrame) return null
+        val url = request.url?.toString() ?: return null
+        if (!shield.blocks(documentUrl, url, incognito)) return null
+        noteBlocked()
+        return emptyResponse()
     }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
@@ -97,6 +122,19 @@ class SkimWebViewClient(
         return true
     }
 
+    private fun noteBlocked() {
+        blockedCount.incrementAndGet()
+        val generation = documentGeneration.get()
+        if (countPosted.compareAndSet(false, true)) {
+            mainThread.post {
+                countPosted.set(false)
+                if (!detached && documentGeneration.get() == generation) {
+                    events.onShieldCount(tabId, blockedCount.get())
+                }
+            }
+        }
+    }
+
     private fun launch(navigation: ExternalNav.Launch) {
         try {
             activityHost.startExternal(navigation.intent)
@@ -110,5 +148,14 @@ class SkimWebViewClient(
 
     private companion object {
         const val TAG = "SkimWebViewClient"
+
+        fun emptyResponse(): WebResourceResponse = WebResourceResponse(
+            "text/plain",
+            "utf-8",
+            200,
+            "OK",
+            emptyMap(),
+            ByteArrayInputStream(ByteArray(0)),
+        )
     }
 }

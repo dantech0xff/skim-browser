@@ -16,6 +16,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import kotlinx.coroutines.CancellableContinuation
@@ -76,6 +77,7 @@ class WebViewPool(
     private val fullscreen: FullscreenController,
     private val sitePermissions: SitePermissionBridge,
     private val downloads: DownloadRouter,
+    private val shield: ShieldChoices = ShieldChoices.AllowAll,
     isLowRamDevice: Boolean = activity.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     /** The process's JavaScript timers, shared by every pool: WebView pauses them for all WebViews at once. */
@@ -473,7 +475,7 @@ class WebViewPool(
         view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             downloads.start(tab.id, url, userAgent, contentDisposition, mimeType, view)
         }
-        val client = SkimWebViewClient(tab.id, tab.incognito, events, activityHost, tabs::load) { gone, action, didCrash ->
+        val client = SkimWebViewClient(tab.id, tab.incognito, events, activityHost, tabs::load, shield) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
         }
         val chrome = SkimChromeClient(

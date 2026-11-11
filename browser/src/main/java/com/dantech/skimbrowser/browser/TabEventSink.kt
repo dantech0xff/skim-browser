@@ -60,6 +60,12 @@ interface TabEventSink {
 
     /** The pool destroyed the tab's WebView; the next one restores the saved state. */
     fun onWebViewDestroyed(tabId: String)
+
+    /**
+     * How many requests the shield has answered empty for the current document. Called on the main
+     * thread. [onPageStarted] resets the count.
+     */
+    fun onShieldCount(tabId: String, count: Int)
 }
 
 /** What happens to a tab whose renderer went away. */

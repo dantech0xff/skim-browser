@@ -19,6 +19,8 @@ One assemble on JDK 25, Android Gradle Plugin 9.4.1, and R8 9.4.24 produced thes
 
 The baseline before either cut was an APK of 5,752,084 bytes (download estimate 5,341,980). This file is 2,747,343 bytes smaller. The font-only APK was 4,033,448 bytes. The thin-client-only APK, still carrying the full font, was 4,724,249 bytes. Those two cuts were measured separately. This page is the build that contains both.
 
+The table above is the build before rating sync and before the request shield. One later assemble measured 3,763,034 bytes, 739,197 above 3,023,837. The download-size estimate is 3,356,087. `assets/shield/blocklist.txt` is 722,110 compressed bytes and 2,016,730 raw. It is the compiled EasyList and EasyPrivacy host snapshot (91,047 hosts). Rebuild it with `python3 tools/compile_blocklist.py`. A hundred thousand lookups of a hashed host took 46 ms in `HostBlocklistAssetTest` on the machine that ran it. Cosmetic rules are not in the file. The app does not download a newer list.
+
 There is one dex file. 26,462 references is under the 65,536 reference limit.
 
 `classes.dex` is most of the file.
@@ -73,7 +75,7 @@ Those shares are why the SDK left. `anthropic-java-core` declared dependencies o
 
 Both of the large cuts are in this APK. The file fell from 5,752,084 bytes to 3,004,741 bytes before rating sync. Sending a like or dislike added the feedback client. One later assemble measured 3,023,837 bytes, 19,096 bytes above 3,004,741. The download-size estimate moved from 2,616,255 to 2,628,238. Defined methods are 23,214 and references are 26,549.
 
-Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. That is Room storage for the article text, the list screen, and the one-shot summary call. No new library was added. The download-size estimate was not remeasured. 3,043,601 is the current baseline. `maxGrowthBytes` stays 8,192.
+Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. Private-by-default then measured 3,045,321 bytes, 1,720 above that baseline. The request shield, measured earlier against 3,023,837, added 739,197 bytes (the APK was 3,763,034). Dan accepted that increase. The current baseline is 3,045,321 + 739,197 = 3,784,518. `assets/shield/blocklist.txt` is 722,110 compressed bytes of that. The download-size estimate was not remeasured for the combined file. `maxGrowthBytes` stays 8,192.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 

@@ -37,6 +37,8 @@ class RecordingEvents : TabEventSink {
         data class StateSaved(val tabId: String, val state: Bundle) : Event
 
         data class WebViewDestroyed(val tabId: String) : Event
+
+        data class ShieldCount(val tabId: String, val count: Int) : Event
     }
 
     val events = mutableListOf<Event>()
@@ -106,5 +108,9 @@ class RecordingEvents : TabEventSink {
 
     override fun onWebViewDestroyed(tabId: String) {
         events += Event.WebViewDestroyed(tabId)
+    }
+
+    override fun onShieldCount(tabId: String, count: Int) {
+        events += Event.ShieldCount(tabId, count)
     }
 }
