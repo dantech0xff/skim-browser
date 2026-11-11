@@ -114,7 +114,12 @@ class TabManager(
     )
 
     /** A close that can still be undone; [replacementId] is the tab the close made current. */
-    private data class PendingClose(val tabs: List<Tab>, val previousCurrentId: String?, val replacementId: String?)
+    private data class PendingClose(
+        val tabs: List<Tab>,
+        val previousCurrentId: String?,
+        val replacementId: String?,
+        val httpFallbacks: Map<String, String?>,
+    )
 
     private class Loaded(
         val tabs: List<PersistedTab>,
@@ -407,7 +412,8 @@ class TabManager(
         val current = before.currentTab
         val replacement = if (current != null && current.id in closingIds) replacementFor(current, remaining) else current
 
-        pendingCloses[token.id] = PendingClose(closing, before.currentTabId, replacement?.id)
+        val httpFallbacks = closing.associate { it.id to runtimeOf(it.id).httpFallback }
+        pendingCloses[token.id] = PendingClose(closing, before.currentTabId, replacement?.id, httpFallbacks)
         closing.forEach { forgetPendingWork(it.id) }
         _state.value = before.copy(tabs = remaining, currentTabId = replacement?.id)
         closing.forEach { runtimes[it.id]?.value = TabRuntime() }
@@ -441,7 +447,9 @@ class TabManager(
         if (restorable.isEmpty()) return
 
         val restored = placeRestoredTabs(restorable, groupIds, nextOtherPosition(incognito = false))
-        restored.forEach { runtimes.getOrPut(it.id) { MutableStateFlow(TabRuntime()) } }
+        restored.forEach { tab ->
+            runtimes[tab.id] = MutableStateFlow(TabRuntime(httpFallback = pending.httpFallbacks[tab.id]))
+        }
         val restoredIds = restored.map { it.id }.toSet()
         val current = currentAfterUndo(
             restoredIds = restoredIds,
@@ -957,7 +965,11 @@ class TabManager(
                     httpFallback = if (!failed && upgradeAttempt) null else it.httpFallback,
                 )
             }
-            if (!(failed && upgradeAttempt) && tab.url != url) {
+            if (!failed && upgradeAttempt) {
+                if (tab.url != url) updateTab(tabId) { it.copy(url = url) }
+                // The https address is already on the tab. Persist it now that the fallback is gone.
+                persistTab(tabId)
+            } else if (!(failed && upgradeAttempt) && tab.url != url) {
                 updateTab(tabId) { it.copy(url = url) }
                 persistTab(tabId)
             }

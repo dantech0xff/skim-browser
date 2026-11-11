@@ -765,6 +765,36 @@ class TabManagerTest {
         assertEquals(FakeTabEngine.Call.Load(id, "HTTP://Example.com/story#section"), f.engine.calls.last())
     }
 
+    @Test
+    fun aCommittedHttpsPageReplacesTheStoredHttpAddress() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+        f.manager.load(id, "http://example.com/story")
+
+        f.manager.events.onVisitedHistory(id, "https://example.com/story")
+        f.settle()
+
+        assertNull(f.manager.runtime(id).value.httpFallback)
+        assertEquals("https://example.com/story", f.openRows().single { it.id == id }.url)
+    }
+
+    @Test
+    fun undoingACloseKeepsTheHttpAddressForAFailedUpgrade() = runTest {
+        val f = fixture()
+        f.engines.attach(f.engine)
+        val id = f.manager.newTab(incognito = false)
+        f.manager.load(id, "http://example.com/story")
+
+        val token = f.manager.close(listOf(id))
+        f.manager.undoClose(token)
+        f.settle()
+
+        assertEquals("https://example.com/story", f.tab(id)?.url)
+        assertEquals("http://example.com/story", f.manager.runtime(id).value.httpFallback)
+        assertEquals("http://example.com/story", f.openRows().single { it.id == id }.url)
+    }
+
     private fun TestScope.fixture(
         db: SkimDatabase = inMemorySkimDatabase(),
         supportsIncognito: Boolean = true,
