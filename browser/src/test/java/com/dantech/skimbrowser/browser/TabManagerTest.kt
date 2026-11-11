@@ -748,13 +748,14 @@ class TabManagerTest {
 
         f.manager.load(id, "HTTP://Example.com/story#section")
 
-        assertEquals("HTTP://Example.com/story#section", f.tab(id)?.url)
+        assertEquals("https://Example.com/story#section", f.tab(id)?.url)
         assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
         assertEquals(FakeTabEngine.Call.Load(id, "https://Example.com/story#section"), f.engine.calls.last())
         f.settle()
         assertEquals("HTTP://Example.com/story#section", f.openRows().single { it.id == id }.url)
 
         f.manager.events.onLoadError(id, android.webkit.WebViewClient.ERROR_CONNECT, "net::ERR_CONNECTION_REFUSED", "https://example.com/story")
+        assertEquals("https://Example.com/story#section", f.tab(id)?.url)
         assertEquals("HTTP://Example.com/story#section", f.manager.runtime(id).value.httpFallback)
 
         f.manager.loadHttpFallback(id)

@@ -24,7 +24,7 @@ object IncognitoBiometric {
     }
 
     fun authenticate(activity: Activity, onGranted: () -> Unit) {
-        if (!canAuthenticate(activity)) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !canAuthenticate(activity)) {
             onGranted()
             return
         }

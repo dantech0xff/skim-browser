@@ -234,8 +234,8 @@ class TabManager(
         val tab = Tab(
             id = id,
             incognito = incognito,
-            // The http address stays stored until https commits, so a restart can try https again.
-            url = requested,
+            // The open tab shows the https address. The stored row keeps the http one until it commits.
+            url = upgraded ?: requested,
             title = "",
             groupId = null,
             position = nextOtherPosition(incognito),
@@ -290,7 +290,7 @@ class TabManager(
         }
         val upgraded = httpsUpgrade(target)
         val actual = upgraded ?: target
-        updateTab(tabId) { it.copy(url = target, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
+        updateTab(tabId) { it.copy(url = actual, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
         updateRuntime(tabId) { it.copy(loadError = null, find = null, httpFallback = if (upgraded != null) target else null) }
         persistTab(tabId)
         val current = engine.value
@@ -783,7 +783,9 @@ class TabManager(
         writer.post {
             queuedUpserts.remove(tabId)
             val latest = _state.value.tab(tabId)?.takeIf { !it.incognito } ?: return@post
-            tabRepo.upsert(latest.toEntity())
+            // While https has not committed, the row keeps the http address so a restart can try again.
+            val stored = runtimeOf(tabId).httpFallback?.let { latest.copy(url = it) } ?: latest
+            tabRepo.upsert(stored.toEntity())
         }
     }
 
