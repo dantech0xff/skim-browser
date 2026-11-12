@@ -573,6 +573,22 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun aFollowUpCertificateErrorDoesNotReplaceTheFirstPage() {
+        client.shouldInterceptRequest(view, request(BAD, mainFrame = true))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_IDMISMATCH, "https://cdn.example/app.js"))
+
+        val first = events.eventsOf<Event.CertificateError>().single().warning
+        assertEquals(BAD, first.url)
+
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_EXPIRED, PAGE))
+
+        val warnings = events.eventsOf<Event.CertificateError>()
+        assertEquals(listOf(BAD, PAGE), warnings.map { it.warning.url })
+    }
+
+    @Test
     fun aDetachedClientCancelsACertificateAndReportsNothing() {
         client.detach()
         val handler = TestSslErrorHandler()

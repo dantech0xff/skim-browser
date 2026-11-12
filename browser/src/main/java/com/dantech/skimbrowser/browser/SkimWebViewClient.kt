@@ -67,6 +67,8 @@ class SkimWebViewClient(
     @Volatile private var documentUrl: String? = null
     /** A main frame that has been fetched and has not started, failed, or been abandoned. */
     @Volatile private var loadingUrl: String? = null
+    /** A page certificate already cancelled. Other URLs stay subresources until a document starts. */
+    private var refusedPageUrl: String? = null
     private val blockedCount = AtomicInteger()
     private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
@@ -91,6 +93,7 @@ class SkimWebViewClient(
             val carriedHosts = if (carriesCollapse(url, loadingUrl)) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
             documentUrl = url
             loadingUrl = null
+            refusedPageUrl = null
             loadingBlocked.set(0)
             loadingCollapsed.clear()
             blockedCount.set(carried)
@@ -158,14 +161,19 @@ class SkimWebViewClient(
             return
         }
         handler.cancel()
-        if (isPageCertificate(url)) {
-            // Cancel often never reaches onReceivedError, so the in-flight frame is dropped here.
-            abandonLoad()
-            events.onCertificateError(
-                tabId,
-                CertificateWarning(url, host, fingerprint, certificateFault(error.primaryError)),
-            )
+        if (!isPageCertificate(url)) return
+        val repeat = synchronized(documentGate) {
+            val repeat = refusedPageUrl?.let { sameNavigation(it, url) } == true
+            refusedPageUrl = url
+            repeat
         }
+        // Cancel often never reaches onReceivedError, so the in-flight frame is dropped here.
+        abandonLoad()
+        if (repeat) return
+        events.onCertificateError(
+            tabId,
+            CertificateWarning(url, host, fingerprint, certificateFault(error.primaryError)),
+        )
     }
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -210,12 +218,14 @@ class SkimWebViewClient(
     }
 
     /**
-     * True when [url] is the page being loaded, or the page already showing when nothing else is
-     * in flight. A request for another URL is a subresource and stays off the interstitial.
+     * True when [url] is the page being loaded, the page already refused, or the page showing
+     * when nothing else is in flight. Before any of those, the first error is the page. A
+     * different URL is a subresource and stays off the interstitial.
      */
     private fun isPageCertificate(url: String): Boolean {
-        val (pending, shown) = synchronized(documentGate) { loadingUrl to documentUrl }
+        val (pending, shown, refused) = synchronized(documentGate) { Triple(loadingUrl, documentUrl, refusedPageUrl) }
         if (pending != null) return sameNavigation(pending, url)
+        if (refused != null) return sameNavigation(refused, url)
         if (shown == null) return true
         return sameNavigation(shown, url)
     }
