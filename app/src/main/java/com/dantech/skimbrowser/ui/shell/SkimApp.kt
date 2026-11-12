@@ -38,8 +38,9 @@ import kotlinx.coroutines.flow.Flow
  * State, the back stack and the navigator come from [viewModel]. MainActivity hands in what a view
  * model may not hold or name: the window's [secure] flag, how to [openExternal] apps, the
  * [downloadNotices] the snackbar tells, the links it received, [retryDownload] for a failed save,
- * and [onPagesDark], which follows the theme and night mode. Incognito chrome is always dark;
- * page darkening is not.
+ * [onPagesDark], which follows the theme and night mode, and [onPageTextZoom], the stored page
+ * text size. Null follows the system font scale. Incognito chrome is always dark; page darkening
+ * is not.
  */
 @Composable
 fun SkimApp(
@@ -49,6 +50,7 @@ fun SkimApp(
     pendingLinks: ReceiveChannel<String>,
     retryDownload: (DownloadRetry) -> Unit = {},
     onPagesDark: (Boolean) -> Unit = {},
+    onPageTextZoom: (Int?) -> Unit = {},
     viewModel: SkimAppViewModel = hiltViewModel(),
 ) {
     // The view model outlives this window; its navigator reaches the window only while it is composed.
@@ -59,6 +61,9 @@ fun SkimApp(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pagesDark = state.theme.isDark(isSystemInDarkTheme(), incognito = false)
     LaunchedEffect(pagesDark) { onPagesDark(pagesDark) }
+    LaunchedEffect(state.started, state.pageTextZoomPercent) {
+        if (state.started) onPageTextZoom(state.pageTextZoomPercent)
+    }
     if (!state.started) {
         // Until the settings and tabs are read: the empty window, in the app's colors.
         SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognito = false))

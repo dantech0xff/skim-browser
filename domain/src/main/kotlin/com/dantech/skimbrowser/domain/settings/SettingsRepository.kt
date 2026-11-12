@@ -20,6 +20,12 @@ interface SettingsRepository {
     /** Stores [percent] clamped to [SkimSettings.READER_TEXT_SCALE_RANGE]. */
     suspend fun setReaderTextScale(percent: Int)
 
+    /**
+     * Stores a page text size, clamped to [SkimSettings.READER_TEXT_SCALE_RANGE]. Null clears it,
+     * so pages follow the system font scale again.
+     */
+    suspend fun setPageTextZoom(percent: Int?)
+
     suspend fun setReaderFont(font: ReaderFont)
 
     suspend fun setOnboardingCompleted()

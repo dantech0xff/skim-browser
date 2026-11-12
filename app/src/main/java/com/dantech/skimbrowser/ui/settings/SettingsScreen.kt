@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.navigation.AiPrivacyKey
 import com.dantech.skimbrowser.ui.navigation.ClearBrowsingDataKey
 import com.dantech.skimbrowser.ui.navigation.LicensesKey
+import com.dantech.skimbrowser.ui.navigation.PageTextSizeDialogKey
 import com.dantech.skimbrowser.ui.navigation.SearchEngineDialogKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.ThemeDialogKey
@@ -67,6 +69,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
             }
         },
         onTheme = { navigator.push(ThemeDialogKey) },
+        onPageTextSize = { navigator.push(PageTextSizeDialogKey) },
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
@@ -88,6 +91,22 @@ fun SearchEngineRoute(
             model.setSearchEngine(engine)
             onFinished()
         },
+        onDismiss = onFinished,
+    )
+}
+
+/** Page text size, over Settings. The slider saves as it moves. Reset follows the system font size. */
+@Composable
+fun PageTextSizeRoute(
+    onFinished: () -> Unit,
+    model: SettingsViewModel = hiltViewModel(),
+) {
+    val state by model.state.collectAsStateWithLifecycle()
+    PageTextSizeDialog(
+        percent = state.pageTextZoomPercent,
+        systemPercent = pageTextSystemPercent(LocalConfiguration.current.fontScale),
+        onPercent = model::setPageTextZoom,
+        onReset = { model.setPageTextZoom(null) },
         onDismiss = onFinished,
     )
 }
@@ -136,6 +155,7 @@ fun SettingsScreen(
     onSearchEngine: () -> Unit,
     onDefaultBrowser: () -> Unit,
     onTheme: () -> Unit,
+    onPageTextSize: () -> Unit,
     onAiPrivacy: () -> Unit,
     onClearData: () -> Unit,
     onPrivacyPolicy: (() -> Unit)?,
@@ -157,7 +177,7 @@ fun SettingsScreen(
                 container = colors.secondaryContainer,
                 content = colors.onSecondaryContainer,
                 index = 0,
-                count = 3,
+                count = 4,
                 onClick = onSearchEngine,
             )
             SettingsRow(
@@ -173,7 +193,7 @@ fun SettingsScreen(
                 container = colors.primaryContainer,
                 content = colors.onPrimaryContainer,
                 index = 1,
-                count = 3,
+                count = 4,
                 onClick = onDefaultBrowser,
             )
             SettingsRow(
@@ -183,8 +203,22 @@ fun SettingsScreen(
                 container = colors.secondaryContainer,
                 content = colors.onSecondaryContainer,
                 index = 2,
-                count = 3,
+                count = 4,
                 onClick = onTheme,
+            )
+            SettingsRow(
+                headline = stringResource(R.string.settings_page_text_size),
+                supporting = if (state.pageTextZoomPercent == null) {
+                    stringResource(R.string.settings_page_text_size_system)
+                } else {
+                    stringResource(R.string.reader_size_percent, state.pageTextZoomPercent)
+                },
+                icon = R.drawable.ic_format_size,
+                container = colors.tertiaryContainer,
+                content = colors.onTertiaryContainer,
+                index = 3,
+                count = 4,
+                onClick = onPageTextSize,
             )
         }
         section(R.string.skim_ai) {

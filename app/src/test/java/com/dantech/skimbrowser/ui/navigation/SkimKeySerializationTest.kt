@@ -128,6 +128,7 @@ class SkimKeySerializationTest {
             ShortcutDialogKey(shortcutId = 3),
             SearchEngineDialogKey,
             ThemeDialogKey,
+            PageTextSizeDialogKey,
             ClearBrowsingDataKey,
             DeleteAiDataKey,
             ClearSkimHistoryKey,

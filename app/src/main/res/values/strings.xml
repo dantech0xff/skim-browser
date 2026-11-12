@@ -18,6 +18,7 @@
     <string name="action_open">Open</string>
     <string name="action_retry">Retry</string>
     <string name="action_done">Done</string>
+    <string name="action_reset">Reset</string>
     <string name="action_see_all">See all</string>
 
     <!-- Welcome -->
@@ -208,6 +209,8 @@
     <string name="settings_default_browser">Default browser</string>
     <string name="settings_default_browser_summary_is_default">Skim is your default</string>
     <string name="settings_theme">Theme</string>
+    <string name="settings_page_text_size">Page text size</string>
+    <string name="settings_page_text_size_system">Follows system font size</string>
     <string name="theme_system_default">System default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>

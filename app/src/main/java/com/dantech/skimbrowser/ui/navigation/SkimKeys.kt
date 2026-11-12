@@ -136,6 +136,10 @@ data object SearchEngineDialogKey : DialogKey
 @Serializable
 data object ThemeDialogKey : DialogKey
 
+/** Page text size. Not on a board. */
+@Serializable
+data object PageTextSizeDialogKey : DialogKey
+
 /** Clear browsing data (15). */
 @Serializable
 data object ClearBrowsingDataKey : DialogKey

@@ -38,8 +38,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.PolymorphicSerializer
 
-/** What the main window shows: the empty window in [theme] until the app has [started], then its back stack. */
-data class SkimAppUiState(val theme: ThemeSetting = ThemeSetting.System, val started: Boolean = false)
+/**
+ * What the main window shows: the empty window in [theme] until the app has [started], then its
+ * back stack. [pageTextZoomPercent] null follows the system font scale.
+ */
+data class SkimAppUiState(
+    val theme: ThemeSetting = ThemeSetting.System,
+    val started: Boolean = false,
+    val pageTextZoomPercent: Int? = null,
+)
 
 /**
  * The app of the main window, for [SkimApp]. It is kept while the Activity is recreated, and its
@@ -89,10 +96,11 @@ class SkimAppViewModel @Inject constructor(
     private val started = MutableStateFlow(false)
 
     val state: StateFlow<SkimAppUiState> = combine(
-        settings.settings.map { it.theme }.onStart { emit(ThemeSetting.System) },
+        settings.settings.map { it.theme to it.pageTextZoomPercent }.onStart { emit(ThemeSetting.System to null) },
         started,
-        ::SkimAppUiState,
-    ).stateIn(viewModelScope, SharingStarted.Eagerly, SkimAppUiState())
+    ) { appearance, hasStarted ->
+        SkimAppUiState(theme = appearance.first, started = hasStarted, pageTextZoomPercent = appearance.second)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, SkimAppUiState())
 
     init {
         viewModelScope.launch {

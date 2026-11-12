@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val searchEngine: SearchEngine = SearchEngine.GOOGLE,
     val theme: ThemeSetting = ThemeSetting.System,
+    /** Null follows the system font scale. */
+    val pageTextZoomPercent: Int? = null,
     val isDefaultBrowser: Boolean = false,
     val askBeforeSending: Boolean = true,
     val versionName: String = "",
@@ -44,6 +46,7 @@ class SettingsViewModel @Inject constructor(
         SettingsUiState(
             searchEngine = stored.searchEngine,
             theme = stored.theme,
+            pageTextZoomPercent = stored.pageTextZoomPercent,
             isDefaultBrowser = isDefault,
             askBeforeSending = stored.askBeforeSending,
             versionName = version.name,
@@ -66,5 +69,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setTheme(theme: ThemeSetting) {
         viewModelScope.launch { settings.setTheme(theme) }
+    }
+
+    /** Null clears the stored page text size, so pages follow the system font scale. */
+    fun setPageTextZoom(percent: Int?) {
+        viewModelScope.launch { settings.setPageTextZoom(percent) }
     }
 }

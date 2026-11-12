@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -42,5 +43,19 @@ class SettingsViewModelTest {
         val stored = settings.settings.first()
         assertEquals(ThemeSetting.Dark, stored.theme)
         assertEquals(SearchEngine.DUCKDUCKGO, stored.searchEngine)
+    }
+
+    @Test
+    fun aPageTextSizeIsStoredUntilReset() = runTest {
+        val settings = FakeSettingsRepository()
+        val model = SettingsViewModel(settings, AppVersion("1.0", 1))
+        model.state.first { it.pageTextZoomPercent == null }
+
+        model.setPageTextZoom(150)
+        assertEquals(150, model.state.first { it.pageTextZoomPercent == 150 }.pageTextZoomPercent)
+
+        model.setPageTextZoom(null)
+        assertNull(model.state.first { it.pageTextZoomPercent == null }.pageTextZoomPercent)
+        assertNull(settings.settings.first().pageTextZoomPercent)
     }
 }

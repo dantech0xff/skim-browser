@@ -64,6 +64,17 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.READER_TEXT_SCALE] = p.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE) }
     }
 
+    /** Stores [percent], or removes it when null so pages follow the system font scale. */
+    override suspend fun setPageTextZoom(percent: Int?) {
+        dataStore.edit { prefs ->
+            if (percent == null) {
+                prefs.remove(Keys.PAGE_TEXT_ZOOM)
+            } else {
+                prefs[Keys.PAGE_TEXT_ZOOM] = percent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)
+            }
+        }
+    }
+
     override suspend fun setReaderFont(f: ReaderFont) {
         dataStore.edit { it[Keys.READER_FONT] = f.name }
     }
@@ -116,6 +127,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             sendRatings = read(Keys.SEND_RATINGS),
             readerTextScalePercent = (read(Keys.READER_TEXT_SCALE) ?: defaults.readerTextScalePercent)
                 .coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE),
+            pageTextZoomPercent = read(Keys.PAGE_TEXT_ZOOM)?.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE),
             readerFont = enumOrDefault(read(Keys.READER_FONT), defaults.readerFont),
             onboardingCompleted = read(Keys.ONBOARDING_COMPLETED) ?: defaults.onboardingCompleted,
             lastTabId = read(Keys.LAST_TAB_ID)?.takeIf { it.isNotBlank() },
@@ -129,6 +141,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val KEEP_CHAT_HISTORY = booleanPreferencesKey("keep_chat_history")
         val SEND_RATINGS = booleanPreferencesKey("send_ratings")
         val READER_TEXT_SCALE = intPreferencesKey("reader_text_scale_percent")
+        val PAGE_TEXT_ZOOM = intPreferencesKey("page_text_zoom_percent")
         val READER_FONT = stringPreferencesKey("reader_font")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val LAST_TAB_ID = stringPreferencesKey("last_tab_id")
