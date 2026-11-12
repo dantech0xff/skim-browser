@@ -470,6 +470,20 @@ class SkimWebViewClientTest {
         assertTrue(script.contains(".adsbox"))
     }
 
+    @Test
+    fun aDelayedArmUsesTheRequestedPageWhileTheDocumentIsBlank() {
+        val shield = WaitingShield()
+        val client = client(shield, documentStart = true)
+
+        client.onPageStarted(view, "about:blank", null)
+        client.armCosmetic(view, PAGE)
+        shield.ready()
+        ShadowLooper.idleMainLooper()
+
+        assertTrue(shield.urls.contains(PAGE))
+        assertTrue(shadowOf(view).lastEvaluatedJavascript == null || !shadowOf(view).lastEvaluatedJavascript.contains("about:blank"))
+    }
+
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
         TestWebResourceRequest(url, mainFrame, gesture)
 
@@ -492,19 +506,27 @@ class SkimWebViewClientTest {
     private class WaitingShield : ShieldChoices {
         private val pending = mutableListOf<() -> Unit>()
         private var loaded = false
+        val urls = mutableListOf<String?>()
+        private var record = false
         private val off = MutableStateFlow<Set<String>>(emptySet())
         override val disabledHosts: StateFlow<Set<String>> = off
         override fun incognitoDisabled(host: String) = false
         override suspend fun setDisabled(host: String, incognito: Boolean, disabled: Boolean) = Unit
         override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean) = false
         override fun clearIncognito() = Unit
-        override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? =
-            if (loaded) ".adsbox{display:none !important}\n" else null
+        override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? {
+            if (record) urls += documentUrl
+            if (!loaded) return null
+            if (documentUrl == null || !documentUrl.startsWith("http")) return ""
+            return ".adsbox{display:none !important}\n"
+        }
         override fun whenCosmeticReady(action: () -> Unit) {
             if (loaded) action() else pending += action
         }
         fun ready() {
             loaded = true
+            record = true
+            urls.clear()
             val queued = pending.toList()
             pending.clear()
             queued.forEach { it() }

@@ -230,7 +230,7 @@ class SkimWebViewClient(
         if (!documentStartSupported || detached) return
         val css = shield.cosmeticCss(url, incognito)
         if (css == null) {
-            applyWhenReady(view, url)
+            applyWhenReady(view, url, arm = true)
             return
         }
         installDocumentStart(view, url, css)
@@ -249,7 +249,7 @@ class SkimWebViewClient(
     private fun injectHide(view: WebView, url: String, wait: Boolean = true) {
         val css = shield.cosmeticCss(url, incognito)
         if (css == null) {
-            if (wait) applyWhenReady(view, url)
+            if (wait) applyWhenReady(view, url, arm = false)
             return
         }
         val host = hostOf(url) ?: return
@@ -257,23 +257,37 @@ class SkimWebViewClient(
         inject(view, CosmeticScript.hide(host, css))
     }
 
-    /** The rules are still loading. Apply [url] on the main thread once they are, without parsing here. */
-    private fun applyWhenReady(view: WebView, url: String) {
+    /**
+     * The rules are still loading. [arm] installs the document-start sheet for [url] itself.
+     * The sheet for the page on screen is separate, so a blank document cannot clear [url].
+     */
+    private fun applyWhenReady(view: WebView, url: String, arm: Boolean) {
         shield.whenCosmeticReady {
             val apply = Runnable {
                 if (detached) return@Runnable
-                val current = documentUrl ?: url
-                if (documentStartSupported) installDocumentStart(view, current, shield.cosmeticCss(current, incognito))
-                injectHide(view, current, wait = false)
+                if (arm && stillTheArmedPage(url)) {
+                    installDocumentStart(view, url, shield.cosmeticCss(url, incognito))
+                }
+                val showing = documentUrl
+                val injectUrl = if (showing != null && hostOf(showing) != null) showing else url
+                if (hostOf(injectUrl) != null) injectHide(view, injectUrl, wait = false)
             }
             if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
         }
     }
 
+    private fun stillTheArmedPage(url: String): Boolean = synchronized(documentGate) {
+        val pending = loadingUrl
+        if (pending != null) return@synchronized carriesCollapse(pending, url)
+        val current = documentUrl
+        if (current == null || hostOf(current) == null) return@synchronized true
+        carriesCollapse(current, url)
+    }
+
     private fun installDocumentStart(view: WebView, url: String, css: String?) {
         if (!documentStartSupported || detached || css == null) return
-        removeHideScript()
         val host = hostOf(url) ?: return
+        removeHideScript()
         if (css.isEmpty()) return
         try {
             hideScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.hide(host, css), ALL_ORIGINS)
