@@ -330,6 +330,7 @@ class WebViewPool(
             return true
         }
         if (!entry.view.canGoBack()) return false
+        armHistoryStep(entry, -1)
         entry.view.goBack()
         return true
     }
@@ -339,6 +340,7 @@ class WebViewPool(
         if (entry.restoring) {
             queue(tabId).navigation = Pending.Forward
         } else if (entry.view.canGoForward()) {
+            armHistoryStep(entry, 1)
             entry.view.goForward()
         }
     }
@@ -575,6 +577,19 @@ class WebViewPool(
         return Entry(tab.id, view, client, chrome)
     }
 
+    /** Arms the history entry [delta] steps from the current one, then the caller moves there. */
+    private fun armHistoryStep(entry: Entry, delta: Int) {
+        val list = try {
+            entry.view.copyBackForwardList()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "History was not read", e)
+            return
+        }
+        val url = historyStepUrl(list.currentIndex, list.size, { index -> list.getItemAtIndex(index)?.url }, delta)
+            ?: return
+        entry.client.armCosmetic(entry.view, url)
+    }
+
     private fun loadInView(entry: Entry, url: String) {
         entry.client.armCosmetic(entry.view, url)
         entry.view.loadUrl(url)
@@ -628,8 +643,14 @@ class WebViewPool(
         when (navigation) {
             is Pending.Load -> loadInView(entry, navigation.url)
             Pending.Reload -> if (restored && !loadedFresh) reloadInView(entry)
-            Pending.Back -> if (entry.view.canGoBack()) entry.view.goBack()
-            Pending.Forward -> if (entry.view.canGoForward()) entry.view.goForward()
+            Pending.Back -> if (entry.view.canGoBack()) {
+                armHistoryStep(entry, -1)
+                entry.view.goBack()
+            }
+            Pending.Forward -> if (entry.view.canGoForward()) {
+                armHistoryStep(entry, 1)
+                entry.view.goForward()
+            }
             null -> Unit
         }
         if (waiting?.clearHistory == true) entry.view.clearHistory()
@@ -852,4 +873,12 @@ class WebViewTimers {
         /** The one set of timers of the process. */
         val process = WebViewTimers()
     }
+}
+
+/** The http(s) URL [delta] steps from [currentIndex], or null when that step is missing. */
+internal fun historyStepUrl(currentIndex: Int, size: Int, urlAt: (Int) -> String?, delta: Int): String? {
+    val index = currentIndex + delta
+    if (size <= 0 || index !in 0 until size) return null
+    val url = urlAt(index) ?: return null
+    return url.takeIf { isWebUrl(it) }
 }
