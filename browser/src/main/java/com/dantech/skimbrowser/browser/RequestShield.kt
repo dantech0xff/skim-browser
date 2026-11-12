@@ -10,13 +10,13 @@ import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.normalizeHost
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -47,6 +47,14 @@ class RequestShield private constructor(
     private val incognitoOff = ConcurrentHashMap.newKeySet<String>()
     /** False until the stored exceptions have been read. Blocking before that would ignore a site the user turned off. */
     private val choicesReady = AtomicBoolean(settings == null)
+    /** Opens when the first snapshot is applied, or immediately when there is no store. */
+    private val choicesLoaded = CountDownLatch(if (settings == null) 0 else 1)
+    /**
+     * The choice just published by [setDisabled], until the store reports that same set.
+     * A snapshot read before the write must not put the previous choice back.
+     */
+    private var pinned: Set<String>? = null
+    private val choiceLock = Any()
     private val gate = Any()
     private var loaded: HostBlocklist? = null
 
@@ -55,9 +63,13 @@ class RequestShield private constructor(
     init {
         if (settings != null && scope != null) {
             scope.launch {
-                settings.shieldDisabledHosts.collect {
-                    persisted.value = it
-                    choicesReady.set(true)
+                try {
+                    settings.shieldDisabledHosts.collect { incoming ->
+                        synchronized(choiceLock) { publishStored(incoming) }
+                        choicesLoaded.countDown()
+                    }
+                } finally {
+                    choicesLoaded.countDown()
                 }
             }
         }
@@ -73,13 +85,38 @@ class RequestShield private constructor(
             return
         }
         val store = settings ?: return
+        // Merge with the hosts already stored. The first request waits for the same snapshot.
+        if (!choicesReady.get()) choicesLoaded.await()
+        // The reload that follows this call reads [persisted]. Publish the choice first, so the
+        // new load does not use the previous one while the store write is still in flight.
+        synchronized(choiceLock) {
+            val current = persisted.value
+            val next = if (disabled) current + key else current - key
+            pinned = next
+            persisted.value = next
+            choicesReady.set(true)
+        }
+        choicesLoaded.countDown()
         store.setShieldDisabled(key, disabled)
-        // The reload that follows this call reads [persisted]. Wait until the collector has
-        // applied the write, so the new load does not use the previous choice.
-        persisted.first { (key in it) == disabled }
+    }
+
+    /** Applies a store snapshot unless [setDisabled] has published a newer choice. */
+    private fun publishStored(incoming: Set<String>) {
+        val normalized = incoming.map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
+        val pin = pinned
+        if (pin == null) {
+            persisted.value = normalized
+        } else if (pin == normalized) {
+            pinned = null
+            persisted.value = normalized
+        } else {
+            persisted.value = pin
+        }
+        choicesReady.set(true)
     }
 
     override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean): Boolean {
+        if (!choicesReady.get()) choicesLoaded.await()
         if (!choicesReady.get()) return false
         val requestHost = hostOf(requestUrl) ?: return false
         val documentHost = documentUrl?.let(::hostOf)
@@ -115,5 +152,12 @@ class RequestShield private constructor(
 
         /** A shield over [list] with no stored choices. Unit tests build one of these. */
         fun of(list: HostBlocklist): RequestShield = RequestShield(loadList = { list }, settings = null, scope = null)
+
+        /** A shield whose normal-tab exceptions come from [settings]. Unit tests build one of these. */
+        fun withChoices(
+            list: HostBlocklist,
+            settings: SettingsRepository,
+            scope: CoroutineScope,
+        ): RequestShield = RequestShield(loadList = { list }, settings = settings, scope = scope)
     }
 }

@@ -97,6 +97,7 @@ def accept(line: str) -> tuple[str, str] | None:
                 return None
             if part == "third-party":
                 third = True
+    # hostOf drops a leading "www.". The list has to store that same key or the rule never matches.
     if host.startswith("www.") and "." in host[4:]:
         host = host[4:]
     if exception:
