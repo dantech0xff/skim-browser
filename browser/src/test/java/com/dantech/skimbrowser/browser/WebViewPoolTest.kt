@@ -1,8 +1,10 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.page.PageTextZoom
 import com.dantech.skimbrowser.domain.tab.LoadError
 
 import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.SystemClock
@@ -577,6 +579,21 @@ class WebViewPoolTest {
 
         assertFalse(shadowOf(replacement).wasOnPauseCalled())
         assertFalse(shadowOf(replacement).wasDestroyCalled())
+    }
+
+    @Test
+    fun pageTextZoomFollowsTheSystemFontScale() = runTest {
+        val (f, pool) = attached()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        val view = livePage(f, pool, id)
+
+        assertEquals(PageTextZoom.ofFontScale(activity.resources.configuration.fontScale), view.settings.textZoom)
+
+        val larger = Configuration(activity.resources.configuration)
+        larger.fontScale = 1.3f
+        activity.onConfigurationChanged(larger)
+
+        assertEquals(130, view.settings.textZoom)
     }
 
     @Test
