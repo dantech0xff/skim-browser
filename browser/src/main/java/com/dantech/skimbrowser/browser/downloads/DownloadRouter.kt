@@ -18,6 +18,7 @@ import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.NoDownloadLog
 import com.dantech.skimbrowser.domain.tab.TabsController
 import java.util.Locale
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -295,6 +296,7 @@ class DownloadRouter(
     ) {
         scope.launch(mainDispatcher) {
             val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
+            tracker.followJob(localId, coroutineContext[kotlinx.coroutines.Job]!!)
             val event = try {
                 download(localId)
             } catch (e: CancellationException) {
@@ -310,7 +312,12 @@ class DownloadRouter(
                     reported
                 }
                 when (withRetry) {
-                    is DownloadEvent.DownloadCompleted -> log.noteFinished(localId, withRetry.uri.toString(), withRetry.mime, -1)
+                    is DownloadEvent.DownloadCompleted -> log.noteFinished(
+                        localId,
+                        withRetry.uri.toString(),
+                        withRetry.mime,
+                        withRetry.bytes,
+                    )
                     is DownloadEvent.DownloadFailed -> log.noteFailed(localId)
                 }
                 tracker.report(withRetry.startedBy(incognito))

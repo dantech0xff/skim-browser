@@ -121,6 +121,32 @@ class DownloadTrackerTest {
     }
 
     @Test
+    fun aCancelledDownloadLeavesTheListFailedAndSaysNothing() = runTest {
+        val log = RecordingDownloadLog()
+        val tracker = DownloadTracker(system, backgroundScope, StandardTestDispatcher(testScheduler), log)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { tracker.events.collect { events += it } }
+        assertTrue(tracker.enqueue(request("gone.pdf"), localId = 4))
+        val id = system.lastEnqueuedId()
+
+        tracker.onDownloadComplete(id)
+        runCurrent()
+
+        assertEquals(1, log.failures)
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun cancelStopsASaveThatIsStillWriting() = runTest {
+        val tracker = tracker()
+        val job = backgroundScope.launch { kotlinx.coroutines.awaitCancellation() }
+        tracker.followJob(4, job)
+
+        tracker.cancel(4)
+
+        assertTrue(job.isCancelled)
+    }
+
+    @Test
     fun aSuccessWithoutAFileIsAFailureAndAMissingTypeOpensAsBytes() = runTest {
         val tracker = tracker()
         tracker.enqueue(request("lost.pdf"))
@@ -261,6 +287,7 @@ class DownloadTrackerTest {
         val notes = mutableListOf<Pair<String, Pair<Long, Long>>>()
         var finishedUri: String? = null
         var finishedBytes = -1L
+        var failures = 0
 
         override fun observe(): Flow<List<DownloadItem>> = flowOf(emptyList())
 
@@ -277,7 +304,9 @@ class DownloadTrackerTest {
             finishedBytes = bytes
         }
 
-        override suspend fun noteFailed(localId: Long) = Unit
+        override suspend fun noteFailed(localId: Long) {
+            failures += 1
+        }
 
         override suspend fun remove(id: Long): DownloadItem? = null
 

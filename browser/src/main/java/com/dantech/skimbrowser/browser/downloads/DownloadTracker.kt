@@ -42,6 +42,8 @@ sealed interface DownloadEvent {
         val uri: Uri,
         val mime: String,
         override val incognito: Boolean = false,
+        /** How many bytes were written, or -1 when this completion did not count them. */
+        val bytes: Long = -1,
     ) : DownloadEvent
 
     /**
@@ -190,6 +192,9 @@ class DownloadTracker(
     /** DownloadManager ids Skim enqueued and has not reported yet. */
     private val followed = ConcurrentHashMap<Long, Followed>()
 
+    /** In-process saves still writing, so removing a row can stop the file from being published. */
+    private val running = ConcurrentHashMap<Long, kotlinx.coroutines.Job>()
+
     /**
      * Hands [request] to DownloadManager and follows it; false when DownloadManager refused it. It
      * calls into the DownloadManager service, so callers make it off the main thread.
@@ -265,6 +270,18 @@ class DownloadTracker(
         _events.tryEmit(event)
     }
 
+    /** [job] is the in-process save of row [localId]. [cancel] stops it before the file is published. */
+    fun followJob(localId: Long, job: kotlinx.coroutines.Job) {
+        if (localId == 0L) return
+        running[localId] = job
+        job.invokeOnCompletion { running.remove(localId, job) }
+    }
+
+    /** Stops the save of row [localId] when one is still writing. */
+    fun cancel(localId: Long) {
+        running.remove(localId)?.cancel()
+    }
+
     private suspend fun askAbout(id: Long) {
         val followedDownload = followed[id] ?: return
         publish(followedDownload.localId, id, followedDownload)
@@ -280,7 +297,7 @@ class DownloadTracker(
             return
         }
         when (snap?.status) {
-            null -> followed.remove(systemId)
+            null -> if (followed.remove(systemId) != null && localId != 0L) log.noteFailed(localId)
             DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(systemId) != null) {
                 val event = completed(systemId, name, known.retry)
                 report(event)
