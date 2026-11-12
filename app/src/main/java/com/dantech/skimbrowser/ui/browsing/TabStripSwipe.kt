@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +61,20 @@ fun TabStripSwipe(
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
-    var caption by remember { mutableStateOf<TabNeighbor?>(null) }
+    // The id under the finger. The caption reads the current neighbor, so a title or group
+    // that arrives during the drag is shown without restarting the gesture.
+    var captionId by remember { mutableStateOf<String?>(null) }
+    val latestPrevious = rememberUpdatedState(previous)
+    val latestNext = rememberUpdatedState(next)
+    val latestSelect = rememberUpdatedState(onSelect)
+    val latestReduced = rememberUpdatedState(reduced)
+    val latestSpatial = rememberUpdatedState(spatial)
+    val caption = when (captionId) {
+        null -> null
+        next?.id -> next
+        previous?.id -> previous
+        else -> null
+    }
     val density = LocalDensity.current
     val travel = with(density) { Travel.toPx() }
     val threshold = with(density) { Threshold.toPx() }
@@ -71,51 +85,47 @@ fun TabStripSwipe(
         content(
             Modifier
                 .graphicsLayer { translationX = offset.value }
-                .pointerInput(enabled, previous?.id, next?.id, reduced, travel, threshold) {
-                    if (!enabled || (previous == null && next == null)) return@pointerInput
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
                     val slop = viewConfiguration.touchSlop
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        var totalX = 0f
-                        var totalY = 0f
-                        var dragging = false
-                        var shown: String? = null
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            val change = event.changes.firstOrNull { it.id == down.id }
-                            if (change == null) {
-                                if (dragging) {
-                                    launchSettle(scope, totalX, threshold, reduced, previous, next, travel, spatial, offset, onSelect) {
-                                        caption = null
+                    try {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            var totalX = 0f
+                            var totalY = 0f
+                            var dragging = false
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                val before = latestPrevious.value
+                                val after = latestNext.value
+                                if (change == null || !change.pressed) {
+                                    if (dragging) {
+                                        launchSettle(
+                                            scope, totalX, threshold, latestReduced.value, before, after, travel,
+                                            latestSpatial.value, offset, latestSelect.value,
+                                        ) { captionId = null }
                                     }
+                                    break
                                 }
-                                break
-                            }
-                            if (!change.pressed) {
-                                if (dragging) {
-                                    launchSettle(scope, totalX, threshold, reduced, previous, next, travel, spatial, offset, onSelect) {
-                                        caption = null
-                                    }
+                                val delta = change.positionChange()
+                                totalX += delta.x
+                                totalY += delta.y
+                                if (!dragging) {
+                                    if (abs(totalY) > slop && abs(totalY) > abs(totalX)) break
+                                    if (abs(totalX) > slop && abs(totalX) > abs(totalY)) dragging = true
                                 }
-                                break
-                            }
-                            val delta = change.positionChange()
-                            totalX += delta.x
-                            totalY += delta.y
-                            if (!dragging) {
-                                if (abs(totalY) > slop && abs(totalY) > abs(totalX)) break
-                                if (abs(totalX) > slop && abs(totalX) > abs(totalY)) dragging = true
-                            }
-                            if (!dragging) continue
-                            change.consume()
-                            val visual = visualOffset(totalX, previous, next, travel)
-                            scope.launch { offset.snapTo(visual) }
-                            val neighbor = neighborFor(totalX, previous, next)
-                            if (neighbor?.id != shown) {
-                                shown = neighbor?.id
-                                caption = neighbor
+                                if (!dragging) continue
+                                change.consume()
+                                scope.launch { offset.snapTo(visualOffset(totalX, before, after, travel)) }
+                                captionId = neighborFor(totalX, before, after)?.id
                             }
                         }
+                    } finally {
+                        // A restart cancels this handler mid-drag. Put the bar back; the tab
+                        // change, if the drag had already committed, already happened.
+                        captionId = null
+                        scope.launch { offset.snapTo(0f) }
                     }
                 },
         )
@@ -210,8 +220,9 @@ private suspend fun settle(
     clearCaption: () -> Unit,
 ) {
     val chosen = neighborFor(totalX, previous, next)?.takeIf { abs(totalX) >= threshold }
-    if (chosen != null && !reduced) offset.animateTo(if (totalX < 0f) -travel else travel, spatial)
+    // Select before the spring. A later touch can cancel the animation; it must not drop the tab.
     if (chosen != null) onSelect(chosen.id)
     clearCaption()
-    if (reduced || chosen == null && offset.value == 0f) offset.snapTo(0f) else offset.animateTo(0f, spatial)
+    if (chosen != null && !reduced) offset.animateTo(if (totalX < 0f) -travel else travel, spatial)
+    if (reduced || offset.value == 0f) offset.snapTo(0f) else offset.animateTo(0f, spatial)
 }
