@@ -48,6 +48,7 @@ class SettingsScreenshotTest {
                 onSearchEngine = {},
                 onDefaultBrowser = {},
                 onTheme = {},
+                onPageTextSize = {},
                 onAiPrivacy = {},
                 onClearData = {},
                 onPrivacyPolicy = {},

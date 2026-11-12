@@ -136,6 +136,19 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun aPageTextSizeIsKeptUntilItIsReset() = runTest {
+        val repository = SettingsRepository(newStore())
+
+        assertNull(repository.settings.first().pageTextZoomPercent)
+        repository.setPageTextZoom(50)
+        assertEquals(80, repository.settings.first().pageTextZoomPercent)
+        repository.setPageTextZoom(150)
+        assertEquals(150, repository.settings.first().pageTextZoomPercent)
+        repository.setPageTextZoom(null)
+        assertNull(repository.settings.first().pageTextZoomPercent)
+    }
+
+    @Test
     fun theLastTabCanBeForgotten() = runTest {
         val repository = SettingsRepository(newStore())
 

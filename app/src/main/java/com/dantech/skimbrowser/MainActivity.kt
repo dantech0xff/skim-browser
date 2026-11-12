@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
                         browserHost.downloads.retry(retry, browserHost.pool.webViewIfReady(retry.tabId))
                     },
                     onPagesDark = browserHost.pool::setPagesDark,
+                    onPageTextZoom = browserHost.pool::setPageTextZoom,
                 )
             }
         }

@@ -621,6 +621,26 @@ class WebViewPoolTest {
     }
 
     @Test
+    fun aPageTextSizeOverrideWinsUntilItIsReset() = runTest {
+        val (f, pool) = attached()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        val view = livePage(f, pool, id)
+
+        pool.setPageTextZoom(150)
+        val larger = Configuration(activity.resources.configuration)
+        larger.fontScale = 1.3f
+        activity.onConfigurationChanged(larger)
+
+        assertEquals(150, view.settings.textZoom)
+        val later = f.manager.newTab(incognito = false, url = PAGE)
+        assertEquals(150, livePage(f, pool, later).settings.textZoom)
+
+        pool.setPageTextZoom(null)
+        activity.onConfigurationChanged(larger)
+        assertEquals(130, view.settings.textZoom)
+    }
+
+    @Test
     fun desktopSiteAppliesToTheLiveWebViewAndReloads() = runTest {
         val (f, pool) = attached()
         val id = f.manager.newTab(incognito = false, url = PAGE)

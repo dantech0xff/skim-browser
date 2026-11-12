@@ -18,6 +18,14 @@ class PageTextZoomTest {
     }
 
     @Test
+    fun aStoredPercentOverridesTheSystemScaleUntilItIsCleared() {
+        assertEquals(150, PageTextZoom.applied(1.3f, 150))
+        assertEquals(130, PageTextZoom.applied(1.3f, null))
+        assertEquals(PageTextZoom.MAX, PageTextZoom.applied(1f, 900))
+        assertEquals(PageTextZoom.MIN, PageTextZoom.applied(1f, 10))
+    }
+
+    @Test
     fun aBrokenScaleStaysAtTheNormalSize() {
         assertEquals(PageTextZoom.NORMAL, PageTextZoom.ofFontScale(Float.NaN))
         assertEquals(PageTextZoom.NORMAL, PageTextZoom.ofFontScale(Float.POSITIVE_INFINITY))

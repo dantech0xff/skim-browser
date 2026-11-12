@@ -16,4 +16,10 @@ object PageTextZoom {
         if (!scale.isFinite() || scale <= 0f) return NORMAL
         return (scale * NORMAL).roundToInt().coerceIn(MIN, MAX)
     }
+
+    /** [overridePercent] wins over the system scale until it is cleared. */
+    fun applied(systemScale: Float, overridePercent: Int?): Int {
+        val stored = overridePercent ?: return ofFontScale(systemScale)
+        return stored.coerceIn(MIN, MAX)
+    }
 }

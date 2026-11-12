@@ -91,11 +91,13 @@ class WebViewPool(
 
     /**
      * Font size is in [Activity] configChanges, so the activity is not recreated. This applies the
-     * new scale to WebViews that are already showing.
+     * new scale to WebViews that are already showing, unless a stored page text size is in force.
      */
     private val fontScaleCallbacks = object : ComponentCallbacks2 {
         override fun onConfigurationChanged(newConfig: Configuration) {
-            if (!destroyed) applyPageTextZoom(PageTextZoom.ofFontScale(newConfig.fontScale))
+            if (!destroyed && pageTextZoomOverride == null) {
+                applyPageTextZoom(PageTextZoom.ofFontScale(newConfig.fontScale))
+            }
         }
 
         @Deprecated("Deprecated in Java")
@@ -117,6 +119,22 @@ class WebViewPool(
             if (!entry.destroyed) applyAlgorithmicDarkening(entry.view, dark)
         }
     }
+
+    /** Null follows the system font scale. A percent wins until it is cleared. */
+    private var pageTextZoomOverride: Int? = null
+
+    /**
+     * Sets the page text size. Null follows the system font scale again. WebViews already showing
+     * are updated, and one created later uses the same choice.
+     */
+    fun setPageTextZoom(percent: Int?) {
+        if (destroyed) return
+        pageTextZoomOverride = percent?.let { PageTextZoom.applied(1f, it) }
+        applyPageTextZoom(currentPageTextZoom())
+    }
+
+    private fun currentPageTextZoom(): Int =
+        PageTextZoom.applied(activity.resources.configuration.fontScale, pageTextZoomOverride)
 
     /** Sets [zoom] on every WebView that is still alive. */
     private fun applyPageTextZoom(zoom: Int) {
@@ -510,7 +528,7 @@ class WebViewPool(
             allowFileAccess = false
             allowContentAccess = false
             setGeolocationEnabled(true)
-            textZoom = PageTextZoom.ofFontScale(activity.resources.configuration.fontScale)
+            textZoom = currentPageTextZoom()
         }
         applyAlgorithmicDarkening(view, pagesDark)
         // First-party cookies stay. A page cannot read cookies set by another site.

@@ -32,6 +32,7 @@ import com.dantech.skimbrowser.ui.skimhistory.SkimHistoryRoute
 import com.dantech.skimbrowser.ui.settings.ClearBrowsingDataRoute
 import com.dantech.skimbrowser.ui.settings.DeleteAiDataRoute
 import com.dantech.skimbrowser.ui.settings.LicensesRoute
+import com.dantech.skimbrowser.ui.settings.PageTextSizeRoute
 import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
 import com.dantech.skimbrowser.ui.settings.SettingsRoute
 import com.dantech.skimbrowser.ui.settings.ThemeRoute
@@ -186,6 +187,9 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         }
         entry<ThemeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ThemeRoute(onFinished = navigator::back)
+        }
+        entry<PageTextSizeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            PageTextSizeRoute(onFinished = navigator::back)
         }
         entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ClearBrowsingDataRoute(navigator)

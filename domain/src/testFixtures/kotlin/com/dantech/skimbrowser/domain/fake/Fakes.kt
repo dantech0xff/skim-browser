@@ -71,6 +71,9 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
     override suspend fun setReaderTextScale(percent: Int) =
         update { it.copy(readerTextScalePercent = percent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)) }
 
+    override suspend fun setPageTextZoom(percent: Int?) =
+        update { it.copy(pageTextZoomPercent = percent?.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)) }
+
     override suspend fun setReaderFont(font: ReaderFont) = update { it.copy(readerFont = font) }
 
     override suspend fun setOnboardingCompleted() = update { it.copy(onboardingCompleted = true) }
