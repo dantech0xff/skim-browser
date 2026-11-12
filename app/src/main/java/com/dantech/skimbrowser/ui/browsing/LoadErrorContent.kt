@@ -117,33 +117,28 @@ fun LoadErrorContent(
                     textAlign = TextAlign.Center,
                     style = typography.headlineMediumEmphasized.copy(lineBreak = LineBreak.Heading),
                 )
-                Text(
-                    text = if (certificate != null) site else if (look.bodyNamesSite) stringResource(look.body, site) else stringResource(look.body),
-                    color = if (certificate != null) colors.onSurface else colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    style = if (certificate != null) typography.titleMedium else typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
-                )
                 if (certificate != null) {
-                    Text(
-                        text = stringResource(look.body),
-                        color = colors.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        style = typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
-                    )
+                    Text(site, color = colors.onSurface, textAlign = TextAlign.Center, style = typography.titleMedium)
                 }
+                Text(
+                    text = if (certificate != null || !look.bodyNamesSite) stringResource(look.body) else stringResource(look.body, site),
+                    color = colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    style = typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
+                )
             }
             Column(
                 Modifier.widthIn(max = ButtonColumnWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                SkimButton(
+                    text = stringResource(if (certificate != null) R.string.certificate_back_to_safety else R.string.action_try_again),
+                    onClick = if (certificate != null) onLeaveUnsafeCertificate else onTryAgain,
+                    modifier = Modifier.fillMaxWidth(),
+                    size = SkimButtonSize.M,
+                    icon = if (certificate != null) R.drawable.ic_arrow_back else R.drawable.ic_refresh,
+                )
                 if (certificate != null) {
-                    SkimButton(
-                        text = stringResource(R.string.certificate_back_to_safety),
-                        onClick = onLeaveUnsafeCertificate,
-                        modifier = Modifier.fillMaxWidth(),
-                        size = SkimButtonSize.M,
-                        icon = R.drawable.ic_arrow_back,
-                    )
                     SkimButton(
                         text = stringResource(R.string.certificate_advanced),
                         onClick = { advanced = !advanced },
@@ -160,34 +155,25 @@ fun LoadErrorContent(
                             style = SkimButtonStyle.Tonal,
                         )
                     }
-                } else {
+                } else if (onOpenHttp != null) {
                     SkimButton(
-                        text = stringResource(R.string.action_try_again),
-                        onClick = onTryAgain,
+                        text = stringResource(R.string.error_open_http),
+                        onClick = onOpenHttp,
                         modifier = Modifier.fillMaxWidth(),
                         size = SkimButtonSize.M,
-                        icon = R.drawable.ic_refresh,
+                        style = SkimButtonStyle.Tonal,
+                        icon = R.drawable.ic_public,
                     )
-                    if (onOpenHttp != null) {
-                        SkimButton(
-                            text = stringResource(R.string.error_open_http),
-                            onClick = onOpenHttp,
-                            modifier = Modifier.fillMaxWidth(),
-                            size = SkimButtonSize.M,
-                            style = SkimButtonStyle.Tonal,
-                            icon = R.drawable.ic_public,
-                        )
-                    }
-                    if (error is LoadError.NoInternet) {
-                        SkimButton(
-                            text = stringResource(R.string.error_internet_settings),
-                            onClick = onInternetSettings,
-                            modifier = Modifier.fillMaxWidth(),
-                            size = SkimButtonSize.M,
-                            style = SkimButtonStyle.Tonal,
-                            icon = R.drawable.ic_wifi,
-                        )
-                    }
+                }
+                if (certificate == null && error is LoadError.NoInternet) {
+                    SkimButton(
+                        text = stringResource(R.string.error_internet_settings),
+                        onClick = onInternetSettings,
+                        modifier = Modifier.fillMaxWidth(),
+                        size = SkimButtonSize.M,
+                        style = SkimButtonStyle.Tonal,
+                        icon = R.drawable.ic_wifi,
+                    )
                 }
             }
             if (certificate == null) Text(error!!.codeName, color = colors.onSurfaceVariant, style = typography.bodySmall)

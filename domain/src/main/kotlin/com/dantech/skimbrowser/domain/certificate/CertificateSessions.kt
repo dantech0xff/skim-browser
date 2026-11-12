@@ -57,17 +57,8 @@ class CertificateSessions {
     private fun list(incognito: Boolean): MutableSet<CertificateKey> = if (incognito) this.incognito else normal
 }
 
-fun certificateFingerprint(material: ByteArray): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(material)
-    val hex = "0123456789abcdef".toCharArray()
-    val out = CharArray(digest.size * 2)
-    digest.forEachIndexed { index, byte ->
-        val value = byte.toInt() and 0xff
-        out[index * 2] = hex[value ushr 4]
-        out[index * 2 + 1] = hex[value and 0x0f]
-    }
-    return String(out)
-}
+fun certificateFingerprint(material: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(material).joinToString("") { byte -> "%02x".format(byte) }
 
 fun certificateFault(primaryError: Int): CertificateFault = when (primaryError) {
     0 -> CertificateFault.NotYetValid

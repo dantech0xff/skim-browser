@@ -12,20 +12,15 @@ import com.dantech.skimbrowser.domain.certificate.certificateFingerprint
 fun certificateMaterial(certificate: SslCertificate): ByteArray {
     val encoded = SslCertificate.saveState(certificate)?.getByteArray(ENCODED_CERTIFICATE)
     if (encoded != null && encoded.isNotEmpty()) return encoded
-    val to = certificate.issuedTo
-    val by = certificate.issuedBy
-    return listOf(
-        to?.dName,
-        to?.cName,
-        to?.oName,
-        to?.uName,
-        by?.dName,
-        by?.cName,
-        by?.oName,
-        by?.uName,
-        certificate.validNotBeforeDate?.time?.toString(),
-        certificate.validNotAfterDate?.time?.toString(),
-    ).joinToString("\u0000").toByteArray(Charsets.UTF_8)
+    return buildString {
+        append(certificate.issuedTo?.dName)
+        append('\u0000')
+        append(certificate.issuedBy?.dName)
+        append('\u0000')
+        append(certificate.validNotBeforeDate?.time)
+        append('\u0000')
+        append(certificate.validNotAfterDate?.time)
+    }.toByteArray(Charsets.UTF_8)
 }
 
 fun certificateFingerprintOf(certificate: SslCertificate): String = certificateFingerprint(certificateMaterial(certificate))
