@@ -20,6 +20,8 @@ data class AppStorage(
     val thumbnailDir: (Context) -> File = { File(it.cacheDir, "thumbs") },
     /** Files shared from incognito tabs, deleted when the incognito session ends. */
     val incognitoSharedDir: (Context) -> File = { File(it.cacheDir, "shared/incognito") },
+    /** Downloads Skim started. A private file, not a table: the list is short and the APK stays small. */
+    val downloadsFile: (Context) -> File = { File(it.filesDir, "downloads-log") },
 ) {
     companion object {
         fun temp(dir: File) = AppStorage(
@@ -28,6 +30,7 @@ data class AppStorage(
             tabStateDir = { File(dir, "tabstate") },
             thumbnailDir = { File(dir, "thumbs") },
             incognitoSharedDir = { File(dir, "shared/incognito") },
+            downloadsFile = { File(dir, "downloads-log") },
         )
     }
 }

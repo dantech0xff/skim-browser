@@ -17,9 +17,14 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Saves the downloads Skim writes itself (those of incognito tabs and of `data:` and `blob:` URLs)
@@ -56,13 +61,24 @@ class MediaStoreDownloads(
      *
      * @throws IOException when the file cannot be saved; nothing is left behind.
      */
-    suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted =
-        withContext(ioDispatcher) {
-            if (fileName.isEmpty() || fileName.contains('/') || fileName == "." || fileName == "..") {
-                throw IOException("Not a file name")
+    suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted {
+        var published: Uri? = null
+        try {
+            return withContext(ioDispatcher) {
+                if (fileName.isEmpty() || fileName.contains('/') || fileName == "." || fileName == "..") {
+                    throw IOException("Not a file name")
+                }
+                val saved = if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
+                published = saved.uri
+                // withContext can drop this result if cancel wins on the way out. The catch deletes it.
+                if (!isActive) throw CancellationException()
+                saved
             }
-            if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
+        } catch (e: CancellationException) {
+            published?.let { uri -> withContext(NonCancellable) { delete(uri) } }
+            throw e
         }
+    }
 
     /**
      * Bytes free on the volume the Downloads folder is on; [Long.MAX_VALUE] when that cannot be
@@ -94,30 +110,39 @@ class MediaStoreDownloads(
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: throw IOException("MediaStore did not take the download")
-        try {
+        val written = try {
             val out = resolver.openOutputStream(uri, "w") ?: throw IOException("The download could not be opened for writing")
-            out.use { write(it) }
+            val count = out.use { writeCounted(it, write) }
+            coroutineContext.ensureActive()
             val published = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
             if (resolver.update(uri, published, null, null) < 1) throw IOException("The download could not be published")
+            count
         } catch (failure: Throwable) {
             discard(uri)
             throw failure
         }
-        return listed(uri, fileName, mimeType)
+        return listed(uri, fileName, mimeType, written)
     }
 
     private suspend fun saveLegacy(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted {
         val folder = legacyFolder()
         if (!folder.isDirectory && !folder.mkdirs()) throw IOException("There is no Downloads folder")
         val file = newFile(folder, fileName)
+        var written = 0L
         val uri = try {
-            FileOutputStream(file).use { write(it) }
+            written = FileOutputStream(file).use { writeCounted(it, write) }
+            coroutineContext.ensureActive()
             listInMediaStore(file, mimeType)
         } catch (failure: Throwable) {
             if (!file.delete()) Log.w(TAG, "A download that failed could not be deleted")
             throw failure
         }
-        return listed(uri, file.name, mimeType)
+        return listed(uri, file.name, mimeType, written)
+    }
+
+    /** Removes a file this saver published. A missing file is ignored. */
+    fun delete(uri: Uri) {
+        discard(uri)
     }
 
     /** A new empty file in [folder] named [fileName], or `name (1).ext`, `name (2).ext`… when that is taken. */
@@ -148,7 +173,7 @@ class MediaStoreDownloads(
     }
 
     /** The saved file as MediaStore lists it; what Skim asked for where MediaStore says nothing. */
-    private fun listed(uri: Uri, fileName: String, mimeType: String): DownloadEvent.DownloadCompleted {
+    private fun listed(uri: Uri, fileName: String, mimeType: String, bytes: Long): DownloadEvent.DownloadCompleted {
         val columns = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.MIME_TYPE)
         val stored = try {
             context.contentResolver.query(uri, columns, null, null, null)?.use { cursor ->
@@ -162,7 +187,24 @@ class MediaStoreDownloads(
             fileName = stored?.first?.takeIf { it.isNotBlank() } ?: fileName,
             uri = uri,
             mime = stored?.second?.takeIf { it.isNotBlank() } ?: mimeType,
+            bytes = bytes,
         )
+    }
+
+    private suspend fun writeCounted(out: OutputStream, write: suspend (OutputStream) -> Unit): Long {
+        var total = 0L
+        write(object : OutputStream() {
+            override fun write(byte: Int) {
+                out.write(byte)
+                total++
+            }
+
+            override fun write(buffer: ByteArray, offset: Int, length: Int) {
+                out.write(buffer, offset, length)
+                total += length
+            }
+        })
+        return total
     }
 
     private fun discard(uri: Uri) {

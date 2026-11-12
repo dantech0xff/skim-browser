@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.testing
 
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -19,6 +20,8 @@ private val MinTouchTarget = 48.dp
  * The touch area is the node's touch bounds, the area that accepts its touches: Compose widens the
  * touch bounds of a clickable smaller than 48 dp to the minimum touch target, so a drawn 36 dp
  * button passes, while a toggle without a click action keeps its drawn bounds and fails under 48.
+ * A row the list has composed past the bottom of the screen is left for scrolling; its clipped
+ * bounds are empty and are not a failed target.
  *
  * Every screenshot test calls it after setting its content.
  */
@@ -44,11 +47,28 @@ private fun problemsOf(node: SemanticsNode): List<String> = buildList {
     val touch = node.touchBoundsInRoot
     val minPx = with(density) { MinTouchTarget.toPx() }
     // Half a pixel of tolerance for bounds that land between pixels.
+    // A row the lazy list has composed below the screen is reached by scrolling. Its clipped
+    // touch bounds are empty; the check applies once the row is on screen.
+    if (!node.isPlacedOnScreen()) return@buildList
     if (touch.width < minPx - 0.5f || touch.height < minPx - 0.5f) {
         val width = with(density) { touch.width.toDp() }
         val height = with(density) { touch.height.toDp() }
         add("\"$name\" has a touch area of $width by $height, under $MinTouchTarget")
     }
+}
+
+/** True when this node's layout intersects the root. A composed row below the fold does not. */
+private fun SemanticsNode.isPlacedOnScreen(): Boolean {
+    val coordinates = layoutInfo.coordinates
+    if (!coordinates.isAttached) return false
+    val at = coordinates.positionInRoot()
+    val size = coordinates.size
+    var root = this
+    while (root.parent != null) root = root.parent!!
+    val bounds = root.boundsInRoot
+    val bottom = at.y + size.height
+    val right = at.x + size.width
+    return at.y < bounds.bottom && bottom > bounds.top && at.x < bounds.right && right > bounds.left
 }
 
 private fun labelOf(node: SemanticsNode): String {

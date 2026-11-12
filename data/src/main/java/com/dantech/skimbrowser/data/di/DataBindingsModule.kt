@@ -14,6 +14,8 @@ import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.data.reading.SavedArticleRepository as SavedArticleStore
+import com.dantech.skimbrowser.data.repo.DownloadRepository as DownloadStore
+import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.reading.SavedArticleRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
@@ -35,5 +37,6 @@ internal abstract class DataBindingsModule {
     @Binds abstract fun chats(store: ChatStore): ChatRepository
     @Binds abstract fun sites(store: SitePermissionStore): SitePermissionRepository
     @Binds abstract fun savedArticles(store: SavedArticleStore): SavedArticleRepository
+    @Binds abstract fun downloads(store: DownloadStore): DownloadLog
     @Binds abstract fun bookmarkFiles(importer: BookmarkImporter): BookmarkFiles
 }

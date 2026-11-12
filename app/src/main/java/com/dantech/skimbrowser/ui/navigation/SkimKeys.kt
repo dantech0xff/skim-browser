@@ -70,6 +70,10 @@ data object AiPrivacyKey : SkimKey
 @Serializable
 data object HistoryKey : SkimKey
 
+/** Downloads Skim started. Not on a board. */
+@Serializable
+data object DownloadsKey : SkimKey
+
 /** Articles saved for offline Reader view. */
 @Serializable
 data object ReadLaterKey : SkimKey

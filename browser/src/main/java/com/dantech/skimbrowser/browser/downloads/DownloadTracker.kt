@@ -10,7 +10,9 @@ import android.util.Log
 import androidx.annotation.AnyThread
 import androidx.core.net.toUri
 import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.NoDownloadLog
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** How a download ended, for the snackbar that reports it. */
 sealed interface DownloadEvent {
@@ -40,6 +43,8 @@ sealed interface DownloadEvent {
         val uri: Uri,
         val mime: String,
         override val incognito: Boolean = false,
+        /** How many bytes were written, or -1 when this completion did not count them. */
+        val bytes: Long = -1,
     ) : DownloadEvent
 
     /**
@@ -85,7 +90,16 @@ interface SystemDownloads {
 
     /** `DownloadManager.getMimeTypeForDownloadedFile`: the type DownloadManager keeps for the file. */
     fun mimeTypeFor(id: Long): String?
+
+    /** Status and byte counts, or null when DownloadManager no longer has [id]. */
+    fun snapshot(id: Long): DownloadSnapshot?
+
+    /** Drops [id] from DownloadManager. That also deletes its file. */
+    fun remove(id: Long)
 }
+
+/** Byte counts DownloadManager reports for one download. [total] is negative when it is unknown. */
+data class DownloadSnapshot(val status: Int, val soFar: Long, val total: Long)
 
 /**
  * [SystemDownloads] over DownloadManager: the file goes to the shared Downloads folder under its
@@ -123,6 +137,22 @@ class AndroidSystemDownloads(context: Context) : SystemDownloads {
 
     override fun mimeTypeFor(id: Long): String? = manager?.getMimeTypeForDownloadedFile(id)
 
+    override fun snapshot(id: Long): DownloadSnapshot? {
+        val downloads = manager ?: return null
+        return downloads.query(DownloadManager.Query().setFilterById(id))?.use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            DownloadSnapshot(
+                status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
+                soFar = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)),
+                total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)),
+            )
+        }
+    }
+
+    override fun remove(id: Long) {
+        manager?.remove(id)
+    }
+
     private companion object {
         const val USER_AGENT = "User-Agent"
         const val COOKIE = "Cookie"
@@ -148,9 +178,11 @@ class DownloadTracker(
     private val system: SystemDownloads,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val log: DownloadLog = NoDownloadLog,
 ) {
 
-    @Inject constructor(app: Application, @AppScope scope: CoroutineScope) : this(AndroidSystemDownloads(app), scope)
+    @Inject constructor(app: Application, @AppScope scope: CoroutineScope, log: DownloadLog) :
+        this(AndroidSystemDownloads(app), scope, log = log)
 
     private val _events = MutableSharedFlow<DownloadEvent>(
         extraBufferCapacity = EVENT_BUFFER,
@@ -161,20 +193,51 @@ class DownloadTracker(
     /** DownloadManager ids Skim enqueued and has not reported yet. */
     private val followed = ConcurrentHashMap<Long, Followed>()
 
+    /** In-process saves still writing, so removing a row can stop the file from being published. */
+    private val running = ConcurrentHashMap<Long, kotlinx.coroutines.Job>()
+
     /**
      * Hands [request] to DownloadManager and follows it; false when DownloadManager refused it. It
      * calls into the DownloadManager service, so callers make it off the main thread.
      */
     @AnyThread
-    fun enqueue(request: SystemDownloadRequest, retry: DownloadRetry? = null): Boolean {
+    fun enqueue(request: SystemDownloadRequest, retry: DownloadRetry? = null, localId: Long = 0): Boolean {
         val id = try {
             system.enqueue(request)
         } catch (e: RuntimeException) {
             Log.w(TAG, "DownloadManager refused a download: ${e.javaClass.simpleName}")
             return false
         }
-        followed[id] = Followed(request.fileName, retry)
+        followed[id] = Followed(request.fileName, retry, localId)
+        if (localId != 0L) scope.launch(ioDispatcher) { log.noteSystem(localId, id) }
         return true
+    }
+
+    /**
+     * Asks DownloadManager about a download that outlived this process. The snackbar is not told
+     * again. A missing download is recorded as failed.
+     */
+    fun refreshSystem(localId: Long, systemId: Long) {
+        scope.launch(ioDispatcher) {
+            val snap = try {
+                system.snapshot(systemId)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "DownloadManager could not be asked about a download: ${e.javaClass.simpleName}")
+                return@launch
+            }
+            when (snap?.status) {
+                null, DownloadManager.STATUS_FAILED -> log.noteFailed(localId)
+                DownloadManager.STATUS_SUCCESSFUL -> {
+                    val event = completed(systemId, "", null)
+                    if (event is DownloadEvent.DownloadCompleted) {
+                        log.noteFinished(localId, event.uri.toString(), event.mime, snap.total)
+                    } else {
+                        log.noteFailed(localId)
+                    }
+                }
+                else -> log.noteProgress(localId, snap.soFar, snap.total)
+            }
+        }
     }
 
     /** DownloadManager finished download [id], of Skim's or another app's. */
@@ -188,7 +251,18 @@ class DownloadTracker(
     @AnyThread
     fun refresh() {
         if (followed.isEmpty()) return
-        scope.launch(ioDispatcher) { followed.keys.toList().forEach(::askAbout) }
+        scope.launch(ioDispatcher) { followed.keys.toList().forEach { askAbout(it) } }
+    }
+
+    /** Drops [id] from DownloadManager, which deletes that file. */
+    fun removeSystem(id: Long) {
+        scope.launch(ioDispatcher) {
+            try {
+                system.remove(id)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "DownloadManager could not remove a download: ${e.javaClass.simpleName}")
+            }
+        }
     }
 
     /** Reports how a download that Skim saved itself ended. */
@@ -197,23 +271,58 @@ class DownloadTracker(
         _events.tryEmit(event)
     }
 
-    private fun askAbout(id: Long) {
+    /** [job] is the in-process save of row [localId]. [cancel] stops it before the file is published. */
+    fun followJob(localId: Long, job: kotlinx.coroutines.Job) {
+        if (localId == 0L) return
+        running[localId] = job
+        job.invokeOnCompletion { running.remove(localId, job) }
+    }
+
+    /** Stops the save of row [localId] when one is still writing, and waits until that save has stopped. */
+    suspend fun cancelAndJoin(localId: Long) {
+        val job = running.remove(localId) ?: return
+        job.cancel()
+        // Join off the main thread: the save finishes there, and joining on main would deadlock.
+        withContext(Dispatchers.Default) { job.join() }
+    }
+
+    /** Stops the save of row [localId] when one is still writing. */
+    fun cancel(localId: Long) {
+        running.remove(localId)?.cancel()
+    }
+
+    private suspend fun askAbout(id: Long) {
         val followedDownload = followed[id] ?: return
-        val name = followedDownload.name
-        val status = try {
-            system.status(id)
+        publish(followedDownload.localId, id, followedDownload)
+    }
+
+    private suspend fun publish(localId: Long, systemId: Long, followedDownload: Followed? = followed[systemId]) {
+        val known = followedDownload ?: return
+        val name = known.name
+        val snap = try {
+            system.snapshot(systemId)
         } catch (e: RuntimeException) {
             Log.w(TAG, "DownloadManager could not be asked about a download: ${e.javaClass.simpleName}")
             return
         }
-        when (status) {
-            null -> followed.remove(id)
-            DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(id) != null) report(completed(id, name, followedDownload.retry))
-            DownloadManager.STATUS_FAILED -> if (followed.remove(id) != null) {
-                report(DownloadEvent.DownloadFailed(name, incognito = false, retry = followedDownload.retry))
+        when (snap?.status) {
+            null -> if (followed.remove(systemId) != null && localId != 0L) log.noteFailed(localId)
+            DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(systemId) != null) {
+                val event = completed(systemId, name, known.retry)
+                report(event)
+                if (localId != 0L) {
+                    if (event is DownloadEvent.DownloadCompleted) {
+                        log.noteFinished(localId, event.uri.toString(), event.mime, snap.total)
+                    } else {
+                        log.noteFailed(localId)
+                    }
+                }
             }
-            // Pending, running or paused: still followed.
-            else -> Unit
+            DownloadManager.STATUS_FAILED -> if (followed.remove(systemId) != null) {
+                report(DownloadEvent.DownloadFailed(name, incognito = false, retry = known.retry))
+                if (localId != 0L) log.noteFailed(localId)
+            }
+            else -> if (localId != 0L) log.noteProgress(localId, snap.soFar, snap.total)
         }
     }
 
@@ -230,7 +339,7 @@ class DownloadTracker(
         DownloadEvent.DownloadFailed(name, incognito = false, retry = retry)
     }
 
-    private class Followed(val name: String, val retry: DownloadRetry?)
+    private class Followed(val name: String, val retry: DownloadRetry?, val localId: Long)
 
     private companion object {
         const val TAG = "SkimDownloads"

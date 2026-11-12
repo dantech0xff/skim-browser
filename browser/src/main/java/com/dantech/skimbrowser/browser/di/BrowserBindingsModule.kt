@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.browser.di
 
 import com.dantech.skimbrowser.browser.BrowserProfiles
+import com.dantech.skimbrowser.browser.downloads.DownloadActions
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
 import com.dantech.skimbrowser.browser.IncognitoSession
@@ -15,6 +16,7 @@ import com.dantech.skimbrowser.browser.WebViewProfiles
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.PageScripts
 import com.dantech.skimbrowser.domain.ai.NetworkAvailability
+import com.dantech.skimbrowser.domain.download.DownloadCommands
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
@@ -43,6 +45,7 @@ internal abstract class BrowserBindingsModule {
     @Binds abstract fun pageScripts(impl: PageScripts): PageScriptSource
     @Binds abstract fun siteDataCleaner(impl: BrowsingDataCleaner): SiteDataCleaner
     @Binds abstract fun shieldChoices(impl: RequestShield): ShieldChoices
+    @Binds abstract fun downloadCommands(impl: DownloadActions): DownloadCommands
 
     companion object {
         /** Where the WebView layer reports what happens in the tabs. */

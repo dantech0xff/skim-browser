@@ -37,6 +37,7 @@ import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.navigation.AiPrivacyKey
 import com.dantech.skimbrowser.ui.navigation.ClearBrowsingDataKey
 import com.dantech.skimbrowser.ui.navigation.LicensesKey
+import com.dantech.skimbrowser.ui.navigation.DownloadsKey
 import com.dantech.skimbrowser.ui.navigation.PageTextSizeDialogKey
 import com.dantech.skimbrowser.ui.navigation.SearchEngineDialogKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
@@ -70,6 +71,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         },
         onTheme = { navigator.push(ThemeDialogKey) },
         onPageTextSize = { navigator.push(PageTextSizeDialogKey) },
+        onDownloads = { navigator.push(DownloadsKey) },
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
@@ -156,6 +158,7 @@ fun SettingsScreen(
     onDefaultBrowser: () -> Unit,
     onTheme: () -> Unit,
     onPageTextSize: () -> Unit,
+    onDownloads: () -> Unit = {},
     onAiPrivacy: () -> Unit,
     onClearData: () -> Unit,
     onPrivacyPolicy: (() -> Unit)?,
@@ -239,10 +242,18 @@ fun SettingsScreen(
         }
         section(R.string.settings_section_privacy) {
             SkimListItem(
+                headline = stringResource(R.string.downloads_title),
+                supporting = stringResource(R.string.settings_downloads_summary),
+                index = 0,
+                count = 2,
+                onClick = onDownloads,
+                leading = { IconTile(R.drawable.ic_download, colors.secondaryContainer, colors.onSecondaryContainer) },
+            )
+            SkimListItem(
                 headline = stringResource(R.string.clear_browsing_data),
                 supporting = stringResource(R.string.settings_clear_browsing_data_summary),
-                index = 0,
-                count = 1,
+                index = 1,
+                count = 2,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
             )

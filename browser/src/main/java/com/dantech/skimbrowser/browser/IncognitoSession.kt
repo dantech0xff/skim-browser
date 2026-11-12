@@ -6,6 +6,8 @@ import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
 import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.domain.download.DownloadLog
+import com.dantech.skimbrowser.domain.download.NoDownloadLog
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.data.db.entity.PermissionState
@@ -47,6 +49,7 @@ class IncognitoSession(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
     private val onEnded: () -> Unit = {},
+    private val log: DownloadLog = NoDownloadLog,
 ) : IncognitoSupport, IncognitoDecisions {
 
     @Inject constructor(
@@ -55,7 +58,17 @@ class IncognitoSession(
         app: Application,
         @AppScope appScope: CoroutineScope,
         shield: RequestShield,
-    ) : this(profiles, storage.incognitoSharedDir(app), appScope, onEnded = shield::clearIncognito)
+        log: DownloadLog,
+    ) : this(
+        profiles,
+        storage.incognitoSharedDir(app),
+        appScope,
+        onEnded = {
+            shield.clearIncognito()
+            appScope.launch { log.clearIncognito() }
+        },
+        log = log,
+    )
 
     sealed interface State {
         data object None : State
@@ -153,7 +166,11 @@ class IncognitoSession(
                 .filter { it.startsWith(PROFILE_PREFIX) && it != active }
                 .forEach { name -> step("delete a stale profile") { profiles.delete(name) } }
         }
-        if (_state.value == State.None) deleteSharedFiles()
+        if (_state.value == State.None) {
+            deleteSharedFiles()
+            // A killed process never runs onEnded, so incognito rows must not outlive the next start.
+            appScope.launch { log.clearIncognito() }
+        }
     }
 
     /**

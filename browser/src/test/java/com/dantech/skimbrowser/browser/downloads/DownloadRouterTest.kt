@@ -149,7 +149,7 @@ class DownloadRouterTest {
         assertTrue("the default cookies are never read", parts.defaultCookieLookups.isEmpty())
         val row = media.rows().single()
         assertArrayEquals(PDF, row.file.readBytes())
-        assertEquals(listOf<DownloadEvent>(DownloadCompleted("guide.pdf", row.uri, "application/pdf", incognito = true)), events.plain())
+        assertEquals(listOf<DownloadEvent>(DownloadCompleted("guide.pdf", row.uri, "application/pdf", incognito = true, bytes = 17)), events.plain())
     }
 
     @Test
@@ -200,8 +200,8 @@ class DownloadRouterTest {
         val (zip, pdf) = media.rows()
         assertEquals(
             listOf<DownloadEvent>(
-                DownloadCompleted("download.zip", zip.uri, "application/zip"),
-                DownloadCompleted("rebate-guide.pdf", pdf.uri, "application/pdf"),
+                DownloadCompleted("download.zip", zip.uri, "application/zip", bytes = 10),
+                DownloadCompleted("rebate-guide.pdf", pdf.uri, "application/pdf", bytes = 17),
             ),
             events.plain(),
         )
@@ -233,7 +233,7 @@ class DownloadRouterTest {
         runCurrent()
 
         val row = media.rows().single()
-        assertEquals(listOf<DownloadEvent>(DownloadCompleted("download.pdf", row.uri, "application/pdf", incognito = true)), events.plain())
+        assertEquals(listOf<DownloadEvent>(DownloadCompleted("download.pdf", row.uri, "application/pdf", incognito = true, bytes = 17)), events.plain())
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
         assertTrue(parts.defaultCookieLookups.isEmpty())
     }
@@ -279,7 +279,7 @@ class DownloadRouterTest {
 
         val row = media.rows().single()
         assertArrayEquals(PNG, row.file.readBytes())
-        assertEquals("the incognito tab's", listOf<DownloadEvent>(DownloadCompleted("download.png", row.uri, "image/png", incognito = true)), events.plain())
+        assertEquals("the incognito tab's", listOf<DownloadEvent>(DownloadCompleted("download.png", row.uri, "image/png", incognito = true, bytes = 16)), events.plain())
         val start = parts.blobPage.calls.first()
         assertEquals("start", start.op)
         assertEquals(MAX_INLINE_DOWNLOAD_BYTES.toLong(), start.number("maxBytes"))
@@ -469,7 +469,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, dataUrl("application/pdf", PDF), null, null, null, view, userInitiated = true)
         runCurrent()
 
-        assertEquals(List(3) { DownloadFailed("download.png") } + DownloadCompleted("download.pdf", media.rows().single().uri, "application/pdf"), events.plain())
+        assertEquals(List(3) { DownloadFailed("download.png") } + DownloadCompleted("download.pdf", media.rows().single().uri, "application/pdf", bytes = 17), events.plain())
     }
 
     @Test

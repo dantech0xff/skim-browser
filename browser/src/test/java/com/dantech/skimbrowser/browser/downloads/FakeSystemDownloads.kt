@@ -35,4 +35,19 @@ class FakeSystemDownloads : SystemDownloads {
     override fun uriFor(id: Long): Uri? = uris[id]
 
     override fun mimeTypeFor(id: Long): String? = mimeTypes[id]
+
+    val soFar = mutableMapOf<Long, Long>()
+    val totals = mutableMapOf<Long, Long>()
+
+    override fun snapshot(id: Long): DownloadSnapshot? {
+        statusQueries[id] = (statusQueries[id] ?: 0) + 1
+        val current = statuses[id] ?: return null
+        return DownloadSnapshot(current, soFar[id] ?: 0L, totals[id] ?: -1L)
+    }
+
+    override fun remove(id: Long) {
+        statuses.remove(id)
+        uris.remove(id)
+        mimeTypes.remove(id)
+    }
 }
