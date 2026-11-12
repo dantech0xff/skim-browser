@@ -143,6 +143,10 @@
     <string name="tabs_segment_incognito">Incognito</string>
     <string name="tabs_grouped_banner">Skim grouped your tabs by topic</string>
     <string name="tabs_group_other">Other</string>
+    <string name="tab_swipe_previous">Previous tab, %1$s</string>
+    <string name="tab_swipe_next">Next tab, %1$s</string>
+    <string name="tab_swipe_previous_group">Previous tab in %1$s, %2$s</string>
+    <string name="tab_swipe_next_group">Next tab in %1$s, %2$s</string>
     <string name="incognito_tabs_banner">Skim AI is off in incognito. These pages are never sent to it, and Skim forgets them when you close the tabs.</string>
     <string name="incognito_search_hint">Search or type URL</string>
     <string name="incognito_title">You\'re incognito</string>

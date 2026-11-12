@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
+import com.dantech.skimbrowser.domain.tab.adjacentTab
 import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.system.InternetPanel
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
@@ -52,6 +53,7 @@ import com.dantech.skimbrowser.ui.search.searchViewModel
 fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
     val shell = rememberShell()
     val tabs = shell.tabs()
+    val openTabs by tabs.state.collectAsStateWithLifecycle()
     val host = LocalBrowserHost.current
     val activity = LocalActivity.current
     val context = LocalContext.current
@@ -107,6 +109,10 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
         ),
         chromeCollapsed = chromeCollapsed,
+        previousTab = openTabs.adjacentTab(forward = false),
+        nextTab = openTabs.adjacentTab(forward = true),
+        groups = openTabs.groups,
+        onSwipeToTab = tabs::select,
         page = {
             // Insets are device pixels. A WebView's CSS px is one dp, so the page would pad by the
             // screen density if these were passed through unchanged.
