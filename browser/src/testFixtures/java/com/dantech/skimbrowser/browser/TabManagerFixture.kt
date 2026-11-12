@@ -44,6 +44,7 @@ class TabManagerFixture(
     private val idPrefix: String = "tab",
     /** Where the write queue runs; a test dispatcher holds every write back until the test lets it run. */
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    private val safety: SafetyGate = SafetyGate.Off,
 ) {
     val main = StandardTestDispatcher(scope.testScheduler)
     val tabRepo = TabRepository(db)
@@ -81,6 +82,7 @@ class TabManagerFixture(
         ioDispatcher = ioDispatcher,
         mainDispatcher = main,
         restoreTimeoutMs = restoreTimeoutMs,
+        safety = safety,
     )
 
     val engine = FakeTabEngine(manager.events, webViewFactory = { WebView(ApplicationProvider.getApplicationContext<Context>()) })

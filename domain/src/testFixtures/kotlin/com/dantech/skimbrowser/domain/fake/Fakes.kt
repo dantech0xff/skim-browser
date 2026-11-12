@@ -80,6 +80,8 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override suspend fun setLastTabId(id: String?) = update { it.copy(lastTabId = id) }
 
+    override suspend fun setScamWarnings(enabled: Boolean) = update { it.copy(scamWarnings = enabled) }
+
     override suspend fun installId(): String = install
 
     private fun update(change: (SkimSettings) -> SkimSettings) {

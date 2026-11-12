@@ -87,6 +87,10 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { if (id == null) it.remove(Keys.LAST_TAB_ID) else it[Keys.LAST_TAB_ID] = id }
     }
 
+    override suspend fun setScamWarnings(enabled: Boolean) {
+        dataStore.edit { it[Keys.SCAM_WARNINGS] = enabled }
+    }
+
     override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
         val key = normalizeHost(host)
         if (key.isEmpty()) return
@@ -131,6 +135,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             readerFont = enumOrDefault(read(Keys.READER_FONT), defaults.readerFont),
             onboardingCompleted = read(Keys.ONBOARDING_COMPLETED) ?: defaults.onboardingCompleted,
             lastTabId = read(Keys.LAST_TAB_ID)?.takeIf { it.isNotBlank() },
+            scamWarnings = read(Keys.SCAM_WARNINGS) ?: defaults.scamWarnings,
         )
     }
 
@@ -145,6 +150,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val READER_FONT = stringPreferencesKey("reader_font")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val LAST_TAB_ID = stringPreferencesKey("last_tab_id")
+        val SCAM_WARNINGS = booleanPreferencesKey("scam_warnings")
         val INSTALL_ID = stringPreferencesKey("install_id")
         val SHIELD_DISABLED = stringSetPreferencesKey("shield_disabled_hosts")
     }

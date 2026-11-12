@@ -67,6 +67,10 @@ data class BrowsingActions(
     val onOpenHttp: (() -> Unit)? = null,
     val onLeaveUnsafeCertificate: () -> Unit = {},
     val onProceedDespiteCertificate: () -> Unit = {},
+    /** Back to safety on a scam warning. */
+    val onBackToSafety: () -> Unit = {},
+    /** Proceed anyway on a scam warning. The host is allowed for this process only. */
+    val onProceedUnsafe: () -> Unit = {},
 )
 
 /**
@@ -98,7 +102,7 @@ fun BrowsingScreen(
     onSwipeToTab: (String) -> Unit = {},
 ) {
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    val covered = state.loadError != null || state.certificateWarning != null
+    val covered = state.loadError != null || state.certificateWarning != null || state.safetyWarning != null
     val shrink = chromeCollapsed && state.find == null && !covered && !imeOpen
     val scale by animateFloatAsState(
         targetValue = if (shrink) CollapsedChromeScale else 1f,
@@ -120,28 +124,42 @@ fun BrowsingScreen(
                 ),
         ) {
             val error = state.loadError
-            val warning = state.certificateWarning
+            val certificate = state.certificateWarning
+            val safety = state.safetyWarning
             val pull = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = actions.onRefresh,
-                // While the error covers it, the page is out of reach for accessibility too.
-                modifier = Modifier.fillMaxSize().then(if (error != null || warning != null) Modifier.clearAndSetSemantics {} else Modifier),
+                // While a warning or error covers it, the page is out of reach for accessibility too.
+                modifier = Modifier.fillMaxSize().then(if (covered) Modifier.clearAndSetSemantics {} else Modifier),
                 state = pull,
                 indicator = { RefreshIndicator(pull, state.refreshing) },
-                enabled = error == null && warning == null,
+                enabled = !covered,
             ) {
                 page()
             }
-            if (warning != null || error != null) {
+            if (certificate != null) {
+                LoadErrorContent(
+                    error = null,
+                    onTryAgain = actions.onTryAgain,
+                    onInternetSettings = actions.onInternetSettings,
+                    onOpenHttp = actions.onOpenHttp,
+                    warning = certificate,
+                    onLeaveUnsafeCertificate = actions.onLeaveUnsafeCertificate,
+                    onProceedDespiteCertificate = actions.onProceedDespiteCertificate,
+                )
+            } else if (safety != null) {
+                SafetyWarningContent(
+                    warning = safety,
+                    onBackToSafety = actions.onBackToSafety,
+                    onProceed = actions.onProceedUnsafe,
+                )
+            } else if (error != null) {
                 LoadErrorContent(
                     error = error,
                     onTryAgain = actions.onTryAgain,
                     onInternetSettings = actions.onInternetSettings,
                     onOpenHttp = actions.onOpenHttp,
-                    warning = warning,
-                    onLeaveUnsafeCertificate = actions.onLeaveUnsafeCertificate,
-                    onProceedDespiteCertificate = actions.onProceedDespiteCertificate,
                 )
             }
         }
@@ -166,7 +184,7 @@ fun BrowsingScreen(
                 previous = previousTab,
                 next = nextTab,
                 groups = groups,
-                enabled = state.find == null && state.loadError == null && state.certificateWarning == null,
+                enabled = !covered && state.find == null,
                 onSelect = onSwipeToTab,
                 modifier = barModifier,
             ) { bar ->

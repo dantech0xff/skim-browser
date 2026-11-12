@@ -33,7 +33,9 @@ import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
 import com.dantech.skimbrowser.ui.components.SectionLabel
 import com.dantech.skimbrowser.ui.components.SegmentedColumn
 import com.dantech.skimbrowser.ui.components.SkimListItem
+import com.dantech.skimbrowser.ui.components.SkimSwitch
 import com.dantech.skimbrowser.ui.components.SunnyMark
+import com.dantech.skimbrowser.ui.components.toggleableRow
 import com.dantech.skimbrowser.ui.navigation.AiPrivacyKey
 import com.dantech.skimbrowser.ui.navigation.ClearBrowsingDataKey
 import com.dantech.skimbrowser.ui.navigation.LicensesKey
@@ -73,6 +75,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onPageTextSize = { navigator.push(PageTextSizeDialogKey) },
         onDownloads = { navigator.push(DownloadsKey) },
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
+        onScamWarnings = model::setScamWarnings,
         onClearData = { navigator.push(ClearBrowsingDataKey) },
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
         onTerms = legalOpener(navigator, BuildConfig.TERMS_URL),
@@ -160,6 +163,7 @@ fun SettingsScreen(
     onPageTextSize: () -> Unit,
     onDownloads: () -> Unit = {},
     onAiPrivacy: () -> Unit,
+    onScamWarnings: (Boolean) -> Unit,
     onClearData: () -> Unit,
     onPrivacyPolicy: (() -> Unit)?,
     onTerms: (() -> Unit)?,
@@ -240,20 +244,29 @@ fun SettingsScreen(
                 leading = { SunnyMark(size = 40.dp, iconSize = 20.dp) },
             )
         }
-        section(R.string.settings_section_privacy) {
+        section(R.string.settings_section_privacy_security) {
+            SwitchRow(
+                headline = stringResource(R.string.settings_scam_warnings),
+                supporting = stringResource(R.string.settings_scam_warnings_summary),
+                icon = R.drawable.ic_shield,
+                checked = state.scamWarnings,
+                index = 0,
+                count = 3,
+                onCheckedChange = onScamWarnings,
+            )
             SkimListItem(
                 headline = stringResource(R.string.downloads_title),
                 supporting = stringResource(R.string.settings_downloads_summary),
-                index = 0,
-                count = 2,
+                index = 1,
+                count = 3,
                 onClick = onDownloads,
                 leading = { IconTile(R.drawable.ic_download, colors.secondaryContainer, colors.onSecondaryContainer) },
             )
             SkimListItem(
                 headline = stringResource(R.string.clear_browsing_data),
                 supporting = stringResource(R.string.settings_clear_browsing_data_summary),
-                index = 1,
-                count = 2,
+                index = 2,
+                count = 3,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
             )
@@ -297,6 +310,29 @@ private fun ColumnScope.SettingsRow(
         count = count,
         onClick = onClick,
         leading = { IconTile(icon, container, content) },
+    )
+}
+
+@Composable
+private fun ColumnScope.SwitchRow(
+    headline: String,
+    supporting: String,
+    @DrawableRes icon: Int,
+    checked: Boolean,
+    index: Int,
+    count: Int,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    SkimListItem(
+        headline = headline,
+        supporting = supporting,
+        index = index,
+        count = count,
+        onClick = null,
+        modifier = Modifier.toggleableRow(checked, onCheckedChange),
+        leading = { IconTile(icon, colors.secondaryContainer, colors.onSecondaryContainer) },
+        trailing = { SkimSwitch(checked = checked, onCheckedChange = null) },
     )
 }
 

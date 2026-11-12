@@ -84,6 +84,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
     }
     BackHandler(enabled = state.find != null) { browsing.closeFind() }
     BackHandler(enabled = state.certificateWarning != null, onBack = leaveUnsafeCertificate)
+    BackHandler(enabled = state.safetyWarning != null) { browsing.backToSafety() }
     LaunchedEffect(shell, tab.id) {
         shell.tabManager().hitTargets.collect { (tabId, target) ->
             if (tabId == tab.id) navigator.openLinkOptions(tab.id, target)
@@ -109,6 +110,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onCloseFind = browsing::closeFind,
             onBack = {
                 if (state.certificateWarning != null) leaveUnsafeCertificate()
+                else if (state.safetyWarning != null) browsing.backToSafety()
                 else browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
             },
             onForward = browsing::goForward,
@@ -118,6 +120,8 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
             onLeaveUnsafeCertificate = leaveUnsafeCertificate,
             onProceedDespiteCertificate = browsing::proceedDespiteCertificate,
+            onBackToSafety = browsing::backToSafety,
+            onProceedUnsafe = browsing::proceedUnsafe,
         ),
         chromeCollapsed = chromeCollapsed,
         previousTab = openTabs.adjacentTab(forward = false),

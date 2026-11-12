@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.domain.tab
 
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -93,6 +94,11 @@ data class TabRuntime(
     val loadNonce: Long = 0,
     /** Requests the shield answered empty for the current document. */
     val blockedCount: Int = 0,
+    /**
+     * A scam warning covering the page. Not kept across process death: proceeding is for this
+     * process only, and a new process warns again.
+     */
+    val safetyWarning: SafetyWarning? = null,
 )
 
 /** Why a main-frame load failed: the states of Page failed to load (11). */

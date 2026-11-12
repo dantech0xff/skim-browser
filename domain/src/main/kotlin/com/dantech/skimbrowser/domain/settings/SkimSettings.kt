@@ -25,6 +25,11 @@ data class SkimSettings(
     val onboardingCompleted: Boolean = false,
     /** The normal tab shown last; incognito tabs are never remembered. */
     val lastTabId: String? = null,
+    /**
+     * Scam and phishing warnings, including Android System WebView Safe Browsing.
+     * On until the person turns it off. The choice is kept on the phone.
+     */
+    val scamWarnings: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_READER_TEXT_SCALE = 100

@@ -57,6 +57,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SkimBrowser">
 
+        <!-- Safe Browsing runs in Android System WebView. Skim does not receive the address. -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="true" />
+
         <!--
             The single activity keeps its WebViews across rotation, dark mode and font changes,
             so those configuration changes are handled in place instead of recreating it.

@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onPagesDark = browserHost.pool::setPagesDark,
                     onPageTextZoom = browserHost.pool::setPageTextZoom,
+                    onScamWarnings = browserHost.pool::setScamWarnings,
                 )
             }
         }

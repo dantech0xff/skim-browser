@@ -81,6 +81,8 @@ class WebViewPool(
     private val sitePermissions: SitePermissionBridge,
     private val downloads: DownloadRouter,
     private val shield: ShieldChoices = ShieldChoices.AllowAll,
+    private val safety: SafetyGate = SafetyGate.Off,
+    private val navigations: TabNavigations = TabNavigations(),
     isLowRamDevice: Boolean = activity.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     /** The process's JavaScript timers, shared by every pool: WebView pauses them for all WebViews at once. */
@@ -204,6 +206,19 @@ class WebViewPool(
     private var savedSinceStop = false
     private var destroyed = false
 
+    /** The Settings switch. WebViews already showing are updated. */
+    fun setScamWarnings(enabled: Boolean) {
+        if (destroyed) return
+        safety.setEnabled(enabled)
+        if (!enabled) {
+            live.values.forEach { entry -> if (!entry.destroyed) entry.client.onWarningsDisabled() }
+            tabs.clearSafetyWarnings()
+        }
+        live.values.forEach { entry ->
+            if (!entry.destroyed) applySafeBrowsing(entry.view, enabled)
+        }
+    }
+
     /**
      * The WebView generation of [tabId] for its host: a new value whenever the tab's WebView was
      * replaced or destroyed; null while the tab must show its crash error instead of a page.
@@ -318,8 +333,17 @@ class WebViewPool(
         destroyed = true
     }
 
+    /** True when [url] is a scam warning. The WebView is not asked to load it. */
+    private fun warnBeforeLoad(tabId: String, url: String): Boolean {
+        val tab = tabs.state.value.tab(tabId) ?: return false
+        val hit = safety.heuristic(url, tab.incognito) ?: return false
+        tabEvents.onSafetyWarning(tabId, hit)
+        return true
+    }
+
     override fun load(tabId: String, url: String) {
         unblock(tabId)
+        if (warnBeforeLoad(tabId, url)) return
         val entry = readyEntry(tabId)
         if (entry != null) {
             loadInView(entry, url)
@@ -539,6 +563,7 @@ class WebViewPool(
             textZoom = currentPageTextZoom()
         }
         applyAlgorithmicDarkening(view, pagesDark)
+        applySafeBrowsing(view, safety.enabled)
         // First-party cookies stay. A page cannot read cookies set by another site.
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.overScrollMode = View.OVER_SCROLL_NEVER
@@ -555,7 +580,9 @@ class WebViewPool(
             activityHost,
             tabs::load,
             shield,
-            documentStart,
+            documentStartSupported = documentStart,
+            safety = safety,
+            navigations = navigations,
         ) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
         }
@@ -596,11 +623,13 @@ class WebViewPool(
         entry.historyPending = step
         val url = historyStepUrl(list.currentIndex, list.size, { index -> list.getItemAtIndex(index)?.url }, step)
             ?: return
+        entry.client.onNavigate(url)
         entry.client.armCosmetic(entry.view, url)
     }
 
     private fun loadInView(entry: Entry, url: String) {
         entry.historyPending = 0
+        entry.client.onNavigate(url)
         entry.client.armCosmetic(entry.view, url)
         entry.view.loadUrl(url)
     }
@@ -608,7 +637,10 @@ class WebViewPool(
     private fun reloadInView(entry: Entry) {
         entry.historyPending = 0
         val url = tabs.state.value.tab(entry.tabId)?.url
-        if (url != null) entry.client.armCosmetic(entry.view, url)
+        if (url != null) {
+            entry.client.onNavigate(url)
+            entry.client.armCosmetic(entry.view, url)
+        }
         entry.view.reload()
     }
 
@@ -646,13 +678,13 @@ class WebViewPool(
             // Load the address the tab already has. A new navigation upgrades before it is stored
             // here, and an explicit HTTP choice must not be upgraded again when the WebView is recreated.
             val url = tabs.state.value.tab(entry.tabId)?.url
-            if (url != null && isWebUrl(url)) {
+            if (url != null && isWebUrl(url) && !warnBeforeLoad(entry.tabId, url)) {
                 loadInView(entry, url)
                 loadedFresh = true
             }
         }
         when (navigation) {
-            is Pending.Load -> loadInView(entry, navigation.url)
+            is Pending.Load -> if (!warnBeforeLoad(entry.tabId, navigation.url)) loadInView(entry, navigation.url)
             Pending.Reload -> if (restored && !loadedFresh) reloadInView(entry)
             Pending.Back -> if (entry.view.canGoBack()) {
                 armHistoryStep(entry, -1)

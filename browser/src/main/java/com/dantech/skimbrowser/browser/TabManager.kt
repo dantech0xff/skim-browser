@@ -20,6 +20,7 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -100,6 +101,8 @@ class TabManager(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
+    private val safety: SafetyGate = SafetyGate.Off,
+    private val navigations: TabNavigations = TabNavigations(),
 ) : TabsController, TabRestore {
 
     @Inject constructor(
@@ -114,10 +117,14 @@ class TabManager(
         scripts: PageScriptSource,
         engines: TabEngineSource,
         certificates: CertificateSessions,
+        safety: ProcessSafetyGate,
+        navigations: TabNavigations,
     ) : this(
         tabRepo, history, settings, incognito, stateStore, thumbnails, network, appScope, scripts, engines,
         certificates,
         restoreTimeoutMs = RESTORE_TIMEOUT_MS,
+        safety = safety,
+        navigations = navigations,
     )
 
     /** A close that can still be undone; [replacementId] is the tab the close made current. */
@@ -303,8 +310,33 @@ class TabManager(
         }
         val upgraded = httpsUpgrade(target)
         val actual = upgraded ?: target
+        val held = runtimeOf(tabId).safetyWarning
+        if (held is SafetyWarning.SafeBrowsing) {
+            safety.cancelSafeBrowsing(tabId)
+            if (!sameNavigation(held.url, actual)) navigations.refuse(tabId, held.url)
+        }
+        val warning = safety.heuristic(actual, tab.incognito)
+        if (warning != null) {
+            // The browsing screen is shown only once the tab has a URL. A new tab stores the
+            // address so the warning can be seen, and the WebView is not asked to open it.
+            if (tab.url == null) {
+                updateTab(tabId) { it.copy(url = actual, fromNewTabPage = true) }
+                persistTab(tabId)
+            }
+            updateRuntime(tabId) { it.copy(safetyWarning = warning, loadError = null, progress = null, find = null) }
+            return
+        }
+        navigations.begin(tabId, actual)
         updateTab(tabId) { it.copy(url = actual, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
-        updateRuntime(tabId) { it.copy(loadError = null, certificateWarning = null, find = null, httpFallback = if (upgraded != null) target else null) }
+        updateRuntime(tabId) {
+            it.copy(
+                loadError = null,
+                certificateWarning = null,
+                find = null,
+                safetyWarning = null,
+                httpFallback = if (upgraded != null) target else null,
+            )
+        }
         persistTab(tabId)
         val current = engine.value
         if (current != null) {
@@ -321,6 +353,7 @@ class TabManager(
         val http = runtimeOf(tabId).httpFallback ?: return
         if (!http.startsWith("http://", ignoreCase = true)) return
         openTab(tabId) ?: return
+        navigations.begin(tabId, http)
         updateTab(tabId) { it.copy(url = http) }
         updateRuntime(tabId) { it.copy(loadError = null, certificateWarning = null, find = null, httpFallback = null) }
         persistTab(tabId)
@@ -333,10 +366,65 @@ class TabManager(
         }
     }
 
+    @MainThread
+    override fun leaveUnsafePage(tabId: String) {
+        val tab = openTab(tabId) ?: return
+        val warning = runtimeOf(tabId).safetyWarning ?: return
+        val runtime = runtimeOf(tabId)
+        val committed = runtime.committedUrl
+        val onWarnedPage = committed != null && sameNavigation(committed, warning.url)
+        navigations.refuse(tabId, warning.url)
+        if (warning is SafetyWarning.SafeBrowsing) safety.cancelSafeBrowsing(tabId)
+        updateRuntime(tabId) { it.copy(safetyWarning = null) }
+        if (onWarnedPage) {
+            if (warning is SafetyWarning.Heuristic && runtime.canGoBack && goBack(tabId)) return
+            // Safe Browsing already asked the WebView to go back. A first page has nowhere to go.
+            if (warning is SafetyWarning.SafeBrowsing && runtime.canGoBack) return
+            returnToNewTabPage(tabId)
+            return
+        }
+        val storedWarning = committed == null && tab.url?.let { sameNavigation(it, warning.url) } == true
+        if (storedWarning) {
+            returnToNewTabPage(tabId)
+            return
+        }
+        if (committed != null && tab.url?.let { sameNavigation(it, committed) } != true) {
+            updateTab(tabId) { it.copy(url = committed) }
+            persistTab(tabId)
+        }
+    }
+
+    @MainThread
+    override fun proceedUnsafe(tabId: String) {
+        val tab = openTab(tabId) ?: return
+        val warning = runtimeOf(tabId).safetyWarning ?: return
+        updateRuntime(tabId) { it.copy(safetyWarning = null) }
+        when (warning) {
+            is SafetyWarning.SafeBrowsing -> {
+                val resumed = safety.proceedSafeBrowsing(tabId, warning.host, tab.incognito)
+                if (!resumed) load(tabId, warning.url)
+            }
+            is SafetyWarning.Heuristic -> {
+                safety.allowHeuristic(warning.host, tab.incognito)
+                load(tabId, warning.url)
+            }
+        }
+    }
+
+    @MainThread
+    override fun clearSafetyWarnings() {
+        _state.value.tabs.forEach { tab ->
+            if (runtimeOf(tab.id).safetyWarning != null) {
+                updateRuntime(tab.id) { it.copy(safetyWarning = null) }
+            }
+        }
+    }
+
     /** Back on the first page of a tab started from the New tab page: the tab shows it again. */
     @MainThread
     override fun returnToNewTabPage(tabId: String) {
         openTab(tabId) ?: return
+        navigations.stop(tabId)
         forgetPendingWork(tabId)
         // The URL goes first, so the state the WebView hands over while it is destroyed is not kept.
         updateTab(tabId) { it.copy(url = null, title = "", fromNewTabPage = false) }
@@ -356,6 +444,7 @@ class TabManager(
     @MainThread
     override fun goForward(tabId: String) {
         openTab(tabId) ?: return
+        if (runtimeOf(tabId).safetyWarning != null) return
         engine.value?.goForward(tabId)
     }
 
@@ -400,10 +489,11 @@ class TabManager(
     /** Reloads [tabId]; without an attached engine its WebView reloads when it is next created. */
     @MainThread
     override fun reload(tabId: String) {
-        openTab(tabId) ?: return
+        val tab = openTab(tabId) ?: return
         if (runtimeOf(tabId).certificateWarning != null) {
             updateRuntime(tabId) { it.copy(certificateWarning = null) }
         }
+        tab.url?.let { navigations.begin(tabId, it) }
         val current = engine.value
         if (current != null) {
             if (runtimeOf(tabId).loadError is LoadError.Crashed) updateRuntime(tabId) { it.copy(loadError = null) }
@@ -948,9 +1038,10 @@ class TabManager(
         override fun onPageStarted(tabId: String, url: String): Long {
             val tab = openTab(tabId) ?: return NO_LOAD
             val runtime = runtimeOf(tabId)
-            val warning = runtime.certificateWarning
+            val certificate = runtime.certificateWarning
             // The cancelled certificate load can still report a document start. That is not a new page.
-            if (warning != null && sameNavigation(warning.url, url)) return runtime.loadNonce
+            if (certificate != null && sameNavigation(certificate.url, url)) return runtime.loadNonce
+            if (!navigations.acceptStart(tabId, url)) return NO_LOAD
             val nonce = ++lastLoadNonce
             pageStartedSinceVisit += tabId
             historyTitleUpdates.remove(tabId)
@@ -994,6 +1085,7 @@ class TabManager(
         override fun onTitle(tabId: String, title: String) {
             val tab = openTab(tabId) ?: return
             if (runtimeOf(tabId).certificateWarning != null) return
+            if (!navigations.acceptTitle(tabId)) return
             // A page's title is shown in the tab grid and kept in history: no control or bidi
             // characters, which could make it read differently from what it is.
             val clean = title.toVisibleText().cutTo(Tab.MAX_TITLE_LENGTH)
@@ -1016,6 +1108,12 @@ class TabManager(
             val runtime = runtimeOf(tabId)
             // The certificate interstitial cancelled this navigation. The previous page is still showing.
             if (runtime.certificateWarning?.url?.let { sameNavigation(it, url) } == true) return
+            // The flagged address is not a page the person opened, and it must not replace the
+            // page Back to safety just restored.
+            if (runtime.safetyWarning?.url?.let { sameNavigation(it, url) } == true || !navigations.acceptVisit(tabId, url)) {
+                if (runtime.committedUrl?.let { sameNavigation(it, url) } == true) pageStartedSinceVisit.remove(tabId)
+                return
+            }
             shownBeforeStart.remove(tabId)
             val sameDocument = !pageStartedSinceVisit.remove(tabId)
             // A failed load commits an error page for its URL; that is no visit.
@@ -1050,6 +1148,7 @@ class TabManager(
 
         override fun onPageFinished(tabId: String, url: String) {
             openTab(tabId) ?: return
+            if (!navigations.matches(tabId, url)) return
             val runtime = updateRuntime(tabId) { it.copy(pageLoaded = true, progress = null) }
             _pageEvents.tryEmit(PageEvent.PageFinished(tabId, url, runtime.loadNonce))
             if (runtime.loadError == null && runtime.certificateWarning == null) checkReaderable(tabId, runtime.loadNonce)
@@ -1057,8 +1156,9 @@ class TabManager(
 
         override fun onLoadError(tabId: String, errorCode: Int, description: String?, url: String) {
             openTab(tabId) ?: return
-            val warning = runtimeOf(tabId).certificateWarning
-            if (warning != null && sameNavigation(warning.url, url)) return
+            val certificate = runtimeOf(tabId).certificateWarning
+            if (certificate != null && sameNavigation(certificate.url, url)) return
+            if (!navigations.matches(tabId, url)) return
             val error = loadErrorOf(errorCode, description, url, network.hasActiveNetwork)
             updateRuntime(tabId) { runtime ->
                 val fallback = runtime.httpFallback
@@ -1166,6 +1266,12 @@ class TabManager(
                     isSecure = if (keptUrl != null) isHttps(keptUrl) else it.isSecure,
                 )
             }
+        }
+
+        override fun onSafetyWarning(tabId: String, warning: SafetyWarning?) {
+            openTab(tabId) ?: return
+            if (warning is SafetyWarning.SafeBrowsing) navigations.noteThreat(tabId, warning.url)
+            updateRuntime(tabId) { it.copy(safetyWarning = warning, loadError = if (warning != null) null else it.loadError) }
         }
 
         override fun onWebViewDestroyed(tabId: String) {

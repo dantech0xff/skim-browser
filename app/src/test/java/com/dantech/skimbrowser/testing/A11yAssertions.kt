@@ -45,6 +45,10 @@ private fun problemsOf(node: SemanticsNode): List<String> = buildList {
 
     val density = node.layoutInfo.density
     val touch = node.touchBoundsInRoot
+    // A row below the fold of a scrolling list is not a target on this frame. Its size is checked
+    // when the list lays it out inside the screen.
+    val viewport = generateSequence(node) { it.parent }.last().boundsInRoot
+    if (!touch.overlaps(viewport)) return@buildList
     val minPx = with(density) { MinTouchTarget.toPx() }
     // Half a pixel of tolerance for bounds that land between pixels.
     // A row the lazy list has composed below the screen is reached by scrolling. Its clipped

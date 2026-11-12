@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateFault
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.classifyPhishing
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -210,6 +211,21 @@ class BrowsingViewModelTest {
 
         browsing.goForward()
         assertEquals(Call.GoForward(id), f.engine.calls.last())
+    }
+
+    @Test
+    fun aScamWarningDoesNotOfferForward() = runTest {
+        val (f, id) = page(PAGE)
+        val browsing = browsing(f, id)
+        val warning = classifyPhishing("https://paypai.com/")
+        check(warning != null)
+        f.manager.events.onSafetyWarning(id, warning)
+        f.engine.reportHistory(id, canGoBack = true, canGoForward = true)
+        runCurrent()
+
+        assertFalse(browsing.state.value.forwardEnabled)
+        browsing.goForward()
+        assertTrue(f.engine.calls.filterIsInstance<Call.GoForward>().isEmpty())
     }
 
     @Test

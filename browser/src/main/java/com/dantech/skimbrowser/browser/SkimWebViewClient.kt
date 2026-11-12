@@ -9,7 +9,6 @@ import android.util.Log
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
 import android.webkit.RenderProcessGoneDetail
-import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -17,10 +16,11 @@ import android.webkit.WebViewClient
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.certificate.certificateFault
-import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
+import androidx.webkit.SafeBrowsingResponseCompat
 import androidx.webkit.ScriptHandler
+import androidx.webkit.WebResourceErrorCompat
+import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewCompat
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
@@ -37,8 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * order the WebView calls them, decides where the page may navigate, and hands a WebView whose
  * renderer went away back to its pool.
  *
- * HTTP authentication and Safe Browsing keep the WebView's own handling. Safe Browsing shows its
- * interstitial.
+ * An invalid certificate is shown by Skim instead of the WebView interstitial. Safe Browsing is
+ * enabled on the WebView, and a hit is shown by Skim as well. HTTP authentication keeps the
+ * WebView's own handling.
  *
  * Once [detach]ed (the pool destroys the WebView), it reports nothing more and blocks navigation.
  */
@@ -58,11 +59,25 @@ class SkimWebViewClient(
     private val shield: ShieldChoices = ShieldChoices.AllowAll,
     /** True when this WebView supports [WebViewCompat.addDocumentStartJavaScript]. */
     private val documentStartSupported: Boolean = false,
+    private val safety: SafetyGate = SafetyGate.Off,
+    private val navigations: TabNavigations = TabNavigations(),
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
-) : WebViewClient() {
+) : WebViewClientCompat() {
 
     @Volatile private var detached = false
+    /** The load was stopped because Skim is showing its own warning. The error from stopping is ignored. */
+    private var stoppedForWarning = false
+    /** onPageStarted calls. A step back from a warning re-enters this method. */
+    private var pageStartDepth = 0
+    /** True while [history.pushState] is discarding a flagged forward entry. */
+    private var droppingForward = false
+    /** The next page start is the step back off the duplicate entry [droppingForward] added. */
+    private var undoForwardDrop = false
+    /** Main-frame Safe Browsing hits the person has not chosen to open. Forward must not return to them. */
+    private val forwardThreats = LinkedHashSet<String>()
+    /** The threat whose abort is still the warning on screen. Its visit and error are not a page. */
+    private var showingThreat: String? = null
     /** The page [onPageStarted] reported. A main-frame intercept alone does not change it. */
     @Volatile private var documentUrl: String? = null
     /** A main frame that has been fetched and has not started, failed, or been abandoned. */
@@ -84,9 +99,41 @@ class SkimWebViewClient(
     fun detach() {
         detached = true
         removeHideScript()
+        safety.cancelSafeBrowsing(tabId)
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+        pageStartDepth++
+        try {
+            onPageStartedInner(view, url)
+        } finally {
+            pageStartDepth--
+        }
+    }
+
+    private fun onPageStartedInner(view: WebView, url: String?) {
+        if (undoForwardDrop && url != null && safety.heuristic(url, incognito) == null && !isForwardThreat(url)) {
+            undoForwardDrop = false
+            return
+        }
+        // A start for some other navigation is ignored. Stopping here would abort the load
+        // the person just asked for, not only the refused document.
+        if (url != null && !navigations.acceptStart(tabId, url)) return
+        if (!detached && url != null) {
+            val hit = safety.heuristic(url, incognito)
+            if (hit != null) {
+                stoppedForWarning = true
+                view.stopLoading()
+                events.onSafetyWarning(tabId, hit)
+                // Step back now so the stopped document is not left on screen. The warning stays
+                // up over the previous page. With no history, the tab records this document and
+                // Back to safety leaves it.
+                if (view.canGoBack()) view.goBack() else events.onPageStarted(tabId, url)
+                return
+            }
+        }
+        // A nested start is the page goBack just restored. Keep dropping the flagged visit.
+        if (pageStartDepth == 1) stoppedForWarning = false
         val early = synchronized(documentGate) {
             val sameDocument = url != null && url == loadingUrl
             val carried = if (sameDocument) loadingBlocked.get() else 0
@@ -114,6 +161,7 @@ class SkimWebViewClient(
         if (detached) return null
         val url = request.url?.toString() ?: return null
         if (request.isForMainFrame) {
+            if (request.isRedirect) navigations.follow(tabId, url)
             noteMainFrame(url)
             shield.warmCosmetic()
             return null
@@ -126,8 +174,12 @@ class SkimWebViewClient(
 
     override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
         if (detached || url == null) return
+        if ((stoppedForWarning && safety.heuristic(url, incognito) != null) || isShowingThreat(url) || !navigations.acceptVisit(tabId, url)) {
+            reportNavigation(view)
+            return
+        }
         events.onVisitedHistory(tabId, url)
-        events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
+        reportNavigation(view)
     }
 
     override fun onPageCommitVisible(view: WebView, url: String) {
@@ -136,9 +188,12 @@ class SkimWebViewClient(
     }
 
     override fun onPageFinished(view: WebView, url: String?) {
+        // Stopping the flagged document reports a finish. The page behind the warning still finishes.
+        if (url != null && ((stoppedForWarning && safety.heuristic(url, incognito) != null) || isShowingThreat(url) || !navigations.matches(tabId, url))) return
         if (detached || url == null) return
+        dropFlaggedForwardEntry(view)
         events.onPageFinished(tabId, url)
-        events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
+        reportNavigation(view)
         (view as? SkimWebView)?.applyContentScrollPadding()
         injectHide(view, url)
     }
@@ -176,22 +231,48 @@ class SkimWebViewClient(
         )
     }
 
-    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
         // A failed image or frame leaves the page usable; only the page itself failing is an error.
         if (!request.isForMainFrame) return
+        // Safe Browsing reports this when a resource is refused. The page warning is separate,
+        // and a refused image or frame must not become a failed page.
+        if (error.errorCode == WebViewClient.ERROR_UNSAFE_RESOURCE) return
+        val failedUrl = request.url?.toString()
+        // stopLoading reports an error for the flagged document. A different page is a real failure.
+        if (failedUrl != null && (safety.heuristic(failedUrl, incognito) != null || isShowingThreat(failedUrl))) return
+        if (stoppedForWarning && failedUrl == null) return
+        if (failedUrl != null && !navigations.matches(tabId, failedUrl)) {
+            // A stale abort of an address already left must not drop the document now loading.
+            // The in-flight frame still has to be dropped, including when its URL is that frame.
+            if (loadingUrl != null && (failedUrl == loadingUrl || sameNavigation(loadingUrl!!, failedUrl))) abandonLoad()
+            return
+        }
         // A failed main frame did not become the page. The reported URL can be a redirect hop,
         // so the in-flight frame is dropped even when the strings differ.
         abandonLoad()
         if (detached) return
-        events.onLoadError(tabId, error.errorCode, error.description?.toString(), request.url.toString())
+        // The compat type says the description is present. A WebView can still pass null.
+        val description = error.description as CharSequence?
+        events.onLoadError(tabId, error.errorCode, description?.toString(), request.url.toString())
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         if (detached) return true
         // A frame inside the page navigates on its own; only the page's own navigation can leave it.
         if (!request.isForMainFrame) return false
+        val url = request.url?.toString()
+        if (url != null && request.isRedirect) navigations.follow(tabId, url)
+        if (url != null) {
+            val hit = safety.heuristic(url, incognito)
+            if (hit != null) {
+                abandonLoad()
+                events.onSafetyWarning(tabId, hit)
+                return true
+            }
+        }
         return when (val navigation = externalNavigation(request.url, request.hasGesture(), incognito, view.context.packageName)) {
             ExternalNav.InWebView -> {
+                if (url != null && !request.isRedirect) onNavigate(url)
                 armCosmetic(view, request.url.toString())
                 false
             }
@@ -204,6 +285,53 @@ class SkimWebViewClient(
                 launch(navigation)
                 true
             }
+        }
+    }
+
+    override fun onSafeBrowsingHit(
+        view: WebView,
+        request: WebResourceRequest,
+        threatType: Int,
+        callback: SafeBrowsingResponseCompat,
+    ) {
+        if (detached) {
+            callback.backToSafety(false)
+            return
+        }
+        if (!request.isForMainFrame) {
+            // Cancel the image, script, or frame. This is not the interstitial button, which
+            // leaves the page: the callback only aborts this resource, and Skim shows no warning.
+            callback.backToSafety(false)
+            return
+        }
+        val url = request.url?.toString().orEmpty()
+        val host = hostOf(url)
+        if (host == null || !navigations.matches(tabId, url)) {
+            callback.backToSafety(false)
+            return
+        }
+        val warning = safety.offerSafeBrowsing(
+            tabId = tabId,
+            url = url,
+            host = host,
+            threat = safeBrowsingThreat(threatType),
+            incognito = incognito,
+        ) { proceed ->
+            // false: do not send a separate "the person proceeded" report. The lookup already
+            // happened inside Android System WebView.
+            if (proceed) {
+                forwardThreats.removeAll { sameNavigation(it, url) }
+                if (isShowingThreat(url)) showingThreat = null
+                callback.proceed(false)
+            } else {
+                showingThreat = null
+                callback.backToSafety(false)
+            }
+        }
+        if (warning != null) {
+            forwardThreats.add(url)
+            showingThreat = url
+            events.onSafetyWarning(tabId, warning)
         }
     }
 
@@ -238,6 +366,62 @@ class SkimWebViewClient(
      * A new main-frame fetch is a new attempt, including a retry of a URL whose certificate was
      * just refused. Extra SSL callbacks for that same attempt do not intercept the main frame again.
      */
+    /** Reports back/forward, hiding Forward when it would open a flagged page. */
+    private fun reportNavigation(view: WebView) {
+        dropFlaggedForwardEntry(view)
+        events.onNavigationState(tabId, view.canGoBack(), view.canGoForward() && flaggedForwardUrl(view) == null)
+    }
+
+    /**
+     * goBack leaves the flagged document as the forward entry, and a later Forward can paint it
+     * before [onPageStarted] runs. pushState discards forward entries. It also adds a copy of the
+     * current page, and the callback steps back onto the original entry.
+     */
+    private fun dropFlaggedForwardEntry(view: WebView) {
+        if (droppingForward || detached || flaggedForwardUrl(view) == null) return
+        val current = view.url
+        droppingForward = true
+        try {
+            view.evaluateJavascript(DROP_FORWARD_HISTORY) { value ->
+                droppingForward = false
+                if (value?.contains("ok") != true) return@evaluateJavascript
+                if (detached || view.url != current || !view.canGoBack()) return@evaluateJavascript
+                undoForwardDrop = true
+                view.goBack()
+            }
+        } catch (e: RuntimeException) {
+            droppingForward = false
+            Log.w(TAG, "The flagged forward entry stayed in history", e)
+        }
+    }
+
+    private fun flaggedForwardUrl(view: WebView): String? {
+        val list = view.copyBackForwardList()
+        val next = list.currentIndex + 1
+        if (next < 0 || next >= list.size) return null
+        val url = list.getItemAtIndex(next)?.url ?: return null
+        return url.takeIf { safety.heuristic(it, incognito) != null || isForwardThreat(it) }
+    }
+
+    /** [url] is the navigation the person or the app just started. */
+    fun onNavigate(url: String) {
+        navigations.prepare(tabId, url)
+        showingThreat = null
+        forwardThreats.removeAll { sameNavigation(it, url) }
+    }
+
+    /** Warnings are off. A threat that was paused loads; every other tab keeps its page. */
+    fun onWarningsDisabled() {
+        val threat = showingThreat
+        showingThreat = null
+        forwardThreats.clear()
+        if (threat != null) navigations.begin(tabId, threat) else navigations.bump(tabId)
+    }
+
+    private fun isShowingThreat(url: String): Boolean = showingThreat?.let { sameNavigation(it, url) } == true
+
+    private fun isForwardThreat(url: String): Boolean = forwardThreats.any { sameNavigation(it, url) }
+
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
             loadingUrl = url
@@ -414,6 +598,10 @@ class SkimWebViewClient(
     private companion object {
         const val TAG = "SkimWebViewClient"
         private val ALL_ORIGINS = setOf("*")
+
+        /** Discards forward history. The callback then steps back off the copy this adds. */
+        const val DROP_FORWARD_HISTORY =
+            "(function(){try{history.pushState(history.state,'',location.href);return 'ok'}catch(e){return 'no'}})()"
 
         fun emptyResponse(): WebResourceResponse = WebResourceResponse(
             "text/plain",

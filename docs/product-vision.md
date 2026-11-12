@@ -20,6 +20,10 @@ Each screen observes a ViewModel. Hilt constructs dependencies. The `domain` mod
 
 Pages render in Android WebView. This version does not add GeckoView, an embedded Chromium, or any other page engine.
 
+## Scam warnings stay on the device
+
+Scam and phishing warnings are on by default. One layer is Android System WebView Safe Browsing, which Google provides through the WebView. The other layer is a check in the app for deceptive addresses. Skim does not receive those addresses and does not send them to a Skim server. The person can turn both layers off under Privacy & security. Proceeding on a warning allows that host only until they leave Skim.
+
 ## Smooth Compose
 
 Jetpack Compose has to stay smooth.

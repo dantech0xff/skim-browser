@@ -81,9 +81,11 @@ The Downloads screen measured 3,807,014 bytes, 22,496 above 3,784,518. Compresse
 
 Cosmetic rules then added `assets/shield/cosmetic.txt`, 211,572 compressed bytes and 785,374 raw (13,636 generic hides, 13,715 domain hides, 658 exceptions). CI measured that change as 227,956 bytes on the pre-Downloads baseline (4,012,474 minus 3,784,518). Added to the Downloads file, that is 3,807,014 + 227,956 = 4,034,970.
 
-The certificate interstitial, measured on that cosmetic APK, is 4,039,430 bytes, 4,460 above 4,034,970. The added bytes are the warning page, the in-memory allowlist, and the WebView certificate handling. No library was added. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new baseline is 4,039,430.
+The certificate interstitial, measured on that cosmetic APK, is 4,039,430 bytes, 4,460 above 4,034,970. The added bytes are the warning page, the in-memory allowlist, and the WebView certificate handling. No library was added. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192.
 
 A page hides at most 2,300 selectors. The shortest 2,000 are generic rules, and the rest are the rules for that host. `CosmeticFiltersAssetTest` parsed the shipped file in 33 ms and built the finance.yahoo.com sheet (2,084 rules) in about 1 ms. That was one run. The time is the single thread reading each line and appending the sheet. The test checks that known selectors are present, so the timed work ran. The read starts on a background thread when the first WebView is created.
+
+Scam and phishing warnings on top of the certificate interstitial measured 4,062,758 bytes, 23,328 above 4,039,430. The dex is the on-device host check and the warning page. The resource table grew because each new string is indexed once per configuration. Safe Browsing itself is Android System WebView. `maxGrowthBytes` stays 8,192. The new baseline is 4,062,758.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 

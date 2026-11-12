@@ -51,6 +51,7 @@ fun SkimApp(
     retryDownload: (DownloadRetry) -> Unit = {},
     onPagesDark: (Boolean) -> Unit = {},
     onPageTextZoom: (Int?) -> Unit = {},
+    onScamWarnings: (Boolean) -> Unit = {},
     viewModel: SkimAppViewModel = hiltViewModel(),
 ) {
     // The view model outlives this window; its navigator reaches the window only while it is composed.
@@ -63,6 +64,9 @@ fun SkimApp(
     LaunchedEffect(pagesDark) { onPagesDark(pagesDark) }
     LaunchedEffect(state.started, state.pageTextZoomPercent) {
         if (state.started) onPageTextZoom(state.pageTextZoomPercent)
+    }
+    LaunchedEffect(state.started, state.scamWarnings) {
+        if (state.started) onScamWarnings(state.scamWarnings)
     }
     if (!state.started) {
         // Until the settings and tabs are read: the empty window, in the app's colors.
