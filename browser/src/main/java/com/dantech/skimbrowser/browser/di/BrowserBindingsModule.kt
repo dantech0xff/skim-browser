@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser.di
 
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.downloads.DownloadActions
+import com.dantech.skimbrowser.domain.certificate.CertificateSessions
 import com.dantech.skimbrowser.browser.BrowsingDataCleaner
 import com.dantech.skimbrowser.browser.ConnectivityNetworkMonitor
 import com.dantech.skimbrowser.browser.IncognitoSession
@@ -28,6 +29,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 /** Each class is the singleton it is scoped to, so every interface here is the same object. */
 @Module
@@ -50,5 +52,7 @@ internal abstract class BrowserBindingsModule {
     companion object {
         /** Where the WebView layer reports what happens in the tabs. */
         @Provides fun tabEvents(tabs: TabManager): TabEventSink = tabs.events
+
+        @Provides @Singleton fun certificateSessions(): CertificateSessions = CertificateSessions()
     }
 }

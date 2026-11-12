@@ -107,7 +107,7 @@ class SkimHistoryViewModelTest {
         chats.observeAll(null).first { it.isEmpty() }
         stores.forEach { it.clear() }
 
-        val token = (snackbar.current.value?.action as SnackbarAction.Undo).token
+        val token = (snackbar.current.first { it?.action is SnackbarAction.Undo }!!.action as SnackbarAction.Undo).token
         undo.undo(token)
         val restored = chats.observeAll(null).first { it.isNotEmpty() }
         assertEquals(id, restored.single().chat.id)
@@ -128,7 +128,7 @@ class SkimHistoryViewModelTest {
 
         model.remove(id)
         chats.observeAll(null).first { it.isEmpty() }
-        val token = (snackbar.current.value?.action as SnackbarAction.Undo).token
+        val token = (snackbar.current.first { it?.action is SnackbarAction.Undo }!!.action as SnackbarAction.Undo).token
         eraser.clearSkimHistory()
         undo.undo(token)
 

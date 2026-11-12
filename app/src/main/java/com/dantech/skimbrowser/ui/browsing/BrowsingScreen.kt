@@ -65,6 +65,8 @@ data class BrowsingActions(
     val onAskPage: () -> Unit,
     /** Opens the http page when https, tried first, could not connect. */
     val onOpenHttp: (() -> Unit)? = null,
+    val onLeaveUnsafeCertificate: () -> Unit = {},
+    val onProceedDespiteCertificate: () -> Unit = {},
 )
 
 /**
@@ -96,7 +98,8 @@ fun BrowsingScreen(
     onSwipeToTab: (String) -> Unit = {},
 ) {
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    val shrink = chromeCollapsed && state.find == null && state.loadError == null && !imeOpen
+    val covered = state.loadError != null || state.certificateWarning != null
+    val shrink = chromeCollapsed && state.find == null && !covered && !imeOpen
     val scale by animateFloatAsState(
         targetValue = if (shrink) CollapsedChromeScale else 1f,
         animationSpec = if (rememberReducedMotion()) snap() else spring(stiffness = Spring.StiffnessMediumLow),
@@ -117,24 +120,28 @@ fun BrowsingScreen(
                 ),
         ) {
             val error = state.loadError
+            val warning = state.certificateWarning
             val pull = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = actions.onRefresh,
                 // While the error covers it, the page is out of reach for accessibility too.
-                modifier = Modifier.fillMaxSize().then(if (error != null) Modifier.clearAndSetSemantics {} else Modifier),
+                modifier = Modifier.fillMaxSize().then(if (error != null || warning != null) Modifier.clearAndSetSemantics {} else Modifier),
                 state = pull,
                 indicator = { RefreshIndicator(pull, state.refreshing) },
-                enabled = error == null,
+                enabled = error == null && warning == null,
             ) {
                 page()
             }
-            if (error != null) {
+            if (warning != null || error != null) {
                 LoadErrorContent(
-                    error,
+                    error = error,
                     onTryAgain = actions.onTryAgain,
                     onInternetSettings = actions.onInternetSettings,
                     onOpenHttp = actions.onOpenHttp,
+                    warning = warning,
+                    onLeaveUnsafeCertificate = actions.onLeaveUnsafeCertificate,
+                    onProceedDespiteCertificate = actions.onProceedDespiteCertificate,
                 )
             }
         }
@@ -159,7 +166,7 @@ fun BrowsingScreen(
                 previous = previousTab,
                 next = nextTab,
                 groups = groups,
-                enabled = state.find == null && state.loadError == null,
+                enabled = state.find == null && state.loadError == null && state.certificateWarning == null,
                 onSelect = onSwipeToTab,
                 modifier = barModifier,
             ) { bar ->

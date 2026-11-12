@@ -77,7 +77,13 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
     }
     var chromeCollapsed by remember(tab.id) { mutableStateOf(false) }
 
+    val leaveUnsafeCertificate = {
+        if (browsing.leaveUnsafeCertificate()) {
+            browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
+        }
+    }
     BackHandler(enabled = state.find != null) { browsing.closeFind() }
+    BackHandler(enabled = state.certificateWarning != null, onBack = leaveUnsafeCertificate)
     LaunchedEffect(shell, tab.id) {
         shell.tabManager().hitTargets.collect { (tabId, target) ->
             if (tabId == tab.id) navigator.openLinkOptions(tab.id, target)
@@ -101,12 +107,17 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onFindPrevious = browsing::findPrevious,
             onFindNext = browsing::findNext,
             onCloseFind = browsing::closeFind,
-            onBack = { browserBack(tab, runtime).perform(tab, tabs, navigator, activity) },
+            onBack = {
+                if (state.certificateWarning != null) leaveUnsafeCertificate()
+                else browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
+            },
             onForward = browsing::goForward,
             onTabs = { navigator.openTabs(tab.incognito) },
             onMore = { navigator.openMoreMenu(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
+            onLeaveUnsafeCertificate = leaveUnsafeCertificate,
+            onProceedDespiteCertificate = browsing::proceedDespiteCertificate,
         ),
         chromeCollapsed = chromeCollapsed,
         previousTab = openTabs.adjacentTab(forward = false),

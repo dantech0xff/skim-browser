@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
@@ -39,6 +41,10 @@ class RecordingEvents : TabEventSink {
         data class WebViewDestroyed(val tabId: String) : Event
 
         data class ShieldCount(val tabId: String, val count: Int) : Event
+
+        data class CertificateActionAsked(val tabId: String, val host: String, val fingerprint: String) : Event
+
+        data class CertificateError(val tabId: String, val warning: CertificateWarning) : Event
     }
 
     val events = mutableListOf<Event>()
@@ -48,6 +54,8 @@ class RecordingEvents : TabEventSink {
 
     /** What [onPopupRequested] answers: the popup tab's id, or null to refuse the window. */
     var popupTabId: String? = "popup-tab"
+
+    var certificateDecision = CertificateAction.Cancel
 
     inline fun <reified T : Event> eventsOf(): List<T> = events.filterIsInstance<T>()
 
@@ -112,5 +120,14 @@ class RecordingEvents : TabEventSink {
 
     override fun onShieldCount(tabId: String, count: Int) {
         events += Event.ShieldCount(tabId, count)
+    }
+
+    override fun certificateAction(tabId: String, host: String, fingerprint: String): CertificateAction {
+        events += Event.CertificateActionAsked(tabId, host, fingerprint)
+        return certificateDecision
+    }
+
+    override fun onCertificateError(tabId: String, warning: CertificateWarning) {
+        events += Event.CertificateError(tabId, warning)
     }
 }

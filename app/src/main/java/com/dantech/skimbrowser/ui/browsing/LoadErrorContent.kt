@@ -20,6 +20,10 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -32,6 +36,8 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.ui.components.ShapeArt
 import com.dantech.skimbrowser.ui.components.SkimButton
@@ -47,25 +53,33 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
  * (Cookie12Sided, wifi_off, with Internet settings) and This site is taking too long (Clover8Leaf,
  * schedule); a page whose renderer crashed too often shows This page stopped working (SoftBurst,
  * error). Each has the 128 dp art in primaryContainer, the title, the body naming the site, Try
- * again, and the error's code in bodySmall.
+ * again, and the error's code in bodySmall. A certificate refusal uses the same page: the host, one
+ * sentence for the primary error, Back to safety, and Proceed anyway under Advanced.
  *
  * The content is centered in the screen, clear of the status bar and the bottom cluster, and scrolls
  * when the screen is too short for it. It is opaque and takes every touch, so the page below gets none.
  *
  * @param onInternetSettings opens Android's Internet panel; only No internet offers it.
+ * @param warning when set, this is the certificate interstitial instead of [error].
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadErrorContent(
-    error: LoadError,
+    error: LoadError?,
     onTryAgain: () -> Unit,
     onInternetSettings: () -> Unit,
     onOpenHttp: (() -> Unit)? = null,
+    warning: CertificateWarning? = null,
+    onLeaveUnsafeCertificate: () -> Unit = {},
+    onProceedDespiteCertificate: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
-    val look = errorLookOf(error)
-    val site = pageAddressOf(error.url)
+    val certificate = warning
+    val look = if (certificate == null) errorLookOf(error!!) else certificateLook(certificate.fault)
+    val site = if (certificate == null) pageAddressOf(error!!.url) else certificate.host
+    var advanced by remember(certificate) { mutableStateOf(false) }
     BoxWithConstraints(
         modifier
             .fillMaxSize()
@@ -103,8 +117,11 @@ fun LoadErrorContent(
                     textAlign = TextAlign.Center,
                     style = typography.headlineMediumEmphasized.copy(lineBreak = LineBreak.Heading),
                 )
+                if (certificate != null) {
+                    Text(site, color = colors.onSurface, textAlign = TextAlign.Center, style = typography.titleMedium)
+                }
                 Text(
-                    text = if (look.bodyNamesSite) stringResource(look.body, site) else stringResource(look.body),
+                    text = if (certificate != null || !look.bodyNamesSite) stringResource(look.body) else stringResource(look.body, site),
                     color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     style = typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
@@ -115,13 +132,30 @@ fun LoadErrorContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SkimButton(
-                    text = stringResource(R.string.action_try_again),
-                    onClick = onTryAgain,
+                    text = stringResource(if (certificate != null) R.string.certificate_back_to_safety else R.string.action_try_again),
+                    onClick = if (certificate != null) onLeaveUnsafeCertificate else onTryAgain,
                     modifier = Modifier.fillMaxWidth(),
                     size = SkimButtonSize.M,
-                    icon = R.drawable.ic_refresh,
+                    icon = if (certificate != null) R.drawable.ic_arrow_back else R.drawable.ic_refresh,
                 )
-                if (onOpenHttp != null) {
+                if (certificate != null) {
+                    SkimButton(
+                        text = stringResource(R.string.certificate_advanced),
+                        onClick = { advanced = !advanced },
+                        modifier = Modifier.fillMaxWidth(),
+                        size = SkimButtonSize.M,
+                        style = SkimButtonStyle.Text,
+                    )
+                    if (advanced) {
+                        SkimButton(
+                            text = stringResource(R.string.certificate_proceed),
+                            onClick = onProceedDespiteCertificate,
+                            modifier = Modifier.fillMaxWidth(),
+                            size = SkimButtonSize.M,
+                            style = SkimButtonStyle.Tonal,
+                        )
+                    }
+                } else if (onOpenHttp != null) {
                     SkimButton(
                         text = stringResource(R.string.error_open_http),
                         onClick = onOpenHttp,
@@ -131,7 +165,7 @@ fun LoadErrorContent(
                         icon = R.drawable.ic_public,
                     )
                 }
-                if (error is LoadError.NoInternet) {
+                if (certificate == null && error is LoadError.NoInternet) {
                     SkimButton(
                         text = stringResource(R.string.error_internet_settings),
                         onClick = onInternetSettings,
@@ -142,7 +176,7 @@ fun LoadErrorContent(
                     )
                 }
             }
-            Text(error.codeName, color = colors.onSurfaceVariant, style = typography.bodySmall)
+            if (certificate == null) Text(error!!.codeName, color = colors.onSurfaceVariant, style = typography.bodySmall)
         }
     }
 }
@@ -156,6 +190,25 @@ internal class ErrorLook(
     /** The body names the site (every state but No internet). */
     val bodyNamesSite: Boolean,
 )
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+internal fun certificateLook(fault: CertificateFault): ErrorLook = ErrorLook(
+    MaterialShapes.SoftBurst,
+    R.drawable.ic_lock,
+    R.string.certificate_error_title,
+    certificateExplanation(fault),
+    bodyNamesSite = false,
+)
+
+@StringRes
+internal fun certificateExplanation(fault: CertificateFault): Int = when (fault) {
+    CertificateFault.NotYetValid -> R.string.certificate_error_not_yet_valid
+    CertificateFault.Expired -> R.string.certificate_error_expired
+    CertificateFault.HostnameMismatch -> R.string.certificate_error_hostname
+    CertificateFault.Untrusted -> R.string.certificate_error_untrusted
+    CertificateFault.DateInvalid -> R.string.certificate_error_date
+    CertificateFault.Invalid -> R.string.certificate_error_invalid
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun errorLookOf(error: LoadError): ErrorLook = when (error) {

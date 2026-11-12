@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
 import android.os.Bundle
@@ -214,6 +216,10 @@ class FakeTabEngine(
         override fun onWebViewDestroyed(tabId: String) = Unit
 
         override fun onShieldCount(tabId: String, count: Int) = Unit
+
+        override fun certificateAction(tabId: String, host: String, fingerprint: String) = CertificateAction.Cancel
+
+        override fun onCertificateError(tabId: String, warning: CertificateWarning) = Unit
     }
 
     companion object {

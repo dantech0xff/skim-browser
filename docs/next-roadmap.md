@@ -107,4 +107,3 @@ Each unit ships on its own. None of them add a library. Size is an estimate agai
 
 - An in-app Downloads screen. `design/README.md` lists it as an open decision. The system Downloads UI already receives normal-tab files.
 - Web notifications. They need a permission prompt that does not exist.
-- A certificate interstitial with a way to continue. That is a security decision. The WebView's own handling stays.

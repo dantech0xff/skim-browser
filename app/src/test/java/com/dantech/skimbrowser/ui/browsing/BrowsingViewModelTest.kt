@@ -10,6 +10,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -506,6 +509,180 @@ class BrowsingViewModelTest {
         assertTrue(browsing.state.value.loadError is LoadError.NoInternet)
     }
 
+    @Test
+    fun aCertificateErrorShowsTheHostUntilThePersonGoesBackToSafety() = runTest {
+        val (f, id) = page(PAGE)
+        val browsing = browsing(f, id)
+        f.manager.find(id, "")
+        runCurrent()
+
+        f.manager.load(id, BAD)
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        val state = browsing.state.value
+        assertEquals("bad.example", state.address)
+        assertEquals(SiteIndicator.Error, state.indicator)
+        assertEquals(CertificateFault.Untrusted, state.certificateWarning?.fault)
+        assertNull(state.loadError)
+        assertNull(state.find)
+        assertEquals(AiFabMode.UnavailableUntilLoaded, state.aiFab)
+
+        f.manager.events.onLoadError(id, WebViewClient.ERROR_FAILED_SSL_HANDSHAKE, "net::ERR_CERT_AUTHORITY_INVALID", BAD)
+        f.manager.events.onVisitedHistory(id, BAD)
+        runCurrent()
+        assertNull(browsing.state.value.loadError)
+        assertEquals(PAGE, f.manager.runtime(id).value.committedUrl)
+
+        browsing.leaveUnsafeCertificate()
+        runCurrent()
+        assertNull(browsing.state.value.certificateWarning)
+        assertEquals(PAGE, f.tab(id)?.url)
+        assertEquals("daylightjournal.com", browsing.state.value.address)
+        assertTrue(f.engine.calls.none { it is Call.GoBack })
+    }
+
+    @Test
+    fun proceedAnywayAllowsThatCertificateForTheTabKindAndLoadsItAgain() = runTest {
+        val f = fixture()
+        val normal = f.manager.newTab(incognito = false, url = PAGE)
+        val privateTab = f.manager.newTab(incognito = true, url = PAGE)
+        f.engine.openPage(normal, PAGE)
+        f.engine.openPage(privateTab, PAGE)
+        runCurrent()
+        f.manager.events.onCertificateError(privateTab, certificateWarning())
+        runCurrent()
+
+        browsing(f, privateTab).proceedDespiteCertificate()
+        runCurrent()
+
+        assertNull(f.manager.runtime(privateTab).value.certificateWarning)
+        assertEquals(CertificateAction.Proceed, f.manager.events.certificateAction(privateTab, "bad.example", FINGERPRINT))
+        assertEquals(CertificateAction.Cancel, f.manager.events.certificateAction(normal, "bad.example", FINGERPRINT))
+        assertEquals(BAD, f.engine.calls.filterIsInstance<Call.Load>().last { it.tabId == privateTab }.url)
+
+        val token = f.manager.close(listOf(privateTab))
+        f.manager.finalizeClose(token)
+        runCurrent()
+        val again = f.manager.newTab(incognito = true, url = PAGE)
+        assertEquals(CertificateAction.Cancel, f.manager.events.certificateAction(again, "bad.example", FINGERPRINT))
+    }
+
+    @Test
+    fun backToSafetyOnTheFirstPageReturnsToTheNewTabPage() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = BAD)
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertFalse(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertNull(f.tab(id)?.url)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun backToSafetyOnALinkFromAnotherAppLeavesTheTabForTheScreenToClose() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = BAD, openedByExternalApp = true)
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertTrue(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertTrue(f.tab(id)?.openedByExternalApp == true)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun backToSafetyOnATabOpenedForAScreenLeavesTheTabForTheScreenToClose() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = BAD, closeOnBack = true)
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertTrue(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertTrue(f.tab(id)?.closeOnBack == true)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun backToSafetyKeepsThePageThatWasShowingWhenTheCertificateLoadStarted() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE, openedByExternalApp = true)
+        f.engine.openPage(id, PAGE)
+        runCurrent()
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+        assertEquals(PAGE, f.manager.runtime(id).value.committedUrl)
+        assertEquals(PAGE, f.tab(id)?.url)
+
+        assertFalse(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertTrue(f.engine.calls.none { it == Call.GoBack(id) })
+        assertEquals(PAGE, f.tab(id)?.url)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun aPageStartForTheFailedCertificateDoesNotHideTheInterstitial() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        f.manager.events.onPageStarted(id, BAD)
+        runCurrent()
+
+        assertEquals(CertificateFault.Untrusted, f.manager.runtime(id).value.certificateWarning?.fault)
+        assertEquals(PAGE, f.manager.runtime(id).value.committedUrl)
+        assertEquals(PAGE, f.tab(id)?.url)
+        assertEquals("Heat pumps", f.tab(id)?.title)
+    }
+
+    @Test
+    fun leavingThePageDropsTheCertificateSnapshot() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.returnToNewTabPage(id)
+        runCurrent()
+
+        f.manager.load(id, BAD)
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertEquals(BAD, f.manager.runtime(id).value.committedUrl)
+    }
+
+    @Test
+    fun aTitleForTheFailedCertificateDoesNotReplaceTheShowingPage() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        f.manager.events.onTitle(id, "Not private")
+        runCurrent()
+
+        assertEquals("Heat pumps", f.tab(id)?.title)
+    }
+
     // Helpers
 
     private fun TestScope.fixture(): TabManagerFixture {
@@ -559,5 +736,14 @@ class BrowsingViewModelTest {
         const val PAGE = "https://daylightjournal.com/energy/heat-pumps-cold"
         const val OTHER_PAGE = "https://daylightjournal.com/energy/batteries"
         const val ERROR_PAGE = "https://nightbus-kansai.jp/timetable"
+        const val BAD = "https://bad.example/login"
+        const val FINGERPRINT = "abc123"
+
+        fun certificateWarning() = CertificateWarning(
+            url = BAD,
+            host = "bad.example",
+            fingerprint = FINGERPRINT,
+            fault = CertificateFault.Untrusted,
+        )
     }
 }

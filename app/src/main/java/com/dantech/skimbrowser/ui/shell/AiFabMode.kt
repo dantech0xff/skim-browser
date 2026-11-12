@@ -23,7 +23,7 @@ enum class AiFabMode {
 /** The AI FAB of [tab] with its page's [runtime]: off in incognito and while the page failed to load. */
 fun aiFabMode(tab: Tab, runtime: TabRuntime): AiFabMode = when {
     tab.incognito -> AiFabMode.OffInIncognito
-    runtime.loadError != null -> AiFabMode.UnavailableUntilLoaded
+    runtime.loadError != null || runtime.certificateWarning != null -> AiFabMode.UnavailableUntilLoaded
     else -> AiFabMode.Enabled
 }
 

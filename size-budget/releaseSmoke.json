@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
   "variant": "releaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4034970,
+  "fileSizeBytes": 4039430,
   "downloadSizeBytes": 2628238,
   "maxGrowthBytes": 8192,
   "definedMethods": 23214,
   "referencedMethods": 26549,
   "dexFiles": 1,
-  "notes": "Downloads screen baseline was 3807014. Cosmetic rules measured 227956 on CI against the pre-Downloads file (4012474 minus 3784518). This baseline is 3807014 plus 227956, which is 4034970. assets/shield/cosmetic.txt is 211572 compressed bytes of that. Download size was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Cosmetic rules baseline was 4034970. The certificate interstitial, measured on that APK, is 4039430, 4460 above 4034970. The added bytes are the warning page, the in-memory allowlist, and the WebView certificate handling. No library was added. Download size and method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

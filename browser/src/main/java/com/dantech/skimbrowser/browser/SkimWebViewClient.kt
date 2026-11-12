@@ -6,12 +6,19 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.net.http.SslError
+import android.webkit.SslErrorHandler
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.certificate.certificateFault
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
@@ -30,8 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * order the WebView calls them, decides where the page may navigate, and hands a WebView whose
  * renderer went away back to its pool.
  *
- * SSL errors, HTTP authentication and Safe Browsing keep the WebView's own handling: an invalid
- * certificate cancels the load, and Safe Browsing shows its interstitial.
+ * HTTP authentication and Safe Browsing keep the WebView's own handling. Safe Browsing shows its
+ * interstitial.
  *
  * Once [detach]ed (the pool destroys the WebView), it reports nothing more and blocks navigation.
  */
@@ -60,6 +67,8 @@ class SkimWebViewClient(
     @Volatile private var documentUrl: String? = null
     /** A main frame that has been fetched and has not started, failed, or been abandoned. */
     @Volatile private var loadingUrl: String? = null
+    /** A page certificate already cancelled. Other URLs stay subresources until a document starts. */
+    private var refusedPageUrl: String? = null
     private val blockedCount = AtomicInteger()
     private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
@@ -84,6 +93,7 @@ class SkimWebViewClient(
             val carriedHosts = if (carriesCollapse(url, loadingUrl)) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
             documentUrl = url
             loadingUrl = null
+            refusedPageUrl = null
             loadingBlocked.set(0)
             loadingCollapsed.clear()
             blockedCount.set(carried)
@@ -133,6 +143,39 @@ class SkimWebViewClient(
         injectHide(view, url)
     }
 
+    override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+        if (detached) {
+            handler.cancel()
+            return
+        }
+        val url = error.url?.takeIf { it.isNotBlank() }
+        val certificate = error.certificate
+        val host = url?.let { hostOf(it) }
+        if (url == null || certificate == null || host == null) {
+            handler.cancel()
+            return
+        }
+        val fingerprint = certificateFingerprintOf(certificate)
+        if (events.certificateAction(tabId, host, fingerprint) == CertificateAction.Proceed) {
+            handler.proceed()
+            return
+        }
+        handler.cancel()
+        if (!isPageCertificate(url)) return
+        val repeat = synchronized(documentGate) {
+            val repeat = refusedPageUrl?.let { sameNavigation(it, url) } == true
+            refusedPageUrl = url
+            repeat
+        }
+        // Cancel often never reaches onReceivedError, so the in-flight frame is dropped here.
+        abandonLoad()
+        if (repeat) return
+        events.onCertificateError(
+            tabId,
+            CertificateWarning(url, host, fingerprint, certificateFault(error.primaryError)),
+        )
+    }
+
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         // A failed image or frame leaves the page usable; only the page itself failing is an error.
         if (!request.isForMainFrame) return
@@ -175,15 +218,32 @@ class SkimWebViewClient(
     }
 
     /**
+     * True when [url] is the page being loaded, the page already refused, or the page showing
+     * when nothing else is in flight. Before any of those, the first error is the page. A
+     * different URL is a subresource and stays off the interstitial.
+     */
+    private fun isPageCertificate(url: String): Boolean {
+        val (pending, shown, refused) = synchronized(documentGate) { Triple(loadingUrl, documentUrl, refusedPageUrl) }
+        if (pending != null) return sameNavigation(pending, url)
+        if (refused != null) return sameNavigation(refused, url)
+        if (shown == null) return true
+        return sameNavigation(shown, url)
+    }
+
+    /**
      * [url] was intercepted as a main frame and has not started. A reload intercepts the same URL
      * again, so that request is a new in-flight document. [onPageStarted] carries its blocked
      * count only when the URL matches, and a different page still starts at zero.
+     *
+     * A new main-frame fetch is a new attempt, including a retry of a URL whose certificate was
+     * just refused. Extra SSL callbacks for that same attempt do not intercept the main frame again.
      */
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
             loadingUrl = url
             loadingBlocked.set(0)
             loadingCollapsed.clear()
+            refusedPageUrl = null
         }
     }
 

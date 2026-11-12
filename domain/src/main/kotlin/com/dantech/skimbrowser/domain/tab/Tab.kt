@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.domain.tab
 
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -67,7 +68,7 @@ data class TabsState(
 
 /**
  * The live state of a tab's page, reported by its WebView. Nothing here is kept across process
- * death or after the WebView is destroyed, except the navigation state and the last error.
+ * death. Navigation, the last error, and [certificateWarning] stay after the WebView is destroyed.
  */
 data class TabRuntime(
     /** Load progress from 0 to 1 while a page loads; null when nothing is loading. */
@@ -77,6 +78,7 @@ data class TabRuntime(
     /** True when the committed page was loaded over https. */
     val isSecure: Boolean = false,
     val loadError: LoadError? = null,
+    val certificateWarning: CertificateWarning? = null,
     /** The http URL replaced by https for this load. Offered again when that https page cannot connect. */
     val httpFallback: String? = null,
     /** True when the page looks like an article Reader view can show. */

@@ -41,6 +41,9 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.unit.Velocity
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.setSkimContent
@@ -275,6 +278,43 @@ class BrowsingScreenTest {
         composeRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate)).assertExists()
     }
 
+    @Test
+    fun aCertificateWarningHidesProceedUntilAdvanced() {
+        state = Loaded.copy(
+            address = "bad.example",
+            indicator = SiteIndicator.Error,
+            readerAvailable = false,
+            aiFab = AiFabMode.UnavailableUntilLoaded,
+            certificateWarning = CertificateWarning(
+                url = "https://bad.example/login",
+                host = "bad.example",
+                fingerprint = "abc",
+                fault = CertificateFault.Expired,
+            ),
+        )
+        show()
+
+        composeRule.onNodeWithText("Your connection is not private").assertExists()
+        composeRule.onNodeWithText("The certificate for this site has expired.").assertExists()
+        assertTrue(composeRule.onAllNodesWithText("bad.example").fetchSemanticsNodes().isNotEmpty())
+        composeRule.onNodeWithText("Proceed anyway (unsafe)").assertDoesNotExist()
+        composeRule.onNodeWithText("Advanced").performClick()
+        composeRule.onNodeWithText("Proceed anyway (unsafe)").performClick()
+        composeRule.onNodeWithText("Back to safety").performClick()
+
+        assertEquals(listOf("proceed", "leave"), calls)
+    }
+
+    @Test
+    fun eachCertificateFaultHasItsOwnSentence() {
+        assertEquals(R.string.certificate_error_not_yet_valid, certificateExplanation(CertificateFault.NotYetValid))
+        assertEquals(R.string.certificate_error_expired, certificateExplanation(CertificateFault.Expired))
+        assertEquals(R.string.certificate_error_hostname, certificateExplanation(CertificateFault.HostnameMismatch))
+        assertEquals(R.string.certificate_error_untrusted, certificateExplanation(CertificateFault.Untrusted))
+        assertEquals(R.string.certificate_error_date, certificateExplanation(CertificateFault.DateInvalid))
+        assertEquals(R.string.certificate_error_invalid, certificateExplanation(CertificateFault.Invalid))
+    }
+
     // Helpers
 
     private fun show(incognito: Boolean = false, page: @Composable () -> Unit = { Box(Modifier.fillMaxSize().testTag(PAGE)) }) {
@@ -314,6 +354,8 @@ class BrowsingScreenTest {
         onTabs = { calls += "tabs" },
         onMore = { calls += "more" },
         onAskPage = { calls += "askPage" },
+        onLeaveUnsafeCertificate = { calls += "leave" },
+        onProceedDespiteCertificate = { calls += "proceed" },
     )
 
     private companion object {

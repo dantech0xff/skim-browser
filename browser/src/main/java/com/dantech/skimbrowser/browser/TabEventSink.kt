@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
 import android.os.Bundle
@@ -66,6 +68,16 @@ interface TabEventSink {
      * thread. [onPageStarted] resets the count.
      */
     fun onShieldCount(tabId: String, count: Int)
+
+    /**
+     * Whether [tabId] may continue a load whose certificate is [fingerprint] for [host].
+     * [CertificateAction.Proceed] only after the person already chose that pair in this session.
+     * Incognito tabs answer from their own list.
+     */
+    fun certificateAction(tabId: String, host: String, fingerprint: String): CertificateAction
+
+    /** A main-frame certificate failure. The load was already cancelled. */
+    fun onCertificateError(tabId: String, warning: CertificateWarning)
 }
 
 /** What happens to a tab whose renderer went away. */
