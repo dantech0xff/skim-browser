@@ -17,9 +17,13 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Saves the downloads Skim writes itself (those of incognito tabs and of `data:` and `blob:` URLs)
@@ -61,7 +65,13 @@ class MediaStoreDownloads(
             if (fileName.isEmpty() || fileName.contains('/') || fileName == "." || fileName == "..") {
                 throw IOException("Not a file name")
             }
-            if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
+            val saved = if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
+            // Publish is not a suspend point, so a cancel can land after the file is visible.
+            if (!isActive) {
+                delete(saved.uri)
+                throw CancellationException()
+            }
+            saved
         }
 
     /**
@@ -97,6 +107,7 @@ class MediaStoreDownloads(
         val written = try {
             val out = resolver.openOutputStream(uri, "w") ?: throw IOException("The download could not be opened for writing")
             val count = out.use { writeCounted(it, write) }
+            coroutineContext.ensureActive()
             val published = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
             if (resolver.update(uri, published, null, null) < 1) throw IOException("The download could not be published")
             count
@@ -114,12 +125,18 @@ class MediaStoreDownloads(
         var written = 0L
         val uri = try {
             written = FileOutputStream(file).use { writeCounted(it, write) }
+            coroutineContext.ensureActive()
             listInMediaStore(file, mimeType)
         } catch (failure: Throwable) {
             if (!file.delete()) Log.w(TAG, "A download that failed could not be deleted")
             throw failure
         }
         return listed(uri, file.name, mimeType, written)
+    }
+
+    /** Removes a file this saver published. A missing file is ignored. */
+    fun delete(uri: Uri) {
+        discard(uri)
     }
 
     /** A new empty file in [folder] named [fileName], or `name (1).ext`, `name (2).ext`… when that is taken. */

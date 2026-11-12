@@ -141,9 +141,10 @@ class DownloadTrackerTest {
         val job = backgroundScope.launch { kotlinx.coroutines.awaitCancellation() }
         tracker.followJob(4, job)
 
-        tracker.cancel(4)
+        tracker.cancelAndJoin(4)
 
         assertTrue(job.isCancelled)
+        assertTrue(job.isCompleted)
     }
 
     @Test

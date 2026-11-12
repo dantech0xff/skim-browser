@@ -49,9 +49,9 @@ class DownloadActions @Inject constructor(
     }
 
     override suspend fun remove(id: Long, deleteFile: Boolean) {
+        if (deleteFile) tracker.cancelAndJoin(id)
         val item = log.remove(id) ?: return
         if (!deleteFile) return
-        tracker.cancel(item.id)
         item.systemId?.let(tracker::removeSystem)
         val uri = item.uri ?: return
         try {

@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** How a download ended, for the snackbar that reports it. */
 sealed interface DownloadEvent {
@@ -275,6 +276,14 @@ class DownloadTracker(
         if (localId == 0L) return
         running[localId] = job
         job.invokeOnCompletion { running.remove(localId, job) }
+    }
+
+    /** Stops the save of row [localId] when one is still writing, and waits until that save has stopped. */
+    suspend fun cancelAndJoin(localId: Long) {
+        val job = running.remove(localId) ?: return
+        job.cancel()
+        // Join off the main thread: the save finishes there, and joining on main would deadlock.
+        withContext(Dispatchers.Default) { job.join() }
     }
 
     /** Stops the save of row [localId] when one is still writing. */

@@ -24,6 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
@@ -304,6 +305,10 @@ class DownloadRouter(
             } catch (e: Exception) {
                 Log.w(TAG, "A download failed: ${e.javaClass.simpleName}")
                 DownloadEvent.DownloadFailed(name, retry = retry)
+            }
+            if (event is DownloadEvent.DownloadCompleted && !isActive) {
+                store.delete(event.uri)
+                throw CancellationException()
             }
             event?.let { reported ->
                 val withRetry = if (reported is DownloadEvent.DownloadFailed && reported.retry == null) {
