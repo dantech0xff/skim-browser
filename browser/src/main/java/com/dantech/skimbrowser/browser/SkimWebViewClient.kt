@@ -159,6 +159,8 @@ class SkimWebViewClient(
         }
         handler.cancel()
         if (isPageCertificate(url)) {
+            // Cancel often never reaches onReceivedError, so the in-flight frame is dropped here.
+            abandonLoad()
             events.onCertificateError(
                 tabId,
                 CertificateWarning(url, host, fingerprint, certificateFault(error.primaryError)),

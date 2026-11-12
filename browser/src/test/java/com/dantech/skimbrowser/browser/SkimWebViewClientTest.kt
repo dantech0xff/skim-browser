@@ -544,6 +544,35 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun aCancelledCertificateDropsTheInFlightPage() {
+        val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("bad.example")))
+        val client = client(shield)
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(BAD, mainFrame = true))
+
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+        val stillOnThePreviousPage = client.shouldInterceptRequest(view, request("https://bad.example/app.js", mainFrame = false))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+
+        assertEquals(200, stillOnThePreviousPage?.statusCode)
+        assertEquals(1, events.eventsOf<Event.CertificateError>().size)
+    }
+
+    @Test
+    fun anAllowedCertificateKeepsTheInFlightPage() {
+        events.certificateDecision = CertificateAction.Proceed
+        val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("bad.example")))
+        val client = client(shield)
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request(BAD, mainFrame = true))
+
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+        val onTheFailedNavigation = client.shouldInterceptRequest(view, request("https://bad.example/app.js", mainFrame = false))
+
+        assertEquals(null, onTheFailedNavigation)
+    }
+
+    @Test
     fun aDetachedClientCancelsACertificateAndReportsNothing() {
         client.detach()
         val handler = TestSslErrorHandler()
@@ -614,5 +643,6 @@ class SkimWebViewClientTest {
         const val TAB = "tab-1"
         const val PAGE = "https://daylightjournal.com/energy/heat-pumps-cold"
         const val NEXT = "https://example.com/next"
+        const val BAD = "https://bad.example/login"
     }
 }
