@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        WebView reads android:isLightTheme from the application theme, not from Compose.
+        Page darkening applies one of these on top of that theme. The attribute exists from API 29.
+        The names have no dot: a dot would make AAPT look for a parent style in this module.
+    -->
+    <style name="PageDarkeningLight">
+        <item name="android:isLightTheme">true</item>
+    </style>
+    <style name="PageDarkeningDark">
+        <item name="android:isLightTheme">false</item>
+    </style>
+</resources>

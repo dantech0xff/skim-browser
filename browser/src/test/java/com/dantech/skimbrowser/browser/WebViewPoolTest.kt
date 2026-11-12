@@ -590,7 +590,9 @@ class WebViewPoolTest {
         val view = livePage(f, pool, id)
 
         pool.setPagesDark(true)
+        assertFalse(applicationThemeIsLight(view))
         pool.setPagesDark(false)
+        assertTrue(applicationThemeIsLight(view))
 
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) return@runTest
         val applied = try {
@@ -906,6 +908,18 @@ class WebViewPoolTest {
         ).also { pools += it }
         f.engines.attach(pool)
         return f to pool
+    }
+
+    /** What Chromium reads: `isLightTheme` on the application theme, not the Compose scheme. */
+    private fun applicationThemeIsLight(view: WebView): Boolean {
+        val attributes = view.context.applicationContext.theme.obtainStyledAttributes(
+            intArrayOf(android.R.attr.isLightTheme),
+        )
+        try {
+            return attributes.getBoolean(0, true)
+        } finally {
+            attributes.recycle()
+        }
     }
 
     /** [tabId]'s WebView, restored, with its page committed so it has a state to hand over. */
