@@ -20,6 +20,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewFeature
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -579,6 +581,26 @@ class WebViewPoolTest {
 
         assertFalse(shadowOf(replacement).wasOnPauseCalled())
         assertFalse(shadowOf(replacement).wasDestroyCalled())
+    }
+
+    @Test
+    fun darkPagesFollowTheThemeAndAnUnsupportedWebViewDoesNotCrash() = runTest {
+        val (f, pool) = attached()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        val view = livePage(f, pool, id)
+
+        pool.setPagesDark(true)
+        pool.setPagesDark(false)
+
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) return@runTest
+        val applied = try {
+            WebSettingsCompat.isAlgorithmicDarkeningAllowed(view.settings)
+        } catch (_: UnsupportedOperationException) {
+            return@runTest
+        }
+        assertFalse(applied)
+        pool.setPagesDark(true)
+        assertTrue(WebSettingsCompat.isAlgorithmicDarkeningAllowed(view.settings))
     }
 
     @Test

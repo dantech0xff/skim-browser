@@ -13,8 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
@@ -37,7 +37,9 @@ import kotlinx.coroutines.flow.Flow
  *
  * State, the back stack and the navigator come from [viewModel]. MainActivity hands in what a view
  * model may not hold or name: the window's [secure] flag, how to [openExternal] apps, the
- * [downloadNotices] the snackbar tells, and the links it received.
+ * [downloadNotices] the snackbar tells, the links it received, [retryDownload] for a failed save,
+ * and [onPagesDark], which follows the theme and night mode. Incognito chrome is always dark;
+ * page darkening is not.
  */
 @Composable
 fun SkimApp(
@@ -46,6 +48,7 @@ fun SkimApp(
     downloadNotices: Flow<DownloadNotice>,
     pendingLinks: ReceiveChannel<String>,
     retryDownload: (DownloadRetry) -> Unit = {},
+    onPagesDark: (Boolean) -> Unit = {},
     viewModel: SkimAppViewModel = hiltViewModel(),
 ) {
     // The view model outlives this window; its navigator reaches the window only while it is composed.
@@ -54,6 +57,8 @@ fun SkimApp(
         onDispose { viewModel.detachWindow(secure) }
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val pagesDark = state.theme.isDark(isSystemInDarkTheme(), incognito = false)
+    LaunchedEffect(pagesDark) { onPagesDark(pagesDark) }
     if (!state.started) {
         // Until the settings and tabs are read: the empty window, in the app's colors.
         SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognito = false))

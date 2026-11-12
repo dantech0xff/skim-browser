@@ -71,6 +71,15 @@ class SkimThemeTest {
     }
 
     @Test
+    fun pageDarkeningFollowsTheThemeAndNotTheIncognitoChrome() {
+        assertTrue(ThemeSetting.Dark.isDark(systemDark = false, incognito = false))
+        assertFalse(ThemeSetting.Light.isDark(systemDark = true, incognito = false))
+        assertTrue(ThemeSetting.System.isDark(systemDark = true, incognito = false))
+        assertFalse(ThemeSetting.System.isDark(systemDark = false, incognito = false))
+        assertTrue(ThemeSetting.Light.isDark(systemDark = false, incognito = true))
+    }
+
+    @Test
     fun isDarkFollowsTheThemeSettingAndIncognitoIsAlwaysDark() {
         assertTrue(ThemeSetting.System.isDark(systemDark = true, incognito = false))
         assertFalse(ThemeSetting.System.isDark(systemDark = false, incognito = false))

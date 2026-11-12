@@ -104,6 +104,20 @@ class WebViewPool(
         override fun onTrimMemory(level: Int) = Unit
     }
 
+    /** Dark theme darkens pages. Light does not. System follows night mode. Incognito chrome does not. */
+    private var pagesDark: Boolean =
+        activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    /** The app calls this when the theme or night mode changes. WebViews already showing are updated. */
+    fun setPagesDark(dark: Boolean) {
+        if (destroyed) return
+        pagesDark = dark
+        live.values.forEach { entry ->
+            if (!entry.destroyed) applyAlgorithmicDarkening(entry.view, dark)
+        }
+    }
+
     /** Sets [zoom] on every WebView that is still alive. */
     private fun applyPageTextZoom(zoom: Int) {
         live.values.forEach { entry ->
@@ -498,6 +512,7 @@ class WebViewPool(
             setGeolocationEnabled(true)
             textZoom = PageTextZoom.ofFontScale(activity.resources.configuration.fontScale)
         }
+        applyAlgorithmicDarkening(view, pagesDark)
         // First-party cookies stay. A page cannot read cookies set by another site.
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
         view.overScrollMode = View.OVER_SCROLL_NEVER
