@@ -817,6 +817,13 @@ class WebViewPool(
             return tabEvents.onPageStarted(tabId, url)
         }
 
+        override fun onVisitedHistory(tabId: String, url: String) {
+            // Same-document history moves the list without onPageStarted. The pending offset
+            // would otherwise be added to an index that already moved.
+            live[tabId]?.historyPending = 0
+            tabEvents.onVisitedHistory(tabId, url)
+        }
+
         override fun onProgress(tabId: String, percent: Int) {
             tabEvents.onProgress(tabId, percent)
             if (percent >= FULL_PROGRESS) live[tabId]?.let(::scheduleAfterLoad)
