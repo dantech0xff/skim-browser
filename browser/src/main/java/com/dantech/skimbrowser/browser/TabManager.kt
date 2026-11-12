@@ -874,6 +874,7 @@ class TabManager(
         pendingLoads.remove(tabId)
         pendingReloads.remove(tabId)
         pageStartedSinceVisit.remove(tabId)
+        shownBeforeStart.remove(tabId)
         readerableChecked.remove(tabId)
         historyTitleUpdates.remove(tabId)
     }
@@ -955,7 +956,7 @@ class TabManager(
             historyTitleUpdates.remove(tabId)
             val shown = runtime.committedUrl
             val saved = shownBeforeStart[tabId]
-            if (saved == null || saved.url == shown) shownBeforeStart[tabId] = ShownPage(shown, tab.title)
+            if (saved == null || saved.url == shown || shown == null) shownBeforeStart[tabId] = ShownPage(shown, tab.title)
             val fallback = runtime.httpFallback
             val upgraded = fallback?.let { httpsUpgrade(it) }
             val upgradeAttempt = upgraded != null && sameNavigation(upgraded, url)
@@ -992,6 +993,7 @@ class TabManager(
 
         override fun onTitle(tabId: String, title: String) {
             val tab = openTab(tabId) ?: return
+            if (runtimeOf(tabId).certificateWarning != null) return
             // A page's title is shown in the tab grid and kept in history: no control or bidi
             // characters, which could make it read differently from what it is.
             val clean = title.toVisibleText().cutTo(Tab.MAX_TITLE_LENGTH)
@@ -1169,6 +1171,7 @@ class TabManager(
         override fun onWebViewDestroyed(tabId: String) {
             openTab(tabId) ?: return
             pageStartedSinceVisit.remove(tabId)
+            shownBeforeStart.remove(tabId)
             updateRuntime(tabId) { it.copy(progress = null, pageLoaded = false, readerable = false, find = null) }
         }
     }

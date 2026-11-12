@@ -651,6 +651,38 @@ class BrowsingViewModelTest {
         assertEquals("Heat pumps", f.tab(id)?.title)
     }
 
+    @Test
+    fun leavingThePageDropsTheCertificateSnapshot() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.returnToNewTabPage(id)
+        runCurrent()
+
+        f.manager.load(id, BAD)
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertEquals(BAD, f.manager.runtime(id).value.committedUrl)
+    }
+
+    @Test
+    fun aTitleForTheFailedCertificateDoesNotReplaceTheShowingPage() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        f.manager.events.onTitle(id, "Not private")
+        runCurrent()
+
+        assertEquals("Heat pumps", f.tab(id)?.title)
+    }
+
     // Helpers
 
     private fun TestScope.fixture(): TabManagerFixture {
