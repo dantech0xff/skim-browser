@@ -323,7 +323,9 @@ class TabManager(
                 updateTab(tabId) { it.copy(url = actual, fromNewTabPage = true) }
                 persistTab(tabId)
             }
-            updateRuntime(tabId) { it.copy(safetyWarning = warning, loadError = null, progress = null, find = null) }
+            updateRuntime(tabId) {
+                it.copy(safetyWarning = warning, certificateWarning = null, loadError = null, progress = null, find = null)
+            }
             return
         }
         navigations.begin(tabId, actual)
@@ -367,9 +369,9 @@ class TabManager(
     }
 
     @MainThread
-    override fun leaveUnsafePage(tabId: String) {
-        val tab = openTab(tabId) ?: return
-        val warning = runtimeOf(tabId).safetyWarning ?: return
+    override fun leaveUnsafePage(tabId: String): Boolean {
+        val tab = openTab(tabId) ?: return false
+        val warning = runtimeOf(tabId).safetyWarning ?: return false
         val runtime = runtimeOf(tabId)
         val committed = runtime.committedUrl
         val onWarnedPage = committed != null && sameNavigation(committed, warning.url)
@@ -377,21 +379,24 @@ class TabManager(
         if (warning is SafetyWarning.SafeBrowsing) safety.cancelSafeBrowsing(tabId)
         updateRuntime(tabId) { it.copy(safetyWarning = null) }
         if (onWarnedPage) {
-            if (warning is SafetyWarning.Heuristic && runtime.canGoBack && goBack(tabId)) return
+            if (warning is SafetyWarning.Heuristic && runtime.canGoBack && goBack(tabId)) return false
             // Safe Browsing already asked the WebView to go back. A first page has nowhere to go.
-            if (warning is SafetyWarning.SafeBrowsing && runtime.canGoBack) return
+            if (warning is SafetyWarning.SafeBrowsing && runtime.canGoBack) return false
+            if (tab.openedByExternalApp || tab.closeOnBack) return true
             returnToNewTabPage(tabId)
-            return
+            return false
         }
         val storedWarning = committed == null && tab.url?.let { sameNavigation(it, warning.url) } == true
         if (storedWarning) {
+            if (tab.openedByExternalApp || tab.closeOnBack) return true
             returnToNewTabPage(tabId)
-            return
+            return false
         }
         if (committed != null && tab.url?.let { sameNavigation(it, committed) } != true) {
             updateTab(tabId) { it.copy(url = committed) }
             persistTab(tabId)
         }
+        return false
     }
 
     @MainThread
@@ -413,10 +418,14 @@ class TabManager(
 
     @MainThread
     override fun clearSafetyWarnings() {
-        _state.value.tabs.forEach { tab ->
-            if (runtimeOf(tab.id).safetyWarning != null) {
-                updateRuntime(tab.id) { it.copy(safetyWarning = null) }
-            }
+        _state.value.tabs.toList().forEach { tab ->
+            val warning = runtimeOf(tab.id).safetyWarning ?: return@forEach
+            updateRuntime(tab.id) { it.copy(safetyWarning = null) }
+            // A lookalike typed on a new or restored tab never started a load. The address is
+            // already on the tab, so turning warnings off opens it.
+            val showingThatAddress = tab.url?.let { sameNavigation(it, warning.url) } == true
+            val notLoaded = runtimeOf(tab.id).committedUrl?.let { sameNavigation(it, warning.url) } != true
+            if (warning is SafetyWarning.Heuristic && showingThatAddress && notLoaded) load(tab.id, warning.url)
         }
     }
 
@@ -1260,6 +1269,7 @@ class TabManager(
             updateRuntime(tabId) {
                 it.copy(
                     certificateWarning = warning,
+                    safetyWarning = null,
                     loadError = null,
                     progress = null,
                     committedUrl = keptUrl ?: it.committedUrl,
@@ -1271,7 +1281,13 @@ class TabManager(
         override fun onSafetyWarning(tabId: String, warning: SafetyWarning?) {
             openTab(tabId) ?: return
             if (warning is SafetyWarning.SafeBrowsing) navigations.noteThreat(tabId, warning.url)
-            updateRuntime(tabId) { it.copy(safetyWarning = warning, loadError = if (warning != null) null else it.loadError) }
+            updateRuntime(tabId) {
+                it.copy(
+                    safetyWarning = warning,
+                    certificateWarning = if (warning != null) null else it.certificateWarning,
+                    loadError = if (warning != null) null else it.loadError,
+                )
+            }
         }
 
         override fun onWebViewDestroyed(tabId: String) {

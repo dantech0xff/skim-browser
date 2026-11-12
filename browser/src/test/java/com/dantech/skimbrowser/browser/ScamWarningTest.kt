@@ -62,6 +62,67 @@ class ScamWarningTest {
     }
 
     @Test
+    fun aLookalikeTypedOverACertificateReplacesThatWarning() = runTest {
+        val f = TabManagerFixture(this, folder.root, safety = MemoryGate())
+        try {
+            val id = f.manager.newTab(incognito = false)
+            f.engines.attach(f.engine)
+            f.manager.events.onCertificateError(
+                id,
+                com.dantech.skimbrowser.domain.certificate.CertificateWarning(
+                    "https://bad.example/",
+                    "bad.example",
+                    "abc",
+                    com.dantech.skimbrowser.domain.certificate.CertificateFault.Untrusted,
+                ),
+            )
+            f.manager.load(id, "https://paypai.com/")
+
+            assertTrue(f.manager.runtime(id).value.safetyWarning is SafetyWarning.Heuristic)
+            assertNull(f.manager.runtime(id).value.certificateWarning)
+        } finally {
+            f.close()
+        }
+    }
+
+    @Test
+    fun turningWarningsOffLoadsALookalikeThatNeverOpened() = runTest {
+        val gate = MemoryGate()
+        val f = TabManagerFixture(this, folder.root, safety = gate)
+        try {
+            val id = f.manager.newTab(incognito = false)
+            f.engines.attach(f.engine)
+            f.manager.load(id, "https://paypai.com/")
+            assertTrue(f.engine.calls.filterIsInstance<FakeTabEngine.Call.Load>().isEmpty())
+
+            gate.setEnabled(false)
+            f.manager.clearSafetyWarnings()
+
+            assertNull(f.manager.runtime(id).value.safetyWarning)
+            assertEquals(listOf("https://paypai.com/"), f.engine.calls.filterIsInstance<FakeTabEngine.Call.Load>().map { it.url })
+        } finally {
+            f.close()
+        }
+    }
+
+    @Test
+    fun backToSafetyOnALinkFromAnotherAppLeavesTheTabOpen() = runTest {
+        val f = TabManagerFixture(this, folder.root, safety = MemoryGate())
+        try {
+            val id = f.manager.newTab(incognito = false, openedByExternalApp = true)
+            f.engines.attach(f.engine)
+            f.manager.load(id, "https://paypai.com/")
+
+            assertTrue(f.manager.leaveUnsafePage(id))
+
+            assertEquals("https://paypai.com/", f.tab(id)?.url)
+            assertNull(f.manager.runtime(id).value.safetyWarning)
+        } finally {
+            f.close()
+        }
+    }
+
+    @Test
     fun backToSafetyOnANewTabReturnsToTheNewTabPage() = runTest {
         val f = TabManagerFixture(this, folder.root, safety = MemoryGate())
         try {

@@ -173,9 +173,12 @@ class BrowsingViewModel @AssistedInject constructor(
     /** Opens the http page after https could not connect. */
     fun openHttpFallback() = tabs.loadHttpFallback(tabId)
 
-    /** Back to safety on a scam warning. */
+    /**
+     * Back to safety on a scam warning. True when the tab was opened by another app or for a
+     * screen and is still open, so the route closes it the way Back does.
+     */
     @MainThread
-    fun backToSafety() = tabs.leaveUnsafePage(tabId)
+    fun backToSafety(): Boolean = tabs.leaveUnsafePage(tabId)
 
     /** Proceed anyway. The host is allowed for the rest of this process. */
     @MainThread

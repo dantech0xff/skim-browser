@@ -82,9 +82,14 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
         }
     }
+    val leaveScam = {
+        if (browsing.backToSafety()) {
+            browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
+        }
+    }
     BackHandler(enabled = state.find != null) { browsing.closeFind() }
     BackHandler(enabled = state.certificateWarning != null, onBack = leaveUnsafeCertificate)
-    BackHandler(enabled = state.safetyWarning != null) { browsing.backToSafety() }
+    BackHandler(enabled = state.safetyWarning != null, onBack = leaveScam)
     LaunchedEffect(shell, tab.id) {
         shell.tabManager().hitTargets.collect { (tabId, target) ->
             if (tabId == tab.id) navigator.openLinkOptions(tab.id, target)
@@ -110,7 +115,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onCloseFind = browsing::closeFind,
             onBack = {
                 if (state.certificateWarning != null) leaveUnsafeCertificate()
-                else if (state.safetyWarning != null) browsing.backToSafety()
+                else if (state.safetyWarning != null) leaveScam()
                 else browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
             },
             onForward = browsing::goForward,
