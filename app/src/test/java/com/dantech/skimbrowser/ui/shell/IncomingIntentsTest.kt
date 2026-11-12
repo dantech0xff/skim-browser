@@ -61,10 +61,45 @@ class IncomingIntentsTest {
     @Test
     fun anIntentWithoutDataOpensNothingWhateverItsExtras() {
         val noData = Intent(Intent.ACTION_VIEW).putExtra(Intent.EXTRA_TEXT, "https://example.com/")
-        val shared = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "https://example.com/")
 
         assertNull(IncomingIntents.urlFrom(noData))
-        assertNull(IncomingIntents.urlFrom(shared))
+    }
+
+    @Test
+    fun aSharedPlainTextLinkOpens() {
+        val shared = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, "https://example.com/a?b=c#d")
+            .putExtra(Intent.EXTRA_SUBJECT, "not the link")
+
+        assertEquals("https://example.com/a?b=c#d", IncomingIntents.urlFrom(shared))
+    }
+
+    @Test
+    fun aSharedLinkThatMentionsHttpInItsOwnTextStillOpens() {
+        assertEquals("https://httpbin.org/get", IncomingIntents.urlFrom(share("https://httpbin.org/get")))
+        assertEquals(
+            "https://example.com/http-status?q=http#http",
+            IncomingIntents.urlFrom(share("https://example.com/http-status?q=http#http")),
+        )
+    }
+
+    @Test
+    fun aShareThatIsNotOneWebUrlOpensNothing() {
+        assertNull(IncomingIntents.urlFrom(share("https://example.com/ https://other.example/")))
+        assertNull(IncomingIntents.urlFrom(share("see https://example.com/")))
+        assertNull(IncomingIntents.urlFrom(share("mailto:a@example.com")))
+        assertNull(IncomingIntents.urlFrom(share("file:///sdcard/page.html")))
+        assertNull(IncomingIntents.urlFrom(share("javascript:alert(1)")))
+        val html = Intent(Intent.ACTION_SEND).setType("text/html").putExtra(Intent.EXTRA_TEXT, "https://example.com/")
+        assertNull(IncomingIntents.urlFrom(html))
+    }
+
+    @Test
+    fun aSharedLinkFromRecentsIsNotOpenedAgain() {
+        val reopened = share("https://example.com/").addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
+
+        assertNull(IncomingIntents.urlFrom(reopened))
     }
 
     @Test
@@ -95,4 +130,6 @@ class IncomingIntentsTest {
     }
 
     private fun view(url: String) = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+
+    private fun share(text: String) = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
 }

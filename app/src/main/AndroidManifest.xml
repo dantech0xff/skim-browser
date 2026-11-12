@@ -80,6 +80,12 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
             </intent-filter>
+            <!-- A share sheet can hand Skim one plain-text web link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
             <!-- Lets other apps open "the browser" via Intent.CATEGORY_APP_BROWSER. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
