@@ -123,7 +123,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, FILE, USER_AGENT, null, "application/pdf", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf")), events.plain())
     }
 
     // Incognito tabs
@@ -148,7 +148,7 @@ class DownloadRouterTest {
         assertTrue("the default cookies are never read", parts.defaultCookieLookups.isEmpty())
         val row = media.rows().single()
         assertArrayEquals(PDF, row.file.readBytes())
-        assertEquals(listOf<DownloadEvent>(DownloadCompleted("guide.pdf", row.uri, "application/pdf", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadCompleted("guide.pdf", row.uri, "application/pdf", incognito = true)), events.plain())
     }
 
     @Test
@@ -162,7 +162,7 @@ class DownloadRouterTest {
         runCurrent()
         checkNotNull(server.takeRequest(1, TimeUnit.SECONDS)) { "The server got no request" }
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -178,7 +178,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, url, USER_AGENT, null, "application/pdf", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)), events.plain())
         assertEquals("no request at all", 0, server.requestCount)
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
         assertTrue("never the default profile's cookies", parts.defaultCookieLookups.isEmpty())
@@ -202,7 +202,7 @@ class DownloadRouterTest {
                 DownloadCompleted("download.zip", zip.uri, "application/zip"),
                 DownloadCompleted("rebate-guide.pdf", pdf.uri, "application/pdf"),
             ),
-            events,
+            events.plain(),
         )
         assertArrayEquals(ZIP, zip.file.readBytes())
         assertEquals("application/zip", zip.string(MediaStore.Downloads.MIME_TYPE))
@@ -218,7 +218,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, "data:text/plain," + "a".repeat(MAX_INLINE_DOWNLOAD_BYTES + 1), null, null, "text/plain", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.txt")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.txt")), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -232,7 +232,7 @@ class DownloadRouterTest {
         runCurrent()
 
         val row = media.rows().single()
-        assertEquals(listOf<DownloadEvent>(DownloadCompleted("download.pdf", row.uri, "application/pdf", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadCompleted("download.pdf", row.uri, "application/pdf", incognito = true)), events.plain())
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
         assertTrue(parts.defaultCookieLookups.isEmpty())
     }
@@ -246,7 +246,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, "data:text/plain," + "a".repeat(MAX_INLINE_DOWNLOAD_BYTES + 1), null, null, "text/plain", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.txt", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.txt", incognito = true)), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -260,7 +260,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, "file:///sdcard/guide.pdf", USER_AGENT, null, "application/pdf", view)
         runCurrent()
 
-        assertEquals(List(2) { DownloadFailed("guide.pdf", incognito = true) }, events)
+        assertEquals(List(2) { DownloadFailed("guide.pdf", incognito = true) }, events.plain())
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
         assertTrue(media.inserts().isEmpty())
         assertEquals(0, server.requestCount)
@@ -278,7 +278,7 @@ class DownloadRouterTest {
 
         val row = media.rows().single()
         assertArrayEquals(PNG, row.file.readBytes())
-        assertEquals("the incognito tab's", listOf<DownloadEvent>(DownloadCompleted("download.png", row.uri, "image/png", incognito = true)), events)
+        assertEquals("the incognito tab's", listOf<DownloadEvent>(DownloadCompleted("download.png", row.uri, "image/png", incognito = true)), events.plain())
         val start = parts.blobPage.calls.first()
         assertEquals("start", start.op)
         assertEquals(MAX_INLINE_DOWNLOAD_BYTES.toLong(), start.number("maxBytes"))
@@ -297,7 +297,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, BLOB, USER_AGENT, null, "image/png", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.png")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.png")), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -311,7 +311,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, BLOB, USER_AGENT, null, "image/png", view)
         runCurrent()
 
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.png", incognito = true)), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.png", incognito = true)), events.plain())
     }
 
     @Test
@@ -342,7 +342,7 @@ class DownloadRouterTest {
         assertEquals(
             "a tab that is gone may have been an incognito one",
             listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)),
-            events,
+            events.plain(),
         )
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
     }
@@ -360,7 +360,7 @@ class DownloadRouterTest {
         parts.downloads.start(tab, FILE, USER_AGENT, null, "application/pdf", view)
         runCurrent()
         assertEquals(1, parts.systemDownloads.enqueued.size)
-        assertEquals("the others are reported as failed", List(3) { DownloadFailed("guide.pdf") }, events)
+        assertEquals("the others are reported as failed", List(3) { DownloadFailed("guide.pdf") }, events.plain())
 
         ShadowSystemClock.advanceBy(Duration.ofMillis(29_999))
         parts.downloads.start(tab, FILE, USER_AGENT, null, "application/pdf", view)
@@ -385,7 +385,7 @@ class DownloadRouterTest {
 
         assertEquals(
             listOf(DownloadFailed("download.pdf", incognito = true), DownloadFailed("download.png", incognito = true)),
-            events.filterIsInstance<DownloadFailed>(),
+            events.plain().filterIsInstance<DownloadFailed>(),
         )
         assertEquals(listOf(true), events.filterIsInstance<DownloadCompleted>().map { it.incognito })
     }
@@ -420,7 +420,7 @@ class DownloadRouterTest {
         runCurrent()
 
         assertEquals("the page's own, then one per tap in time", 2, parts.systemDownloads.enqueued.size)
-        assertEquals(List(2) { DownloadFailed("guide.pdf") }, events)
+        assertEquals(List(2) { DownloadFailed("guide.pdf") }, events.plain())
     }
 
     @Test
@@ -437,7 +437,7 @@ class DownloadRouterTest {
         runCurrent()
 
         assertEquals("only the page's own", 1, parts.systemDownloads.enqueued.size)
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("guide.pdf")), events.plain())
     }
 
     @Test
@@ -461,14 +461,14 @@ class DownloadRouterTest {
         // The page never hands its blobs over, so the reads wait for their timeout.
         repeat(3) { parts.downloads.start(tab, BLOB, USER_AGENT, null, "image/png", view, userInitiated = true) }
         runCurrent()
-        assertEquals("the third is refused at once", listOf<DownloadEvent>(DownloadFailed("download.png")), events)
+        assertEquals("the third is refused at once", listOf<DownloadEvent>(DownloadFailed("download.png")), events.plain())
 
         advanceTimeBy(2 * BlobBridge.FETCH_TIMEOUT_MS + 1)
         runCurrent()
         parts.downloads.start(tab, dataUrl("application/pdf", PDF), null, null, null, view, userInitiated = true)
         runCurrent()
 
-        assertEquals(List(3) { DownloadFailed("download.png") } + DownloadCompleted("download.pdf", media.rows().single().uri, "application/pdf"), events)
+        assertEquals(List(3) { DownloadFailed("download.png") } + DownloadCompleted("download.pdf", media.rows().single().uri, "application/pdf"), events.plain())
     }
 
     @Test
@@ -539,7 +539,7 @@ class DownloadRouterTest {
         runCurrent()
 
         assertEquals(1, parts.systemDownloads.enqueued.size)
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.pdf")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.pdf")), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -555,7 +555,7 @@ class DownloadRouterTest {
         runCurrent()
 
         assertTrue(prompts.permissionRequests.isEmpty())
-        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.pdf")), events)
+        assertEquals(listOf<DownloadEvent>(DownloadFailed("download.pdf")), events.plain())
         assertTrue(media.inserts().isEmpty())
     }
 
@@ -570,6 +570,44 @@ class DownloadRouterTest {
         runCurrent()
 
         assertEquals(listOf("download.pdf"), events.map { (it as DownloadCompleted).fileName })
+    }
+
+    @Test
+    fun aRetryOfAPageDownloadStaysInsideTheAutomaticLimit() = runTest {
+        val f = fixture()
+        val tab = f.manager.newTab(incognito = false, url = PAGE)
+        val retry = DownloadRetry(tab, FILE, USER_AGENT, null, "application/pdf", userInitiated = false)
+
+        parts.downloads.retry(retry, view)
+        parts.downloads.retry(retry, view)
+        runCurrent()
+
+        assertEquals(1, parts.systemDownloads.enqueued.size)
+        ShadowSystemClock.advanceBy(Duration.ofSeconds(30))
+        parts.downloads.retry(retry, view)
+        runCurrent()
+        assertEquals(2, parts.systemDownloads.enqueued.size)
+    }
+
+    @Test
+    fun aRetryTheUserAskedForIsNotLimited() = runTest {
+        val f = fixture()
+        val tab = f.manager.newTab(incognito = false, url = PAGE)
+        parts.downloads.start(tab, "ftp://daylightjournal.com/guide.pdf", USER_AGENT, null, "application/pdf", view, userInitiated = true)
+        runCurrent()
+        val failed = events.filterIsInstance<DownloadFailed>().single()
+        val retry = checkNotNull(failed.retry)
+        assertTrue(retry.userInitiated)
+
+        val again = retry.copy(url = FILE)
+        repeat(4) { parts.downloads.retry(again, null) }
+        runCurrent()
+
+        assertEquals(4, parts.systemDownloads.enqueued.size)
+    }
+
+    private fun List<DownloadEvent>.plain(): List<DownloadEvent> = map { event ->
+        if (event is DownloadFailed) event.copy(retry = null) else event
     }
 
     private fun TestScope.fixture(): TabManagerFixture {

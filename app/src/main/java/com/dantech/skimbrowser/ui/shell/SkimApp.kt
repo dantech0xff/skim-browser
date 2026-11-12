@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dantech.skimbrowser.browser.downloads.DownloadRetry
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
@@ -44,6 +45,7 @@ fun SkimApp(
     openExternal: (Intent) -> Unit,
     downloadNotices: Flow<DownloadNotice>,
     pendingLinks: ReceiveChannel<String>,
+    retryDownload: (DownloadRetry) -> Unit = {},
     viewModel: SkimAppViewModel = hiltViewModel(),
 ) {
     // The view model outlives this window; its navigator reaches the window only while it is composed.
@@ -85,7 +87,7 @@ fun SkimApp(
                 SkimSnackbarHost(
                     controller = viewModel.snackbar,
                     placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
-                    onAction = { action -> interpret(action, navigator, viewModel.undo, openExternal) },
+                    onAction = { action -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload) },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }

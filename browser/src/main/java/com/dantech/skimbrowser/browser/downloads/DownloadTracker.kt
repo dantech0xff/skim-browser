@@ -41,9 +41,29 @@ sealed interface DownloadEvent {
         override val incognito: Boolean = false,
     ) : DownloadEvent
 
-    /** The download of [fileName] (null when it never had a name) failed or was refused. */
-    data class DownloadFailed(val fileName: String?, override val incognito: Boolean = false) : DownloadEvent
+    /**
+     * The download of [fileName] (null when it never had a name) failed or was refused.
+     * [retry] starts the same download again. It is null when nothing was left to try again.
+     */
+    data class DownloadFailed(
+        val fileName: String?,
+        override val incognito: Boolean = false,
+        val retry: DownloadRetry? = null,
+    ) : DownloadEvent
 }
+
+/**
+ * Enough to start a failed download again. It holds the page address, so it is never logged.
+ * [userInitiated] is true when the person asked for it (Download image), false when the page started it.
+ */
+data class DownloadRetry(
+    val tabId: String,
+    val url: String,
+    val userAgent: String?,
+    val contentDisposition: String?,
+    val mimeType: String?,
+    val userInitiated: Boolean,
+)
 
 /**
  * A download for Android's DownloadManager. Never logged or printed: it holds the page's address
@@ -150,22 +170,22 @@ class DownloadTracker(
     )
     val events: SharedFlow<DownloadEvent> = _events.asSharedFlow()
 
-    /** DownloadManager ids Skim enqueued and has not reported yet, with their file names. */
-    private val followed = ConcurrentHashMap<Long, String>()
+    /** DownloadManager ids Skim enqueued and has not reported yet. */
+    private val followed = ConcurrentHashMap<Long, Followed>()
 
     /**
      * Hands [request] to DownloadManager and follows it; false when DownloadManager refused it. It
      * calls into the DownloadManager service, so callers make it off the main thread.
      */
     @AnyThread
-    fun enqueue(request: SystemDownloadRequest): Boolean {
+    fun enqueue(request: SystemDownloadRequest, retry: DownloadRetry? = null): Boolean {
         val id = try {
             system.enqueue(request)
         } catch (e: RuntimeException) {
             Log.w(TAG, "DownloadManager refused a download: ${e.javaClass.simpleName}")
             return false
         }
-        followed[id] = request.fileName
+        followed[id] = Followed(request.fileName, retry)
         return true
     }
 
@@ -190,7 +210,8 @@ class DownloadTracker(
     }
 
     private fun askAbout(id: Long) {
-        val name = followed[id] ?: return
+        val followedDownload = followed[id] ?: return
+        val name = followedDownload.name
         val status = try {
             system.status(id)
         } catch (e: RuntimeException) {
@@ -199,25 +220,29 @@ class DownloadTracker(
         }
         when (status) {
             null -> followed.remove(id)
-            DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(id) != null) report(completed(id, name))
-            DownloadManager.STATUS_FAILED -> if (followed.remove(id) != null) report(DownloadEvent.DownloadFailed(name, incognito = false))
+            DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(id) != null) report(completed(id, name, followedDownload.retry))
+            DownloadManager.STATUS_FAILED -> if (followed.remove(id) != null) {
+                report(DownloadEvent.DownloadFailed(name, incognito = false, retry = followedDownload.retry))
+            }
             // Pending, running or paused: still followed.
             else -> Unit
         }
     }
 
-    private fun completed(id: Long, name: String): DownloadEvent = try {
+    private fun completed(id: Long, name: String, retry: DownloadRetry?): DownloadEvent = try {
         val uri = system.uriFor(id)
         if (uri == null) {
-            DownloadEvent.DownloadFailed(name, incognito = false)
+            DownloadEvent.DownloadFailed(name, incognito = false, retry = retry)
         } else {
             val mime = system.mimeTypeFor(id)?.takeIf { it.isNotBlank() } ?: OCTET_STREAM
             DownloadEvent.DownloadCompleted(name, uri, mime, incognito = false)
         }
     } catch (e: RuntimeException) {
         Log.w(TAG, "A finished download could not be read: ${e.javaClass.simpleName}")
-        DownloadEvent.DownloadFailed(name, incognito = false)
+        DownloadEvent.DownloadFailed(name, incognito = false, retry = retry)
     }
+
+    private class Followed(val name: String, val retry: DownloadRetry?)
 
     private companion object {
         const val TAG = "SkimDownloads"

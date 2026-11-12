@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
 import android.content.ActivityNotFoundException
+import com.dantech.skimbrowser.browser.downloads.DownloadRetry
 import android.content.Intent
 import android.util.Log
 import androidx.annotation.MainThread
@@ -23,12 +24,14 @@ fun interpret(
     navigator: SkimNavigator,
     undo: UndoRegistry,
     openExternal: (Intent) -> Unit,
+    retryDownload: (DownloadRetry) -> Unit = {},
 ) {
     when (action) {
         is SnackbarAction.SwitchToTab -> navigator.showTab(action.tabId)
         is SnackbarAction.Undo -> undo.undo(action.token)
         is SnackbarAction.EditBookmark -> navigator.openDialog(EditBookmarkKey(action.bookmarkId))
         is SnackbarAction.OpenDownload -> openDownload(action, openExternal)
+        is SnackbarAction.RetryDownload -> retryDownload(action.retry)
         is SnackbarAction.ViewImported -> navigator.openBookmarks(action.folderId)
     }
 }

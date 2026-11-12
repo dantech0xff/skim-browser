@@ -115,6 +115,36 @@ class DownloadRouter(
         webView: WebView,
         userInitiated: Boolean = false,
     ) {
+        begin(tabId, url, userAgent, contentDisposition, mimeType, webView, userInitiated, fromRetry = false)
+    }
+
+    /**
+     * Starts [retry] again. A page-started download is still limited to one automatic download per
+     * interval. A download the person asked for is not. [webView] is only needed to read a blob.
+     */
+    fun retry(retry: DownloadRetry, webView: WebView?) {
+        begin(
+            retry.tabId,
+            retry.url,
+            retry.userAgent,
+            retry.contentDisposition,
+            retry.mimeType,
+            webView,
+            retry.userInitiated,
+            fromRetry = true,
+        )
+    }
+
+    private fun begin(
+        tabId: String,
+        url: String,
+        userAgent: String?,
+        contentDisposition: String?,
+        mimeType: String?,
+        webView: WebView?,
+        userInitiated: Boolean,
+        fromRetry: Boolean,
+    ) {
         val declared = mimeEssenceOf(mimeType)
         val source = sourceOf(url)
         val rawName = when (source) {
@@ -125,31 +155,38 @@ class DownloadRouter(
         val tab = tabs.state.value.tab(tabId)
         // A tab that is no longer open may have been an incognito one: its report says so.
         val incognito = tab?.incognito ?: true
-        if (source == null || tab == null) {
+        val agent = userAgent?.takeIf { it.isNotBlank() } ?: webView?.settings?.userAgentString
+        val retry = DownloadRetry(tabId, url, agent, contentDisposition, mimeType, userInitiated)
+        if (source == null || tab == null || (source == Source.BLOB && webView == null)) {
             Log.w(TAG, "A download of an unsupported kind was refused")
-            fail(shownName, incognito)
+            fail(shownName, incognito, retry)
             return
         }
-        if (!userInitiated && !consumeGesture(webView) && !allowAutomatic(tabId)) {
+        val allowed = when {
+            userInitiated -> true
+            fromRetry -> allowAutomatic(tabId)
+            webView != null && consumeGesture(webView) -> true
+            else -> allowAutomatic(tabId)
+        }
+        if (!allowed) {
             Log.w(TAG, "A page started another download on its own; it was dropped")
-            fail(shownName, incognito)
+            fail(shownName, incognito, retry)
             return
         }
         if ((source == Source.DATA || source == Source.BLOB) && !inlineDownloads.tryAcquire()) {
             Log.w(TAG, "Too many downloads held in memory at once; one was dropped")
-            fail(shownName, incognito)
+            fail(shownName, incognito, retry)
             return
         }
-        val agent = userAgent?.takeIf { it.isNotBlank() } ?: webView.settings.userAgentString
         when (source) {
             Source.WEB -> if (incognito) {
-                startInProcess(url, agent, rawName, declared, shownName)
+                startInProcess(url, agent, rawName, declared, shownName, retry)
             } else {
-                startSystem(url, agent, rawName, declared, pageStarted = !userInitiated)
+                startSystem(url, agent, rawName, declared, pageStarted = !userInitiated, retry)
             }
-            Source.DATA -> launchDownload(shownName, incognito, inlineDownloads::release) { saveData(url, rawName, shownName) }
-            Source.BLOB -> launchDownload(shownName, incognito, inlineDownloads::release) {
-                saveBlob(webView, url, rawName, declared, shownName)
+            Source.DATA -> launchDownload(shownName, incognito, retry, inlineDownloads::release) { saveData(url, rawName, shownName) }
+            Source.BLOB -> launchDownload(shownName, incognito, retry, inlineDownloads::release) {
+                saveBlob(webView!!, url, rawName, declared, shownName)
             }
         }
     }
@@ -159,7 +196,14 @@ class DownloadRouter(
      * with it only when the page started it ([pageStarted]) over https and the WebView requested it
      * before handing it over, which the response's type ([declared]) shows.
      */
-    private fun startSystem(url: String, userAgent: String?, rawName: String?, declared: String?, pageStarted: Boolean) {
+    private fun startSystem(
+        url: String,
+        userAgent: String?,
+        rawName: String?,
+        declared: String?,
+        pageStarted: Boolean,
+        retry: DownloadRetry,
+    ) {
         val name = DownloadNames.sanitize(rawName, declared)
         val cookie = if (!pageStarted || declared == null || !url.trim().startsWith(HTTPS, ignoreCase = true)) {
             null
@@ -171,24 +215,31 @@ class DownloadRouter(
                 null
             }
         }
-        launchDownload(name, incognito = false) {
+        launchDownload(name, incognito = false, retry = retry) {
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(name)
             val request = SystemDownloadRequest(url, name, declared, userAgent, cookie)
-            val enqueued = withContext(ioDispatcher) { tracker.enqueue(request) }
+            val enqueued = withContext(ioDispatcher) { tracker.enqueue(request, retry) }
             // DownloadManager reports the end itself, through the tracker.
             if (enqueued) null else DownloadEvent.DownloadFailed(name)
         }
     }
 
     /** An incognito tab's web download, made here with the incognito profile's cookies. */
-    private fun startInProcess(url: String, userAgent: String?, rawName: String?, declared: String?, shownName: String) {
+    private fun startInProcess(
+        url: String,
+        userAgent: String?,
+        rawName: String?,
+        declared: String?,
+        shownName: String,
+        retry: DownloadRetry,
+    ) {
         val profile = incognitoProfile()
         if (profile == null) {
             Log.w(TAG, "An incognito download has no incognito session")
-            fail(shownName, incognito = true)
+            fail(shownName, incognito = true, retry)
             return
         }
-        launchDownload(shownName, incognito = true) {
+        launchDownload(shownName, incognito = true, retry = retry) {
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(shownName)
             inProcess.download(
                 url = url,
@@ -224,7 +275,13 @@ class DownloadRouter(
      * started it; an unexpected failure reports [name] failed. [ended] runs once it is over, also
      * when it never ran.
      */
-    private fun launchDownload(name: String, incognito: Boolean, ended: () -> Unit = {}, download: suspend () -> DownloadEvent?) {
+    private fun launchDownload(
+        name: String,
+        incognito: Boolean,
+        retry: DownloadRetry,
+        ended: () -> Unit = {},
+        download: suspend () -> DownloadEvent?,
+    ) {
         scope.launch(mainDispatcher) {
             val event = try {
                 download()
@@ -232,14 +289,21 @@ class DownloadRouter(
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "A download failed: ${e.javaClass.simpleName}")
-                DownloadEvent.DownloadFailed(name)
+                DownloadEvent.DownloadFailed(name, retry = retry)
             }
-            event?.let { tracker.report(it.startedBy(incognito)) }
+            event?.let { reported ->
+                val withRetry = if (reported is DownloadEvent.DownloadFailed && reported.retry == null) {
+                    reported.copy(retry = retry)
+                } else {
+                    reported
+                }
+                tracker.report(withRetry.startedBy(incognito))
+            }
         }.invokeOnCompletion { ended() }
     }
 
-    private fun fail(name: String?, incognito: Boolean) {
-        tracker.report(DownloadEvent.DownloadFailed(name, incognito))
+    private fun fail(name: String?, incognito: Boolean, retry: DownloadRetry) {
+        tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
     }
 
     /** True when Skim may write to the shared Downloads folder, after asking Android when it must. */
