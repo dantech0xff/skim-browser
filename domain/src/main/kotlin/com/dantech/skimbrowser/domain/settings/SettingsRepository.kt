@@ -26,6 +26,12 @@ interface SettingsRepository {
 
     suspend fun setLastTabId(id: String?)
 
+    /** Hosts where ad and tracker blocking is off. Empty until the person turns a site off. */
+    val shieldDisabledHosts: Flow<Set<String>>
+
+    /** [disabled] true stops blocking on [host]. */
+    suspend fun setShieldDisabled(host: String, disabled: Boolean)
+
     /**
      * A random UUID created on first use and kept for the life of the installation (sent as
      * `X-Skim-Install` on every model request). It is never logged and is not part of [SkimSettings].

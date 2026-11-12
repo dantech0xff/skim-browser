@@ -911,6 +911,7 @@ class TabManager(
                     committedUrl = url,
                     loadNonce = nonce,
                     isSecure = isHttps(url),
+                    blockedCount = 0,
                 )
             }
             // Keep the stored http address until https commits. A restart can then offer it again.
@@ -1060,6 +1061,12 @@ class TabManager(
             val tab = openTab(tabId) ?: pendingCloses.values.firstNotNullOfOrNull { pending -> pending.tabs.firstOrNull { it.id == tabId } }
             if (tab?.url == null) return
             stateStore.save(tabId, state, tab.incognito)
+        }
+
+        override fun onShieldCount(tabId: String, count: Int) {
+            openTab(tabId) ?: return
+            if (count < 0) return
+            updateRuntime(tabId) { it.copy(blockedCount = count) }
         }
 
         override fun onWebViewDestroyed(tabId: String) {

@@ -15,6 +15,9 @@ import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
 import com.dantech.skimbrowser.data.db.entity.SkimAiState
 import com.dantech.skimbrowser.data.repo.HistoryRepository
 import com.dantech.skimbrowser.domain.fake.FakeSitePermissionRepository
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -112,6 +115,19 @@ class SiteInfoViewModelTest {
     }
 
     @Test
+    fun blockingStaysOnUntilTheSiteTurnsItOff() = runTest {
+        val open = page(PAGE, incognito = false)
+        await { open.info.state.value.showShield }
+        assertTrue(open.info.state.value.shieldOn)
+        assertEquals(0, open.info.state.value.blockedCount)
+
+        open.info.setShield(false)
+        await { !open.info.state.value.shieldOn }
+        open.info.setShield(true)
+        await { open.info.state.value.shieldOn }
+    }
+
+    @Test
     fun clearingCookiesOnANormalTabUsesTheDefaultProfile() = runTest {
         val open = page(PAGE, incognito = false)
         await { open.info.state.value.showCookies }
@@ -127,6 +143,7 @@ class SiteInfoViewModelTest {
         runCurrent()
         val permissions = FakeSitePermissionRepository()
         val site = RecordingSiteData()
+        val shield = MemoryShield()
         val cleaner = BrowsingDataCleaner(
             history = HistoryRepository(f.db.historyDao(), f.db),
             tabRepo = f.tabRepo,
@@ -146,6 +163,7 @@ class SiteInfoViewModelTest {
                 f.settings,
                 f.incognito,
                 cleaner,
+                shield,
                 backgroundScope,
             )
         }
@@ -172,6 +190,22 @@ class SiteInfoViewModelTest {
         val site: RecordingSiteData,
         val info: SiteInfoViewModel,
     )
+
+    private class MemoryShield : ShieldChoices {
+        private val off = MutableStateFlow<Set<String>>(emptySet())
+        private val incognitoOff = mutableSetOf<String>()
+        override val disabledHosts: StateFlow<Set<String>> = off
+        override fun incognitoDisabled(host: String) = host in incognitoOff
+        override suspend fun setDisabled(host: String, incognito: Boolean, disabled: Boolean) {
+            if (incognito) {
+                if (disabled) incognitoOff += host else incognitoOff -= host
+            } else {
+                off.value = if (disabled) off.value + host else off.value - host
+            }
+        }
+        override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean) = false
+        override fun clearIncognito() = incognitoOff.clear()
+    }
 
     private class RecordingSiteData : DefaultProfileSiteData {
         val hosts = mutableListOf<String>()

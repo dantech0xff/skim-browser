@@ -11,6 +11,7 @@ import com.dantech.skimbrowser.browser.TabEngineSource
 import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
+import com.dantech.skimbrowser.browser.RequestShield
 import com.dantech.skimbrowser.browser.WebViewPool
 import com.dantech.skimbrowser.browser.WindowSecureController
 import com.dantech.skimbrowser.browser.downloads.BlobBridge
@@ -109,6 +110,7 @@ object ActivityBrowserModule {
         fullscreen: FullscreenController,
         sitePermissions: SitePermissionBridge,
         downloads: DownloadRouter,
+        shield: RequestShield,
     ): WebViewPool = WebViewPool(
         activity = activity,
         tabs = tabs,
@@ -121,6 +123,7 @@ object ActivityBrowserModule {
         fullscreen = fullscreen,
         sitePermissions = sitePermissions,
         downloads = downloads,
+        shield = shield,
     )
 
     @Provides

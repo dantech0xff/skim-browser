@@ -46,6 +46,7 @@ class IncognitoSession(
     private val appScope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val onEnded: () -> Unit = {},
 ) : IncognitoSupport, IncognitoDecisions {
 
     @Inject constructor(
@@ -53,7 +54,8 @@ class IncognitoSession(
         storage: AppStorage,
         app: Application,
         @AppScope appScope: CoroutineScope,
-    ) : this(profiles, storage.incognitoSharedDir(app), appScope)
+        shield: RequestShield,
+    ) : this(profiles, storage.incognitoSharedDir(app), appScope, onEnded = shield::clearIncognito)
 
     sealed interface State {
         data object None : State
@@ -127,6 +129,7 @@ class IncognitoSession(
         }
         _state.value = State.None
         decisions.clear()
+        onEnded()
         if (engine != null) {
             step("clear the cache") { engine.withTemporaryWebView(profile) { it.clearCache(true) } }
         }

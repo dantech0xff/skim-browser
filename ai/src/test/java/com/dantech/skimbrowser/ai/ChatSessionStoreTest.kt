@@ -76,6 +76,7 @@ class ChatSessionStoreTest {
     fun turningHistoryOffKeepsTheChatInMemoryOnly() = runTest(main.testDispatcher) {
         val open = open(this)
         open.fixture.settings.setKeepChatHistory(false)
+        open.fixture.settings.settings.first { !it.keepChatHistory }
         val session = open.store.openForTab(open.tab(), articlePage(), PAGE_HOST)
         open.store.record(session, message("A point."))
         advanceUntilIdle()

@@ -212,6 +212,8 @@ class FakeTabEngine(
         override fun onStateSaved(tabId: String, state: Bundle) = Unit
 
         override fun onWebViewDestroyed(tabId: String) = Unit
+
+        override fun onShieldCount(tabId: String, count: Int) = Unit
     }
 
     companion object {

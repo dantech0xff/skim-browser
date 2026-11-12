@@ -9,8 +9,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.dantech.skimbrowser.domain.settings.SettingsRepository as SettingsStore
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
+import com.dantech.skimbrowser.domain.url.normalizeHost
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -32,6 +34,10 @@ import kotlinx.coroutines.flow.map
 class SettingsRepository @Inject constructor(private val dataStore: DataStore<Preferences>) : SettingsStore {
 
     override val settings: Flow<SkimSettings> = preferences().map { it.toSettings() }.distinctUntilChanged()
+
+    override val shieldDisabledHosts: Flow<Set<String>> = preferences().map { prefs ->
+        prefs[Keys.SHIELD_DISABLED].orEmpty().map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
+    }.distinctUntilChanged()
 
     override suspend fun setSearchEngine(e: SearchEngine) {
         dataStore.edit { it[Keys.SEARCH_ENGINE] = e.name }
@@ -68,6 +74,16 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
 
     override suspend fun setLastTabId(id: String?) {
         dataStore.edit { if (id == null) it.remove(Keys.LAST_TAB_ID) else it[Keys.LAST_TAB_ID] = id }
+    }
+
+    override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
+        val key = normalizeHost(host)
+        if (key.isEmpty()) return
+        dataStore.edit { prefs ->
+            val now = prefs[Keys.SHIELD_DISABLED].orEmpty().toMutableSet()
+            if (disabled) now += key else now -= key
+            prefs[Keys.SHIELD_DISABLED] = now
+        }
     }
 
     /**
@@ -117,6 +133,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val LAST_TAB_ID = stringPreferencesKey("last_tab_id")
         val INSTALL_ID = stringPreferencesKey("install_id")
+        val SHIELD_DISABLED = stringSetPreferencesKey("shield_disabled_hosts")
     }
 
     companion object {

@@ -263,6 +263,11 @@
     <string name="site_info_location">Location</string>
     <string name="site_permission_blocked">Blocked</string>
     <string name="site_info_cookies_summary">Stored by this site on your phone</string>
+    <string name="site_info_shield">Block ads and trackers</string>
+    <plurals name="site_info_shield_blocked">
+        <item quantity="one">%d request blocked on this page</item>
+        <item quantity="other">%d requests blocked on this page</item>
+    </plurals>
 
     <!-- Snackbars -->
     <string name="snackbar_tab_closed">Tab closed</string>

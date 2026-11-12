@@ -94,6 +94,18 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun aSiteCanTurnTheShieldOffAndOnAgain() = runTest {
+        val store = SettingsRepository(newStore())
+        assertTrue(store.shieldDisabledHosts.first().isEmpty())
+        store.setShieldDisabled("www.DaylightJournal.com", disabled = true)
+        assertEquals(setOf("daylightjournal.com"), store.shieldDisabledHosts.first())
+        store.setShieldDisabled("daylightjournal.com", disabled = false)
+        assertTrue(store.shieldDisabledHosts.first().isEmpty())
+        store.setShieldDisabled("  ", disabled = true)
+        assertTrue(store.shieldDisabledHosts.first().isEmpty())
+    }
+
+    @Test
     fun unknownNamesAndWrongTypesReadAsDefaults() = runTest {
         val store = newStore()
         store.edit {

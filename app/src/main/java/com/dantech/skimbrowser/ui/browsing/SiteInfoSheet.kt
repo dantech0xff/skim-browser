@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ import com.dantech.skimbrowser.domain.permission.SkimAiAudience
 import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
 import com.dantech.skimbrowser.ui.components.IconTile
@@ -102,6 +104,12 @@ data class SiteInfoUiState(
     val skimAiOn: Boolean = false,
     val permissions: ImmutableList<SitePermissionRow> = persistentListOf(),
     val showCookies: Boolean = false,
+    /** True when this page has a site the shield can be turned off for. */
+    val showShield: Boolean = false,
+    /** True when ads and trackers are blocked on this site. */
+    val shieldOn: Boolean = true,
+    /** Requests answered empty for the current document. */
+    val blockedCount: Int = 0,
 ) {
     companion object {
         val Missing = SiteInfoUiState(tabMissing = true)
@@ -121,6 +129,7 @@ class SiteInfoViewModel @AssistedInject constructor(
     private val settings: SettingsRepository,
     private val incognito: IncognitoDecisions,
     private val cleaner: SiteDataCleaner,
+    private val shield: ShieldChoices,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -142,7 +151,7 @@ class SiteInfoViewModel @AssistedInject constructor(
         } else {
             val host = open.url?.let(::hostOf).orEmpty()
             val stored = if (host.isEmpty()) flowOf(null) else permissions.observe(host)
-            combine(tabs.runtime(tabId), stored, settings.settings) { page, entity, prefs ->
+            combine(tabs.runtime(tabId), stored, settings.settings, shield.disabledHosts) { page, entity, prefs, _ ->
                 normalState(open, page, entity, prefs.askBeforeSending)
             }
         }
@@ -170,6 +179,19 @@ class SiteInfoViewModel @AssistedInject constructor(
         }
     }
 
+    /** Turns ad and tracker blocking on or off for this site. Incognito forgets it with the session. */
+    fun setShield(on: Boolean) {
+        val host = state.value.siteKey
+        if (host.isEmpty()) return
+        val incognitoTab = state.value.incognito
+        viewModelScope.launch {
+            shield.setDisabled(host, incognitoTab, disabled = !on)
+            if (incognitoTab) revision.update { it + 1 }
+            // Resources already answered empty stay empty until the page loads again.
+            tabs.reload(tabId)
+        }
+    }
+
     /** Forgets this site's cookies and web storage. The sheet stays open. */
     fun clearCookies() {
         val current = state.value
@@ -194,6 +216,7 @@ class SiteInfoViewModel @AssistedInject constructor(
             showSkimAi = false,
             skimAiOn = false,
             permissions = permissionRows(host) { incognito.decision(host, it) },
+            shieldOn = host.isEmpty() || !shield.incognitoDisabled(host),
         )
     }
 
@@ -207,6 +230,7 @@ class SiteInfoViewModel @AssistedInject constructor(
             showSkimAi = host.isNotEmpty(),
             skimAiOn = skimAiConsent(skim, askBeforeSending, SkimAiAudience.PAGE) == SkimAiConsent.Allowed,
             permissions = permissionRows(host) { entity?.permission(it) ?: PermissionState.UNSET },
+            shieldOn = host.isEmpty() || host !in shield.disabledHosts.value,
         )
     }
 
@@ -222,6 +246,7 @@ private fun sheetState(
     showSkimAi: Boolean,
     skimAiOn: Boolean,
     permissions: ImmutableList<SitePermissionRow>,
+    shieldOn: Boolean,
 ): SiteInfoUiState = SiteInfoUiState(
     siteKey = host,
     title = if (host.isNotEmpty()) host else pageAddressOf(tab.url),
@@ -232,6 +257,9 @@ private fun sheetState(
     skimAiOn = skimAiOn,
     permissions = permissions,
     showCookies = host.isNotEmpty(),
+    showShield = host.isNotEmpty(),
+    shieldOn = shieldOn,
+    blockedCount = page.blockedCount,
 )
 
 private fun permissionRows(host: String, stateOf: (SitePermissionKind) -> PermissionState): ImmutableList<SitePermissionRow> {
@@ -258,6 +286,7 @@ fun SiteInfoRoute(key: SiteInfoKey, navigator: SkimNavigator) {
         onSkimAi = info::setSkimAi,
         onPermission = info::setPermission,
         onClearCookies = info::clearCookies,
+        onShield = info::setShield,
     )
 }
 
@@ -272,11 +301,15 @@ fun SiteInfoSheet(
     onSkimAi: (Boolean) -> Unit,
     onPermission: (SitePermissionKind, Boolean) -> Unit,
     onClearCookies: () -> Unit,
+    onShield: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = siteRows(state)
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
         SiteHeader(state)
+        if (state.showShield) {
+            SegmentedColumn { ShieldRow(state, onShield) }
+        }
         if (rows.isNotEmpty()) {
             SectionLabel(stringResource(R.string.site_info_permissions), first = true)
             SegmentedColumn {
@@ -340,6 +373,21 @@ private fun SiteHeader(state: SiteInfoUiState) {
             }
         }
     }
+}
+
+@Composable
+private fun ShieldRow(state: SiteInfoUiState, onChange: (Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    SkimListItem(
+        headline = stringResource(R.string.site_info_shield),
+        supporting = pluralStringResource(R.plurals.site_info_shield_blocked, state.blockedCount, state.blockedCount),
+        index = 0,
+        count = 1,
+        onClick = null,
+        modifier = Modifier.toggleableRow(state.shieldOn, onChange),
+        leading = { IconTile(R.drawable.ic_shield, colors.secondaryContainer, colors.onSurfaceVariant) },
+        trailing = { SkimSwitch(state.shieldOn, onCheckedChange = null) },
+    )
 }
 
 @Composable

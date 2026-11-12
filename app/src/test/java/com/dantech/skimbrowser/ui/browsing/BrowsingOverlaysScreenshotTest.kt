@@ -128,10 +128,14 @@ class BrowsingOverlaysScreenshotTest {
                     skimAiOn = true,
                     permissions = persistentListOf(SitePermissionRow(SitePermissionKind.LOCATION, allowed = false)),
                     showCookies = true,
+                    showShield = true,
+                    shieldOn = true,
+                    blockedCount = 4,
                 ),
                 onSkimAi = {},
                 onPermission = { _, _ -> },
                 onClearCookies = {},
+                onShield = {},
             )
         }
         captureComponent("site-info-15")
