@@ -9,7 +9,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.ai.AiGate
 import com.dantech.skimbrowser.browser.FakeActivityHost
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.browser.WindowSecureController
@@ -77,7 +77,7 @@ class SnackbarActionsTest {
     @Test
     fun retryStartsTheSameDownloadAgain() = runTest {
         val app = app(BrowserKey)
-        val retry = DownloadRetry("tab-1", "https://example.com/guide.pdf", "agent", null, "application/pdf", userInitiated = true)
+        val retry = DownloadRetry("tab-1", "https://example.com/guide.pdf", "agent", null, "application/pdf", userInitiated = true, incognito = false)
         val started = mutableListOf<DownloadRetry>()
 
         interpret(SnackbarAction.RetryDownload(retry), app.navigator, undo, activityHost::startExternal) { started += it }

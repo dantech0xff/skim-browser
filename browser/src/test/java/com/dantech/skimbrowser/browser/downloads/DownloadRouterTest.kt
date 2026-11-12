@@ -14,6 +14,7 @@ import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.browser.TestBrowserParts
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent.DownloadCompleted
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent.DownloadFailed
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import java.time.Duration
 import java.util.Base64
 import java.util.concurrent.TimeUnit
@@ -325,7 +326,7 @@ class DownloadRouterTest {
         runCurrent()
 
         assertEquals(urls.size, events.size)
-        assertTrue(events.all { it is DownloadFailed && !it.incognito })
+        assertTrue(events.all { it is DownloadFailed && !it.incognito && it.retry == null })
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
         assertTrue(media.inserts().isEmpty())
         assertTrue(prompts.permissionRequests.isEmpty())
@@ -342,7 +343,7 @@ class DownloadRouterTest {
         assertEquals(
             "a tab that is gone may have been an incognito one",
             listOf<DownloadEvent>(DownloadFailed("guide.pdf", incognito = true)),
-            events.plain(),
+            events,
         )
         assertTrue(parts.systemDownloads.enqueued.isEmpty())
     }
@@ -576,7 +577,7 @@ class DownloadRouterTest {
     fun aRetryOfAPageDownloadStaysInsideTheAutomaticLimit() = runTest {
         val f = fixture()
         val tab = f.manager.newTab(incognito = false, url = PAGE)
-        val retry = DownloadRetry(tab, FILE, USER_AGENT, null, "application/pdf", userInitiated = false)
+        val retry = DownloadRetry(tab, FILE, USER_AGENT, null, "application/pdf", userInitiated = false, incognito = false)
 
         parts.downloads.retry(retry, view)
         parts.downloads.retry(retry, view)
@@ -595,15 +596,39 @@ class DownloadRouterTest {
         val tab = f.manager.newTab(incognito = false, url = PAGE)
         parts.downloads.start(tab, "ftp://daylightjournal.com/guide.pdf", USER_AGENT, null, "application/pdf", view, userInitiated = true)
         runCurrent()
-        val failed = events.filterIsInstance<DownloadFailed>().single()
-        val retry = checkNotNull(failed.retry)
-        assertTrue(retry.userInitiated)
+        assertNull(events.filterIsInstance<DownloadFailed>().single().retry)
 
-        val again = retry.copy(url = FILE)
+        val again = DownloadRetry(tab, FILE, USER_AGENT, null, "application/pdf", userInitiated = true, incognito = false)
         repeat(4) { parts.downloads.retry(again, null) }
         runCurrent()
 
         assertEquals(4, parts.systemDownloads.enqueued.size)
+    }
+
+    @Test
+    fun aWebDownloadRetriesAfterItsTabIsClosed() = runTest {
+        val f = fixture()
+        val tab = f.manager.newTab(incognito = false, url = PAGE)
+        val retry = DownloadRetry(tab, FILE, USER_AGENT, null, "application/pdf", userInitiated = true, incognito = false)
+
+        f.manager.close(listOf(tab))
+        parts.downloads.retry(retry, null)
+        runCurrent()
+
+        assertEquals(1, parts.systemDownloads.enqueued.size)
+    }
+
+    @Test
+    fun aBlobRetryWithoutItsPageOffersNoRetry() = runTest {
+        val f = fixture()
+        val tab = f.manager.newTab(incognito = false, url = PAGE)
+        val retry = DownloadRetry(tab, BLOB, USER_AGENT, null, "image/png", userInitiated = true, incognito = false)
+
+        parts.downloads.retry(retry, null)
+        runCurrent()
+
+        assertNull(events.filterIsInstance<DownloadFailed>().single().retry)
+        assertTrue(media.inserts().isEmpty())
     }
 
     private fun List<DownloadEvent>.plain(): List<DownloadEvent> = map { event ->

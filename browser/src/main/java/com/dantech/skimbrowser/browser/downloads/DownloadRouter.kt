@@ -12,6 +12,7 @@ import com.dantech.skimbrowser.browser.BrowserProfile
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.SkimWebView
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.tab.TabsController
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -132,6 +133,7 @@ class DownloadRouter(
             webView,
             retry.userInitiated,
             fromRetry = true,
+            rememberedIncognito = retry.incognito,
         )
     }
 
@@ -144,6 +146,7 @@ class DownloadRouter(
         webView: WebView?,
         userInitiated: Boolean,
         fromRetry: Boolean,
+        rememberedIncognito: Boolean? = null,
     ) {
         val declared = mimeEssenceOf(mimeType)
         val source = sourceOf(url)
@@ -154,14 +157,18 @@ class DownloadRouter(
         val shownName = DownloadNames.sanitize(rawName, declared)
         val tab = tabs.state.value.tab(tabId)
         // A tab that is no longer open may have been an incognito one: its report says so.
-        val incognito = tab?.incognito ?: true
+        val kind = tab?.incognito ?: rememberedIncognito
+        val incognito = kind ?: true
         val agent = userAgent?.takeIf { it.isNotBlank() } ?: webView?.settings?.userAgentString
-        val retry = DownloadRetry(tabId, url, agent, contentDisposition, mimeType, userInitiated)
-        if (source == null || tab == null || (source == Source.BLOB && webView == null)) {
+        // No retry when another try cannot succeed: an unsupported scheme, a blob with no page,
+        // or a tab whose kind was never known. A web download remembers its kind, so it can run
+        // after that tab is closed.
+        if (source == null || kind == null || (source == Source.BLOB && webView == null)) {
             Log.w(TAG, "A download of an unsupported kind was refused")
-            fail(shownName, incognito, retry)
+            fail(shownName, incognito, null)
             return
         }
+        val retry = DownloadRetry(tabId, url, agent, contentDisposition, mimeType, userInitiated, kind)
         val allowed = when {
             userInitiated -> true
             fromRetry -> allowAutomatic(tabId)
@@ -302,7 +309,7 @@ class DownloadRouter(
         }.invokeOnCompletion { ended() }
     }
 
-    private fun fail(name: String?, incognito: Boolean, retry: DownloadRetry) {
+    private fun fail(name: String?, incognito: Boolean, retry: DownloadRetry?) {
         tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
     }
 

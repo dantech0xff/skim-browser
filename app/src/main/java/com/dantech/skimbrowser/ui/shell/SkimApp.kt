@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect

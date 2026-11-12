@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ui.snackbar
 
 import android.net.Uri
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import androidx.annotation.StringRes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp

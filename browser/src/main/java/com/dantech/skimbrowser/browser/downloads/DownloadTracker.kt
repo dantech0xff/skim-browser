@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.annotation.AnyThread
 import androidx.core.net.toUri
 import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,19 +52,6 @@ sealed interface DownloadEvent {
         val retry: DownloadRetry? = null,
     ) : DownloadEvent
 }
-
-/**
- * Enough to start a failed download again. It holds the page address, so it is never logged.
- * [userInitiated] is true when the person asked for it (Download image), false when the page started it.
- */
-data class DownloadRetry(
-    val tabId: String,
-    val url: String,
-    val userAgent: String?,
-    val contentDisposition: String?,
-    val mimeType: String?,
-    val userInitiated: Boolean,
-)
 
 /**
  * A download for Android's DownloadManager. Never logged or printed: it holds the page's address

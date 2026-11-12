@@ -1,6 +1,6 @@
 package com.dantech.skimbrowser.ui.browsing
 
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.snackbar.UndoRegistry
@@ -15,7 +15,7 @@ class DownloadNoticeTest {
 
     @Test
     fun aFailedDownloadOffersRetry() {
-        val retry = DownloadRetry("tab-1", "https://example.com/guide.pdf", null, null, "application/pdf", userInitiated = false)
+        val retry = DownloadRetry("tab-1", "https://example.com/guide.pdf", null, null, "application/pdf", userInitiated = false, incognito = false)
         val snackbar = SnackbarController(UndoRegistry(CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)))
 
         showDownloadNotice(DownloadNotice.Failed("guide.pdf", incognito = false, retry = retry), snackbar)

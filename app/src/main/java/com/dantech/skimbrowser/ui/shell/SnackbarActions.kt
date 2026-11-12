@@ -1,7 +1,7 @@
 package com.dantech.skimbrowser.ui.shell
 
 import android.content.ActivityNotFoundException
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import android.content.Intent
 import android.util.Log
 import androidx.annotation.MainThread

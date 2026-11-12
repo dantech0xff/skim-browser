@@ -5,7 +5,7 @@ import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.dantech.skimbrowser.R
-import com.dantech.skimbrowser.browser.downloads.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.text.cutTo
 import com.dantech.skimbrowser.domain.text.toVisibleText
