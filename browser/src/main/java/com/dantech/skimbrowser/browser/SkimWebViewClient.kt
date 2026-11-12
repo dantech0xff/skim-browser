@@ -234,12 +234,16 @@ class SkimWebViewClient(
      * [url] was intercepted as a main frame and has not started. A reload intercepts the same URL
      * again, so that request is a new in-flight document. [onPageStarted] carries its blocked
      * count only when the URL matches, and a different page still starts at zero.
+     *
+     * A new main-frame fetch is a new attempt, including a retry of a URL whose certificate was
+     * just refused. Extra SSL callbacks for that same attempt do not intercept the main frame again.
      */
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
             loadingUrl = url
             loadingBlocked.set(0)
             loadingCollapsed.clear()
+            refusedPageUrl = null
         }
     }
 

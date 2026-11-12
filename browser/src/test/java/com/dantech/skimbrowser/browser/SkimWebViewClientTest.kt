@@ -589,6 +589,20 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun retryingTheSameRefusedUrlShowsTheInterstitialAgain() {
+        client.shouldInterceptRequest(view, request(BAD, mainFrame = true))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+
+        assertEquals(listOf(BAD), events.eventsOf<Event.CertificateError>().map { it.warning.url })
+
+        client.shouldInterceptRequest(view, request(BAD, mainFrame = true))
+        client.onReceivedSslError(view, TestSslErrorHandler(), sslError(SslError.SSL_UNTRUSTED, BAD))
+
+        assertEquals(listOf(BAD, BAD), events.eventsOf<Event.CertificateError>().map { it.warning.url })
+    }
+
+    @Test
     fun aDetachedClientCancelsACertificateAndReportsNothing() {
         client.detach()
         val handler = TestSslErrorHandler()
