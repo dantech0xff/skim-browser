@@ -76,6 +76,15 @@ class IncomingIntentsTest {
     }
 
     @Test
+    fun aSharedLinkThatMentionsHttpInItsOwnTextStillOpens() {
+        assertEquals("https://httpbin.org/get", IncomingIntents.urlFrom(share("https://httpbin.org/get")))
+        assertEquals(
+            "https://example.com/http-status?q=http#http",
+            IncomingIntents.urlFrom(share("https://example.com/http-status?q=http#http")),
+        )
+    }
+
+    @Test
     fun aShareThatIsNotOneWebUrlOpensNothing() {
         assertNull(IncomingIntents.urlFrom(share("https://example.com/ https://other.example/")))
         assertNull(IncomingIntents.urlFrom(share("see https://example.com/")))

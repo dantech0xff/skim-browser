@@ -25,13 +25,15 @@ object IncomingIntents {
         return url.takeIf { hostOf(it) != null }
     }
 
-    /** The shared text when it is one web URL and nothing else. A second URL or any other text is not a link. */
+    /**
+     * The shared text when it is one web URL and nothing else. Words around it, or a second URL,
+     * leave whitespace, so they are not a link. "http" later in the host, path, query, or fragment
+     * is still that one URL.
+     */
     private fun sharedLink(intent: Intent): String? {
         if (intent.type != "text/plain") return null
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim() ?: return null
         if (text.isEmpty() || text.any { it.isWhitespace() }) return null
-        val http = "http"
-        if (text.indexOf(http, ignoreCase = true) != text.lastIndexOf(http, ignoreCase = true)) return null
         return text
     }
 }
