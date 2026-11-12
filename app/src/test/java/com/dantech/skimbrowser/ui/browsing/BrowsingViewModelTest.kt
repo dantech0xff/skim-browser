@@ -616,7 +616,7 @@ class BrowsingViewModelTest {
     }
 
     @Test
-    fun backToSafetyUsesWebViewHistoryWhenTheBackFlagIsStillFalse() = runTest {
+    fun backToSafetyKeepsThePageThatWasShowingWhenTheCertificateLoadStarted() = runTest {
         val f = fixture()
         val id = f.manager.newTab(incognito = false, url = PAGE, openedByExternalApp = true)
         f.engine.openPage(id, PAGE)
@@ -624,14 +624,31 @@ class BrowsingViewModelTest {
         f.manager.events.onPageStarted(id, BAD)
         f.manager.events.onCertificateError(id, certificateWarning())
         runCurrent()
-        assertFalse(f.manager.runtime(id).value.canGoBack)
+        assertEquals(PAGE, f.manager.runtime(id).value.committedUrl)
+        assertEquals(PAGE, f.tab(id)?.url)
 
         assertFalse(browsing(f, id).leaveUnsafeCertificate())
         runCurrent()
 
-        assertTrue(f.engine.calls.any { it == Call.GoBack(id) })
-        assertNotNull(f.tab(id))
+        assertTrue(f.engine.calls.none { it == Call.GoBack(id) })
+        assertEquals(PAGE, f.tab(id)?.url)
         assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun aPageStartForTheFailedCertificateDoesNotHideTheInterstitial() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        f.engine.openPage(id, PAGE, title = "Heat pumps")
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        f.manager.events.onPageStarted(id, BAD)
+        runCurrent()
+
+        assertEquals(CertificateFault.Untrusted, f.manager.runtime(id).value.certificateWarning?.fault)
+        assertEquals(PAGE, f.manager.runtime(id).value.committedUrl)
+        assertEquals(PAGE, f.tab(id)?.url)
+        assertEquals("Heat pumps", f.tab(id)?.title)
     }
 
     // Helpers

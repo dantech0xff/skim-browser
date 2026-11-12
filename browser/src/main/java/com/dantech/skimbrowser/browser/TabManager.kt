@@ -170,6 +170,7 @@ class TabManager(
     private var nextGroupId = 1L
     private var lastLoadNonce = 0L
     private val pageStartedSinceVisit = HashSet<String>()
+    private val shownBeforeStart = HashMap<String, ShownPage>()
     private val readerableChecked = HashMap<String, Long>()
     private val historyTitleUpdates = HashMap<String, Int>()
     private val titleWrites = HashMap<String, Job>()
@@ -945,10 +946,17 @@ class TabManager(
 
         override fun onPageStarted(tabId: String, url: String): Long {
             val tab = openTab(tabId) ?: return NO_LOAD
+            val runtime = runtimeOf(tabId)
+            val warning = runtime.certificateWarning
+            // The cancelled certificate load can still report a document start. That is not a new page.
+            if (warning != null && sameNavigation(warning.url, url)) return runtime.loadNonce
             val nonce = ++lastLoadNonce
             pageStartedSinceVisit += tabId
             historyTitleUpdates.remove(tabId)
-            val fallback = runtimeOf(tabId).httpFallback
+            val shown = runtime.committedUrl
+            val saved = shownBeforeStart[tabId]
+            if (saved == null || saved.url == shown) shownBeforeStart[tabId] = ShownPage(shown, tab.title)
+            val fallback = runtime.httpFallback
             val upgraded = fallback?.let { httpsUpgrade(it) }
             val upgradeAttempt = upgraded != null && sameNavigation(upgraded, url)
             updateRuntime(tabId) {
@@ -1006,6 +1014,7 @@ class TabManager(
             val runtime = runtimeOf(tabId)
             // The certificate interstitial cancelled this navigation. The previous page is still showing.
             if (runtime.certificateWarning?.url?.let { sameNavigation(it, url) } == true) return
+            shownBeforeStart.remove(tabId)
             val sameDocument = !pageStartedSinceVisit.remove(tabId)
             // A failed load commits an error page for its URL; that is no visit.
             val failed = runtime.loadError?.url?.let { sameNavigation(it, url) } == true
@@ -1130,7 +1139,31 @@ class TabManager(
 
         override fun onCertificateError(tabId: String, warning: CertificateWarning) {
             openTab(tabId) ?: return
-            updateRuntime(tabId) { it.copy(certificateWarning = warning, loadError = null, progress = null) }
+            val runtime = runtimeOf(tabId)
+            val before = shownBeforeStart.remove(tabId)
+            val previous = before?.url
+            val startedFailedUrl = runtime.committedUrl?.let { sameNavigation(it, warning.url) } == true
+            val kept = before?.takeIf {
+                startedFailedUrl &&
+                    previous != null &&
+                    isWebUrl(previous) &&
+                    !sameNavigation(previous, warning.url)
+            }
+            pageStartedSinceVisit.remove(tabId)
+            val keptUrl = kept?.url
+            if (kept != null && keptUrl != null) {
+                updateTab(tabId) { it.copy(url = keptUrl, title = kept.title) }
+                persistTab(tabId)
+            }
+            updateRuntime(tabId) {
+                it.copy(
+                    certificateWarning = warning,
+                    loadError = null,
+                    progress = null,
+                    committedUrl = keptUrl ?: it.committedUrl,
+                    isSecure = if (keptUrl != null) isHttps(keptUrl) else it.isSecure,
+                )
+            }
         }
 
         override fun onWebViewDestroyed(tabId: String) {
@@ -1238,3 +1271,6 @@ class TabManager(
         }
     }
 }
+
+/** The page showing when a main-frame load started, so a cancelled certificate can put it back. */
+private data class ShownPage(val url: String?, val title: String)
