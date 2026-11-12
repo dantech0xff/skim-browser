@@ -53,7 +53,6 @@ data class BrowsingUiState(
     val progress: Float?,
     /** Why the page failed to load; the error screen covers the page while it is set. */
     val loadError: LoadError?,
-    /** A certificate the tab refused. The interstitial covers the page while it is set. */
     val certificateWarning: CertificateWarning? = null,
     /** Back has something to do in the tab, as system Back does ([browserBack]). */
     val backEnabled: Boolean,
@@ -171,11 +170,9 @@ class BrowsingViewModel @AssistedInject constructor(
     /** Opens the http page after https could not connect. */
     fun openHttpFallback() = tabs.loadHttpFallback(tabId)
 
-    /** Back to safety on the certificate interstitial. */
     @MainThread
     fun leaveUnsafeCertificate() = tabs.leaveUnsafeCertificate(tabId)
 
-    /** Proceed anyway for the certificate this tab is showing. */
     @MainThread
     fun proceedDespiteCertificate() = tabs.proceedDespiteCertificate(tabId)
 

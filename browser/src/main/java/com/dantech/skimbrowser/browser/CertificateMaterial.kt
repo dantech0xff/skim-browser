@@ -28,7 +28,6 @@ fun certificateMaterial(certificate: SslCertificate): ByteArray {
     ).joinToString("\u0000").toByteArray(Charsets.UTF_8)
 }
 
-/** The session key of [certificate]. */
 fun certificateFingerprintOf(certificate: SslCertificate): String = certificateFingerprint(certificateMaterial(certificate))
 
 private const val ENCODED_CERTIFICATE = "x509-certificate"

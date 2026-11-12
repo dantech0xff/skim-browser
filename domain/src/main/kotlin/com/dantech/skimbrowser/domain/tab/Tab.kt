@@ -78,7 +78,6 @@ data class TabRuntime(
     /** True when the committed page was loaded over https. */
     val isSecure: Boolean = false,
     val loadError: LoadError? = null,
-    /** A certificate the tab refused. Null once the person leaves or the page loads. */
     val certificateWarning: CertificateWarning? = null,
     /** The http URL replaced by https for this load. Offered again when that https page cannot connect. */
     val httpFallback: String? = null,

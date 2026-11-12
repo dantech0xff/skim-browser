@@ -37,9 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * order the WebView calls them, decides where the page may navigate, and hands a WebView whose
  * renderer went away back to its pool.
  *
- * An invalid certificate cancels the load. `proceed` runs only when this session already allowed
- * that host and certificate. HTTP authentication and Safe Browsing keep the WebView's own handling,
- * and Safe Browsing shows its interstitial.
+ * HTTP authentication and Safe Browsing keep the WebView's own handling. Safe Browsing shows its
+ * interstitial.
  *
  * Once [detach]ed (the pool destroys the WebView), it reports nothing more and blocks navigation.
  */

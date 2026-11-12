@@ -65,9 +65,7 @@ data class BrowsingActions(
     val onAskPage: () -> Unit,
     /** Opens the http page when https, tried first, could not connect. */
     val onOpenHttp: (() -> Unit)? = null,
-    /** Back to safety on the certificate interstitial. */
     val onLeaveUnsafeCertificate: () -> Unit = {},
-    /** Proceed anyway for the certificate the interstitial is showing. */
     val onProceedDespiteCertificate: () -> Unit = {},
 )
 

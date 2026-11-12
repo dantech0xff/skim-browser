@@ -53,7 +53,6 @@ internal abstract class BrowserBindingsModule {
         /** Where the WebView layer reports what happens in the tabs. */
         @Provides fun tabEvents(tabs: TabManager): TabEventSink = tabs.events
 
-        /** One allowlist for the process. A new process starts with an empty one. */
         @Provides @Singleton fun certificateSessions(): CertificateSessions = CertificateSessions()
     }
 }

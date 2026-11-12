@@ -55,7 +55,6 @@ class RecordingEvents : TabEventSink {
     /** What [onPopupRequested] answers: the popup tab's id, or null to refuse the window. */
     var popupTabId: String? = "popup-tab"
 
-    /** What [certificateAction] answers. Cancel until a test allows the certificate. */
     var certificateDecision = CertificateAction.Cancel
 
     inline fun <reified T : Event> eventsOf(): List<T> = events.filterIsInstance<T>()

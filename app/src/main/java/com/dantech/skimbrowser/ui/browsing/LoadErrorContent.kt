@@ -214,7 +214,6 @@ internal fun certificateLook(fault: CertificateFault): ErrorLook = ErrorLook(
     bodyNamesSite = false,
 )
 
-/** The one sentence for [fault]. */
 @StringRes
 internal fun certificateExplanation(fault: CertificateFault): Int = when (fault) {
     CertificateFault.NotYetValid -> R.string.certificate_error_not_yet_valid

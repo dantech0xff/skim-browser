@@ -382,7 +382,6 @@ class TabManager(
         returnToNewTabPage(tabId)
     }
 
-    /** Allows the warned certificate for this tab's kind, then loads the page again. */
     @MainThread
     override fun proceedDespiteCertificate(tabId: String) {
         val tab = openTab(tabId) ?: return
