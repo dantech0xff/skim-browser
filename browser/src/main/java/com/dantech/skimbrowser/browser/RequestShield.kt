@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.url.hostOf
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -27,8 +29,9 @@ import kotlinx.coroutines.launch
 @Singleton
 class RequestShield private constructor(
     private val loadList: () -> HostBlocklist,
+    private val loadCosmetic: () -> CosmeticFilters,
     private val settings: SettingsRepository?,
-    scope: CoroutineScope?,
+    private val scope: CoroutineScope?,
 ) : ShieldChoices {
 
     @Inject constructor(
@@ -38,6 +41,9 @@ class RequestShield private constructor(
     ) : this(
         loadList = {
             context.assets.open(ASSET).bufferedReader().use { HostBlocklist.load(it) }
+        },
+        loadCosmetic = {
+            context.assets.open(COSMETIC_ASSET).bufferedReader().use { CosmeticFilters.load(it) }
         },
         settings = settings,
         scope = scope,
@@ -57,6 +63,9 @@ class RequestShield private constructor(
     private val choiceLock = Any()
     private val gate = Any()
     private var loaded: HostBlocklist? = null
+    private val cosmeticGate = Any()
+    @Volatile private var cosmetic: CosmeticFilters? = null
+    private val readyWaiters = ArrayList<() -> Unit>()
 
     override val disabledHosts: StateFlow<Set<String>> = persisted
 
@@ -128,6 +137,50 @@ class RequestShield private constructor(
         incognitoOff.clear()
     }
 
+    override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? {
+        val host = documentUrl?.let(::hostOf) ?: return ""
+        if (!rulesReady()) return null
+        if (isOff(host, incognito)) return ""
+        return cosmetic?.cssFor(host) ?: ""
+    }
+
+    override fun warmCosmetic() {
+        if (!choicesReady.get()) choicesLoaded.await()
+        cosmetics()
+    }
+
+    override fun whenCosmeticReady(action: () -> Unit) {
+        if (rulesReady()) {
+            action()
+            return
+        }
+        val runner = scope
+        if (runner == null) {
+            warmCosmetic()
+            action()
+            return
+        }
+        val runNow = synchronized(readyWaiters) {
+            if (rulesReady()) true else {
+                readyWaiters += action
+                false
+            }
+        }
+        if (runNow) {
+            action()
+            return
+        }
+        runner.launch(Dispatchers.IO) {
+            warmCosmetic()
+            val queued = synchronized(readyWaiters) {
+                if (!rulesReady()) emptyList() else readyWaiters.toList().also { readyWaiters.clear() }
+            }
+            queued.forEach { it() }
+        }
+    }
+
+    private fun rulesReady(): Boolean = choicesReady.get() && cosmetic != null
+
     private fun isOff(host: String, incognito: Boolean): Boolean =
         if (incognito) host in incognitoOff else host in persisted.value
 
@@ -146,18 +199,61 @@ class RequestShield private constructor(
         }
     }
 
+    private fun cosmetics(): CosmeticFilters {
+        cosmetic?.let { return it }
+        synchronized(cosmeticGate) {
+            cosmetic?.let { return it }
+            val parsed = try {
+                loadCosmetic()
+            } catch (e: Exception) {
+                Log.e(TAG, "The cosmetic rules did not load", e)
+                CosmeticFilters.EMPTY
+            }
+            cosmetic = parsed
+            return parsed
+        }
+    }
+
     companion object {
         const val ASSET = "shield/blocklist.txt"
+        const val COSMETIC_ASSET = "shield/cosmetic.txt"
         private const val TAG = "RequestShield"
 
         /** A shield over [list] with no stored choices. Unit tests build one of these. */
-        fun of(list: HostBlocklist): RequestShield = RequestShield(loadList = { list }, settings = null, scope = null)
+        fun of(list: HostBlocklist): RequestShield = of(list, CosmeticFilters.EMPTY)
+
+        fun of(list: HostBlocklist, cosmetic: CosmeticFilters): RequestShield =
+            RequestShield(loadList = { list }, loadCosmetic = { cosmetic }, settings = null, scope = null)
 
         /** A shield whose normal-tab exceptions come from [settings]. Unit tests build one of these. */
         fun withChoices(
             list: HostBlocklist,
             settings: SettingsRepository,
             scope: CoroutineScope,
-        ): RequestShield = RequestShield(loadList = { list }, settings = settings, scope = scope)
+        ): RequestShield = withChoices(list, CosmeticFilters.EMPTY, settings, scope)
+
+        /** A shield whose cosmetic file is read by [loadCosmetic], for tests that must not parse early. */
+        fun loading(
+            loadCosmetic: () -> CosmeticFilters,
+            settings: SettingsRepository,
+            scope: CoroutineScope,
+        ): RequestShield = RequestShield(
+            loadList = { HostBlocklist.EMPTY },
+            loadCosmetic = loadCosmetic,
+            settings = settings,
+            scope = scope,
+        )
+
+        fun withChoices(
+            list: HostBlocklist,
+            cosmetic: CosmeticFilters,
+            settings: SettingsRepository,
+            scope: CoroutineScope,
+        ): RequestShield = RequestShield(
+            loadList = { list },
+            loadCosmetic = { cosmetic },
+            settings = settings,
+            scope = scope,
+        )
     }
 }

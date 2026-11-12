@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
+import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +12,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,6 +52,41 @@ class RequestShieldTest {
         advanceUntilIdle()
         assertTrue("example.com" in settings.shieldDisabledHosts.first())
         assertFalse(shield.blocks(PAGE, TRACKER, incognito = false))
+    }
+
+    @Test(timeout = 5_000)
+    fun cosmeticRulesFollowTheSameSiteSwitch() = runBlocking {
+        val cosmetic = CosmeticFilters.load("G\t.adsbox\n".reader().buffered())
+        val settings = FakeSettingsRepository()
+        val shield = RequestShield.withChoices(
+            list,
+            cosmetic,
+            settings,
+            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+        shield.warmCosmetic()
+
+        val sheet = shield.cosmeticCss(PAGE, incognito = false)
+        assertTrue(sheet!!.contains(".adsbox{display:none !important}"))
+        shield.setDisabled("example.com", incognito = false, disabled = true)
+        assertEquals("", shield.cosmeticCss("https://www.example.com/story", incognito = false))
+        assertTrue(shield.cosmeticCss(OTHER, incognito = false)!!.contains(".adsbox"))
+    }
+
+    @Test(timeout = 5_000)
+    fun cosmeticCssDoesNotParseUntilWarm() {
+        var parsed = false
+        val shield = RequestShield.loading(
+            loadCosmetic = {
+                parsed = true
+                CosmeticFilters.EMPTY
+            },
+            settings = FakeSettingsRepository(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+
+        assertEquals(null, shield.cosmeticCss("https://example.com/", incognito = false))
+        assertFalse(parsed)
     }
 
     private companion object {

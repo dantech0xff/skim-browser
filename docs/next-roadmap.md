@@ -21,10 +21,10 @@ These are the daily-driver pieces that already have code. They are not units bel
 | Tab restore | `TabManager.restore`. Normal tabs, groups, and WebView state come back. Incognito tabs do not, on purpose (`TabRules.kt`). |
 | Renderer crash | `TabManager.onRendererGone` restores the WebView a few times, then shows `LoadError.Crashed` with Try again. |
 | File upload, pinch zoom, third-party cookies off, HTTPS-first | `SkimChromeClient.onShowFileChooser`, `builtInZoomControls` in `WebViewPool.configure`, `setAcceptThirdPartyCookies(false)`, `httpsUpgrade`. |
+| Cosmetic element hiding | `CosmeticFilters` and `SkimWebViewClient`. `##` and `#@#` rules from the same EasyList and EasyPrivacy snapshot become one `display:none` stylesheet. A site that turns blocking off is not hidden. Procedural rules are not applied. |
 
 ## Product vision, still open
 
-- Element hiding is not applied. `docs/product-vision.md` says this version does not add it. That is not a unit here.
 - Frame time on a device is not written down. Macrobenchmark code exists (`macrobenchmark/`, `baselineprofile/`). A green unit test is not that measurement.
 - Release is still blocked by `docs/deployment-guide.md` (proxy, legal URLs, signing). No unit here asks for a secret or a store listing.
 
@@ -108,4 +108,3 @@ Each unit ships on its own. None of them add a library. Size is an estimate agai
 - An in-app Downloads screen. `design/README.md` lists it as an open decision. The system Downloads UI already receives normal-tab files.
 - Web notifications. They need a permission prompt that does not exist.
 - A certificate interstitial with a way to continue. That is a security decision. The WebView's own handling stays.
-- Element hiding. The product vision says this version does not add it.

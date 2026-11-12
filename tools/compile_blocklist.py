@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Compile EasyList and EasyPrivacy into the host list Skim ships.
+"""Compile EasyList and EasyPrivacy into the lists Skim ships.
 
-The lists are dual-licensed. This script keeps the GPL-3.0-or-later option
-and writes one host per line. Cosmetic rules, popup rules and options this
-browser does not apply are dropped. The raw lists are not stored in the APK.
+The lists are dual-licensed. This script keeps the GPL-3.0-or-later option.
+Host rules become one host per line. Cosmetic `##` and `#@#` rules become the
+tab-separated file the app turns into a stylesheet. Procedural (`#?#`),
+scriptlet (`#$#`) and extended-selector rules are dropped. The raw lists are
+not stored in the APK.
 
 Refresh, from the repo root, with the network:
 
     python3 tools/compile_blocklist.py
 
-That downloads the pinned commit below. Pass another full sha to move the pin.
+That downloads the pinned commit below and writes both files. Pass
+`--cosmetic-only` to leave the host file untouched, or `--self-test` to check
+the cosmetic parser without the network. Pass another full sha to move the pin.
 There is no in-app download: a newer list ships in a newer APK, so the app
 does not contact EasyList's servers at runtime.
 
@@ -28,6 +32,7 @@ PIN = "df0f934719102cd2ad93cb4dddd76a557acec460"
 REPO = "https://api.github.com/repos/easylist/easylist"
 RAW = "https://raw.githubusercontent.com/easylist/easylist"
 OUT = Path("browser/src/main/assets/shield/blocklist.txt")
+COSMETIC_OUT = Path("browser/src/main/assets/shield/cosmetic.txt")
 CACHE = Path("/tmp/easylist-pin")
 
 # Options Skim can honor by blocking the whole host. Anything else (a site
@@ -56,6 +61,25 @@ HOST = re.compile(
 )
 
 SKIP_NAME = ("hide", "popup", "dimension", "ubo")
+SKIP_COSMETIC = ("popup", "dimension", "ubo")
+DOMAIN = re.compile(
+    r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+)
+EXTENDED = (
+    ":-abp-",
+    ":xpath(",
+    ":has-text(",
+    ":matches-css",
+    ":matches-attr(",
+    ":upward(",
+    ":remove(",
+    ":style(",
+    ":min-text-length(",
+    ":watch-attr(",
+    ":others(",
+    ":matches-path(",
+)
+PAGE_WIDE = {"*", "html", "body", ":root"}
 
 
 def get(url: str) -> bytes:
@@ -70,7 +94,7 @@ def get(url: str) -> bytes:
     return data
 
 
-def list_files(sha: str) -> list[str]:
+def list_files(sha: str, skip: tuple[str, ...] = SKIP_NAME) -> list[str]:
     paths: list[str] = []
     for folder in ("easylist", "easyprivacy"):
         listing = json.loads(get(f"{REPO}/contents/{folder}?ref={sha}"))
@@ -78,7 +102,7 @@ def list_files(sha: str) -> list[str]:
             name = item["name"].lower()
             if item["type"] != "file" or not name.endswith(".txt"):
                 continue
-            if any(part in name for part in SKIP_NAME):
+            if any(part in name for part in skip):
                 continue
             paths.append(f"{folder}/{item['name']}")
     return paths
@@ -135,32 +159,211 @@ def compile_rules(texts: list[str]) -> dict[str, set[str]]:
     return kinds
 
 
-def main() -> None:
-    sha = sys.argv[1] if len(sys.argv) > 1 else PIN
-    if not re.fullmatch(r"[0-9a-f]{40}", sha):
-        raise SystemExit("pass the full 40-character commit sha")
-    commit = json.loads(get(f"{REPO}/commits/{sha}"))
-    when = commit["commit"]["committer"]["date"]
-    paths = list_files(sha)
-    texts = [get(f"{RAW}/{sha}/{path}").decode("utf-8", "replace") for path in paths]
-    kinds = compile_rules(texts)
-    lines = [
-        "# Skim request shield",
+def selector_ok(selector: str) -> bool:
+    if not selector or len(selector) > 200 or selector in PAGE_WIDE:
+        return False
+    if any(c in selector for c in "{}\n\r\t\\<@"):
+        return False
+    lower = selector.lower()
+    if any(token in lower for token in EXTENDED):
+        return False
+    if "url(" in lower or "expression(" in lower or "/*" in selector:
+        return False
+    return True
+
+
+def norm_domain(raw: str) -> str | None:
+    name = raw.strip().lower()
+    if name.startswith("www.") and "." in name[4:]:
+        name = name[4:]
+    try:
+        name = name.encode("idna").decode("ascii")
+    except UnicodeError:
+        return None
+    if not DOMAIN.match(name):
+        return None
+    return name
+
+
+def split_domains(raw: str) -> tuple[list[str], list[str]] | None:
+    if not raw:
+        return [], []
+    positive: list[str] = []
+    negative: list[str] = []
+    for part in raw.split(","):
+        token = part.strip()
+        if not token:
+            return None
+        negated = token.startswith("~")
+        domain = norm_domain(token[1:] if negated else token)
+        if domain is None:
+            return None
+        (negative if negated else positive).append(domain)
+    return positive, negative
+
+
+def parse_cosmetic(line: str) -> tuple[list[str], list[str], str, bool] | None:
+    stripped = line.strip()
+    if not stripped or stripped[0] in "![":
+        return None
+    if "#?#" in stripped or "#$#" in stripped:
+        return None
+    for sep, exception in (("#@#", True), ("##", False)):
+        at = stripped.find(sep)
+        if at < 0:
+            continue
+        domains = split_domains(stripped[:at].strip())
+        selector = stripped[at + len(sep) :].strip()
+        if domains is None or not selector_ok(selector):
+            return None
+        return domains[0], domains[1], selector, exception
+    return None
+
+
+def compile_cosmetic(texts: list[str]) -> list[str]:
+    seen: set[tuple] = set()
+    rows: list[tuple] = []
+    for text in texts:
+        for line in text.splitlines():
+            parsed = parse_cosmetic(line)
+            if parsed is None:
+                continue
+            positive, negative, selector, exception = parsed
+            unless = tuple(sorted(set(negative)))
+            if exception:
+                if not positive and not unless:
+                    row = ("E", selector)
+                    if row not in seen:
+                        seen.add(row)
+                        rows.append(row)
+                    continue
+                if unless:
+                    continue
+                for domain in sorted(set(positive)):
+                    row = ("X", domain, selector)
+                    if row not in seen:
+                        seen.add(row)
+                        rows.append(row)
+                continue
+            if positive:
+                for domain in sorted(set(positive)):
+                    row = ("H", domain, selector, unless)
+                    if row not in seen:
+                        seen.add(row)
+                        rows.append(row)
+            else:
+                row = ("G", selector, unless)
+                if row not in seen:
+                    seen.add(row)
+                    rows.append(row)
+    rows.sort(key=lambda row: tuple(str(part) for part in row))
+
+    def emit(row: tuple) -> str:
+        kind = row[0]
+        if kind == "E":
+            return f"E\t{row[1]}"
+        if kind == "G":
+            extra = "".join(f"\t!{domain}" for domain in row[2])
+            return f"G\t{row[1]}{extra}"
+        if kind == "X":
+            return f"X\t{row[1]}\t{row[2]}"
+        extra = "".join(f"\t!{domain}" for domain in row[3])
+        return f"H\t{row[1]}\t{row[2]}{extra}"
+
+    return [emit(row) for row in rows]
+
+
+def cosmetic_header(sha: str, when: str) -> list[str]:
+    return [
+        "# Skim cosmetic rules",
         "# Sources: EasyList and EasyPrivacy",
         "# License: GPL-3.0-or-later, chosen from the dual license at",
         "# https://easylist.to/pages/licence.html",
         "# Attribution: The EasyList authors (https://easylist.to/)",
         f"# Upstream: easylist/easylist {sha} {when}",
-        "# Kinds: B block, T block third-party, A allow, X allow third-party",
+        "# Kinds: G generic hide, E generic exception, H domain hide, X domain exception",
+        "# A hide may end with !domain for a host it skips. Procedural rules are not here.",
     ]
-    for kind in ("A", "B", "T", "X"):
-        for host in sorted(kinds[kind]):
-            lines.append(f"{kind} {host}")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    counts = {kind: len(hosts) for kind, hosts in kinds.items()}
-    print(f"wrote {OUT} ({OUT.stat().st_size} bytes) from {sha}")
+
+
+def write_cosmetic(sha: str, when: str, texts: list[str]) -> None:
+    body = compile_cosmetic(texts)
+    COSMETIC_OUT.parent.mkdir(parents=True, exist_ok=True)
+    COSMETIC_OUT.write_text("\n".join(cosmetic_header(sha, when) + body) + "\n", encoding="utf-8")
+    counts: dict[str, int] = {}
+    for line in body:
+        counts[line[0]] = counts.get(line[0], 0) + 1
+    print(f"wrote {COSMETIC_OUT} ({COSMETIC_OUT.stat().st_size} bytes) from {sha}")
     print(counts)
+
+
+def self_test() -> None:
+    text = """
+! comment
+[Adblock Plus 2.0]
+##.adsbox
+example.com##.banner
+example.com#@#.adsbox
+~news.example##.popup
+a.com,b.com##.sponsor
+example.com#$#abort-on-property-read
+example.com#?#div:has(> .ad)
+##div:-abp-has(.ad)
+##body
+##.slot > .ad
+"""
+    lines = set(compile_cosmetic([text]))
+    expected = {
+        "G\t.adsbox",
+        "H\texample.com\t.banner",
+        "X\texample.com\t.adsbox",
+        "G\t.popup\t!news.example",
+        "H\ta.com\t.sponsor",
+        "H\tb.com\t.sponsor",
+        "G\t.slot > .ad",
+    }
+    missing = expected - lines
+    extra = lines - expected
+    if missing or extra:
+        raise SystemExit(f"self-test failed\nmissing {sorted(missing)}\nextra {sorted(extra)}")
+    print("cosmetic self-test ok")
+
+
+def main() -> None:
+    args = [arg for arg in sys.argv[1:] if arg != "--cosmetic-only"]
+    cosmetic_only = "--cosmetic-only" in sys.argv[1:]
+    if args[:1] == ["--self-test"]:
+        self_test()
+        return
+    sha = args[0] if args else PIN
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise SystemExit("pass the full 40-character commit sha")
+    commit = json.loads(get(f"{REPO}/commits/{sha}"))
+    when = commit["commit"]["committer"]["date"]
+    if not cosmetic_only:
+        paths = list_files(sha)
+        texts = [get(f"{RAW}/{sha}/{path}").decode("utf-8", "replace") for path in paths]
+        kinds = compile_rules(texts)
+        lines = [
+            "# Skim request shield",
+            "# Sources: EasyList and EasyPrivacy",
+            "# License: GPL-3.0-or-later, chosen from the dual license at",
+            "# https://easylist.to/pages/licence.html",
+            "# Attribution: The EasyList authors (https://easylist.to/)",
+            f"# Upstream: easylist/easylist {sha} {when}",
+            "# Kinds: B block, T block third-party, A allow, X allow third-party",
+        ]
+        for kind in ("A", "B", "T", "X"):
+            for host in sorted(kinds[kind]):
+                lines.append(f"{kind} {host}")
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        counts = {kind: len(hosts) for kind, hosts in kinds.items()}
+        print(f"wrote {OUT} ({OUT.stat().st_size} bytes) from {sha}")
+        print(counts)
+    cosmetic_paths = list_files(sha, SKIP_COSMETIC)
+    cosmetic_texts = [get(f"{RAW}/{sha}/{path}").decode("utf-8", "replace") for path in cosmetic_paths]
+    write_cosmetic(sha, when, cosmetic_texts)
 
 
 if __name__ == "__main__":

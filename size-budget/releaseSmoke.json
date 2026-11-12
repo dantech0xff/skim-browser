@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
   "variant": "releaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 3807014,
+  "fileSizeBytes": 4034970,
   "downloadSizeBytes": 2628238,
   "maxGrowthBytes": 8192,
   "definedMethods": 23214,
   "referencedMethods": 26549,
   "dexFiles": 1,
-  "notes": "Master releaseSmoke APK measured 3045321 bytes after private-by-default. The EasyList/EasyPrivacy host list previously added 739197 bytes (3763034 minus 3023837). That sum was 3784518. The Downloads screen then measured 3807014, 22496 above 3784518: classes.dex grew 16297 compressed bytes and resources.arsc grew 6240. The list is a private file, not a Room table. assets/shield/blocklist.txt is 722110 compressed bytes. Download size was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Downloads screen baseline was 3807014. Cosmetic rules measured 227956 on CI against the pre-Downloads file (4012474 minus 3784518). This baseline is 3807014 plus 227956, which is 4034970. assets/shield/cosmetic.txt is 211572 compressed bytes of that. Download size was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

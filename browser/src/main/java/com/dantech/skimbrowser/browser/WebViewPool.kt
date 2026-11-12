@@ -168,6 +168,12 @@ class WebViewPool(
 
         /** Find in page steps that wait for the WebView to finish counting a new search. */
         val findSteps = FindSteps()
+
+        /**
+         * History steps asked for since the list's index last moved. A second back before the
+         * first one commits still reads the old index, so this counts both.
+         */
+        var historyPending = 0
     }
 
     /** A command that waits for the tab's WebView: there is none yet, or it is still restoring. */
@@ -316,7 +322,7 @@ class WebViewPool(
         unblock(tabId)
         val entry = readyEntry(tabId)
         if (entry != null) {
-            entry.view.loadUrl(url)
+            loadInView(entry, url)
         } else {
             queue(tabId).navigation = Pending.Load(url)
         }
@@ -330,6 +336,7 @@ class WebViewPool(
             return true
         }
         if (!entry.view.canGoBack()) return false
+        armHistoryStep(entry, -1)
         entry.view.goBack()
         return true
     }
@@ -339,6 +346,7 @@ class WebViewPool(
         if (entry.restoring) {
             queue(tabId).navigation = Pending.Forward
         } else if (entry.view.canGoForward()) {
+            armHistoryStep(entry, 1)
             entry.view.goForward()
         }
     }
@@ -347,7 +355,7 @@ class WebViewPool(
         unblock(tabId)
         val entry = readyEntry(tabId)
         if (entry != null) {
-            entry.view.reload()
+            reloadInView(entry)
         } else {
             val waiting = queue(tabId)
             if (waiting.navigation !is Pending.Load) waiting.navigation = Pending.Reload
@@ -358,7 +366,7 @@ class WebViewPool(
         val entry = live[tabId] ?: return
         applyDesktopMode(entry.view, on)
         // A restoring WebView loads its page with the new user agent anyway.
-        if (!entry.restoring) entry.view.reload()
+        if (!entry.restoring) reloadInView(entry)
     }
 
     override fun find(tabId: String, q: String) {
@@ -539,7 +547,16 @@ class WebViewPool(
             live[tab.id]?.takeIf { it.view === view }?.findSteps?.reported(isDoneCounting)?.forEach(view::findNext)
         }
         view.onHitTarget = { target -> events.onHitTarget(tab.id, target) }
-        val client = SkimWebViewClient(tab.id, tab.incognito, events, activityHost, tabs::load, shield) { gone, action, didCrash ->
+        val documentStart = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+        val client = SkimWebViewClient(
+            tab.id,
+            tab.incognito,
+            events,
+            activityHost,
+            tabs::load,
+            shield,
+            documentStart,
+        ) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
         }
         view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
@@ -561,7 +578,38 @@ class WebViewPool(
         view.webViewClient = client
         view.webChromeClient = chrome
         applyDesktopMode(view, tab.desktopSite)
+        // The process start does not read the rules. The first WebView does, off this thread.
+        scope.launch(Dispatchers.IO) { shield.warmCosmetic() }
         return Entry(tab.id, view, client, chrome)
+    }
+
+    /** Arms the history entry [delta] steps from the current one, then the caller moves there. */
+    private fun armHistoryStep(entry: Entry, delta: Int) {
+        val list = try {
+            entry.view.copyBackForwardList()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "History was not read", e)
+            return
+        }
+        val step = entry.historyPending + delta
+        if (list.currentIndex + step !in 0 until list.size) return
+        entry.historyPending = step
+        val url = historyStepUrl(list.currentIndex, list.size, { index -> list.getItemAtIndex(index)?.url }, step)
+            ?: return
+        entry.client.armCosmetic(entry.view, url)
+    }
+
+    private fun loadInView(entry: Entry, url: String) {
+        entry.historyPending = 0
+        entry.client.armCosmetic(entry.view, url)
+        entry.view.loadUrl(url)
+    }
+
+    private fun reloadInView(entry: Entry) {
+        entry.historyPending = 0
+        val url = tabs.state.value.tab(entry.tabId)?.url
+        if (url != null) entry.client.armCosmetic(entry.view, url)
+        entry.view.reload()
     }
 
     /** Reads the tab's saved state off the main thread, then restores it before anything loads. */
@@ -599,15 +647,21 @@ class WebViewPool(
             // here, and an explicit HTTP choice must not be upgraded again when the WebView is recreated.
             val url = tabs.state.value.tab(entry.tabId)?.url
             if (url != null && isWebUrl(url)) {
-                entry.view.loadUrl(url)
+                loadInView(entry, url)
                 loadedFresh = true
             }
         }
         when (navigation) {
-            is Pending.Load -> entry.view.loadUrl(navigation.url)
-            Pending.Reload -> if (restored && !loadedFresh) entry.view.reload()
-            Pending.Back -> if (entry.view.canGoBack()) entry.view.goBack()
-            Pending.Forward -> if (entry.view.canGoForward()) entry.view.goForward()
+            is Pending.Load -> loadInView(entry, navigation.url)
+            Pending.Reload -> if (restored && !loadedFresh) reloadInView(entry)
+            Pending.Back -> if (entry.view.canGoBack()) {
+                armHistoryStep(entry, -1)
+                entry.view.goBack()
+            }
+            Pending.Forward -> if (entry.view.canGoForward()) {
+                armHistoryStep(entry, 1)
+                entry.view.goForward()
+            }
             null -> Unit
         }
         if (waiting?.clearHistory == true) entry.view.clearHistory()
@@ -756,10 +810,18 @@ class WebViewPool(
     private inner class PoolEvents : TabEventSink by tabEvents {
         override fun onPageStarted(tabId: String, url: String): Long {
             live[tabId]?.let { entry ->
+                entry.historyPending = 0
                 entry.captureJob?.cancel()
                 entry.saveJob?.cancel()
             }
             return tabEvents.onPageStarted(tabId, url)
+        }
+
+        override fun onVisitedHistory(tabId: String, url: String) {
+            // Same-document history moves the list without onPageStarted. The pending offset
+            // would otherwise be added to an index that already moved.
+            live[tabId]?.historyPending = 0
+            tabEvents.onVisitedHistory(tabId, url)
         }
 
         override fun onProgress(tabId: String, percent: Int) {
@@ -830,4 +892,12 @@ class WebViewTimers {
         /** The one set of timers of the process. */
         val process = WebViewTimers()
     }
+}
+
+/** The http(s) URL [delta] steps from [currentIndex], or null when that step is missing. */
+internal fun historyStepUrl(currentIndex: Int, size: Int, urlAt: (Int) -> String?, delta: Int): String? {
+    val index = currentIndex + delta
+    if (size <= 0 || index !in 0 until size) return null
+    val url = urlAt(index) ?: return null
+    return url.takeIf { isWebUrl(it) }
 }
