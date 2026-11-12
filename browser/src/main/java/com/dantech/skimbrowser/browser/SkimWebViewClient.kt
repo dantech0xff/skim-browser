@@ -276,12 +276,15 @@ class SkimWebViewClient(
         }
     }
 
+    /**
+     * The hide sheet is per host. A redirect that only changes the path still gets the sheet
+     * that was armed for that host. A different host does not.
+     */
     private fun stillTheArmedPage(url: String): Boolean = synchronized(documentGate) {
-        val pending = loadingUrl
-        if (pending != null) return@synchronized carriesCollapse(pending, url)
-        val current = documentUrl
-        if (current == null || hostOf(current) == null) return@synchronized true
-        carriesCollapse(current, url)
+        val armedHost = hostOf(url) ?: return@synchronized false
+        val live = loadingUrl ?: documentUrl
+        val liveHost = live?.let(::hostOf) ?: return@synchronized true
+        liveHost == armedHost
     }
 
     private fun installDocumentStart(view: WebView, url: String, css: String?) {

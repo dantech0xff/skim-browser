@@ -484,6 +484,19 @@ class SkimWebViewClientTest {
         assertTrue(shadowOf(view).lastEvaluatedJavascript == null || !shadowOf(view).lastEvaluatedJavascript.contains("about:blank"))
     }
 
+    @Test
+    fun aDelayedArmSurvivesASameHostRedirect() {
+        val shield = WaitingShield()
+        val client = client(shield, documentStart = true)
+
+        client.armCosmetic(view, PAGE)
+        client.shouldInterceptRequest(view, request("https://daylightjournal.com/other?q=1", mainFrame = true))
+        shield.ready()
+        ShadowLooper.idleMainLooper()
+
+        assertTrue(shield.urls.contains(PAGE))
+    }
+
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
         TestWebResourceRequest(url, mainFrame, gesture)
 
