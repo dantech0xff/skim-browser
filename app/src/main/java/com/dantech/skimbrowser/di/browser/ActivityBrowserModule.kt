@@ -15,12 +15,14 @@ import com.dantech.skimbrowser.browser.RequestShield
 import com.dantech.skimbrowser.browser.WebViewPool
 import com.dantech.skimbrowser.browser.WindowSecureController
 import com.dantech.skimbrowser.browser.downloads.BlobBridge
+import com.dantech.skimbrowser.browser.downloads.DownloadActions
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.downloads.DownloadTracker
 import com.dantech.skimbrowser.browser.downloads.InProcessDownloader
 import com.dantech.skimbrowser.browser.downloads.MediaStoreDownloads
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 import com.dantech.skimbrowser.di.AppScope
+import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.Module
@@ -81,6 +83,7 @@ object ActivityBrowserModule {
         blob: BlobBridge,
         activityHost: ActivityHost,
         @AppScope scope: CoroutineScope,
+        log: DownloadLog,
     ): DownloadRouter {
         val store = MediaStoreDownloads(activity.applicationContext)
         return DownloadRouter(
@@ -93,6 +96,7 @@ object ActivityBrowserModule {
             blob = blob,
             activityHost = activityHost,
             scope = scope,
+            log = log,
         )
     }
 
@@ -136,5 +140,9 @@ object ActivityBrowserModule {
         activityHost: ActivityHost,
         fullscreen: FullscreenController,
         secure: WindowSecureController,
-    ): BrowserHost = BrowserHost(pool, sitePermissions, downloads, blob, activityHost, fullscreen, secure)
+        actions: DownloadActions,
+    ): BrowserHost {
+        actions.attach(downloads) { pool.webViewIfReady(it) }
+        return BrowserHost(pool, sitePermissions, downloads, blob, activityHost, fullscreen, secure)
+    }
 }

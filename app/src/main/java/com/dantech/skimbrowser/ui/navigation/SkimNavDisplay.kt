@@ -25,6 +25,7 @@ import com.dantech.skimbrowser.ui.ai.AskTabsRoute
 import com.dantech.skimbrowser.ui.bookmarks.BookmarksRoute
 import com.dantech.skimbrowser.ui.bookmarks.EditBookmarkRoute
 import com.dantech.skimbrowser.ui.bookmarks.MoveToFolderRoute
+import com.dantech.skimbrowser.ui.downloads.DownloadsRoute
 import com.dantech.skimbrowser.ui.history.HistoryRoute
 import com.dantech.skimbrowser.ui.settings.AiPrivacyRoute
 import com.dantech.skimbrowser.ui.skimhistory.ClearSkimHistoryRoute
@@ -176,6 +177,7 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         entry<SettingsKey> { SettingsRoute(navigator) }
         entry<AiPrivacyKey> { AiPrivacyRoute(navigator) }
         entry<HistoryKey> { HistoryRoute(navigator) }
+        entry<DownloadsKey> { DownloadsRoute(navigator) }
         entry<SkimHistoryKey> { SkimHistoryRoute(navigator) }
         entry<ClearSkimHistoryKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ClearSkimHistoryRoute(navigator)

@@ -13,6 +13,9 @@ import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.DownloadDraft
+import com.dantech.skimbrowser.domain.download.DownloadLog
+import com.dantech.skimbrowser.domain.download.NoDownloadLog
 import com.dantech.skimbrowser.domain.tab.TabsController
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -81,6 +84,7 @@ class DownloadRouter(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     /** `SystemClock.elapsedRealtime()`, the clock the page's taps are timed by too. */
     private val clock: () -> Long = SystemClock::elapsedRealtime,
+    private val log: DownloadLog = NoDownloadLog,
 ) {
 
     private enum class Source { WEB, DATA, BLOB }
@@ -191,8 +195,8 @@ class DownloadRouter(
             } else {
                 startSystem(url, agent, rawName, declared, pageStarted = !userInitiated, retry)
             }
-            Source.DATA -> launchDownload(shownName, incognito, retry, inlineDownloads::release) { saveData(url, rawName, shownName) }
-            Source.BLOB -> launchDownload(shownName, incognito, retry, inlineDownloads::release) {
+            Source.DATA -> launchDownload(shownName, incognito, retry, inlineDownloads::release) { _ -> saveData(url, rawName, shownName) }
+            Source.BLOB -> launchDownload(shownName, incognito, retry, inlineDownloads::release) { _ ->
                 saveBlob(webView!!, url, rawName, declared, shownName)
             }
         }
@@ -222,10 +226,10 @@ class DownloadRouter(
                 null
             }
         }
-        launchDownload(name, incognito = false, retry = retry) {
+        launchDownload(name, incognito = false, retry = retry) { localId ->
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(name)
             val request = SystemDownloadRequest(url, name, declared, userAgent, cookie)
-            val enqueued = withContext(ioDispatcher) { tracker.enqueue(request, retry) }
+            val enqueued = withContext(ioDispatcher) { tracker.enqueue(request, retry, localId) }
             // DownloadManager reports the end itself, through the tracker.
             if (enqueued) null else DownloadEvent.DownloadFailed(name)
         }
@@ -246,7 +250,7 @@ class DownloadRouter(
             fail(shownName, incognito = true, retry)
             return
         }
-        launchDownload(shownName, incognito = true, retry = retry) {
+        launchDownload(shownName, incognito = true, retry = retry) { _ ->
             if (!storagePermitted()) return@launchDownload DownloadEvent.DownloadFailed(shownName)
             inProcess.download(
                 url = url,
@@ -287,11 +291,12 @@ class DownloadRouter(
         incognito: Boolean,
         retry: DownloadRetry,
         ended: () -> Unit = {},
-        download: suspend () -> DownloadEvent?,
+        download: suspend (localId: Long) -> DownloadEvent?,
     ) {
         scope.launch(mainDispatcher) {
+            val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
             val event = try {
-                download()
+                download(localId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -304,6 +309,10 @@ class DownloadRouter(
                 } else {
                     reported
                 }
+                when (withRetry) {
+                    is DownloadEvent.DownloadCompleted -> log.noteFinished(localId, withRetry.uri.toString(), withRetry.mime, -1)
+                    is DownloadEvent.DownloadFailed -> log.noteFailed(localId)
+                }
                 tracker.report(withRetry.startedBy(incognito))
             }
         }.invokeOnCompletion { ended() }
@@ -311,6 +320,10 @@ class DownloadRouter(
 
     private fun fail(name: String?, incognito: Boolean, retry: DownloadRetry?) {
         tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
+        scope.launch(mainDispatcher) {
+            val localId = log.noteStarted(DownloadDraft(name ?: "download", incognito, retry))
+            log.noteFailed(localId)
+        }
     }
 
     /** True when Skim may write to the shared Downloads folder, after asking Android when it must. */

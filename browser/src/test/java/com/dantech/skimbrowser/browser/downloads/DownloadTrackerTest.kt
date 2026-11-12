@@ -7,6 +7,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent.DownloadCompleted
 import com.dantech.skimbrowser.browser.downloads.DownloadEvent.DownloadFailed
+import com.dantech.skimbrowser.domain.download.DownloadDraft
+import com.dantech.skimbrowser.domain.download.DownloadItem
+import com.dantech.skimbrowser.domain.download.DownloadLog
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -206,6 +211,32 @@ class DownloadTrackerTest {
     }
 
     @Test
+    fun aDownloadThatOutlivedThisProcessUpdatesTheLogAndNotTheSnackbar() = runTest {
+        val log = RecordingDownloadLog()
+        val tracker = DownloadTracker(system, backgroundScope, StandardTestDispatcher(testScheduler), log)
+        system.statuses[7] = DownloadManager.STATUS_RUNNING
+        system.soFar[7] = 25
+        system.totals[7] = 100
+
+        tracker.refreshSystem(4, 7)
+        runCurrent()
+
+        assertEquals(listOf("progress" to (25L to 100L)), log.notes)
+        assertTrue(events.isEmpty())
+
+        system.statuses[7] = DownloadManager.STATUS_SUCCESSFUL
+        system.uris[7] = FILE
+        system.mimeTypes[7] = "application/pdf"
+        system.totals[7] = 100
+        tracker.refreshSystem(4, 7)
+        runCurrent()
+
+        assertEquals("content://downloads/all_downloads/101", log.finishedUri)
+        assertEquals(100L, log.finishedBytes)
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
     fun theSystemsStatusIsReadBackByIdAndAnUnknownIdHasNone() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val downloads = AndroidSystemDownloads(context)
@@ -225,6 +256,35 @@ class DownloadTrackerTest {
     private fun request(name: String, declaredMime: String? = null) = SystemDownloadRequest(PAGE, name, declaredMime, USER_AGENT, null)
 
     private fun FakeSystemDownloads.lastEnqueuedId(): Long = 100L + enqueued.size
+
+    private class RecordingDownloadLog : DownloadLog {
+        val notes = mutableListOf<Pair<String, Pair<Long, Long>>>()
+        var finishedUri: String? = null
+        var finishedBytes = -1L
+
+        override fun observe(): Flow<List<DownloadItem>> = flowOf(emptyList())
+
+        override suspend fun noteStarted(draft: DownloadDraft): Long = 0
+
+        override suspend fun noteSystem(localId: Long, systemId: Long) = Unit
+
+        override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) {
+            notes += "progress" to (soFar to total)
+        }
+
+        override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) {
+            finishedUri = uri
+            finishedBytes = bytes
+        }
+
+        override suspend fun noteFailed(localId: Long) = Unit
+
+        override suspend fun remove(id: Long): DownloadItem? = null
+
+        override suspend fun clearIncognito() = Unit
+
+        override suspend fun runningWithSystemId(): List<DownloadItem> = emptyList()
+    }
 
     private companion object {
         const val PAGE = "https://daylightjournal.com/files/report.pdf"

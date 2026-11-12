@@ -51,6 +51,7 @@ import com.dantech.skimbrowser.ui.components.SkimListItem
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.navigation.BookmarksKey
 import com.dantech.skimbrowser.ui.navigation.EditBookmarkKey
+import com.dantech.skimbrowser.ui.navigation.DownloadsKey
 import com.dantech.skimbrowser.ui.navigation.HistoryKey
 import com.dantech.skimbrowser.ui.navigation.MoreMenuKey
 import com.dantech.skimbrowser.ui.navigation.SettingsKey
@@ -243,6 +244,7 @@ fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
         },
         onBookmarks = { navigator.replaceTop(BookmarksKey()) },
         onHistory = { navigator.replaceTop(HistoryKey) },
+        onDownloads = { navigator.replaceTop(DownloadsKey) },
         onSettings = { navigator.replaceTop(SettingsKey) },
     )
 }
@@ -262,6 +264,7 @@ fun MoreMenuSheet(
     onNewIncognito: () -> Unit,
     onBookmarks: () -> Unit,
     onHistory: () -> Unit,
+    onDownloads: () -> Unit = {},
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -278,6 +281,7 @@ fun MoreMenuSheet(
             MenuGroup(
                 MenuEntry(R.drawable.ic_bookmarks, stringResource(R.string.bookmarks_title), onBookmarks),
                 MenuEntry(R.drawable.ic_history, stringResource(R.string.history_title), onHistory),
+                MenuEntry(R.drawable.ic_download, stringResource(R.string.downloads_title), onDownloads),
             )
             MenuGroup(MenuEntry(R.drawable.ic_settings, stringResource(R.string.settings_title), onSettings))
         }

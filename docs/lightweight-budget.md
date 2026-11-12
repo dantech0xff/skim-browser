@@ -75,7 +75,9 @@ Those shares are why the SDK left. `anthropic-java-core` declared dependencies o
 
 Both of the large cuts are in this APK. The file fell from 5,752,084 bytes to 3,004,741 bytes before rating sync. Sending a like or dislike added the feedback client. One later assemble measured 3,023,837 bytes, 19,096 bytes above 3,004,741. The download-size estimate moved from 2,616,255 to 2,628,238. Defined methods are 23,214 and references are 26,549.
 
-Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. Private-by-default then measured 3,045,321 bytes, 1,720 above that baseline. The request shield, measured earlier against 3,023,837, added 739,197 bytes (the APK was 3,763,034). Dan accepted that increase. The current baseline is 3,045,321 + 739,197 = 3,784,518. `assets/shield/blocklist.txt` is 722,110 compressed bytes of that. The download-size estimate was not remeasured for the combined file. `maxGrowthBytes` stays 8,192.
+Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. Private-by-default then measured 3,045,321 bytes, 1,720 above that baseline. The request shield, measured earlier against 3,023,837, added 739,197 bytes (the APK was 3,763,034). Dan accepted that increase. That baseline was 3,045,321 + 739,197 = 3,784,518. `assets/shield/blocklist.txt` is 722,110 compressed bytes of that. The download-size estimate was not remeasured for the combined file.
+
+The Downloads screen measured 3,807,014 bytes, 22,496 above 3,784,518. Compressed `classes.dex` grew by 16,297 bytes and `resources.arsc` by 6,240. The list is a private file (`downloads-log`), not a new Room table, so the growth is the screen, the log, and the new strings. `maxGrowthBytes` stays 8,192. The new baseline is 3,807,014.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 
