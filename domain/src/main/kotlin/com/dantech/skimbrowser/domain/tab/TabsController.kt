@@ -35,6 +35,15 @@ interface TabsController {
     /** Loads the http page kept after an https upgrade. Does nothing when this load has no fallback. */
     fun loadHttpFallback(tabId: String) {}
 
+    /**
+     * Drops the certificate warning on [tabId]. A page that is still showing stays. When nothing
+     * safe is showing, the tab returns to the New tab page.
+     */
+    fun leaveUnsafeCertificate(tabId: String) {}
+
+    /** Remembers the warned certificate for this session and loads that page again. */
+    fun proceedDespiteCertificate(tabId: String) {}
+
     /** Back on the first page of a tab started from the New tab page: the tab shows it again. */
     fun returnToNewTabPage(tabId: String)
 
