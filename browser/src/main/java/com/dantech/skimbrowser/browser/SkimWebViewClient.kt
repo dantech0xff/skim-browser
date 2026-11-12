@@ -13,8 +13,14 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.MainThread
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebViewCompat
+import com.dantech.skimbrowser.domain.shield.CosmeticFilters
+import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import com.dantech.skimbrowser.domain.url.hostOf
 import java.io.ByteArrayInputStream
+import java.util.LinkedHashSet
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -42,6 +48,8 @@ class SkimWebViewClient(
     private val loadInTab: (tabId: String, url: String) -> Unit,
     /** Ad and tracker hosts. [ShieldChoices.AllowAll] blocks nothing. */
     private val shield: ShieldChoices = ShieldChoices.AllowAll,
+    /** True when this WebView supports [WebViewCompat.addDocumentStartJavaScript]. */
+    private val documentStartSupported: Boolean = false,
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
 ) : WebViewClient() {
@@ -55,27 +63,40 @@ class SkimWebViewClient(
     private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
     private val countPosted = AtomicBoolean(false)
+    private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
     private val mainThread = Handler(Looper.getMainLooper())
+    private val loadingCollapsed = LinkedHashSet<String>()
+    private val collapsed = LinkedHashSet<String>()
+    private var hideScript: ScriptHandler? = null
 
     /** The WebView is being destroyed: nothing it reports from now on reaches the tab. */
     fun detach() {
         detached = true
+        removeHideScript()
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
         val early = synchronized(documentGate) {
-            val carried = if (url != null && url == loadingUrl) loadingBlocked.get() else 0
+            val sameDocument = url != null && url == loadingUrl
+            val carried = if (sameDocument) loadingBlocked.get() else 0
+            val carriedHosts = if (sameDocument) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
             documentUrl = url
             loadingUrl = null
             loadingBlocked.set(0)
+            loadingCollapsed.clear()
             blockedCount.set(carried)
+            collapsed.clear()
+            collapsed.addAll(carriedHosts)
             documentGeneration.incrementAndGet()
-            carried
+            val collapseCss = if (carriedHosts.isEmpty()) null else CosmeticFilters.collapseBlockedCss(carriedHosts)
+            carried to collapseCss
         }
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
-        if (early > 0) events.onShieldCount(tabId, early)
+        if (early.first > 0) events.onShieldCount(tabId, early.first)
+        injectHide(view, url)
+        early.second?.let { inject(view, CosmeticScript.collapse(it)) }
     }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -83,11 +104,12 @@ class SkimWebViewClient(
         val url = request.url?.toString() ?: return null
         if (request.isForMainFrame) {
             noteMainFrame(url)
+            shield.warmCosmetic()
             return null
         }
         val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
         if (!shield.blocks(document, url, incognito)) return null
-        noteBlocked()
+        noteBlocked(view, url)
         return emptyResponse()
     }
 
@@ -107,6 +129,7 @@ class SkimWebViewClient(
         events.onPageFinished(tabId, url)
         events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
         (view as? SkimWebView)?.applyContentScrollPadding()
+        if (!documentStartSupported) injectHide(view, url)
     }
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -124,7 +147,10 @@ class SkimWebViewClient(
         // A frame inside the page navigates on its own; only the page's own navigation can leave it.
         if (!request.isForMainFrame) return false
         return when (val navigation = externalNavigation(request.url, request.hasGesture(), incognito, view.context.packageName)) {
-            ExternalNav.InWebView -> false
+            ExternalNav.InWebView -> {
+                armCosmetic(view, request.url.toString())
+                false
+            }
             ExternalNav.Blocked -> {
                 abandonLoad()
                 true
@@ -156,6 +182,7 @@ class SkimWebViewClient(
         synchronized(documentGate) {
             loadingUrl = url
             loadingBlocked.set(0)
+            loadingCollapsed.clear()
         }
     }
 
@@ -168,11 +195,14 @@ class SkimWebViewClient(
         synchronized(documentGate) {
             loadingUrl = null
             loadingBlocked.set(0)
+            loadingCollapsed.clear()
         }
     }
 
-    private fun noteBlocked() {
+    private fun noteBlocked(view: WebView, requestUrl: String) {
+        val host = hostOf(requestUrl)
         val pending = synchronized(documentGate) {
+            if (host != null) rememberCollapsed(host)
             if (loadingUrl != null) {
                 loadingBlocked.incrementAndGet()
                 null
@@ -180,6 +210,7 @@ class SkimWebViewClient(
                 blockedCount.incrementAndGet() to documentGeneration.get()
             }
         } ?: return
+        if (host != null) scheduleCollapse(view)
         val generation = pending.second
         if (!countPosted.compareAndSet(false, true)) return
         mainThread.post {
@@ -191,6 +222,58 @@ class SkimWebViewClient(
             if (documentGeneration.get() != generation && count == 0) return@post
             events.onShieldCount(tabId, count)
         }
+    }
+
+    /** Installs the document-start hide sheet for [url] when this WebView supports it. */
+    fun armCosmetic(view: WebView, url: String) {
+        if (!documentStartSupported || detached) return
+        removeHideScript()
+        val css = shield.cosmeticCss(url, incognito)
+        val host = hostOf(url) ?: return
+        if (css.isEmpty()) return
+        try {
+            hideScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.hide(host, css), ALL_ORIGINS)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cosmetic rules were not installed at document start", e)
+        }
+    }
+
+    private fun removeHideScript() {
+        val script = hideScript ?: return
+        hideScript = null
+        try {
+            script.remove()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cosmetic document-start script was not removed", e)
+        }
+    }
+
+    private fun injectHide(view: WebView, url: String) {
+        val css = shield.cosmeticCss(url, incognito)
+        val host = hostOf(url) ?: return
+        if (css.isEmpty()) return
+        inject(view, CosmeticScript.hide(host, css))
+    }
+
+    /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */
+    private fun rememberCollapsed(host: String) {
+        val target = if (loadingUrl != null) loadingCollapsed else collapsed
+        if (target.size < CosmeticFilters.MAX_COLLAPSE_HOSTS || host in target) target.add(host)
+    }
+
+    private fun scheduleCollapse(view: WebView) {
+        if (!collapsePosted.compareAndSet(false, true)) return
+        mainThread.post {
+            collapsePosted.set(false)
+            if (detached) return@post
+            val css = synchronized(documentGate) { CosmeticFilters.collapseBlockedCss(collapsed) }
+            if (css.isNotEmpty()) inject(view, CosmeticScript.collapse(css))
+        }
+    }
+
+    private fun inject(view: WebView, script: String) {
+        if (detached || script.isEmpty()) return
+        view.evaluateJavascript(script, null)
     }
 
     private fun launch(navigation: ExternalNav.Launch) {
@@ -206,6 +289,7 @@ class SkimWebViewClient(
 
     private companion object {
         const val TAG = "SkimWebViewClient"
+        private val ALL_ORIGINS = setOf("*")
 
         fun emptyResponse(): WebResourceResponse = WebResourceResponse(
             "text/plain",

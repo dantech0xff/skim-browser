@@ -19,7 +19,7 @@ One assemble on JDK 25, Android Gradle Plugin 9.4.1, and R8 9.4.24 produced thes
 
 The baseline before either cut was an APK of 5,752,084 bytes (download estimate 5,341,980). This file is 2,747,343 bytes smaller. The font-only APK was 4,033,448 bytes. The thin-client-only APK, still carrying the full font, was 4,724,249 bytes. Those two cuts were measured separately. This page is the build that contains both.
 
-The table above is the build before rating sync and before the request shield. One later assemble measured 3,763,034 bytes, 739,197 above 3,023,837. The download-size estimate is 3,356,087. `assets/shield/blocklist.txt` is 722,110 compressed bytes and 2,016,730 raw. It is the compiled EasyList and EasyPrivacy host snapshot (91,047 hosts). Rebuild it with `python3 tools/compile_blocklist.py`. A hundred thousand lookups of a hashed host took 46 ms in `HostBlocklistAssetTest` on the machine that ran it. Cosmetic rules are not in the file. The app does not download a newer list.
+The table above is the build before rating sync and before the request shield. One later assemble measured 3,763,034 bytes, 739,197 above 3,023,837. The download-size estimate is 3,356,087. `assets/shield/blocklist.txt` is 722,110 compressed bytes and 2,016,730 raw. It is the compiled EasyList and EasyPrivacy host snapshot (91,047 hosts). `assets/shield/cosmetic.txt` is the cosmetic rules from the same pin. Rebuild both with `python3 tools/compile_blocklist.py`. A hundred thousand lookups of a hashed host took 46 ms in `HostBlocklistAssetTest` on the machine that ran it. The app does not download a newer list.
 
 There is one dex file. 26,462 references is under the 65,536 reference limit.
 
@@ -77,7 +77,11 @@ Both of the large cuts are in this APK. The file fell from 5,752,084 bytes to 3,
 
 Saving an article for offline reading then measured 3,043,601 bytes on CI, 19,764 bytes above 3,023,837. Private-by-default then measured 3,045,321 bytes, 1,720 above that baseline. The request shield, measured earlier against 3,023,837, added 739,197 bytes (the APK was 3,763,034). Dan accepted that increase. That baseline was 3,045,321 + 739,197 = 3,784,518. `assets/shield/blocklist.txt` is 722,110 compressed bytes of that. The download-size estimate was not remeasured for the combined file.
 
-The Downloads screen measured 3,807,014 bytes, 22,496 above 3,784,518. Compressed `classes.dex` grew by 16,297 bytes and `resources.arsc` by 6,240. The list is a private file (`downloads-log`), not a new Room table, so the growth is the screen, the log, and the new strings. `maxGrowthBytes` stays 8,192. The new baseline is 3,807,014.
+The Downloads screen measured 3,807,014 bytes, 22,496 above 3,784,518. Compressed `classes.dex` grew by 16,297 bytes and `resources.arsc` by 6,240. The list is a private file (`downloads-log`), not a new Room table, so the growth is the screen, the log, and the new strings.
+
+Cosmetic rules then added `assets/shield/cosmetic.txt`, 211,572 compressed bytes and 785,374 raw (13,636 generic hides, 13,715 domain hides, 658 exceptions). CI measured that change as 227,956 bytes on the pre-Downloads baseline (4,012,474 minus 3,784,518). Added to the Downloads file, that is 3,807,014 + 227,956 = 4,034,970. `maxGrowthBytes` stays 8,192. The new baseline is 4,034,970.
+
+A page hides at most 2,300 selectors. The shortest 2,000 are generic rules, and the rest are the rules for that host. `CosmeticFiltersAssetTest` parsed the shipped file in 33 ms and built the finance.yahoo.com sheet (2,084 rules) in about 1 ms. That was one run. The time is the single thread reading each line and appending the sheet. The test checks that known selectors are present, so the timed work ran. The read starts on a background thread when the first WebView is created.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 

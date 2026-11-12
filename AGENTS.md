@@ -16,7 +16,7 @@ Do not install a system image for this project. Do not reuse or stop another pro
 
 UI copy is English, in `app/src/main/res/values/strings.xml`, with real plurals. Do not concatenate sentences. Do not translate strings to match a plan.
 
-This version does not add a second page engine or a non-Android client. Request blocking is the compiled EasyList and EasyPrivacy host list.
+This version does not add a second page engine or a non-Android client. Request blocking is the compiled EasyList and EasyPrivacy host list. Cosmetic rules from that same snapshot hide leftover ad elements. Procedural rules are not applied.
 
 ## Compose
 

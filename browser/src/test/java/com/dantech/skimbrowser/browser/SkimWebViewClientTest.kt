@@ -15,6 +15,7 @@ import android.webkit.WebViewClient
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.RecordingEvents.Event
+import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
 import kotlinx.coroutines.runBlocking
 import org.robolectric.shadows.ShadowLooper
@@ -360,6 +361,52 @@ class SkimWebViewClientTest {
 
         assertEquals(1, gone.size)
         assertEquals(1, events.eventsOf<Event.RendererGone>().size)
+    }
+
+    @Test
+    fun aPageHidesLeftoverAdElementsWhenBlockingIsOn() = runBlocking {
+        val cosmetic = CosmeticFilters.load("G\t.adsbox\n".reader().buffered())
+        val shield = RequestShield.of(HostBlocklist.EMPTY, cosmetic)
+        val client = client(shield)
+
+        client.onPageStarted(view, PAGE, null)
+        client.onPageFinished(view, PAGE)
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script.contains(".adsbox"))
+        assertTrue(script.contains("display:none !important"))
+        assertTrue(script.contains("skim-hide"))
+        assertFalse(script.contains("querySelector"))
+    }
+
+    @Test
+    fun anAllowedSiteGetsNoHideSheet() = runBlocking {
+        val cosmetic = CosmeticFilters.load("G\t.adsbox\n".reader().buffered())
+        val shield = RequestShield.of(HostBlocklist.EMPTY, cosmetic)
+        shield.setDisabled("daylightjournal.com", incognito = true, disabled = true)
+        val client = client(shield, incognito = true)
+
+        client.onPageStarted(view, PAGE, null)
+
+        assertEquals(null, shadowOf(view).lastEvaluatedJavascript)
+    }
+
+    @Test
+    fun aBlockedFrameIsCollapsedInOneStylesheet() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("ads.example")))
+        val client = client(shield)
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.shouldInterceptRequest(view, request("https://ads.example/banner", mainFrame = false))
+
+        client.onPageStarted(view, PAGE, null)
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script.contains("skim-collapse"))
+        assertTrue(script.contains("iframe[src*="))
+        assertTrue(script.contains("://ads.example/"))
+        assertTrue(script.contains("display:none !important"))
+        assertFalse(script.contains("querySelector"))
+        assertFalse(script.contains("getElementsBy"))
     }
 
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =

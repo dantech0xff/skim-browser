@@ -38,5 +38,6 @@ These are not Maven jars. The About screen reads `app/config/libraries/`.
 | Google Sans Flex | SIL OFL 1.1 | `app/licenses/OFL-GoogleSansFlex.txt` |
 | Material Symbols Rounded | Apache-2.0 | `app/licenses/LICENSE-MaterialSymbols.txt` |
 | Readability.js 0.6.0 | Apache-2.0 | `app/config/libraries/readability_js.json` |
+| EasyList and EasyPrivacy host and cosmetic snapshots | GPL-3.0-or-later | `browser/src/main/assets/shield/`. Attribution: The EasyList authors (https://easylist.to/). |
 
 The OFL file names the Google Sans Flex authors and does not declare a Reserved Font Name. The font ships under that name. Material Symbols stay Apache-2.0. Both can be bundled in a GPL-3.0-only program. That choice is decided.

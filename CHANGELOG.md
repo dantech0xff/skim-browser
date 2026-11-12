@@ -10,7 +10,7 @@ Move notes from `[Unreleased]` into a dated version section before pushing the t
 
 ### Added
 
-- Pages drop requests whose hosts are on the pinned EasyList and EasyPrivacy snapshot. A site can turn that off. The choice for an incognito tab lasts only for the session.
+- Pages drop requests whose hosts are on the pinned EasyList and EasyPrivacy snapshot. A site can turn that off. The choice for an incognito tab lasts only for the session. Leftover ad frames and empty slots on a blocked site are hidden with the cosmetic rules from that snapshot.
 - Public `http` pages are opened over `https` first. When that cannot connect, the page offers the HTTP version. The first incognito tab of a session asks the device to authenticate when the device can.
 - An article can be saved on the device and opened later without a network, with a one-shot summary.
 - An answer can be translated to Vietnamese and read aloud. A page summary is three short points.
