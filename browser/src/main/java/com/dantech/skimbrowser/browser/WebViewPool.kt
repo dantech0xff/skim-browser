@@ -168,6 +168,12 @@ class WebViewPool(
 
         /** Find in page steps that wait for the WebView to finish counting a new search. */
         val findSteps = FindSteps()
+
+        /**
+         * History steps asked for since the list's index last moved. A second back before the
+         * first one commits still reads the old index, so this counts both.
+         */
+        var historyPending = 0
     }
 
     /** A command that waits for the tab's WebView: there is none yet, or it is still restoring. */
@@ -585,17 +591,22 @@ class WebViewPool(
             Log.w(TAG, "History was not read", e)
             return
         }
-        val url = historyStepUrl(list.currentIndex, list.size, { index -> list.getItemAtIndex(index)?.url }, delta)
+        val step = entry.historyPending + delta
+        if (list.currentIndex + step !in 0 until list.size) return
+        entry.historyPending = step
+        val url = historyStepUrl(list.currentIndex, list.size, { index -> list.getItemAtIndex(index)?.url }, step)
             ?: return
         entry.client.armCosmetic(entry.view, url)
     }
 
     private fun loadInView(entry: Entry, url: String) {
+        entry.historyPending = 0
         entry.client.armCosmetic(entry.view, url)
         entry.view.loadUrl(url)
     }
 
     private fun reloadInView(entry: Entry) {
+        entry.historyPending = 0
         val url = tabs.state.value.tab(entry.tabId)?.url
         if (url != null) entry.client.armCosmetic(entry.view, url)
         entry.view.reload()
@@ -799,6 +810,7 @@ class WebViewPool(
     private inner class PoolEvents : TabEventSink by tabEvents {
         override fun onPageStarted(tabId: String, url: String): Long {
             live[tabId]?.let { entry ->
+                entry.historyPending = 0
                 entry.captureJob?.cancel()
                 entry.saveJob?.cancel()
             }

@@ -26,6 +26,12 @@ class HistoryStepUrlTest {
     }
 
     @Test
+    fun aSecondBackBeforeTheIndexMovesUsesTheEarlierPage() {
+        val pages = listOf("https://a.example/", "https://b.example/", "https://c.example/")
+        assertEquals("https://a.example/", historyStepUrl(2, pages.size, pages::get, -2))
+    }
+
+    @Test
     fun theEndsOfHistoryHaveNoNeighbor() {
         assertNull(historyStepUrl(0, pages.size, pages::get, -1))
         assertNull(historyStepUrl(2, pages.size, pages::get, 1))
