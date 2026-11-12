@@ -6,12 +6,19 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.net.http.SslError
+import android.webkit.SslErrorHandler
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.certificate.certificateFault
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
@@ -30,8 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * order the WebView calls them, decides where the page may navigate, and hands a WebView whose
  * renderer went away back to its pool.
  *
- * SSL errors, HTTP authentication and Safe Browsing keep the WebView's own handling: an invalid
- * certificate cancels the load, and Safe Browsing shows its interstitial.
+ * An invalid certificate cancels the load. `proceed` runs only when this session already allowed
+ * that host and certificate. HTTP authentication and Safe Browsing keep the WebView's own handling,
+ * and Safe Browsing shows its interstitial.
  *
  * Once [detach]ed (the pool destroys the WebView), it reports nothing more and blocks navigation.
  */
@@ -133,6 +141,32 @@ class SkimWebViewClient(
         injectHide(view, url)
     }
 
+    override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+        if (detached) {
+            handler.cancel()
+            return
+        }
+        val url = error.url?.takeIf { it.isNotBlank() }
+        val certificate = error.certificate
+        val host = url?.let { hostOf(it) }
+        if (url == null || certificate == null || host == null) {
+            handler.cancel()
+            return
+        }
+        val fingerprint = certificateFingerprintOf(certificate)
+        if (events.certificateAction(tabId, host, fingerprint) == CertificateAction.Proceed) {
+            handler.proceed()
+            return
+        }
+        handler.cancel()
+        if (isPageCertificate(url)) {
+            events.onCertificateError(
+                tabId,
+                CertificateWarning(url, host, fingerprint, certificateFault(error.primaryError)),
+            )
+        }
+    }
+
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
         // A failed image or frame leaves the page usable; only the page itself failing is an error.
         if (!request.isForMainFrame) return
@@ -172,6 +206,17 @@ class SkimWebViewClient(
         detached = true
         onRendererGone(view, action, didCrash)
         return true
+    }
+
+    /**
+     * True when [url] is the page being loaded, or the page already showing when nothing else is
+     * in flight. A request for another URL is a subresource and stays off the interstitial.
+     */
+    private fun isPageCertificate(url: String): Boolean {
+        val (pending, shown) = synchronized(documentGate) { loadingUrl to documentUrl }
+        if (pending != null) return sameNavigation(pending, url)
+        if (shown == null) return true
+        return sameNavigation(shown, url)
     }
 
     /**

@@ -10,8 +10,7 @@ class TestWebResourceError(private val code: Int, private val text: CharSequence
     override fun getDescription(): CharSequence? = text
 }
 
-/**
- * A [RenderProcessGoneDetail] for JVM tests. Only the WebView makes these; the SDK marks the
+/** A [RenderProcessGoneDetail] for JVM tests. Only the WebView makes these; the SDK marks the
  * constructor deprecated to say so, which a test standing in for the WebView has to use.
  */
 @Suppress("DEPRECATION")
@@ -38,4 +37,20 @@ class TestWebResourceRequest(
     override fun getMethod(): String = "GET"
 
     override fun getRequestHeaders(): Map<String, String> = emptyMap()
+}
+
+/** Records whether a certificate load was allowed to continue. The handler's constructor is hidden. */
+class TestSslErrorHandler : SslErrorHandler() {
+    var proceeded = false
+        private set
+    var cancelled = false
+        private set
+
+    override fun proceed() {
+        proceeded = true
+    }
+
+    override fun cancel() {
+        cancelled = true
+    }
 }

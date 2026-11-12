@@ -6,7 +6,10 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.net.http.SslCertificate
+import android.net.http.SslError
 import android.webkit.TestRenderProcessGoneDetail
+import android.webkit.TestSslErrorHandler
 import android.webkit.TestWebResourceError
 import android.webkit.TestWebResourceRequest
 import android.webkit.WebResourceRequest
@@ -15,6 +18,8 @@ import android.webkit.WebViewClient
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.RecordingEvents.Event
+import com.dantech.skimbrowser.domain.certificate.CertificateAction
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -495,6 +500,65 @@ class SkimWebViewClientTest {
         ShadowLooper.idleMainLooper()
 
         assertTrue(shield.urls.contains(PAGE))
+    }
+
+    @Test
+    fun anUnknownCertificateCancelsTheLoadAndShowsTheInterstitial() {
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        val handler = TestSslErrorHandler()
+        val error = sslError(SslError.SSL_EXPIRED, PAGE)
+
+        client.onReceivedSslError(view, handler, error)
+
+        assertTrue(handler.cancelled)
+        assertFalse(handler.proceeded)
+        val warning = events.eventsOf<Event.CertificateError>().single().warning
+        assertEquals(PAGE, warning.url)
+        assertEquals("daylightjournal.com", warning.host)
+        assertEquals(CertificateFault.Expired, warning.fault)
+        assertEquals(certificateFingerprintOf(error.certificate), warning.fingerprint)
+    }
+
+    @Test
+    fun anAllowedCertificateProceedsAndDoesNotShowTheInterstitial() {
+        events.certificateDecision = CertificateAction.Proceed
+        val handler = TestSslErrorHandler()
+
+        client.onReceivedSslError(view, handler, sslError(SslError.SSL_UNTRUSTED, PAGE))
+
+        assertTrue(handler.proceeded)
+        assertFalse(handler.cancelled)
+        assertTrue(events.eventsOf<Event.CertificateError>().isEmpty())
+    }
+
+    @Test
+    fun aSubresourceCertificateCancelsWithoutAnInterstitial() {
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        val handler = TestSslErrorHandler()
+
+        client.onReceivedSslError(view, handler, sslError(SslError.SSL_IDMISMATCH, "https://cdn.example/app.js"))
+
+        assertTrue(handler.cancelled)
+        assertFalse(handler.proceeded)
+        assertTrue(events.eventsOf<Event.CertificateError>().isEmpty())
+    }
+
+    @Test
+    fun aDetachedClientCancelsACertificateAndReportsNothing() {
+        client.detach()
+        val handler = TestSslErrorHandler()
+
+        client.onReceivedSslError(view, handler, sslError(SslError.SSL_UNTRUSTED, PAGE))
+
+        assertTrue(handler.cancelled)
+        assertFalse(handler.proceeded)
+        assertTrue(events.events.isEmpty())
+    }
+
+    @Suppress("DEPRECATION")
+    private fun sslError(primary: Int, url: String): SslError {
+        val certificate = SslCertificate("CN=daylightjournal.com", "CN=Test CA", java.util.Date(0), java.util.Date(86_400_000L))
+        return SslError(primary, certificate, url)
     }
 
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
