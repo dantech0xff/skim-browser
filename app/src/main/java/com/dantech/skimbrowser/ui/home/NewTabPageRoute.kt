@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -14,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.tab.adjacentTab
+import com.dantech.skimbrowser.ui.browsing.TabStripSwipe
 import com.dantech.skimbrowser.system.VoiceInput
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.incognito.IncognitoNewTabScreen
@@ -57,18 +60,35 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
 
     val tabsState by tabs.state.collectAsStateWithLifecycle()
     val runtime by remember(tab.id) { tabs.runtime(tab.id) }.collectAsStateWithLifecycle()
+    val previousTab = tabsState.adjacentTab(forward = false)
+    val nextTab = tabsState.adjacentTab(forward = true)
     val toolbar = @Composable {
-        BrowserToolbar(
-            canGoBack = false,
-            canGoForward = false,
-            tabCount = tabsState.tabs.count { it.incognito == tab.incognito },
-            incognito = tab.incognito,
-            onBack = {},
-            onForward = {},
-            onTabs = { navigator.openTabs(tab.incognito) },
-            onMore = { navigator.openMoreMenu(tab.id) },
-            aiFab = { TabAiFab(tab, runtime, onClick = { navigator.openAskTabs() }) },
-        )
+        val controls: @Composable (Modifier) -> Unit = { bar ->
+            BrowserToolbar(
+                canGoBack = false,
+                canGoForward = false,
+                tabCount = tabsState.tabs.count { it.incognito == tab.incognito },
+                incognito = tab.incognito,
+                onBack = {},
+                onForward = {},
+                onTabs = { navigator.openTabs(tab.incognito) },
+                onMore = { navigator.openMoreMenu(tab.id) },
+                aiFab = { TabAiFab(tab, runtime, onClick = { navigator.openAskTabs() }) },
+                modifier = bar,
+            )
+        }
+        if (previousTab == null && nextTab == null) {
+            controls(Modifier)
+        } else {
+            TabStripSwipe(
+                previous = previousTab,
+                next = nextTab,
+                groups = tabsState.groups,
+                enabled = !searching,
+                onSelect = tabs::select,
+                content = controls,
+            )
+        }
     }
 
     if (tab.incognito) {

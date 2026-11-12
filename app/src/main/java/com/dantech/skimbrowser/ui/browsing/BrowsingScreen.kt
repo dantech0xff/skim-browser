@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.dantech.skimbrowser.domain.tab.TabGroup
+import com.dantech.skimbrowser.domain.tab.TabNeighbor
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
@@ -86,6 +88,12 @@ fun BrowsingScreen(
     page: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     chromeCollapsed: Boolean = false,
+    /** The tab a swipe toward the start of the strip opens, when there is one. */
+    previousTab: TabNeighbor? = null,
+    /** The tab a swipe toward the end of the strip opens, when there is one. */
+    nextTab: TabNeighbor? = null,
+    groups: List<TabGroup> = emptyList(),
+    onSwipeToTab: (String) -> Unit = {},
 ) {
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val shrink = chromeCollapsed && state.find == null && state.loadError == null && !imeOpen
@@ -130,25 +138,34 @@ fun BrowsingScreen(
                 )
             }
         }
-        BrowsingChrome(
-            state = state,
-            findQuery = findQuery,
-            actions = actions,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(
-                    WindowInsets.navigationBars
-                        .union(WindowInsets.ime)
-                        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
-                )
-                .padding(bottom = ToolbarMetrics.BrowsingBottomOffset)
-                .padding(horizontal = ToolbarMetrics.BrowsingSideInset)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0.5f, 1f)
-                },
-        )
+        val barModifier = Modifier
+            .align(Alignment.BottomCenter)
+            .windowInsetsPadding(
+                WindowInsets.navigationBars
+                    .union(WindowInsets.ime)
+                    .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+            )
+            .padding(bottom = ToolbarMetrics.BrowsingBottomOffset)
+            .padding(horizontal = ToolbarMetrics.BrowsingSideInset)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
+        if (previousTab == null && nextTab == null) {
+            BrowsingChrome(state = state, findQuery = findQuery, actions = actions, modifier = barModifier)
+        } else {
+            TabStripSwipe(
+                previous = previousTab,
+                next = nextTab,
+                groups = groups,
+                enabled = state.find == null && state.loadError == null,
+                onSelect = onSwipeToTab,
+                modifier = barModifier,
+            ) { bar ->
+                BrowsingChrome(state = state, findQuery = findQuery, actions = actions, modifier = bar)
+            }
+        }
     }
 }
 
