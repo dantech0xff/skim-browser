@@ -13,6 +13,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.Tab
 import com.dantech.skimbrowser.browser.TabRuntime
@@ -56,6 +58,20 @@ class AiFabModeTest {
         for (error in loadErrors) {
             assertEquals(error.toString(), AiFabMode.UnavailableUntilLoaded, aiFabMode(page, TabRuntime(loadError = error)))
         }
+        assertEquals(
+            AiFabMode.UnavailableUntilLoaded,
+            aiFabMode(
+                page,
+                TabRuntime(
+                    certificateWarning = CertificateWarning(
+                        url = "https://bad.example/",
+                        host = "bad.example",
+                        fingerprint = "abc",
+                        fault = CertificateFault.Untrusted,
+                    ),
+                ),
+            ),
+        )
     }
 
     @Test

@@ -193,6 +193,16 @@
     <string name="error_timed_out_body">%s didn\'t respond. It may be busy or briefly down.</string>
     <string name="error_internet_settings">Internet settings</string>
     <string name="error_open_http">Open the HTTP version</string>
+    <string name="certificate_error_title">Your connection is not private</string>
+    <string name="certificate_error_not_yet_valid">The certificate for this site is not valid yet.</string>
+    <string name="certificate_error_expired">The certificate for this site has expired.</string>
+    <string name="certificate_error_hostname">The certificate is for a different site.</string>
+    <string name="certificate_error_untrusted">This device does not trust the certificate.</string>
+    <string name="certificate_error_date">The certificate date is not valid.</string>
+    <string name="certificate_error_invalid">The certificate is not valid.</string>
+    <string name="certificate_back_to_safety">Back to safety</string>
+    <string name="certificate_advanced">Advanced</string>
+    <string name="certificate_proceed">Proceed anyway (unsafe)</string>
     <string name="incognito_lock_title">Unlock incognito</string>
     <string name="incognito_lock_body">Confirm it\'s you before opening a private tab.</string>
     <string name="error_code_name_not_resolved" translatable="false">ERR_NAME_NOT_RESOLVED</string>

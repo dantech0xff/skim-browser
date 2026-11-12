@@ -7,7 +7,11 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.domain.certificate.CertificateFault
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
@@ -87,6 +91,25 @@ class BrowsingScreenshotTest {
         composeRule.assertA11y()
     }
 
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun certificateError() {
+        show(certificate(CertificateFault.Untrusted), TextFieldState())
+        composeRule.waitForIdle()
+        captureScreenRoboImage("$COMPONENT_GOLDENS/certificate-error.png")
+        composeRule.assertA11y()
+    }
+
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun certificateErrorAdvanced() {
+        show(certificate(CertificateFault.Expired), TextFieldState())
+        composeRule.onNodeWithText("Advanced").performClick()
+        composeRule.waitForIdle()
+        captureScreenRoboImage("$COMPONENT_GOLDENS/certificate-error-advanced.png")
+        composeRule.assertA11y()
+    }
+
     private fun show(state: BrowsingUiState, query: TextFieldState) {
         composeRule.setSkimContent {
             BrowsingScreen(state, query, actions, page = {
@@ -121,6 +144,19 @@ class BrowsingScreenshotTest {
             readerAvailable = false,
             loadError = error,
             aiFab = AiFabMode.UnavailableUntilLoaded,
+        )
+
+        fun certificate(fault: CertificateFault) = Loaded.copy(
+            address = "bad.example",
+            indicator = SiteIndicator.Error,
+            readerAvailable = false,
+            aiFab = AiFabMode.UnavailableUntilLoaded,
+            certificateWarning = CertificateWarning(
+                url = "https://bad.example/login",
+                host = "bad.example",
+                fingerprint = "abc",
+                fault = fault,
+            ),
         )
 
         val actions = BrowsingActions(

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -52,6 +53,8 @@ data class BrowsingUiState(
     val progress: Float?,
     /** Why the page failed to load; the error screen covers the page while it is set. */
     val loadError: LoadError?,
+    /** A certificate the tab refused. The interstitial covers the page while it is set. */
+    val certificateWarning: CertificateWarning? = null,
     /** Back has something to do in the tab, as system Back does ([browserBack]). */
     val backEnabled: Boolean,
     val forwardEnabled: Boolean,
@@ -168,6 +171,14 @@ class BrowsingViewModel @AssistedInject constructor(
     /** Opens the http page after https could not connect. */
     fun openHttpFallback() = tabs.loadHttpFallback(tabId)
 
+    /** Back to safety on the certificate interstitial. */
+    @MainThread
+    fun leaveUnsafeCertificate() = tabs.leaveUnsafeCertificate(tabId)
+
+    /** Proceed anyway for the certificate this tab is showing. */
+    @MainThread
+    fun proceedDespiteCertificate() = tabs.proceedDespiteCertificate(tabId)
+
     @MainThread
     fun goForward() = tabs.goForward(tabId)
 
@@ -206,12 +217,12 @@ class BrowsingViewModel @AssistedInject constructor(
     private fun follow(page: TabRuntime) {
         if (!findOpen.value) {
             val started = page.find ?: return
-            if (page.loadError != null) return
+            if (page.loadError != null || page.certificateWarning != null) return
             // Find in page started for this tab (the More menu): the bar shows with the text.
             findOpen.value = true
             if (findQuery.text.toString() != started.query) findQuery.setTextAndPlaceCursorAtEnd(started.query)
             searchedNonce = page.loadNonce.takeIf { page.pageLoaded }
-        } else if (page.loadError != null) {
+        } else if (page.loadError != null || page.certificateWarning != null) {
             // A page that failed to load has nothing to find.
             closeFind()
         } else if (page.pageLoaded && page.loadNonce != searchedNonce) {
@@ -252,22 +263,28 @@ internal fun browsingUiState(
     findOpen: Boolean,
     refreshing: Boolean,
 ): BrowsingUiState {
-    val error = runtime.loadError
+    val warning = runtime.certificateWarning
+    val error = if (warning == null) runtime.loadError else null
     val find = runtime.find
     val matches = find?.matchCount ?: 0
     return BrowsingUiState(
-        address = if (error != null) errorAddressOf(error.url.ifEmpty { tab.url.orEmpty() }) else pageAddressOf(tab.url),
-        indicator = siteIndicatorOf(tab.url, error),
-        readerAvailable = runtime.readerable && error == null,
+        address = when {
+            warning != null -> pageAddressOf(warning.url)
+            error != null -> errorAddressOf(error.url.ifEmpty { tab.url.orEmpty() })
+            else -> pageAddressOf(tab.url)
+        },
+        indicator = if (warning != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error),
+        readerAvailable = runtime.readerable && error == null && warning == null,
         progress = runtime.progress,
         loadError = error,
+        certificateWarning = warning,
         backEnabled = browserBack(tab, runtime) != BrowserBack.Leave,
         forwardEnabled = runtime.canGoForward,
         tabCount = all.tabs.count { it.incognito == tab.incognito },
         incognito = tab.incognito,
         aiFab = aiFabMode(tab, runtime),
         httpFallback = if (error != null) runtime.httpFallback else null,
-        find = if (findOpen && error == null) {
+        find = if (findOpen && error == null && warning == null) {
             FindUiState(
                 countedText = find?.query,
                 activeMatch = if (matches > 0) (find?.activeMatchIndex ?: 0).coerceIn(0, matches - 1) + 1 else 0,
