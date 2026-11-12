@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.ui.snackbar
 
 import android.net.Uri
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import androidx.annotation.StringRes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,9 @@ sealed interface SnackbarAction {
     /** Open: opens a finished download with the type the system reported for it. */
     data class OpenDownload(val uri: Uri, val mime: String) : SnackbarAction
 
+    /** Retry: starts a failed download again. */
+    data class RetryDownload(val retry: DownloadRetry) : SnackbarAction
+
     /** View: opens Bookmarks at the folder an import created (03). */
     data class ViewImported(val folderId: Long) : SnackbarAction
 }
@@ -51,6 +55,7 @@ internal fun SnackbarAction.labelRes(): Int = when (this) {
     is SnackbarAction.Undo -> R.string.action_undo
     is SnackbarAction.EditBookmark -> R.string.action_edit
     is SnackbarAction.OpenDownload -> R.string.action_open
+    is SnackbarAction.RetryDownload -> R.string.action_retry
     is SnackbarAction.ViewImported -> R.string.action_view
 }
 

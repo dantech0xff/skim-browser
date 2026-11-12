@@ -5,6 +5,7 @@ import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.dantech.skimbrowser.R
+import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.text.cutTo
 import com.dantech.skimbrowser.domain.text.toVisibleText
@@ -32,6 +33,7 @@ sealed interface DownloadNotice {
     data class Failed(
         val fileName: String?,
         override val incognito: Boolean,
+        val retry: DownloadRetry? = null,
     ) : DownloadNotice
 }
 
@@ -59,7 +61,7 @@ fun DownloadSnackbarEffect(
             launch { snackbar.current.collect { message -> guard.onScreen(message?.id) } }
             notices.collect { event ->
                 if (event.incognito) guard.hold()
-                show(event, snackbar)
+                showDownloadNotice(event, snackbar)
                 if (event.incognito) guard.shown(snackbar.current.value?.id)
             }
         } finally {
@@ -68,7 +70,7 @@ fun DownloadSnackbarEffect(
     }
 }
 
-private fun show(event: DownloadNotice, snackbar: SnackbarController) {
+internal fun showDownloadNotice(event: DownloadNotice, snackbar: SnackbarController) {
     when (event) {
         is DownloadNotice.Completed -> snackbar.show(
             UiText.Res(R.string.snackbar_downloaded, persistentListOf(shownFileName(event.fileName))),
@@ -76,6 +78,7 @@ private fun show(event: DownloadNotice, snackbar: SnackbarController) {
         )
         is DownloadNotice.Failed -> snackbar.show(
             UiText.Res(R.string.snackbar_download_failed, persistentListOf(shownFileName(event.fileName))),
+            action = event.retry?.let { SnackbarAction.RetryDownload(it) },
             isError = true,
         )
     }

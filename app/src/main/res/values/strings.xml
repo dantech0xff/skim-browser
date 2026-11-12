@@ -16,6 +16,7 @@
     <string name="action_switch">Switch</string>
     <string name="action_view">View</string>
     <string name="action_open">Open</string>
+    <string name="action_retry">Retry</string>
     <string name="action_done">Done</string>
     <string name="action_see_all">See all</string>
 

@@ -92,6 +92,9 @@ class MainActivity : ComponentActivity() {
                     openExternal = browserHost.activityHost::startExternal,
                     downloadNotices = downloadNotices,
                     pendingLinks = pendingLinks,
+                    retryDownload = { retry ->
+                        browserHost.downloads.retry(retry, browserHost.pool.webViewIfReady(retry.tabId))
+                    },
                 )
             }
         }
@@ -156,6 +159,6 @@ class MainActivity : ComponentActivity() {
 
 private fun DownloadEvent.toNotice(): DownloadNotice = when (this) {
     is DownloadEvent.DownloadCompleted -> DownloadNotice.Completed(fileName, uri, mime, incognito)
-    is DownloadEvent.DownloadFailed -> DownloadNotice.Failed(fileName, incognito)
+    is DownloadEvent.DownloadFailed -> DownloadNotice.Failed(fileName, incognito, retry)
 }
 

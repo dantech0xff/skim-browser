@@ -182,6 +182,9 @@ class WebViewPool(
      * @throws IllegalStateException for an incognito tab while no incognito session runs, or once
      *   the pool is destroyed.
      */
+    /** The WebView already made for [tabId], or null when the tab has none yet. */
+    fun webViewIfReady(tabId: String): WebView? = live[tabId]?.takeUnless { it.destroyed }?.view
+
     fun obtain(tab: Tab): WebView {
         check(!destroyed) { "The WebView pool was destroyed with its Activity" }
         live[tab.id]?.let { entry ->
