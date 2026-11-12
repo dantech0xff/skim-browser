@@ -360,14 +360,15 @@ class TabManager(
 
     /**
      * Leaves the certificate warning. The page still in the WebView keeps its address. When that
-     * page is the one that failed, or there is no page, the tab goes back if it can and otherwise
-     * returns to the New tab page.
+     * page is the one that failed, or there is no page, the tab goes back if it can. A first page
+     * another app opened, or one opened for a screen, stays so the screen can close it the way
+     * Back does, and this returns true. Any other first page returns to the New tab page.
      */
     @MainThread
-    override fun leaveUnsafeCertificate(tabId: String) {
-        val tab = openTab(tabId) ?: return
+    override fun leaveUnsafeCertificate(tabId: String): Boolean {
+        val tab = openTab(tabId) ?: return false
         val runtime = runtimeOf(tabId)
-        val warning = runtime.certificateWarning ?: return
+        val warning = runtime.certificateWarning ?: return false
         val committed = runtime.committedUrl
         val previousPage = committed != null && !sameNavigation(committed, warning.url) && isWebUrl(committed)
         updateRuntime(tabId) { it.copy(certificateWarning = null) }
@@ -376,10 +377,12 @@ class TabManager(
                 updateTab(tabId) { it.copy(url = committed) }
                 persistTab(tabId)
             }
-            return
+            return false
         }
-        if (runtime.canGoBack && engine.value?.goBack(tabId) == true) return
+        if (runtime.canGoBack && engine.value?.goBack(tabId) == true) return false
+        if (!runtime.canGoBack && (tab.openedByExternalApp || tab.closeOnBack)) return true
         returnToNewTabPage(tabId)
+        return false
     }
 
     @MainThread

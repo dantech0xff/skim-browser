@@ -576,10 +576,42 @@ class BrowsingViewModelTest {
         f.manager.events.onCertificateError(id, certificateWarning())
         runCurrent()
 
-        browsing(f, id).leaveUnsafeCertificate()
+        assertFalse(browsing(f, id).leaveUnsafeCertificate())
         runCurrent()
 
         assertNull(f.tab(id)?.url)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun backToSafetyOnALinkFromAnotherAppLeavesTheTabForTheScreenToClose() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = BAD, openedByExternalApp = true)
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertTrue(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertTrue(f.tab(id)?.openedByExternalApp == true)
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
+    @Test
+    fun backToSafetyOnATabOpenedForAScreenLeavesTheTabForTheScreenToClose() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = BAD, closeOnBack = true)
+        runCurrent()
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+
+        assertTrue(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertEquals(BAD, f.tab(id)?.url)
+        assertTrue(f.tab(id)?.closeOnBack == true)
         assertNull(f.manager.runtime(id).value.certificateWarning)
     }
 

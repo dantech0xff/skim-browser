@@ -171,7 +171,7 @@ class BrowsingViewModel @AssistedInject constructor(
     fun openHttpFallback() = tabs.loadHttpFallback(tabId)
 
     @MainThread
-    fun leaveUnsafeCertificate() = tabs.leaveUnsafeCertificate(tabId)
+    fun leaveUnsafeCertificate(): Boolean = tabs.leaveUnsafeCertificate(tabId)
 
     @MainThread
     fun proceedDespiteCertificate() = tabs.proceedDespiteCertificate(tabId)

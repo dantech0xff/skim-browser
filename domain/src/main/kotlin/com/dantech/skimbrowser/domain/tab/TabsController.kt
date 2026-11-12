@@ -36,10 +36,12 @@ interface TabsController {
     fun loadHttpFallback(tabId: String) {}
 
     /**
-     * Drops the certificate warning on [tabId]. A page that is still showing stays. When nothing
-     * safe is showing, the tab returns to the New tab page.
+     * Drops the certificate warning on [tabId]. A page that is still showing stays. When the failed
+     * page is the first page of a tab another app opened, or of a tab opened for a screen, returns
+     * true and leaves that tab open so the screen can close it the way Back does. Any other first
+     * page returns to the New tab page, and this returns false.
      */
-    fun leaveUnsafeCertificate(tabId: String) {}
+    fun leaveUnsafeCertificate(tabId: String): Boolean = false
 
     /** Remembers the warned certificate for this session and loads that page again. */
     fun proceedDespiteCertificate(tabId: String) {}
