@@ -93,9 +93,10 @@ class CosmeticFiltersTest {
     fun aBlockedHostCollapsesItsFrameAndNotALookalike() {
         val css = CosmeticFilters.collapseBlockedCss(listOf("ads.example", "bad host", "x", "ads.example"))
 
-        assertTrue(css.contains("iframe[src*=\"://ads.example/\"]"))
-        assertTrue(css.contains("img[src*=\"://www.ads.example/\"]"))
-        assertTrue(css.contains("embed[src$=\"://ads.example\"]"))
+        assertTrue(css.contains("iframe[src*=\"//ads.example/\"]"))
+        assertTrue(css.contains("img[src*=\"//www.ads.example/\"]"))
+        assertTrue(css.contains("embed[src$=\"//ads.example\"]"))
+        assertTrue(css.contains("[src*=\"//ads.example#\"]"))
         assertTrue(css.contains("{display:none !important}"))
         assertFalse(css.contains("bad host"))
         assertFalse(css.contains("://x"))

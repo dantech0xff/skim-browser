@@ -16,7 +16,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.RecordingEvents.Event
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
+import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import kotlinx.coroutines.runBlocking
 import org.robolectric.shadows.ShadowLooper
 import org.junit.Assert.assertEquals
@@ -403,19 +406,78 @@ class SkimWebViewClientTest {
         val script = shadowOf(view).lastEvaluatedJavascript
         assertTrue(script.contains("skim-collapse"))
         assertTrue(script.contains("iframe[src*="))
-        assertTrue(script.contains("://ads.example/"))
+        assertTrue(script.contains("//ads.example/"))
         assertTrue(script.contains("display:none !important"))
         assertFalse(script.contains("querySelector"))
         assertFalse(script.contains("getElementsBy"))
+    }
+
+    @Test
+    fun aBlockedFrameStillCollapsesWhenTheStartedUrlIsSpelledDifferently() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("ads.example")))
+        val client = client(shield)
+        client.shouldInterceptRequest(view, request("https://www.daylightjournal.com/energy/heat-pumps-cold", mainFrame = true))
+        client.shouldInterceptRequest(view, request("https://ads.example/banner", mainFrame = false))
+
+        client.onPageStarted(view, "$PAGE/", null)
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script.contains("//ads.example/"))
+    }
+
+    @Test
+    fun aDifferentPageDoesNotKeepThePreviousCollapseHosts() {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("ads.example")))
+        val client = client(shield)
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        client.shouldInterceptRequest(view, request("https://ads.example/banner", mainFrame = false))
+
+        client.onPageStarted(view, NEXT, null)
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script == null || !script.contains("ads.example"))
+    }
+
+    @Test
+    fun theHideSheetIsAppliedOnFinishEvenWhenDocumentStartIsSupported() {
+        val cosmetic = CosmeticFilters.load("G\t.adsbox\n".reader().buffered())
+        val shield = RequestShield.of(HostBlocklist.EMPTY, cosmetic)
+        val client = client(shield, documentStart = true)
+
+        client.onPageFinished(view, NEXT)
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script.contains("skim-hide"))
+        assertTrue(script.contains(".adsbox"))
+        assertTrue(script.contains("example.com"))
+    }
+
+    @Test
+    fun theHideSheetWaitsUntilTheRulesAreReady() {
+        val shield = WaitingShield()
+        val client = client(shield, documentStart = true)
+
+        client.armCosmetic(view, PAGE)
+        client.onPageStarted(view, PAGE, null)
+        client.onPageFinished(view, PAGE)
+        assertEquals(null, shadowOf(view).lastEvaluatedJavascript)
+
+        shield.ready()
+        ShadowLooper.idleMainLooper()
+
+        val script = shadowOf(view).lastEvaluatedJavascript
+        assertTrue(script.contains("skim-hide"))
+        assertTrue(script.contains(".adsbox"))
     }
 
     private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
         TestWebResourceRequest(url, mainFrame, gesture)
 
     private fun client(
-        shield: RequestShield,
+        shield: ShieldChoices,
         events: RecordingEvents = this.events,
         incognito: Boolean = false,
+        documentStart: Boolean = false,
     ) = SkimWebViewClient(
         tabId = TAB,
         incognito = incognito,
@@ -423,8 +485,31 @@ class SkimWebViewClientTest {
         activityHost = host,
         loadInTab = { _, _ -> },
         shield = shield,
+        documentStartSupported = documentStart,
         onRendererGone = { _, _, _ -> },
     )
+
+    private class WaitingShield : ShieldChoices {
+        private val pending = mutableListOf<() -> Unit>()
+        private var loaded = false
+        private val off = MutableStateFlow<Set<String>>(emptySet())
+        override val disabledHosts: StateFlow<Set<String>> = off
+        override fun incognitoDisabled(host: String) = false
+        override suspend fun setDisabled(host: String, incognito: Boolean, disabled: Boolean) = Unit
+        override fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean) = false
+        override fun clearIncognito() = Unit
+        override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? =
+            if (loaded) ".adsbox{display:none !important}\n" else null
+        override fun whenCosmeticReady(action: () -> Unit) {
+            if (loaded) action() else pending += action
+        }
+        fun ready() {
+            loaded = true
+            val queued = pending.toList()
+            pending.clear()
+            queued.forEach { it() }
+        }
+    }
 
     private companion object {
         const val TAB = "tab-1"

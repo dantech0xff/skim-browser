@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -30,7 +31,7 @@ class RequestShield private constructor(
     private val loadList: () -> HostBlocklist,
     private val loadCosmetic: () -> CosmeticFilters,
     private val settings: SettingsRepository?,
-    scope: CoroutineScope?,
+    private val scope: CoroutineScope?,
 ) : ShieldChoices {
 
     @Inject constructor(
@@ -63,7 +64,8 @@ class RequestShield private constructor(
     private val gate = Any()
     private var loaded: HostBlocklist? = null
     private val cosmeticGate = Any()
-    private var cosmetic: CosmeticFilters? = null
+    @Volatile private var cosmetic: CosmeticFilters? = null
+    private val readyWaiters = ArrayList<() -> Unit>()
 
     override val disabledHosts: StateFlow<Set<String>> = persisted
 
@@ -135,17 +137,49 @@ class RequestShield private constructor(
         incognitoOff.clear()
     }
 
-    override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String {
+    override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? {
         val host = documentUrl?.let(::hostOf) ?: return ""
-        if (!choicesReady.get()) choicesLoaded.await()
-        if (!choicesReady.get()) return ""
+        if (!rulesReady()) return null
         if (isOff(host, incognito)) return ""
-        return cosmetics().cssFor(host)
+        return cosmetic?.cssFor(host) ?: ""
     }
 
     override fun warmCosmetic() {
+        if (!choicesReady.get()) choicesLoaded.await()
         cosmetics()
     }
+
+    override fun whenCosmeticReady(action: () -> Unit) {
+        if (rulesReady()) {
+            action()
+            return
+        }
+        val runner = scope
+        if (runner == null) {
+            warmCosmetic()
+            action()
+            return
+        }
+        val runNow = synchronized(readyWaiters) {
+            if (rulesReady()) true else {
+                readyWaiters += action
+                false
+            }
+        }
+        if (runNow) {
+            action()
+            return
+        }
+        runner.launch(Dispatchers.IO) {
+            warmCosmetic()
+            val queued = synchronized(readyWaiters) {
+                if (!rulesReady()) emptyList() else readyWaiters.toList().also { readyWaiters.clear() }
+            }
+            queued.forEach { it() }
+        }
+    }
+
+    private fun rulesReady(): Boolean = choicesReady.get() && cosmetic != null
 
     private fun isOff(host: String, incognito: Boolean): Boolean =
         if (incognito) host in incognitoOff else host in persisted.value
@@ -197,6 +231,18 @@ class RequestShield private constructor(
             settings: SettingsRepository,
             scope: CoroutineScope,
         ): RequestShield = withChoices(list, CosmeticFilters.EMPTY, settings, scope)
+
+        /** A shield whose cosmetic file is read by [loadCosmetic], for tests that must not parse early. */
+        fun loading(
+            loadCosmetic: () -> CosmeticFilters,
+            settings: SettingsRepository,
+            scope: CoroutineScope,
+        ): RequestShield = RequestShield(
+            loadList = { HostBlocklist.EMPTY },
+            loadCosmetic = loadCosmetic,
+            settings = settings,
+            scope = scope,
+        )
 
         fun withChoices(
             list: HostBlocklist,

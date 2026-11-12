@@ -64,11 +64,29 @@ class RequestShieldTest {
             settings,
             CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
         )
+        shield.warmCosmetic()
 
-        assertTrue(shield.cosmeticCss(PAGE, incognito = false).contains(".adsbox{display:none !important}"))
+        val sheet = shield.cosmeticCss(PAGE, incognito = false)
+        assertTrue(sheet!!.contains(".adsbox{display:none !important}"))
         shield.setDisabled("example.com", incognito = false, disabled = true)
         assertEquals("", shield.cosmeticCss("https://www.example.com/story", incognito = false))
-        assertTrue(shield.cosmeticCss(OTHER, incognito = false).contains(".adsbox"))
+        assertTrue(shield.cosmeticCss(OTHER, incognito = false)!!.contains(".adsbox"))
+    }
+
+    @Test(timeout = 5_000)
+    fun cosmeticCssDoesNotParseUntilWarm() {
+        var parsed = false
+        val shield = RequestShield.loading(
+            loadCosmetic = {
+                parsed = true
+                CosmeticFilters.EMPTY
+            },
+            settings = FakeSettingsRepository(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+
+        assertEquals(null, shield.cosmeticCss("https://example.com/", incognito = false))
+        assertFalse(parsed)
     }
 
     private companion object {

@@ -19,6 +19,7 @@ import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.sameNavigation
 import java.io.ByteArrayInputStream
 import java.util.LinkedHashSet
 import java.util.concurrent.atomic.AtomicBoolean
@@ -80,7 +81,7 @@ class SkimWebViewClient(
         val early = synchronized(documentGate) {
             val sameDocument = url != null && url == loadingUrl
             val carried = if (sameDocument) loadingBlocked.get() else 0
-            val carriedHosts = if (sameDocument) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
+            val carriedHosts = if (carriesCollapse(url, loadingUrl)) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
             documentUrl = url
             loadingUrl = null
             loadingBlocked.set(0)
@@ -129,7 +130,7 @@ class SkimWebViewClient(
         events.onPageFinished(tabId, url)
         events.onNavigationState(tabId, view.canGoBack(), view.canGoForward())
         (view as? SkimWebView)?.applyContentScrollPadding()
-        if (!documentStartSupported) injectHide(view, url)
+        injectHide(view, url)
     }
 
     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -227,15 +228,12 @@ class SkimWebViewClient(
     /** Installs the document-start hide sheet for [url] when this WebView supports it. */
     fun armCosmetic(view: WebView, url: String) {
         if (!documentStartSupported || detached) return
-        removeHideScript()
         val css = shield.cosmeticCss(url, incognito)
-        val host = hostOf(url) ?: return
-        if (css.isEmpty()) return
-        try {
-            hideScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.hide(host, css), ALL_ORIGINS)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "Cosmetic rules were not installed at document start", e)
+        if (css == null) {
+            applyWhenReady(view, url)
+            return
         }
+        installDocumentStart(view, url, css)
     }
 
     private fun removeHideScript() {
@@ -248,11 +246,60 @@ class SkimWebViewClient(
         }
     }
 
-    private fun injectHide(view: WebView, url: String) {
+    private fun injectHide(view: WebView, url: String, wait: Boolean = true) {
         val css = shield.cosmeticCss(url, incognito)
+        if (css == null) {
+            if (wait) applyWhenReady(view, url)
+            return
+        }
         val host = hostOf(url) ?: return
         if (css.isEmpty()) return
         inject(view, CosmeticScript.hide(host, css))
+    }
+
+    /** The rules are still loading. Apply [url] on the main thread once they are, without parsing here. */
+    private fun applyWhenReady(view: WebView, url: String) {
+        shield.whenCosmeticReady {
+            val apply = Runnable {
+                if (detached) return@Runnable
+                val current = documentUrl ?: url
+                if (documentStartSupported) installDocumentStart(view, current, shield.cosmeticCss(current, incognito))
+                injectHide(view, current, wait = false)
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+        }
+    }
+
+    private fun installDocumentStart(view: WebView, url: String, css: String?) {
+        if (!documentStartSupported || detached || css == null) return
+        removeHideScript()
+        val host = hostOf(url) ?: return
+        if (css.isEmpty()) return
+        try {
+            hideScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.hide(host, css), ALL_ORIGINS)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cosmetic rules were not installed at document start", e)
+        }
+    }
+
+    /**
+     * True when [started] is the in-flight main frame even if WebView spells the URL differently.
+     * A fragment, a trailing slash, or a `www` prefix is the same page. Another path is not.
+     */
+    private fun carriesCollapse(started: String?, loading: String?): Boolean {
+        if (started == null || loading == null) return false
+        if (started == loading || sameNavigation(started, loading)) return true
+        val startedHost = hostOf(started)
+        val loadingHost = hostOf(loading)
+        if (startedHost == null || startedHost != loadingHost) return false
+        return pagePath(started) == pagePath(loading)
+    }
+
+    private fun pagePath(url: String): String {
+        val noHash = url.substringBefore('#').trimEnd('/')
+        val rest = noHash.substringAfter("://", noHash)
+        val slash = rest.indexOf('/')
+        return if (slash < 0) "" else rest.substring(slash)
     }
 
     /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */

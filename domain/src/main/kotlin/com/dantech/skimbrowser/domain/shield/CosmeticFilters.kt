@@ -97,9 +97,10 @@ class CosmeticFilters private constructor(
 
         /**
          * Hides frames and images whose request was blocked. [hosts] are the form hostOf returns.
-         * The match requires a delimiter after the host, so `ads.example` does not hide
-         * `ads.example.else`. Both the host and its `www` form are covered, because the address
-         * bar key drops `www` and the element keeps it.
+         * The needle is `//host` with a delimiter after it, so an absolute URL and a
+         * protocol-relative `//host/...` both match, and `ads.example` does not hide
+         * `ads.example.else`. The `www` form is covered too, because the address bar key drops
+         * `www` and the element keeps it.
          */
         fun collapseBlockedCss(hosts: Iterable<String>): String {
             val out = StringBuilder()
@@ -176,9 +177,10 @@ class CosmeticFilters private constructor(
             }
             for (name in arrayOf(host, "www.$host")) {
                 for (tag in tags) {
-                    one("$tag[src*=\"://$name/\"]")
-                    one("$tag[src*=\"://$name?\"]")
-                    one("$tag[src$=\"://$name\"]")
+                    one("$tag[src*=\"//$name/\"]")
+                    one("$tag[src*=\"//$name?\"]")
+                    one("$tag[src*=\"//$name#\"]")
+                    one("$tag[src$=\"//$name\"]")
                 }
             }
             out.append("{display:none !important}\n")
