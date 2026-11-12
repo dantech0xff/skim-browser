@@ -20,6 +20,7 @@ import java.io.OutputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -60,19 +61,24 @@ class MediaStoreDownloads(
      *
      * @throws IOException when the file cannot be saved; nothing is left behind.
      */
-    suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted =
-        withContext(ioDispatcher) {
-            if (fileName.isEmpty() || fileName.contains('/') || fileName == "." || fileName == "..") {
-                throw IOException("Not a file name")
+    suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted {
+        var published: Uri? = null
+        try {
+            return withContext(ioDispatcher) {
+                if (fileName.isEmpty() || fileName.contains('/') || fileName == "." || fileName == "..") {
+                    throw IOException("Not a file name")
+                }
+                val saved = if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
+                published = saved.uri
+                // withContext can drop this result if cancel wins on the way out. The catch deletes it.
+                if (!isActive) throw CancellationException()
+                saved
             }
-            val saved = if (hasScopedStorage()) saveScoped(fileName, mimeType, write) else saveLegacy(fileName, mimeType, write)
-            // Publish is not a suspend point, so a cancel can land after the file is visible.
-            if (!isActive) {
-                delete(saved.uri)
-                throw CancellationException()
-            }
-            saved
+        } catch (e: CancellationException) {
+            published?.let { uri -> withContext(NonCancellable) { delete(uri) } }
+            throw e
         }
+    }
 
     /**
      * Bytes free on the volume the Downloads folder is on; [Long.MAX_VALUE] when that cannot be

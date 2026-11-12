@@ -11,7 +11,9 @@ import com.dantech.skimbrowser.domain.download.DownloadRetry
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * What the Downloads screen asks the browser to do. The activity attaches the router while it
@@ -49,15 +51,17 @@ class DownloadActions @Inject constructor(
     }
 
     override suspend fun remove(id: Long, deleteFile: Boolean) {
-        if (deleteFile) tracker.cancelAndJoin(id)
-        val item = log.remove(id) ?: return
-        if (!deleteFile) return
-        item.systemId?.let(tracker::removeSystem)
-        val uri = item.uri ?: return
-        try {
-            app.contentResolver.delete(uri.toUri(), null, null)
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "A downloaded file could not be deleted: ${e.javaClass.simpleName}")
+        withContext(NonCancellable) {
+            if (deleteFile) tracker.cancelAndJoin(id)
+            val item = log.remove(id) ?: return@withContext
+            if (!deleteFile) return@withContext
+            item.systemId?.let(tracker::removeSystem)
+            val uri = item.uri ?: return@withContext
+            try {
+                app.contentResolver.delete(uri.toUri(), null, null)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "A downloaded file could not be deleted: ${e.javaClass.simpleName}")
+            }
         }
     }
 

@@ -3,11 +3,13 @@ package com.dantech.skimbrowser.ui.downloads
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.download.DownloadCommands
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -22,6 +24,7 @@ data class DownloadsUiState(val items: List<DownloadItem> = emptyList())
 class DownloadsViewModel @Inject constructor(
     private val log: DownloadLog,
     private val commands: DownloadCommands,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     val state: StateFlow<DownloadsUiState> = log.observe()
@@ -43,6 +46,7 @@ class DownloadsViewModel @Inject constructor(
     }
 
     fun remove(id: Long, deleteFile: Boolean) {
-        viewModelScope.launch { commands.remove(id, deleteFile) }
+        // Outlives this screen: leaving Downloads must not leave a deleted file or a stuck row.
+        appScope.launch { commands.remove(id, deleteFile) }
     }
 }
