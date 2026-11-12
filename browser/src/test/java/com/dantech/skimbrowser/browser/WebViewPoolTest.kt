@@ -20,6 +20,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewFeature
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -582,6 +584,28 @@ class WebViewPoolTest {
     }
 
     @Test
+    fun darkPagesFollowTheThemeAndAnUnsupportedWebViewDoesNotCrash() = runTest {
+        val (f, pool) = attached()
+        val id = f.manager.newTab(incognito = false, url = PAGE)
+        val view = livePage(f, pool, id)
+
+        pool.setPagesDark(true)
+        assertFalse(pageThemeIsLight(view))
+        pool.setPagesDark(false)
+        assertTrue(pageThemeIsLight(view))
+
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) return@runTest
+        val applied = try {
+            WebSettingsCompat.isAlgorithmicDarkeningAllowed(view.settings)
+        } catch (_: UnsupportedOperationException) {
+            return@runTest
+        }
+        assertFalse(applied)
+        pool.setPagesDark(true)
+        assertTrue(WebSettingsCompat.isAlgorithmicDarkeningAllowed(view.settings))
+    }
+
+    @Test
     fun pageTextZoomFollowsTheSystemFontScale() = runTest {
         val (f, pool) = attached()
         val id = f.manager.newTab(incognito = false, url = PAGE)
@@ -884,6 +908,18 @@ class WebViewPoolTest {
         ).also { pools += it }
         f.engines.attach(pool)
         return f to pool
+    }
+
+    /** What Chromium reads: `isLightTheme` on the WebView's context, not the application theme. */
+    private fun pageThemeIsLight(view: WebView): Boolean {
+        val attributes = view.context.theme.obtainStyledAttributes(
+            intArrayOf(android.R.attr.isLightTheme),
+        )
+        try {
+            return attributes.getBoolean(0, true)
+        } finally {
+            attributes.recycle()
+        }
     }
 
     /** [tabId]'s WebView, restored, with its page committed so it has a state to hand over. */

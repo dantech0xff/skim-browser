@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
                     retryDownload = { retry ->
                         browserHost.downloads.retry(retry, browserHost.pool.webViewIfReady(retry.tabId))
                     },
+                    onPagesDark = browserHost.pool::setPagesDark,
                 )
             }
         }
