@@ -3,6 +3,8 @@ package com.dantech.skimbrowser.browser
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
@@ -16,6 +18,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
+import com.dantech.skimbrowser.domain.page.PageTextZoom
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.url.isWebUrl
@@ -85,6 +88,32 @@ class WebViewPool(
     /** Draws a WebView's thumbnail, or null while it has nothing to show. */
     private val drawThumbnail: (View) -> Bitmap? = ::captureThumbnail,
 ) : TabEngine {
+
+    /**
+     * Font size is in [Activity] configChanges, so the activity is not recreated. This applies the
+     * new scale to WebViews that are already showing.
+     */
+    private val fontScaleCallbacks = object : ComponentCallbacks2 {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            if (!destroyed) applyPageTextZoom(PageTextZoom.ofFontScale(newConfig.fontScale))
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onLowMemory() = Unit
+
+        override fun onTrimMemory(level: Int) = Unit
+    }
+
+    /** Sets [zoom] on every WebView that is still alive. */
+    private fun applyPageTextZoom(zoom: Int) {
+        live.values.forEach { entry ->
+            if (!entry.destroyed) entry.view.settings.textZoom = zoom
+        }
+    }
+
+    init {
+        activity.registerComponentCallbacks(fontScaleCallbacks)
+    }
 
     private class Entry(
         val tabId: String,
@@ -233,6 +262,7 @@ class WebViewPool(
      */
     fun destroyAll() {
         if (destroyed) return
+        activity.unregisterComponentCallbacks(fontScaleCallbacks)
         if (!savedSinceStop) saveAll()
         if (started) {
             started = false
@@ -463,6 +493,7 @@ class WebViewPool(
             allowFileAccess = false
             allowContentAccess = false
             setGeolocationEnabled(true)
+            textZoom = PageTextZoom.ofFontScale(activity.resources.configuration.fontScale)
         }
         // First-party cookies stay. A page cannot read cookies set by another site.
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false)
