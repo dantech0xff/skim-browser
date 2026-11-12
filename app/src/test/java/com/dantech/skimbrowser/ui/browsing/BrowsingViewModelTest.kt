@@ -615,6 +615,25 @@ class BrowsingViewModelTest {
         assertNull(f.manager.runtime(id).value.certificateWarning)
     }
 
+    @Test
+    fun backToSafetyUsesWebViewHistoryWhenTheBackFlagIsStillFalse() = runTest {
+        val f = fixture()
+        val id = f.manager.newTab(incognito = false, url = PAGE, openedByExternalApp = true)
+        f.engine.openPage(id, PAGE)
+        runCurrent()
+        f.manager.events.onPageStarted(id, BAD)
+        f.manager.events.onCertificateError(id, certificateWarning())
+        runCurrent()
+        assertFalse(f.manager.runtime(id).value.canGoBack)
+
+        assertFalse(browsing(f, id).leaveUnsafeCertificate())
+        runCurrent()
+
+        assertTrue(f.engine.calls.any { it == Call.GoBack(id) })
+        assertNotNull(f.tab(id))
+        assertNull(f.manager.runtime(id).value.certificateWarning)
+    }
+
     // Helpers
 
     private fun TestScope.fixture(): TabManagerFixture {

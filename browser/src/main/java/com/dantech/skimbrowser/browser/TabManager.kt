@@ -360,9 +360,12 @@ class TabManager(
 
     /**
      * Leaves the certificate warning. The page still in the WebView keeps its address. When that
-     * page is the one that failed, or there is no page, the tab goes back if it can. A first page
-     * another app opened, or one opened for a screen, stays so the screen can close it the way
-     * Back does, and this returns true. Any other first page returns to the New tab page.
+     * page is the one that failed, or there is no page, the tab goes back when the WebView still
+     * has an earlier page. That is the WebView's own history, not the stored back flag: the flag
+     * is only refreshed from navigation state, which a certificate error after the page started
+     * often has not updated. A first page another app opened, or one opened for a screen, stays
+     * so the screen can close it the way Back does, and this returns true. Any other first page
+     * returns to the New tab page.
      */
     @MainThread
     override fun leaveUnsafeCertificate(tabId: String): Boolean {
@@ -379,8 +382,8 @@ class TabManager(
             }
             return false
         }
-        if (runtime.canGoBack && engine.value?.goBack(tabId) == true) return false
-        if (!runtime.canGoBack && (tab.openedByExternalApp || tab.closeOnBack)) return true
+        if (engine.value?.goBack(tabId) == true) return false
+        if (tab.openedByExternalApp || tab.closeOnBack) return true
         returnToNewTabPage(tabId)
         return false
     }
