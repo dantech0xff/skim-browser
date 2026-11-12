@@ -43,3 +43,7 @@ Skim is only the client. The Worker in `proxy/` must do all of the following bef
 - Do not log page text or questions. That matches `setup_privacy_note` and `ai_permission_body` in `app/src/main/res/values/strings.xml`.
 
 If any of those is missing, do not ship.
+
+## GitHub Release notes
+
+Pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`. The job reads `## [X.Y.Z]` from `CHANGELOG.md` and creates a GitHub Release with that text. It uses the workflow's built-in token. It does not sign an APK, upload an artifact, or read a repository secret. A GitHub Release is not permission to ship. The list above still applies.

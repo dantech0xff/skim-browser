@@ -1,0 +1,47 @@
+name: Release
+
+# A tag vX.Y.Z publishes the matching CHANGELOG.md section. This job uses the
+# workflow's built-in token. It does not sign an APK, upload a file, or read a
+# repository secret. Publishing notes is not permission to ship.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notes:
+    name: Publish the GitHub Release notes
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Check the changelog reader
+        run: python3 tools/release_notes.py --self-test
+
+      - name: Read the section for this tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "$version" in
+            "$GITHUB_REF_NAME")
+              echo "The tag must start with v, as in v1.2.3" >&2
+              exit 1
+              ;;
+          esac
+          python3 tools/release_notes.py CHANGELOG.md "$version" > "${RUNNER_TEMP}/release-notes.md"
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file "${RUNNER_TEMP}/release-notes.md"

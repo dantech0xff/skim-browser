@@ -111,6 +111,8 @@ Release is blocked until the proxy in `docs/deployment-guide.md` meets the secur
 
 `verifyNoApiKeyRelease` and `verifyNoApiKeyReleaseSmoke` run after assemble and bundle. They fail if an Anthropic key (`sk-ant-` or the debug key) is inside a non-debug APK or AAB.
 
+A tag `vX.Y.Z` publishes the matching section of `CHANGELOG.md` as a GitHub Release. That workflow does not build or sign an APK. The ship rule is still [Deployment](docs/deployment-guide.md).
+
 ## Docs
 
 | File | What it owns |
