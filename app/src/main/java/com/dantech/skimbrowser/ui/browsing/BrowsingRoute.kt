@@ -125,7 +125,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
             onLeaveUnsafeCertificate = leaveUnsafeCertificate,
             onProceedDespiteCertificate = browsing::proceedDespiteCertificate,
-            onBackToSafety = browsing::backToSafety,
+            onBackToSafety = leaveScam,
             onProceedUnsafe = browsing::proceedUnsafe,
         ),
         chromeCollapsed = chromeCollapsed,
