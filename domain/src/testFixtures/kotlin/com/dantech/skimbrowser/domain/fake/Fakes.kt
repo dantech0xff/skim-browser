@@ -33,6 +33,7 @@ import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.translate.TranslationLanguages
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.normalizeHost
@@ -73,6 +74,9 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override suspend fun setPageTextZoom(percent: Int?) =
         update { it.copy(pageTextZoomPercent = percent?.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)) }
+
+    override suspend fun setTranslationLanguage(tag: String?) =
+        update { it.copy(translationLanguageTag = TranslationLanguages.canonical(tag)) }
 
     override suspend fun setReaderFont(font: ReaderFont) = update { it.copy(readerFont = font) }
 

@@ -23,4 +23,7 @@ interface PageScriptSource {
      * code.
      */
     fun highlightScript(argsJson: String): String
+
+    /** Runs the translation script with [argsJson], already made safe for a script. */
+    fun translationScript(argsJson: String): String
 }

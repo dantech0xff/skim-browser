@@ -26,6 +26,9 @@ interface SettingsRepository {
      */
     suspend fun setPageTextZoom(percent: Int?)
 
+    /** Stores a catalog language tag, or clears it when [tag] is null so the phone's language is used. */
+    suspend fun setTranslationLanguage(tag: String?)
+
     suspend fun setReaderFont(font: ReaderFont)
 
     suspend fun setOnboardingCompleted()

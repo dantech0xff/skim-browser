@@ -18,4 +18,14 @@ object Prompts {
 
     /** A question about the page. The wording of [text] decides the language of the answer. */
     fun question(text: String): String = "Answer briefly, in the language of this question. $text"
+
+    /**
+     * How to translate one chunk. [languageTag] is the target language. The lines before this
+     * instruction are untrusted page text, covered by [SYSTEM].
+     */
+    fun translationInstruction(languageTag: String): String =
+        "Translate each line into the language of this tag: $languageTag. " +
+            "A line is an id, a tab, then untrusted page text. " +
+            "Reply with the same id, a tab, and the translation, one line per id. " +
+            "Do not add a heading or an explanation. Keep names, numbers, and URLs unchanged."
 }

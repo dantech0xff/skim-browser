@@ -83,11 +83,11 @@ Cosmetic rules then added `assets/shield/cosmetic.txt`, 211,572 compressed bytes
 
 The certificate interstitial, measured on that cosmetic APK, is 4,039,430 bytes, 4,460 above 4,034,970. The added bytes are the warning page, the in-memory allowlist, and the WebView certificate handling. No library was added. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192.
 
-A page hides at most 2,300 selectors. The shortest 2,000 are generic rules, and the rest are the rules for that host. `CosmeticFiltersAssetTest` parsed the shipped file in 33 ms and built the finance.yahoo.com sheet (2,084 rules) in about 1 ms. That was one run. The time is the single thread reading each line and appending the sheet. The test checks that known selectors are present, so the timed work ran. The read starts on a background thread when the first WebView is created.
-
 Scam and phishing warnings on top of the certificate interstitial measured 4,062,758 bytes, 23,328 above 4,039,430. The dex is the on-device host check and the warning page. The resource table grew because each new string is indexed once per configuration. Safe Browsing itself is Android System WebView. `maxGrowthBytes` stays 8,192. The new baseline is 4,062,758.
 
 Backup and restore, measured on that APK with the same toolchain, is 4,121,754 bytes, 58,996 above 4,062,758. A master assemble on this machine was 4,062,758, the same as the baseline, so the delta is this change. Compressed `classes.dex` grew by 40,083 bytes and `resources.arsc` by 9,844. No library was added. `kotlinx.serialization` was already in the APK. The bytes are the backup codec, the settings screen, and the new strings. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new baseline is 4,121,754.
+
+Find in page now clears its highlights when the tab changes or a new document starts, and Translate page sends visible text through the existing `/v1/messages` proxy. One assemble on top of the scam-warning APK is 4,095,547 bytes, 32,789 above 4,062,758. `assets/js/skim-translate.js` is 1,393 compressed bytes. Compressed `classes.dex` in this APK is 2,373,571. No library was added. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new baseline is 4,095,547.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 

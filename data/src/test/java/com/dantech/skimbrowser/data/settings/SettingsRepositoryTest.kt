@@ -152,6 +152,20 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun aTranslationLanguageIsACatalogTagOrCleared() = runTest {
+        val repository = SettingsRepository(newStore())
+
+        assertNull(repository.settings.first().translationLanguageTag)
+        repository.setTranslationLanguage("vi-VN")
+        assertEquals("vi", repository.settings.first().translationLanguageTag)
+        repository.setTranslationLanguage("latin")
+        assertNull(repository.settings.first().translationLanguageTag)
+        repository.setTranslationLanguage("fr")
+        repository.setTranslationLanguage(null)
+        assertNull(repository.settings.first().translationLanguageTag)
+    }
+
+    @Test
     fun theLastTabCanBeForgotten() = runTest {
         val repository = SettingsRepository(newStore())
 

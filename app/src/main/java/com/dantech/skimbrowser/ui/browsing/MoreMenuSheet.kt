@@ -217,6 +217,7 @@ fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
     val menu = hiltViewModel<MoreMenuViewModel, MoreMenuViewModel.Factory> { factory ->
         factory.create(key.tabId)
     }
+    val translation = hiltViewModel<PageTranslationViewModel>()
     val state by menu.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(menu) { menu.closed.collect { navigator.back() } }
@@ -234,6 +235,10 @@ fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
         },
         onFind = {
             menu.findInPage()
+            navigator.back()
+        },
+        onTranslate = {
+            translation.translate(key.tabId, java.util.Locale.getDefault().toLanguageTag())
             navigator.back()
         },
         onDesktop = menu::toggleDesktop,
@@ -259,6 +264,7 @@ fun MoreMenuSheet(
     onStar: () -> Unit,
     onShare: () -> Unit,
     onFind: () -> Unit,
+    onTranslate: () -> Unit = {},
     onDesktop: () -> Unit,
     onNewTab: () -> Unit,
     onNewIncognito: () -> Unit,
@@ -272,6 +278,9 @@ fun MoreMenuSheet(
         if (state.page) {
             PageHeader(state, onStar, onShare)
             PageActions(state.desktopSite, onFind, onDesktop)
+            if (!state.incognito) {
+                MenuGroup(MenuEntry(R.drawable.ic_public, stringResource(R.string.translate_page), onTranslate))
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MenuGroup(

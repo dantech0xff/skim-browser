@@ -105,6 +105,28 @@ class RequestShapeTest {
         }
     }
 
+    @Test
+    fun aTranslationUsesTheMessagesProxyAndNamesNoKey() = runBlocking {
+        FakeClaudeServer().use { server ->
+            server.enqueue("answer-plain.sse")
+            service(server.baseUrl).translateNodes(
+                host = PAGE_HOST,
+                languageTag = "vi",
+                nodes = listOf(com.dantech.skimbrowser.domain.translate.PageTextNode(1, "Hello", true)),
+            ).toList()
+            val request = server.take()
+            val body = request.body.readUtf8()
+            assertTrue(request.path!!.endsWith("/v1/messages"))
+            assertNull(request.getHeader("x-api-key"))
+            assertNull(request.getHeader("anthropic-beta"))
+            assertTrue(body.contains("1\\tHello") || body.contains("1\tHello"))
+            assertTrue(body.contains("vi"))
+            val root = Json.parseToJsonElement(body).jsonObject
+            assertEquals(AiConfig.TRANSLATION_MAX_TOKENS, root.getValue("max_tokens").jsonPrimitive.content.toLong())
+            assertEquals("low", root.getValue("output_config").jsonObject.getValue("effort").jsonPrimitive.content)
+        }
+    }
+
     private suspend fun service(baseUrl: String, installId: String = "install-id"): SkimAiService {
         val db = inMemorySkimDatabase().also { databases += it }
         val settings = SettingsRepository(

@@ -21,6 +21,11 @@ data class SkimSettings(
      * [READER_TEXT_SCALE_RANGE] and wins over the system scale until it is cleared.
      */
     val pageTextZoomPercent: Int? = null,
+    /**
+     * Translate page's target language, a tag from the translation catalog. Null uses the phone's
+     * language when that language is in the catalog, and English otherwise.
+     */
+    val translationLanguageTag: String? = null,
     val readerFont: ReaderFont = ReaderFont.SANS_SERIF,
     val onboardingCompleted: Boolean = false,
     /** The normal tab shown last; incognito tabs are never remembered. */

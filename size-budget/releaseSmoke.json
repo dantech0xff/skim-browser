@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
   "variant": "releaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4121754,
+  "fileSizeBytes": 4095547,
   "downloadSizeBytes": 2628238,
   "maxGrowthBytes": 8192,
   "definedMethods": 23214,
   "referencedMethods": 26549,
   "dexFiles": 1,
-  "notes": "Scam and phishing warnings baseline was 4062758. Backup and restore measured 4121754, 58996 above 4062758. No library was added. Compressed classes.dex grew by 40083 bytes and resources.arsc by 9844. The growth is the backup codec, the settings screen, and the new strings. Download size and method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Scam and phishing baseline was 4062758. Find in page and page translation, measured on that APK, is 4095547, 32789 above 4062758. The added bytes are the translation script (assets/js/skim-translate.js, 1393 compressed), the in-page text replacement, the settings language row, and the menu entry. No library was added. Download size and method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

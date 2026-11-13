@@ -2,11 +2,14 @@ package com.dantech.skimbrowser.ui.settings
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.page.PageTextZoom
 import com.dantech.skimbrowser.domain.settings.SearchEngine
+import com.dantech.skimbrowser.domain.translate.TranslationLanguages
 import com.dantech.skimbrowser.ui.components.ChoiceDialogContent
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.ReaderSizeSlider
@@ -19,6 +22,9 @@ import kotlinx.collections.immutable.toImmutableList
 private val SearchEngineOptions: ImmutableList<SearchEngine> = SearchEngine.entries.toImmutableList()
 
 private val ThemeOptions: ImmutableList<ThemeSetting> = ThemeSetting.entries.toImmutableList()
+
+private val TranslationLanguageOptions: ImmutableList<String?> =
+    (listOf<String?>(null) + TranslationLanguages.tags).toImmutableList()
 
 /** Search engine (15). Choosing an option saves it; the caller closes the dialog. */
 @Composable
@@ -94,6 +100,50 @@ internal fun SearchEngine.labelRes(): Int = when (this) {
     SearchEngine.BING -> R.string.search_engine_bing
     SearchEngine.DUCKDUCKGO -> R.string.search_engine_duckduckgo
     SearchEngine.ECOSIA -> R.string.search_engine_ecosia
+}
+
+/** Translation language. Null keeps the phone's language. Choosing a row saves it and closes the dialog. */
+@Composable
+fun TranslationLanguageDialog(
+    selected: String?,
+    onSelect: (String?) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ChoiceDialogContent(
+        title = stringResource(R.string.settings_translation_language),
+        options = TranslationLanguageOptions,
+        selected = selected,
+        label = { stringResource(translationLanguageLabel(it)) },
+        onSelect = onSelect,
+        onDismiss = onDismiss,
+        modifier = modifier.heightIn(max = 520.dp),
+    )
+}
+
+@StringRes
+internal fun translationLanguageLabel(tag: String?): Int = when (tag) {
+    "en" -> R.string.translation_language_en
+    "es" -> R.string.translation_language_es
+    "fr" -> R.string.translation_language_fr
+    "de" -> R.string.translation_language_de
+    "pt" -> R.string.translation_language_pt
+    "vi" -> R.string.translation_language_vi
+    "zh" -> R.string.translation_language_zh
+    "ja" -> R.string.translation_language_ja
+    "ko" -> R.string.translation_language_ko
+    "id" -> R.string.translation_language_id
+    "hi" -> R.string.translation_language_hi
+    "ar" -> R.string.translation_language_ar
+    "ru" -> R.string.translation_language_ru
+    "it" -> R.string.translation_language_it
+    "nl" -> R.string.translation_language_nl
+    "pl" -> R.string.translation_language_pl
+    "tr" -> R.string.translation_language_tr
+    "th" -> R.string.translation_language_th
+    "uk" -> R.string.translation_language_uk
+    "sv" -> R.string.translation_language_sv
+    else -> R.string.settings_translation_language_device
 }
 
 @StringRes

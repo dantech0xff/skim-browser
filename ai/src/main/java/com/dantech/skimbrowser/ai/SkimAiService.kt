@@ -11,6 +11,8 @@ import com.dantech.skimbrowser.domain.permission.SkimAiAudience
 import com.dantech.skimbrowser.domain.permission.SkimAiConsent
 import com.dantech.skimbrowser.domain.permission.SkimAiState
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.translate.PageTextNode
+import com.dantech.skimbrowser.domain.translate.TranslationExchange
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -156,6 +158,36 @@ class SkimAiService(
         val chat = session as ChatSession
         val params = chat.lastParams ?: return flow { }
         return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
+    }
+
+    /**
+     * Translates [nodes] into [languageTag]. The lines are untrusted page text. Nothing is stored
+     * as a chat, and an incognito page never reaches here because the caller does not ask.
+     */
+    override fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>): Flow<AiReply> {
+        if (nodes.isEmpty() || host.isBlank()) return flow { emit(AiReply.Failed(AiFailure.Server)) }
+        val opening = listOf(
+            WireBlock.Text(TranslationExchange.requestText(nodes)),
+            WireBlock.Text(Prompts.translationInstruction(languageTag)),
+        )
+        val params = request(AiConfig.EFFORT_TRANSLATION, AiConfig.TRANSLATION_MAX_TOKENS, format = null, opening)
+        val source = AiSource(tabId = "translate", incognito = false, host = host)
+        return flow {
+            try {
+                send(params, listOf(source), Consent.SITE_APPROVED, host).collect { event ->
+                    when (event) {
+                        is AiEvent.Text -> emit(AiReply.Text(event.delta))
+                        is AiEvent.Cite -> Unit
+                        is AiEvent.Done -> emit(AiReply.Done(event.stopReason))
+                        is AiEvent.Final -> emit(AiReply.Finished)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                emit(AiReply.Failed(e.toAiFailure()))
+            }
+        }
     }
 
     private fun Flow<AiEvent>.toReplies(session: ChatSession): Flow<AiReply> = flow {

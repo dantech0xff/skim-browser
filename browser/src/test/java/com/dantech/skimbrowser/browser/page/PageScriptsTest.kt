@@ -133,6 +133,7 @@ class PageScriptsTest {
             counting.extractScript()
             counting.readerableScript()
             counting.highlightScript("{}")
+            counting.translationScript("{}")
         }
 
         assertEquals(opened.distinct(), opened)
@@ -143,6 +144,7 @@ class PageScriptsTest {
                 "js/skim-extract.js",
                 "js/skim-readerable.js",
                 "js/skim-highlight.js",
+                "js/skim-translate.js",
             ),
             opened.toSet(),
         )
@@ -151,7 +153,7 @@ class PageScriptsTest {
 
     @Test
     fun skimsScriptsDeclareNothingOutsideTheirFunctions() {
-        listOf("js/skim-extract.js", "js/skim-readerable.js", "js/skim-highlight.js").forEach { path ->
+        listOf("js/skim-extract.js", "js/skim-readerable.js", "js/skim-highlight.js", "js/skim-translate.js").forEach { path ->
             val code = text(path).lines().filterNot { it.startsWith("//") }.joinToString("\n").trim()
 
             assertTrue("$path is one function", code.startsWith("(function () {") || code.startsWith("function (args) {"))
@@ -167,7 +169,7 @@ class PageScriptsTest {
     @Test
     fun skimsScriptsHoldOnlyAsciiCharacters() {
         // Invisible and bidi characters are written as escapes, so the source shows what it matches.
-        listOf("js/skim-extract.js", "js/skim-readerable.js", "js/skim-highlight.js").forEach { path ->
+        listOf("js/skim-extract.js", "js/skim-readerable.js", "js/skim-highlight.js", "js/skim-translate.js").forEach { path ->
             val bad = text(path).filter { it.code > 0x7E || (it.code < 0x20 && it != '\n') }
             assertEquals(path, "", bad)
         }
