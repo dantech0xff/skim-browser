@@ -25,6 +25,7 @@ data class SettingsUiState(
     val pageTextZoomPercent: Int? = null,
     val isDefaultBrowser: Boolean = false,
     val askBeforeSending: Boolean = true,
+    val scamWarnings: Boolean = true,
     val versionName: String = "",
     val versionCode: Int = 0,
 )
@@ -49,6 +50,7 @@ class SettingsViewModel @Inject constructor(
             pageTextZoomPercent = stored.pageTextZoomPercent,
             isDefaultBrowser = isDefault,
             askBeforeSending = stored.askBeforeSending,
+            scamWarnings = stored.scamWarnings,
             versionName = version.name,
             versionCode = version.code,
         )
@@ -74,5 +76,9 @@ class SettingsViewModel @Inject constructor(
     /** Null clears the stored page text size, so pages follow the system font scale. */
     fun setPageTextZoom(percent: Int?) {
         viewModelScope.launch { settings.setPageTextZoom(percent) }
+    }
+
+    fun setScamWarnings(enabled: Boolean) {
+        viewModelScope.launch { settings.setScamWarnings(enabled) }
     }
 }

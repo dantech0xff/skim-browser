@@ -12,6 +12,8 @@ import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.browser.RequestShield
+import com.dantech.skimbrowser.browser.ProcessSafetyGate
+import com.dantech.skimbrowser.browser.TabNavigations
 import com.dantech.skimbrowser.browser.WebViewPool
 import com.dantech.skimbrowser.browser.WindowSecureController
 import com.dantech.skimbrowser.browser.downloads.BlobBridge
@@ -115,6 +117,8 @@ object ActivityBrowserModule {
         sitePermissions: SitePermissionBridge,
         downloads: DownloadRouter,
         shield: RequestShield,
+        safety: ProcessSafetyGate,
+        navigations: TabNavigations,
     ): WebViewPool = WebViewPool(
         activity = activity,
         tabs = tabs,
@@ -128,6 +132,8 @@ object ActivityBrowserModule {
         sitePermissions = sitePermissions,
         downloads = downloads,
         shield = shield,
+        safety = safety,
+        navigations = navigations,
     )
 
     @Provides

@@ -32,6 +32,9 @@ interface SettingsRepository {
 
     suspend fun setLastTabId(id: String?)
 
+    /** [enabled] false skips the on-device scam check and turns WebView Safe Browsing off. */
+    suspend fun setScamWarnings(enabled: Boolean)
+
     /** Hosts where ad and tracker blocking is off. Empty until the person turns a site off. */
     val shieldDisabledHosts: Flow<Set<String>>
 

@@ -46,6 +46,20 @@ interface TabsController {
     /** Remembers the warned certificate for this session and loads that page again. */
     fun proceedDespiteCertificate(tabId: String) {}
 
+    /**
+     * Leaves a scam warning. Safe Browsing goes back in the WebView. A heuristic warning that
+     * never committed returns a tab with no page to the New tab page. A first page another app
+     * opened, or one opened for a screen, stays so the screen can close it the way Back does, and
+     * this returns true.
+     */
+    fun leaveUnsafePage(tabId: String): Boolean = false
+
+    /** Opens the warned address anyway. The host stays allowed until the process ends. */
+    fun proceedUnsafe(tabId: String) {}
+
+    /** Drops every scam warning. Used when the person turns warnings off. */
+    fun clearSafetyWarnings() {}
+
     /** Back on the first page of a tab started from the New tab page: the tab shows it again. */
     fun returnToNewTabPage(tabId: String)
 

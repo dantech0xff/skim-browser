@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
@@ -39,6 +40,8 @@ class RecordingEvents : TabEventSink {
         data class StateSaved(val tabId: String, val state: Bundle) : Event
 
         data class WebViewDestroyed(val tabId: String) : Event
+
+        data class SafetyWarningEvent(val tabId: String, val warning: SafetyWarning?) : Event
 
         data class ShieldCount(val tabId: String, val count: Int) : Event
 
@@ -129,5 +132,9 @@ class RecordingEvents : TabEventSink {
 
     override fun onCertificateError(tabId: String, warning: CertificateWarning) {
         events += Event.CertificateError(tabId, warning)
+    }
+
+    override fun onSafetyWarning(tabId: String, warning: SafetyWarning?) {
+        events += Event.SafetyWarningEvent(tabId, warning)
     }
 }

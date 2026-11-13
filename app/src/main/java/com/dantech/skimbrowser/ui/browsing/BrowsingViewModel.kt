@@ -9,6 +9,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -67,6 +68,8 @@ data class BrowsingUiState(
     val refreshing: Boolean,
     /** The http URL to offer when the https upgrade failed. */
     val httpFallback: String? = null,
+    /** A scam warning covering the page. Null on an ordinary load. */
+    val safetyWarning: SafetyWarning? = null,
 )
 
 /**
@@ -170,6 +173,17 @@ class BrowsingViewModel @AssistedInject constructor(
     /** Opens the http page after https could not connect. */
     fun openHttpFallback() = tabs.loadHttpFallback(tabId)
 
+    /**
+     * Back to safety on a scam warning. True when the tab was opened by another app or for a
+     * screen and is still open, so the route closes it the way Back does.
+     */
+    @MainThread
+    fun backToSafety(): Boolean = tabs.leaveUnsafePage(tabId)
+
+    /** Proceed anyway. The host is allowed for the rest of this process. */
+    @MainThread
+    fun proceedUnsafe() = tabs.proceedUnsafe(tabId)
+
     @MainThread
     fun leaveUnsafeCertificate(): Boolean = tabs.leaveUnsafeCertificate(tabId)
 
@@ -214,13 +228,13 @@ class BrowsingViewModel @AssistedInject constructor(
     private fun follow(page: TabRuntime) {
         if (!findOpen.value) {
             val started = page.find ?: return
-            if (page.loadError != null || page.certificateWarning != null) return
+            if (page.loadError != null || page.certificateWarning != null || page.safetyWarning != null) return
             // Find in page started for this tab (the More menu): the bar shows with the text.
             findOpen.value = true
             if (findQuery.text.toString() != started.query) findQuery.setTextAndPlaceCursorAtEnd(started.query)
             searchedNonce = page.loadNonce.takeIf { page.pageLoaded }
-        } else if (page.loadError != null || page.certificateWarning != null) {
-            // A page that failed to load has nothing to find.
+        } else if (page.loadError != null || page.certificateWarning != null || page.safetyWarning != null) {
+            // A page that failed to load, or a warning covering it, has nothing to find.
             closeFind()
         } else if (page.pageLoaded && page.loadNonce != searchedNonce) {
             // A new document: its matches are the WebView's to count again, for the same text.
@@ -260,28 +274,31 @@ internal fun browsingUiState(
     findOpen: Boolean,
     refreshing: Boolean,
 ): BrowsingUiState {
-    val warning = runtime.certificateWarning
-    val error = if (warning == null) runtime.loadError else null
+    val certificate = runtime.certificateWarning
+    val safety = runtime.safetyWarning
+    val error = if (certificate == null && safety == null) runtime.loadError else null
     val find = runtime.find
     val matches = find?.matchCount ?: 0
     return BrowsingUiState(
         address = when {
-            warning != null -> pageAddressOf(warning.url)
+            certificate != null -> pageAddressOf(certificate.url)
+            safety != null -> pageAddressOf(safety.url)
             error != null -> errorAddressOf(error.url.ifEmpty { tab.url.orEmpty() })
             else -> pageAddressOf(tab.url)
         },
-        indicator = if (warning != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error),
-        readerAvailable = runtime.readerable && error == null && warning == null,
+        indicator = if (certificate != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error, safety),
+        readerAvailable = runtime.readerable && error == null && certificate == null && safety == null,
         progress = runtime.progress,
         loadError = error,
-        certificateWarning = warning,
-        backEnabled = browserBack(tab, runtime) != BrowserBack.Leave,
-        forwardEnabled = runtime.canGoForward,
+        certificateWarning = certificate,
+        safetyWarning = safety,
+        backEnabled = certificate != null || safety != null || browserBack(tab, runtime) != BrowserBack.Leave,
+        forwardEnabled = certificate == null && safety == null && runtime.canGoForward,
         tabCount = all.tabs.count { it.incognito == tab.incognito },
         incognito = tab.incognito,
         aiFab = aiFabMode(tab, runtime),
         httpFallback = if (error != null) runtime.httpFallback else null,
-        find = if (findOpen && error == null && warning == null) {
+        find = if (findOpen && error == null && certificate == null && safety == null) {
             FindUiState(
                 countedText = find?.query,
                 activeMatch = if (matches > 0) (find?.activeMatchIndex ?: 0).coerceIn(0, matches - 1) + 1 else 0,
@@ -298,8 +315,9 @@ internal fun browsingUiState(
  * The lock for https, the globe for any other page (http, or a page without a web address) and the
  * error icon once the page failed to load (11).
  */
-internal fun siteIndicatorOf(url: String?, error: LoadError?): SiteIndicator = when {
-    error != null -> SiteIndicator.Error
+internal fun siteIndicatorOf(url: String?, error: LoadError?, warning: SafetyWarning? = null): SiteIndicator = when {
+    warning is SafetyWarning.SafeBrowsing || error != null -> SiteIndicator.Error
+    warning is SafetyWarning.Heuristic -> SiteIndicator.NotSecure
     url?.trim()?.startsWith("https:", ignoreCase = true) == true -> SiteIndicator.Secure
     else -> SiteIndicator.NotSecure
 }

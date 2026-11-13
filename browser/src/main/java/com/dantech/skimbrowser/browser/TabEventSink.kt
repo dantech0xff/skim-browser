@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
 import android.os.Bundle
@@ -78,6 +79,9 @@ interface TabEventSink {
 
     /** A main-frame certificate failure. The load was already cancelled. */
     fun onCertificateError(tabId: String, warning: CertificateWarning)
+
+    /** A scam warning for the tab, or null once the navigation is allowed or abandoned. */
+    fun onSafetyWarning(tabId: String, warning: SafetyWarning?)
 }
 
 /** What happens to a tab whose renderer went away. */

@@ -46,6 +46,7 @@ data class SkimAppUiState(
     val theme: ThemeSetting = ThemeSetting.System,
     val started: Boolean = false,
     val pageTextZoomPercent: Int? = null,
+    val scamWarnings: Boolean = true,
 )
 
 /**
@@ -96,10 +97,16 @@ class SkimAppViewModel @Inject constructor(
     private val started = MutableStateFlow(false)
 
     val state: StateFlow<SkimAppUiState> = combine(
-        settings.settings.map { it.theme to it.pageTextZoomPercent }.onStart { emit(ThemeSetting.System to null) },
+        settings.settings.map { Triple(it.theme, it.pageTextZoomPercent, it.scamWarnings) }
+            .onStart { emit(Triple(ThemeSetting.System, null, true)) },
         started,
     ) { appearance, hasStarted ->
-        SkimAppUiState(theme = appearance.first, started = hasStarted, pageTextZoomPercent = appearance.second)
+        SkimAppUiState(
+            theme = appearance.first,
+            started = hasStarted,
+            pageTextZoomPercent = appearance.second,
+            scamWarnings = appearance.third,
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SkimAppUiState())
 
     init {

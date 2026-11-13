@@ -62,6 +62,7 @@ class SettingsRepositoryTest {
         assertEquals(ReaderFont.SANS_SERIF, settings.readerFont)
         assertFalse(settings.onboardingCompleted)
         assertNull(settings.lastTabId)
+        assertTrue(settings.scamWarnings)
     }
 
     @Test
@@ -75,6 +76,7 @@ class SettingsRepositoryTest {
             setReaderFont(ReaderFont.SERIF)
             setOnboardingCompleted()
             setLastTabId("tab-7")
+            setScamWarnings(false)
         }
         closeStores()
 
@@ -88,6 +90,7 @@ class SettingsRepositoryTest {
                 readerFont = ReaderFont.SERIF,
                 onboardingCompleted = true,
                 lastTabId = "tab-7",
+                scamWarnings = false,
             ),
             SettingsRepository(newStore()).settings.first(),
         )

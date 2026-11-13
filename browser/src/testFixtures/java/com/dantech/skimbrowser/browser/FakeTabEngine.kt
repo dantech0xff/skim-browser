@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
+import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.tab.HitTarget
 
 import android.os.Bundle
@@ -220,6 +221,8 @@ class FakeTabEngine(
         override fun certificateAction(tabId: String, host: String, fingerprint: String) = CertificateAction.Cancel
 
         override fun onCertificateError(tabId: String, warning: CertificateWarning) = Unit
+
+        override fun onSafetyWarning(tabId: String, warning: SafetyWarning?) = Unit
     }
 
     companion object {

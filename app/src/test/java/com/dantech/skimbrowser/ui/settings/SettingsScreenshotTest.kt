@@ -50,6 +50,7 @@ class SettingsScreenshotTest {
                 onTheme = {},
                 onPageTextSize = {},
                 onAiPrivacy = {},
+                onScamWarnings = {},
                 onClearData = {},
                 onPrivacyPolicy = {},
                 onTerms = {},
