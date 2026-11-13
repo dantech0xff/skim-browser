@@ -1,11 +1,5 @@
 package com.dantech.skimbrowser.domain.translate
 
-/**
- * Packs page text for one translation request. Nodes on screen go first, then the rest, in the
- * order they were read. A node longer than [maxChars] is its own chunk so a short neighbour is
- * not held back. Blank text is dropped. At most [maxNodes] nodes are packed, and the on-screen
- * ones win that cap.
- */
 object TranslationChunks {
     const val MAX_CHARS = 1_800
     const val MAX_NODES = 320

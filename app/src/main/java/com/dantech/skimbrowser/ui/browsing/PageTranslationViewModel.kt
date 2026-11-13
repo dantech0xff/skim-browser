@@ -5,7 +5,6 @@ import com.dantech.skimbrowser.domain.translate.PageTranslator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
-/** The browsing screen and the More menu share one [PageTranslator]. */
 @HiltViewModel
 class PageTranslationViewModel @Inject constructor(
     private val translator: PageTranslator,

@@ -1,4 +1,3 @@
-// Collects visible text nodes, replaces them, or puts the originals back.
 // The map hangs off the document element so a later call finds the same nodes.
 // A node longer than MAX_NODE is left alone: a cut translation would drop the rest of the sentence.
 function (args) {
@@ -60,11 +59,8 @@ function (args) {
       var text = squash(node.nodeValue);
       if (text.length < 2 || text.length > MAX_NODE) continue;
       var inView = seen(parent);
-      if (inView) {
-        if (view.length >= MAX_VIEW) continue;
-      } else if (rest.length >= MAX_REST) {
-        continue;
-      }
+      var intoView = inView && view.length < MAX_VIEW;
+      if (!intoView && rest.length >= MAX_REST) continue;
       var id = bag.weak.get(node);
       if (id == null) {
         id = bag.next++;
@@ -73,7 +69,7 @@ function (args) {
         bag.originals[id] = node.nodeValue;
       }
       var row = { id: id, text: text, v: inView };
-      if (inView) view.push(row);
+      if (intoView) view.push(row);
       else rest.push(row);
     }
     return view.concat(rest);
@@ -100,12 +96,16 @@ function (args) {
     bag.showing = op;
     var source = op === 'original' ? bag.originals : bag.translations;
     var key;
+    var wrote = false;
     for (key in source) {
       if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
       var live = bag.nodes[key];
-      if (live && live.parentNode) live.nodeValue = source[key];
+      if (live && live.parentNode) {
+        live.nodeValue = source[key];
+        wrote = true;
+      }
     }
-    return true;
+    return wrote;
   }
 
   return false;

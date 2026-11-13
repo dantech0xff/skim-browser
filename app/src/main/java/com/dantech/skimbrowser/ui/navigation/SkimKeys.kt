@@ -147,7 +147,6 @@ data object ThemeDialogKey : DialogKey
 @Serializable
 data object PageTextSizeDialogKey : DialogKey
 
-/** Translation language. Not on a board. Null in settings means the phone's language. */
 @Serializable
 data object TranslationLanguageDialogKey : DialogKey
 

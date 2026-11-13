@@ -113,6 +113,7 @@ class RequestShapeTest {
                 host = PAGE_HOST,
                 languageTag = "vi",
                 nodes = listOf(com.dantech.skimbrowser.domain.translate.PageTextNode(1, "Hello", true)),
+                incognito = false,
             ).toList()
             val request = server.take()
             val body = request.body.readUtf8()
@@ -124,6 +125,20 @@ class RequestShapeTest {
             val root = Json.parseToJsonElement(body).jsonObject
             assertEquals(AiConfig.TRANSLATION_MAX_TOKENS, root.getValue("max_tokens").jsonPrimitive.content.toLong())
             assertEquals("low", root.getValue("output_config").jsonObject.getValue("effort").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun anIncognitoTranslationDoesNotOpenAConnection() = runBlocking {
+        FakeClaudeServer().use { server ->
+            val replies = service(server.baseUrl).translateNodes(
+                host = PAGE_HOST,
+                languageTag = "vi",
+                nodes = listOf(com.dantech.skimbrowser.domain.translate.PageTextNode(1, "Hello", true)),
+                incognito = true,
+            ).toList()
+            assertEquals(0, server.requestCount)
+            assertTrue(replies.single() is com.dantech.skimbrowser.domain.ai.AiReply.Failed)
         }
     }
 

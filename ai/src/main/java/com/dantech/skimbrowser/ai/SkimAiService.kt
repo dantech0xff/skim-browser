@@ -160,18 +160,19 @@ class SkimAiService(
         return send(params, chat.sources, Consent.SITE_APPROVED, chat.approvedHost).toReplies(chat)
     }
 
-    /**
-     * Translates [nodes] into [languageTag]. The lines are untrusted page text. Nothing is stored
-     * as a chat, and an incognito page never reaches here because the caller does not ask.
-     */
-    override fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>): Flow<AiReply> {
+    override fun translateNodes(
+        host: String,
+        languageTag: String,
+        nodes: List<PageTextNode>,
+        incognito: Boolean,
+    ): Flow<AiReply> {
         if (nodes.isEmpty() || host.isBlank()) return flow { emit(AiReply.Failed(AiFailure.Server)) }
         val opening = listOf(
             WireBlock.Text(TranslationExchange.requestText(nodes)),
             WireBlock.Text(Prompts.translationInstruction(languageTag)),
         )
         val params = request(AiConfig.EFFORT_TRANSLATION, AiConfig.TRANSLATION_MAX_TOKENS, format = null, opening)
-        val source = AiSource(tabId = "translate", incognito = false, host = host)
+        val source = AiSource(tabId = "translate", incognito = incognito, host = host)
         return flow {
             try {
                 send(params, listOf(source), Consent.SITE_APPROVED, host).collect { event ->

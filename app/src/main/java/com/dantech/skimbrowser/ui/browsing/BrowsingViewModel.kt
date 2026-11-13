@@ -91,18 +91,6 @@ data class FindUiState(
     fun canStep(text: String): Boolean = showsCount(text) && matchCount > 0
 }
 
-/**
- * The browsing screen of tab [tabId]: what its address bar, toolbar and Find in page show, from the
- * tab manager's state and the tab's page, and what their controls do to the tab. Commands are called
- * on the main thread.
- *
- * Find in page shows while its bar is open. It opens here when Find in page starts for the tab
- * elsewhere (the More menu calls [TabManager.find] with an empty text), and closes with [closeFind]
- * (Close, system Back), when the page fails to load, or when the search is cleared. A tab switch
- * and a new document clear it, so the highlights do not stay on a page the person left. The field
- * edits [findQuery]; once its text rests for 100 ms the WebView searches it. A search that started
- * before the document finished is run again once it has loaded.
- */
 @HiltViewModel(assistedFactory = BrowsingViewModel.Factory::class)
 class BrowsingViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
@@ -234,10 +222,8 @@ class BrowsingViewModel @AssistedInject constructor(
             if (findQuery.text.toString() != started.query) findQuery.setTextAndPlaceCursorAtEnd(started.query)
             searchedNonce = page.loadNonce.takeIf { page.pageLoaded }
         } else if (page.loadError != null || page.certificateWarning != null || page.safetyWarning != null || page.find == null) {
-            // A failed page, a warning, a new document, or a tab switch cleared the search.
             closeFind()
         } else if (page.pageLoaded && page.loadNonce != searchedNonce) {
-            // The search started before this document finished loading.
             searchedNonce = page.loadNonce
             tabs.find(tabId, findQuery.text.toString())
         }

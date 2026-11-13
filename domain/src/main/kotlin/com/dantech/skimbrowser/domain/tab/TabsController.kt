@@ -114,13 +114,10 @@ interface TabsController {
      */
     suspend fun highlightBlock(tabId: String, request: HighlightRequest): Boolean
 
-    /** Visible text nodes of [tabId]'s current document, on-screen ones first. Empty when none can be read. */
     suspend fun collectPageText(tabId: String): List<PageTextNode> = emptyList()
 
-    /** Writes [rows] onto the text nodes collected from [tabId]. False when the page did not take them. */
     suspend fun replacePageText(tabId: String, rows: List<TranslatedText>): Boolean = false
 
-    /** Shows the original text when [original] is true, and the translations when it is false. */
     suspend fun showOriginalPageText(tabId: String, original: Boolean): Boolean = false
 }
 

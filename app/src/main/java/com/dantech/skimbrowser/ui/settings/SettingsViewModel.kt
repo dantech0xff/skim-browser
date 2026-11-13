@@ -23,7 +23,6 @@ data class SettingsUiState(
     val theme: ThemeSetting = ThemeSetting.System,
     /** Null follows the system font scale. */
     val pageTextZoomPercent: Int? = null,
-    /** Null uses the phone's language. */
     val translationLanguageTag: String? = null,
     val isDefaultBrowser: Boolean = false,
     val askBeforeSending: Boolean = true,

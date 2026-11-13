@@ -18,10 +18,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * Translates the visible text of one tab through [AiAssistant] and writes it back onto the page.
- * One tab has one job. A newer tap, or a new document, drops the job that was running.
- */
 class PageTranslator(
     private val tabs: TabsController,
     private val assistant: AiAssistant,
@@ -44,15 +40,17 @@ class PageTranslator(
     }
 
     fun showOriginal(tabId: String, original: Boolean) {
-        val ready = current.value[tabId] as? PageTranslation.Ready ?: return
+        if (current.value[tabId] !is PageTranslation.Ready) return
+        val token = tokens[tabId] ?: return
         scope.launch {
-            if (tabs.showOriginalPageText(tabId, original)) {
-                set(tabId, ready.copy(showingOriginal = original))
+            if (tokens[tabId] != token) return@launch
+            if (tabs.showOriginalPageText(tabId, original) && tokens[tabId] == token) {
+                val live = current.value[tabId] as? PageTranslation.Ready ?: return@launch
+                set(tabId, live.copy(showingOriginal = original))
             }
         }
     }
 
-    /** Puts the page text back and closes the bar. */
     fun dismiss(tabId: String) {
         val token = bump(tabId)
         jobs.remove(tabId)?.cancel()
@@ -62,7 +60,6 @@ class PageTranslator(
         }
     }
 
-    /** Records that [host] may be read, then translates [tabId] again. */
     fun allow(tabId: String, host: String, deviceLanguageTag: String) {
         scope.launch {
             sites.setSkimAi(host, SkimAiState.ALLOWED)
@@ -70,7 +67,6 @@ class PageTranslator(
         }
     }
 
-    /** A new document drops a translation that belonged to the previous one. */
     fun onDocument(tabId: String, loadNonce: Long) {
         val previous = nonces.put(tabId, loadNonce)
         if (previous != null && previous != loadNonce) {
@@ -109,7 +105,7 @@ class PageTranslator(
             val reply = StringBuilder()
             var failure: AiFailure? = null
             try {
-                assistant.translateNodes(host, language, chunk).collect { event ->
+                assistant.translateNodes(host, language, chunk, tab.incognito).collect { event ->
                     when (event) {
                         is AiReply.Text -> reply.append(event.delta)
                         is AiReply.Failed -> failure = event.failure

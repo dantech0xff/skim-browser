@@ -137,7 +137,6 @@ fun ThemeRoute(
     )
 }
 
-/** Translation language, over Settings. Choosing a row saves it and closes the dialog. */
 @Composable
 fun TranslationLanguageRoute(
     onFinished: () -> Unit,

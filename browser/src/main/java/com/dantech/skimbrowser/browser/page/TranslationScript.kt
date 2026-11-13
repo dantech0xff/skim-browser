@@ -19,7 +19,6 @@ private data class TranslationCall(val op: String, val rows: List<TranslatedText
 @Serializable
 private data class RawNode(val id: Int = -1, val text: String = "", val v: Boolean = false)
 
-/** The translation script's argument. [rows] is empty except for an apply. */
 fun translationCallJson(op: String, rows: List<TranslatedText> = emptyList()): String =
     escapeForScript(NODES.encodeToString(TranslationCall.serializer(), TranslationCall(op, rows)))
 

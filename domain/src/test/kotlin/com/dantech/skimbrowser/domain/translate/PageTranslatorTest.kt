@@ -132,6 +132,35 @@ class PageTranslatorTest {
         assertTrue(pages.replaced.isEmpty())
     }
 
+    @Test
+    fun showOriginalAfterDismissDoesNotBringTheBarBack() = runTest {
+        val pages = pages(node(1, "Hello", true))
+        val gate = CompletableDeferred<Unit>()
+        pages.showGate = gate
+        val translator = translator(tab(), RecordingAssistant { flowOfText("1\tBonjour") }, online = true, pages = pages, scope = this)
+        translator.translate("tab", "fr")
+        advanceUntilIdle()
+        translator.showOriginal("tab", true)
+        translator.dismiss("tab")
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(translator.sessions.value["tab"] == null)
+    }
+
+    @Test
+    fun showOriginalUpdatesTheReadyBar() = runTest {
+        val pages = pages(node(1, "Hello", true))
+        val translator = translator(tab(), RecordingAssistant { flowOfText("1\tBonjour") }, online = true, pages = pages, scope = this)
+        translator.translate("tab", "en")
+        advanceUntilIdle()
+        translator.showOriginal("tab", true)
+        advanceUntilIdle()
+
+        val ready = translator.sessions.value.getValue("tab")
+        assertTrue(ready is PageTranslation.Ready && ready.showingOriginal)
+    }
+
     private fun translator(
         tab: Tab,
         assistant: RecordingAssistant,
@@ -159,7 +188,12 @@ private class RecordingAssistant(
 ) : AiAssistant {
     val sent = mutableListOf<List<PageTextNode>>()
 
-    override fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>): Flow<AiReply> {
+    override fun translateNodes(
+        host: String,
+        languageTag: String,
+        nodes: List<PageTextNode>,
+        incognito: Boolean,
+    ): Flow<AiReply> {
         sent += nodes
         return reply(nodes)
     }
@@ -176,6 +210,8 @@ private class ScriptTabs(private val collected: List<PageTextNode>) : TabsContro
     val tabsState = MutableStateFlow(TabsState())
     val runtime = MutableStateFlow(TabRuntime(pageLoaded = true, committedUrl = "https://example.com/", loadNonce = 1))
     val replaced = mutableListOf<List<TranslatedText>>()
+    var showGate: CompletableDeferred<Unit>? = null
+    var showResult: Boolean = true
 
     override fun runtime(tabId: String): StateFlow<TabRuntime> = runtime
     override suspend fun collectPageText(tabId: String) = collected
@@ -184,7 +220,10 @@ private class ScriptTabs(private val collected: List<PageTextNode>) : TabsContro
         return true
     }
 
-    override suspend fun showOriginalPageText(tabId: String, original: Boolean) = true
+    override suspend fun showOriginalPageText(tabId: String, original: Boolean): Boolean {
+        showGate?.await()
+        return showResult
+    }
     override val state: StateFlow<TabsState> get() = tabsState
     override fun openNewTab(incognito: Boolean, url: String?, background: Boolean, openedByExternalApp: Boolean, closeOnBack: Boolean, openerTabId: String?) = error("unused")
     override fun select(tabId: String) = error("unused")

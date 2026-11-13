@@ -821,7 +821,6 @@ class TabManager(
         evaluateOrNull(live, tabId, scripts.highlightScript(args)) == "true"
     }
 
-    /** Visible text of the document [tabId] is showing. Empty when the page moves while it is read. */
     @AnyThread
     override suspend fun collectPageText(tabId: String): List<PageTextNode> =
         withContext(mainDispatcher) {

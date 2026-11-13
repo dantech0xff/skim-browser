@@ -16,7 +16,6 @@ object AiConfig {
     /** Effort for grouping tabs from their titles and hosts. */
     const val EFFORT_GROUPING = "low"
 
-    /** Effort for translating visible page text. Mechanical, so it stays low. */
     const val EFFORT_TRANSLATION = "low"
 
     const val GROUPING_MAX_TOKENS = 2048L

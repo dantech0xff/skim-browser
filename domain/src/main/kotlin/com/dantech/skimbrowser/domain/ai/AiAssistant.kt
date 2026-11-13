@@ -30,9 +30,5 @@ interface AiAssistant {
 
     fun askTabs(session: PageConversation, question: String): Flow<AiReply>
 
-    /**
-     * Translates [nodes] into the language of [languageTag]. The text is the page of [host],
-     * which must already be allowed for Skim AI. The reply is the model's text, not yet parsed.
-     */
-    fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>): Flow<AiReply>
+    fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>, incognito: Boolean): Flow<AiReply>
 }

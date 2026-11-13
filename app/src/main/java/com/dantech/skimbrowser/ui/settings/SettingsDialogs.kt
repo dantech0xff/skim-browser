@@ -102,7 +102,6 @@ internal fun SearchEngine.labelRes(): Int = when (this) {
     SearchEngine.ECOSIA -> R.string.search_engine_ecosia
 }
 
-/** Translation language. Null keeps the phone's language. Choosing a row saves it and closes the dialog. */
 @Composable
 fun TranslationLanguageDialog(
     selected: String?,
