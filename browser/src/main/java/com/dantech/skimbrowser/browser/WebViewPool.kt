@@ -8,7 +8,6 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Looper
-import android.os.Message
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -285,43 +284,6 @@ class WebViewPool(
         renew(popupTabId)
         trim(keep = setOfNotNull(popupTabId, tab.openerTabId))
         return entry.view
-    }
-
-    /**
-     * Gives [resultMsg] a WebView on this turn, so `window.open` returns, and stops that WebView
-     * at the first address it asks for. [onUrl] receives that address, or null when there is none.
-     */
-    private fun answerBlockedPopup(tab: Tab, resultMsg: Message, onUrl: (String?) -> Unit): () -> Unit {
-        val transport = resultMsg.obj as? WebView.WebViewTransport
-        if (transport == null || destroyed) {
-            sendPopupResult(resultMsg)
-            onUrl(null)
-            return {}
-        }
-        val probe = try {
-            WebView(activity).also { view ->
-                if (tab.incognito) setProfile(view, incognitoProfile())
-            }
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "A blocked popup was answered without a page", e)
-            transport.webView = null
-            sendPopupResult(resultMsg)
-            onUrl(null)
-            return {}
-        }
-        val held = PopupProbe(probe, onUrl)
-        probe.webViewClient = held.client
-        transport.webView = probe
-        sendPopupResult(resultMsg)
-        return held::abandon
-    }
-
-    private fun sendPopupResult(message: Message) {
-        try {
-            message.sendToTarget()
-        } catch (e: RuntimeException) {
-            Log.w(TAG, "A blocked popup could not be answered", e)
-        }
     }
 
     /** Saves the state of every live WebView, keeping them all. */
@@ -625,7 +587,7 @@ class WebViewPool(
             domStorageEnabled = true
             setSupportMultipleWindows(true)
             // Without this, WebView answers an ungestured window.open with null and never
-            // calls onCreateWindow. The result message is sent on that call, so the page continues.
+            // calls onCreateWindow. The result is held until the person opens or dismisses it.
             javaScriptCanOpenWindowsAutomatically = true
             builtInZoomControls = true
             displayZoomControls = false
@@ -682,8 +644,6 @@ class WebViewPool(
                 val choice = interrupts()
                 choice.blockPopups && source?.let(::hostOf) !in choice.popupAllowHosts
             },
-            takeBlockedPopup = { message, onUrl -> answerBlockedPopup(tab, message, onUrl) },
-            loadInTab = tabs::load,
         )
         view.webViewClient = client
         view.webChromeClient = chrome

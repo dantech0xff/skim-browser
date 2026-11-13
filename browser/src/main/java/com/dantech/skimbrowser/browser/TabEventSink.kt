@@ -60,7 +60,7 @@ interface TabEventSink {
 
     /**
      * The page tried to open a window without a user gesture, and popup blocking is on for this
-     * site. The page is answered at once. Open loads the address that window asked for.
+     * site. The result is held. Open sends it to a new tab. Dismiss sends it with no WebView.
      */
     fun onPopupBlocked(tabId: String, holdId: Long)
 
