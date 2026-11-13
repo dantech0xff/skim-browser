@@ -197,14 +197,32 @@ class SkimChromeClientTest {
     }
 
     @Test
-    fun aWindowOpensOnlyAfterAUserGesture() {
+    fun aWindowWithoutAGestureIsHeld() {
         val (message, transport) = windowMessage()
 
-        assertFalse(client.onCreateWindow(view, false, false, message))
+        assertTrue(client.onCreateWindow(view, false, false, message))
 
-        assertTrue("no tab is made for it", events.events.isEmpty())
-        assertTrue(popupViews.isEmpty())
+        assertEquals(listOf(Event.PopupBlocked(TAB)), events.events)
+        assertTrue("no tab is made until the person opens it", popupViews.isEmpty())
         assertNull(transport.webView)
+
+        client.cancelHeldWindow()
+        assertFalse(client.openHeldWindow())
+    }
+
+    fun aHeldWindowOpensWhenThePersonAsks() {
+        val (message, transport) = windowMessage()
+        val delivered = mutableListOf<Message>()
+        message.target = Handler(Looper.getMainLooper()) { delivered += Message.obtain(it); true }
+
+        assertTrue(client.onCreateWindow(view, false, false, message))
+        assertTrue(client.openHeldWindow())
+
+        assertEquals(listOf(Event.PopupBlocked(TAB), Event.PopupRequested(TAB)), events.events)
+        assertEquals(listOf("popup-tab"), popupViews)
+        assertSame(popupView, transport.webView)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, delivered.size)
     }
 
     @Test

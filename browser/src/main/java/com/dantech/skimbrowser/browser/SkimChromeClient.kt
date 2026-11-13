@@ -23,7 +23,8 @@ import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
  *
  * A file input is always answered exactly once, also when the picker is cancelled, a second input
  * replaces it, or the WebView goes away; an unanswered input would block every later one on the
- * page. A window opens only after a user gesture, as a new tab whose WebView the pool makes.
+ * page. A window the user asked for opens as a new tab whose WebView the pool makes. A window the
+ * page opens on its own is held until the person opens it or the notice goes away.
  *
  * A page's `alert`, `confirm`, `prompt` and leave-page dialogs only show for the tab on screen
  * ([isShown]), so a tab in the background cannot put a dialog over another site, and at most
@@ -53,9 +54,12 @@ class SkimChromeClient(
     /** `FileChooserParams.parseResult`, the platform's reading of a picker result. */
     private val parseFileChooserResult: (resultCode: Int, data: Intent?) -> Array<Uri>? =
         WebChromeClient.FileChooserParams::parseResult,
+    /** True when a window without a gesture should be held instead of opened. */
+    private val blockUngesturedPopup: (sourceUrl: String?) -> Boolean = { true },
 ) : WebChromeClient() {
 
     private var pendingFiles: ValueCallback<Array<Uri>>? = null
+    private var heldWindow: Message? = null
     private var detached = false
     private var dialogDocument = NO_DOCUMENT
     private var dialogsShown = 0
@@ -67,7 +71,23 @@ class SkimChromeClient(
     fun detach() {
         detached = true
         answerFiles(pendingFiles, null)
+        cancelHeldWindow()
         sitePermissions.cancelTab(tabId)
+    }
+
+    /** Opens the window that was held for the snackbar. False when there is nothing held. */
+    fun openHeldWindow(): Boolean {
+        val message = heldWindow ?: return false
+        heldWindow = null
+        return deliverWindow(message)
+    }
+
+    /** Drops the held window so `window.open` returns nothing. */
+    fun cancelHeldWindow() {
+        val message = heldWindow ?: return
+        heldWindow = null
+        (message.obj as? WebView.WebViewTransport)?.webView = null
+        send(message)
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
@@ -123,8 +143,18 @@ class SkimChromeClient(
     }
 
     override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
-        // Pages may open windows only when the user asked for one: no pop-ups on their own.
-        if (detached || !isUserGesture) return false
+        if (detached) return false
+        // A window the page opened on its own is held, so the snackbar can still open it.
+        if (!isUserGesture && blockUngesturedPopup(view.url)) {
+            cancelHeldWindow()
+            heldWindow = resultMsg
+            events.onPopupBlocked(tabId)
+            return true
+        }
+        return deliverWindow(resultMsg)
+    }
+
+    private fun deliverWindow(resultMsg: Message): Boolean {
         val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
         val popupTabId = events.onPopupRequested(tabId) ?: return false
         val popup = obtainForPopup(popupTabId)
@@ -134,8 +164,16 @@ class SkimChromeClient(
             return false
         }
         transport.webView = popup
-        resultMsg.sendToTarget()
+        send(resultMsg)
         return true
+    }
+
+    private fun send(message: Message) {
+        try {
+            message.sendToTarget()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "The held window could not be answered", e)
+        }
     }
 
     override fun onCloseWindow(window: WebView) {

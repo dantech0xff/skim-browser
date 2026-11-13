@@ -42,6 +42,13 @@ interface ShieldChoices {
         action()
     }
 
+    /**
+     * Stylesheet that hides cookie banners on [documentUrl]. Empty when hiding is off, the URL
+     * has no site, or this shield does not hide banners. Null when the rules are not loaded yet.
+     * This does not wait and does not read the file.
+     */
+    fun cookieCss(documentUrl: String?, incognito: Boolean): String? = ""
+
     companion object {
         /** Blocks nothing. WebView tests that do not care about the shield use this. */
         val AllowAll: ShieldChoices = object : ShieldChoices {

@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 class RequestShield private constructor(
     private val loadList: () -> HostBlocklist,
     private val loadCosmetic: () -> CosmeticFilters,
+    private val loadCookie: () -> CosmeticFilters,
     private val settings: SettingsRepository?,
     private val scope: CoroutineScope?,
 ) : ShieldChoices {
@@ -44,6 +45,9 @@ class RequestShield private constructor(
         },
         loadCosmetic = {
             context.assets.open(COSMETIC_ASSET).bufferedReader().use { CosmeticFilters.load(it) }
+        },
+        loadCookie = {
+            context.assets.open(COOKIE_ASSET).bufferedReader().use { CosmeticFilters.load(it) }
         },
         settings = settings,
         scope = scope,
@@ -65,6 +69,9 @@ class RequestShield private constructor(
     private var loaded: HostBlocklist? = null
     private val cosmeticGate = Any()
     @Volatile private var cosmetic: CosmeticFilters? = null
+    private val cookieGate = Any()
+    @Volatile private var cookie: CosmeticFilters? = null
+    @Volatile private var hideCookies = true
     private val readyWaiters = ArrayList<() -> Unit>()
 
     override val disabledHosts: StateFlow<Set<String>> = persisted
@@ -80,6 +87,9 @@ class RequestShield private constructor(
                 } finally {
                     choicesLoaded.countDown()
                 }
+            }
+            scope.launch {
+                settings.settings.collect { hideCookies = it.hideCookieBanners }
             }
         }
     }
@@ -144,9 +154,16 @@ class RequestShield private constructor(
         return cosmetic?.cssFor(host) ?: ""
     }
 
+    override fun cookieCss(documentUrl: String?, incognito: Boolean): String? {
+        if (!hideCookies) return ""
+        val host = documentUrl?.let(::hostOf) ?: return ""
+        return cookie?.cssFor(host)
+    }
+
     override fun warmCosmetic() {
         if (!choicesReady.get()) choicesLoaded.await()
         cosmetics()
+        cookieRules()
     }
 
     override fun whenCosmeticReady(action: () -> Unit) {
@@ -214,16 +231,38 @@ class RequestShield private constructor(
         }
     }
 
+    private fun cookieRules(): CosmeticFilters {
+        cookie?.let { return it }
+        synchronized(cookieGate) {
+            cookie?.let { return it }
+            val parsed = try {
+                loadCookie()
+            } catch (e: Exception) {
+                Log.e(TAG, "The cookie banner rules did not load", e)
+                CosmeticFilters.EMPTY
+            }
+            cookie = parsed
+            return parsed
+        }
+    }
+
     companion object {
         const val ASSET = "shield/blocklist.txt"
         const val COSMETIC_ASSET = "shield/cosmetic.txt"
+        const val COOKIE_ASSET = "shield/cookie.txt"
         private const val TAG = "RequestShield"
 
         /** A shield over [list] with no stored choices. Unit tests build one of these. */
         fun of(list: HostBlocklist): RequestShield = of(list, CosmeticFilters.EMPTY)
 
         fun of(list: HostBlocklist, cosmetic: CosmeticFilters): RequestShield =
-            RequestShield(loadList = { list }, loadCosmetic = { cosmetic }, settings = null, scope = null)
+            RequestShield(
+                loadList = { list },
+                loadCosmetic = { cosmetic },
+                loadCookie = { CosmeticFilters.EMPTY },
+                settings = null,
+                scope = null,
+            )
 
         /** A shield whose normal-tab exceptions come from [settings]. Unit tests build one of these. */
         fun withChoices(
@@ -240,6 +279,7 @@ class RequestShield private constructor(
         ): RequestShield = RequestShield(
             loadList = { HostBlocklist.EMPTY },
             loadCosmetic = loadCosmetic,
+            loadCookie = { CosmeticFilters.EMPTY },
             settings = settings,
             scope = scope,
         )
@@ -252,6 +292,7 @@ class RequestShield private constructor(
         ): RequestShield = RequestShield(
             loadList = { list },
             loadCosmetic = { cosmetic },
+            loadCookie = { CosmeticFilters.EMPTY },
             settings = settings,
             scope = scope,
         )

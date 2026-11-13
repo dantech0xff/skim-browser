@@ -212,6 +212,10 @@ class FakeTabEngine(
 
         override fun onPopupClosed(popupTabId: String) = Unit
 
+        override fun onPopupBlocked(tabId: String) = Unit
+
+        override fun onRedirectBlocked(tabId: String, url: String) = Unit
+
         override fun onStateSaved(tabId: String, state: Bundle) = Unit
 
         override fun onWebViewDestroyed(tabId: String) = Unit

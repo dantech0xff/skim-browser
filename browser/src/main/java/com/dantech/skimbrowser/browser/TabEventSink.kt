@@ -58,6 +58,15 @@ interface TabEventSink {
     /** The page of a popup tab called `window.close()`. */
     fun onPopupClosed(popupTabId: String)
 
+    /**
+     * The page tried to open a window without a user gesture, and popup blocking is on for this
+     * site. The window is held until [SkimChromeClient.openHeldWindow] or cancelled.
+     */
+    fun onPopupBlocked(tabId: String)
+
+    /** A main-frame navigation was stopped. [url] is what the page asked to load. */
+    fun onRedirectBlocked(tabId: String, url: String)
+
     /** The WebView state of the tab was saved, before eviction, on stop or before a close. */
     fun onStateSaved(tabId: String, state: Bundle)
 

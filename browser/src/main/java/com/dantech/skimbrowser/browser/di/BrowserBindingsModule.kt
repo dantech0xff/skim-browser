@@ -22,6 +22,7 @@ import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
+import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.tab.TabRestore
 import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.Binds
@@ -36,6 +37,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 internal abstract class BrowserBindingsModule {
     @Binds abstract fun tabsController(impl: TabManager): TabsController
+    @Binds abstract fun interruptNotices(impl: TabManager): InterruptNotices
     @Binds abstract fun tabRestore(impl: TabManager): TabRestore
     @Binds abstract fun tabEngineSource(impl: TabEngineBridge): TabEngineSource
     @Binds abstract fun tabEngineAttachment(impl: TabEngineBridge): TabEngineAttachment
