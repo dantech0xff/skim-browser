@@ -52,8 +52,32 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
     override val settings: Flow<SkimSettings> = current
 
     private val shieldOff = MutableStateFlow<Set<String>>(emptySet())
+    private val popupAllow = MutableStateFlow<Set<String>>(emptySet())
+    private val redirectAllow = MutableStateFlow<Set<String>>(emptySet())
 
     override val shieldDisabledHosts: Flow<Set<String>> = shieldOff
+
+    override val popupAllowHosts: Flow<Set<String>> = popupAllow
+
+    override val redirectAllowHosts: Flow<Set<String>> = redirectAllow
+
+    override suspend fun setBlockPopups(enabled: Boolean) = update { it.copy(blockPopups = enabled) }
+
+    override suspend fun setBlockOddRedirects(enabled: Boolean) = update { it.copy(blockOddRedirects = enabled) }
+
+    override suspend fun setHideCookieBanners(enabled: Boolean) = update { it.copy(hideCookieBanners = enabled) }
+
+    override suspend fun setPopupAllowed(host: String, allowed: Boolean) {
+        val key = normalizeHost(host)
+        if (key.isEmpty()) return
+        popupAllow.update { current -> if (allowed) current + key else current - key }
+    }
+
+    override suspend fun setRedirectAllowed(host: String, allowed: Boolean) {
+        val key = normalizeHost(host)
+        if (key.isEmpty()) return
+        redirectAllow.update { current -> if (allowed) current + key else current - key }
+    }
 
     override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
         shieldOff.update { current -> if (disabled) current + host else current - host }
