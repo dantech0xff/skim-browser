@@ -21,6 +21,7 @@ internal class PopupProbe(
 ) {
     private val done = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
+    private var blankFinish: Runnable? = null
     val client: WebViewClient = Client()
 
     fun abandon() {
@@ -29,11 +30,22 @@ internal class PopupProbe(
 
     private fun finish(url: String?, notify: Boolean) {
         if (!done.compareAndSet(false, true)) return
+        blankFinish?.let { main.removeCallbacks(it) }
+        blankFinish = null
         main.post {
             probe.stopLoading()
             probe.destroy()
         }
         if (notify) onUrl(url)
+    }
+
+    /** A blank document is not the address. The real one often loads after that document finishes. */
+    private fun scheduleBlankFinish() {
+        if (done.get()) return
+        blankFinish?.let { main.removeCallbacks(it) }
+        val pending = Runnable { finish(null, notify = true) }
+        blankFinish = pending
+        main.postDelayed(pending, POPUP_BLANK_GRACE_MS)
     }
 
     private inner class Client : WebViewClient() {
@@ -56,7 +68,9 @@ internal class PopupProbe(
         }
 
         override fun onPageFinished(view: WebView, url: String?) {
-            if (!isWebUrl(url.orEmpty())) main.post { finish(null, notify = true) }
+            if (!isWebUrl(url.orEmpty())) scheduleBlankFinish()
         }
     }
 }
+
+internal const val POPUP_BLANK_GRACE_MS = 1_000L
