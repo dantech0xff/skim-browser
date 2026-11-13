@@ -28,6 +28,7 @@ import com.dantech.skimbrowser.ui.bookmarks.MoveToFolderRoute
 import com.dantech.skimbrowser.ui.downloads.DownloadsRoute
 import com.dantech.skimbrowser.ui.history.HistoryRoute
 import com.dantech.skimbrowser.ui.settings.AiPrivacyRoute
+import com.dantech.skimbrowser.ui.settings.BackupRoute
 import com.dantech.skimbrowser.ui.skimhistory.ClearSkimHistoryRoute
 import com.dantech.skimbrowser.ui.skimhistory.SkimHistoryRoute
 import com.dantech.skimbrowser.ui.settings.ClearBrowsingDataRoute
@@ -175,6 +176,7 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         }
         entry<TabsKey> { key -> TabsRoute(key, navigator) }
         entry<SettingsKey> { SettingsRoute(navigator) }
+        entry<BackupKey> { BackupRoute(navigator) }
         entry<AiPrivacyKey> { AiPrivacyRoute(navigator) }
         entry<HistoryKey> { HistoryRoute(navigator) }
         entry<DownloadsKey> { DownloadsRoute(navigator) }

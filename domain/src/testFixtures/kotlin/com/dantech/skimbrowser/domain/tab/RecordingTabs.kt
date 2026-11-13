@@ -10,8 +10,15 @@ class RecordingTabs(currentTabId: String? = null) : TabsController {
     override val state: StateFlow<TabsState> = MutableStateFlow(TabsState(currentTabId = currentTabId))
     val opened = mutableListOf<Opened>()
     val loads = mutableListOf<Pair<String, String>>()
+    val background = mutableListOf<Opened>()
+    val closed = mutableListOf<List<String>>()
+    var finalized: CloseToken? = null
 
-    data class Opened(val incognito: Boolean, val url: String?)
+    fun show(tabs: List<Tab>) {
+        (state as MutableStateFlow).value = TabsState(tabs = tabs, currentTabId = tabs.firstOrNull()?.id ?: (state.value.currentTabId))
+    }
+
+    data class Opened(val incognito: Boolean, val url: String?, val title: String = "")
 
     override fun openNewTab(
         incognito: Boolean,
@@ -23,6 +30,11 @@ class RecordingTabs(currentTabId: String? = null) : TabsController {
     ): String {
         opened += Opened(incognito, url)
         return "opened"
+    }
+
+    override fun openBackgroundTab(url: String, title: String): String {
+        background += Opened(incognito = false, url = url, title = title)
+        return "background-${background.size}"
     }
 
     override fun load(tabId: String, url: String) {
@@ -39,9 +51,16 @@ class RecordingTabs(currentTabId: String? = null) : TabsController {
     override fun find(tabId: String, query: String) = error("unused")
     override fun findNext(tabId: String, forward: Boolean) = error("unused")
     override fun clearFind(tabId: String) = error("unused")
-    override fun close(tabIds: List<String>): CloseToken = error("unused")
+    override fun close(tabIds: List<String>): CloseToken {
+        closed += tabIds
+        return CloseToken(closed.size.toLong())
+    }
+
     override fun undoClose(token: CloseToken) = error("unused")
-    override fun finalizeClose(token: CloseToken) = error("unused")
+
+    override fun finalizeClose(token: CloseToken) {
+        finalized = token
+    }
     override fun replaceLayout(layout: GroupLayout, expectedVersion: Long?, snapshot: GroupingSnapshot?): Boolean =
         error("unused")
     override suspend fun extractPage(tabId: String): PageContent? = error("unused")

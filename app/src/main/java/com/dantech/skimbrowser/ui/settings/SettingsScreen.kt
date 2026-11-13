@@ -37,6 +37,7 @@ import com.dantech.skimbrowser.ui.components.SkimSwitch
 import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.toggleableRow
 import com.dantech.skimbrowser.ui.navigation.AiPrivacyKey
+import com.dantech.skimbrowser.ui.navigation.BackupKey
 import com.dantech.skimbrowser.ui.navigation.ClearBrowsingDataKey
 import com.dantech.skimbrowser.ui.navigation.LicensesKey
 import com.dantech.skimbrowser.ui.navigation.DownloadsKey
@@ -77,6 +78,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
         onScamWarnings = model::setScamWarnings,
         onClearData = { navigator.push(ClearBrowsingDataKey) },
+        onBackup = { navigator.push(BackupKey) },
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
         onTerms = legalOpener(navigator, BuildConfig.TERMS_URL),
         onLicenses = { navigator.push(LicensesKey) },
@@ -165,6 +167,7 @@ fun SettingsScreen(
     onAiPrivacy: () -> Unit,
     onScamWarnings: (Boolean) -> Unit,
     onClearData: () -> Unit,
+    onBackup: () -> Unit = {},
     onPrivacyPolicy: (() -> Unit)?,
     onTerms: (() -> Unit)?,
     onLicenses: () -> Unit,
@@ -269,6 +272,16 @@ fun SettingsScreen(
                 count = 3,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
+            )
+        }
+        section(R.string.backup_title) {
+            SkimListItem(
+                headline = stringResource(R.string.backup_title),
+                supporting = stringResource(R.string.settings_backup_summary),
+                index = 0,
+                count = 1,
+                onClick = onBackup,
+                leading = { IconTile(R.drawable.ic_download, colors.primaryContainer, colors.onPrimaryContainer) },
             )
         }
         section(R.string.settings_section_about) {
