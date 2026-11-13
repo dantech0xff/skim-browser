@@ -37,10 +37,22 @@ interface ShieldChoices {
     /**
      * Runs [action] once the site choice and the cosmetic rules are loaded. The action may run
      * on the caller's thread when they are already loaded, and on a background thread otherwise.
+     * Cookie rules are separate: ad hiding does not wait for them.
      */
     fun whenCosmeticReady(action: () -> Unit) {
         action()
     }
+
+    /**
+     * Runs [action] once cookie rules are loaded, or at once when cookie banners are not hidden.
+     * The action may run on the caller's thread when that is already true.
+     */
+    fun whenCookieReady(action: () -> Unit) {
+        action()
+    }
+
+    /** Runs [action] when the cookie-banner switch changes after this call. */
+    fun whenCookieChoiceChanges(action: () -> Unit) = Unit
 
     /**
      * Stylesheet that hides cookie banners on [documentUrl]. Empty when hiding is off, the URL

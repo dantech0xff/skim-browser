@@ -99,8 +99,10 @@ fun SkimSnackbarHost(
     shown?.takeIf { it.secondary == null }?.let { single ->
         val text = single.text.asString()
         val actionLabel = single.action?.let { stringResource(it.labelRes()) }
+        val settled = remember(single.id) { object { var done = false } }
         LaunchedEffect(single.id) {
             val result = hostState.showSnackbar(SkimSnackbarVisuals(text, actionLabel, single.isError))
+            settled.done = true
             if (result == SnackbarResult.ActionPerformed) {
                 try {
                     single.action?.takeUnless { it is SnackbarAction.Undo }?.let(currentOnAction)
@@ -112,10 +114,16 @@ fun SkimSnackbarHost(
                 currentOnClosed(single.action)
             }
         }
-        // Leaving the composition cancels showSnackbar without a result: report it as a close.
-        // When the message was replaced or already handled, the controller ignores the stale id.
+        // Leaving the composition cancels showSnackbar without a result. A held popup still has to
+        // be dropped. When the message was replaced or already handled, the controller ignores the stale id.
         DisposableEffect(single.id) {
-            onDispose { controller.onDismissed(single.id) }
+            onDispose {
+                controller.onDismissed(single.id)
+                if (!settled.done) {
+                    settled.done = true
+                    currentOnClosed(single.action)
+                }
+            }
         }
     }
     SnackbarHost(

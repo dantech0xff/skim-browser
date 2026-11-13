@@ -15,6 +15,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.annotation.MainThread
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
+import com.dantech.skimbrowser.domain.url.isWebUrl
 
 /**
  * The [WebChromeClient] of one tab's WebView: load progress and title, file inputs, full-screen
@@ -54,12 +55,24 @@ class SkimChromeClient(
     private val parseFileChooserResult: (resultCode: Int, data: Intent?) -> Array<Uri>? =
         WebChromeClient.FileChooserParams::parseResult,
     private val blockUngesturedPopup: (sourceUrl: String?) -> Boolean = { true },
+    /**
+     * Answers [Message] on this turn, so `window.open` returns, and reports the address the new
+     * window asked for. The returned function drops that window if the person never opens it.
+     */
+    private val takeBlockedPopup: (Message, (String?) -> Unit) -> () -> Unit = { _, onUrl ->
+        onUrl(null)
+        ({ })
+    },
+    private val loadInTab: (tabId: String, url: String) -> Unit = { _, _ -> },
 ) : WebChromeClient() {
 
     private var pendingFiles: ValueCallback<Array<Uri>>? = null
-    private var heldWindow: Message? = null
     private var heldId = 0L
     private var nextHoldId = 0L
+    private var heldUrl: String? = null
+    private var urlKnown = false
+    private var openWhenKnown = false
+    private var abandonPopup: (() -> Unit)? = null
     private var detached = false
     private var dialogDocument = NO_DOCUMENT
     private var dialogsShown = 0
@@ -71,24 +84,26 @@ class SkimChromeClient(
     fun detach() {
         detached = true
         answerFiles(pendingFiles, null)
-        releaseHeld()
+        abandonPopup?.invoke()
+        clearHold()
         sitePermissions.cancelTab(tabId)
     }
 
     /** Opens the hold [id] names. A newer hold on this tab is left alone. */
     fun openHeldWindow(id: Long): Boolean {
         if (id != heldId) return false
-        val message = heldWindow ?: return false
-        heldWindow = null
-        if (deliverWindow(message)) return true
-        release(message)
-        return false
+        if (!urlKnown) {
+            openWhenKnown = true
+            return false
+        }
+        return openCaptured(heldUrl)
     }
 
-    /** Drops the hold [id] names so `window.open` returns nothing. A newer hold is left alone. */
+    /** Drops the hold [id] names. A newer hold is left alone. The page was already answered. */
     fun cancelHeldWindow(id: Long) {
         if (id != heldId) return
-        releaseHeld()
+        abandonPopup?.invoke()
+        clearHold()
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
@@ -145,22 +160,49 @@ class SkimChromeClient(
 
     override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
         if (detached) return false
-        // A window the page opened on its own is held, so the snackbar can still open it.
+        // The page is answered on this turn. Open loads the address once the new window asks for it.
         if (!isUserGesture && blockUngesturedPopup(view.url)) {
-            releaseHeld()
+            abandonPopup?.invoke()
             nextHoldId += 1
             heldId = nextHoldId
-            heldWindow = resultMsg
-            events.onPopupBlocked(tabId, heldId)
+            heldUrl = null
+            urlKnown = false
+            openWhenKnown = false
+            val id = heldId
+            events.onPopupBlocked(tabId, id)
+            abandonPopup = takeBlockedPopup(resultMsg) { url ->
+                if (id != heldId) return@takeBlockedPopup
+                heldUrl = url
+                urlKnown = true
+                if (openWhenKnown) openCaptured(url)
+            }
             return true
         }
         return deliverWindow(resultMsg)
     }
 
-    private fun releaseHeld() {
-        val message = heldWindow ?: return
-        heldWindow = null
-        release(message)
+    private fun openCaptured(url: String?): Boolean {
+        openWhenKnown = false
+        if (url == null || !isWebUrl(url)) {
+            clearHold()
+            return false
+        }
+        val popupTabId = events.onPopupRequested(tabId)
+        if (popupTabId == null) {
+            clearHold()
+            return false
+        }
+        loadInTab(popupTabId, url)
+        clearHold()
+        return true
+    }
+
+    private fun clearHold() {
+        heldId = 0L
+        heldUrl = null
+        urlKnown = false
+        openWhenKnown = false
+        abandonPopup = null
     }
 
     private fun release(message: Message) {

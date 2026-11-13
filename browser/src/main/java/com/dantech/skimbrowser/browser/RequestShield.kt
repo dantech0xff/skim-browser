@@ -73,6 +73,8 @@ class RequestShield private constructor(
     @Volatile private var cookie: CosmeticFilters? = null
     @Volatile private var hideCookies = true
     private val readyWaiters = ArrayList<() -> Unit>()
+    private val cookieWaiters = ArrayList<() -> Unit>()
+    private val cookieChoiceListeners = ArrayList<() -> Unit>()
 
     override val disabledHosts: StateFlow<Set<String>> = persisted
 
@@ -89,7 +91,14 @@ class RequestShield private constructor(
                 }
             }
             scope.launch {
-                settings.settings.collect { hideCookies = it.hideCookieBanners }
+                settings.settings.collect { stored ->
+                    val next = stored.hideCookieBanners
+                    if (next == hideCookies) return@collect
+                    hideCookies = next
+                    if (cookieReady()) deliverCookieWaiters()
+                    val listeners = synchronized(cookieChoiceListeners) { cookieChoiceListeners.toList() }
+                    listeners.forEach { it() }
+                }
             }
         }
     }
@@ -149,7 +158,7 @@ class RequestShield private constructor(
 
     override fun cosmeticCss(documentUrl: String?, incognito: Boolean): String? {
         val host = documentUrl?.let(::hostOf) ?: return ""
-        if (!rulesReady()) return null
+        if (!adsReady()) return null
         if (isOff(host, incognito)) return ""
         return cosmetic?.cssFor(host) ?: ""
     }
@@ -157,7 +166,8 @@ class RequestShield private constructor(
     override fun cookieCss(documentUrl: String?, incognito: Boolean): String? {
         if (!hideCookies) return ""
         val host = documentUrl?.let(::hostOf) ?: return ""
-        return cookie?.cssFor(host)
+        val rules = cookie ?: return null
+        return rules.cssFor(host)
     }
 
     override fun warmCosmetic() {
@@ -167,7 +177,7 @@ class RequestShield private constructor(
     }
 
     override fun whenCosmeticReady(action: () -> Unit) {
-        if (rulesReady()) {
+        if (adsReady()) {
             action()
             return
         }
@@ -178,7 +188,7 @@ class RequestShield private constructor(
             return
         }
         val runNow = synchronized(readyWaiters) {
-            if (rulesReady()) true else {
+            if (adsReady()) true else {
                 readyWaiters += action
                 false
             }
@@ -188,15 +198,56 @@ class RequestShield private constructor(
             return
         }
         runner.launch(Dispatchers.IO) {
-            warmCosmetic()
+            if (!choicesReady.get()) choicesLoaded.await()
+            cosmetics()
             val queued = synchronized(readyWaiters) {
-                if (!rulesReady()) emptyList() else readyWaiters.toList().also { readyWaiters.clear() }
+                if (!adsReady()) emptyList() else readyWaiters.toList().also { readyWaiters.clear() }
             }
             queued.forEach { it() }
         }
     }
 
-    private fun rulesReady(): Boolean = choicesReady.get() && cosmetic != null && cookie != null
+    override fun whenCookieReady(action: () -> Unit) {
+        if (cookieReady()) {
+            action()
+            return
+        }
+        val runner = scope
+        if (runner == null) {
+            cookieRules()
+            action()
+            return
+        }
+        val runNow = synchronized(cookieWaiters) {
+            if (cookieReady()) true else {
+                cookieWaiters += action
+                false
+            }
+        }
+        if (runNow) {
+            action()
+            return
+        }
+        runner.launch(Dispatchers.IO) {
+            cookieRules()
+            deliverCookieWaiters()
+        }
+    }
+
+    override fun whenCookieChoiceChanges(action: () -> Unit) {
+        synchronized(cookieChoiceListeners) { cookieChoiceListeners += action }
+    }
+
+    private fun adsReady(): Boolean = choicesReady.get() && cosmetic != null
+
+    private fun cookieReady(): Boolean = cookie != null || !hideCookies
+
+    private fun deliverCookieWaiters() {
+        val queued = synchronized(cookieWaiters) {
+            if (!cookieReady()) emptyList() else cookieWaiters.toList().also { cookieWaiters.clear() }
+        }
+        queued.forEach { it() }
+    }
 
     private fun isOff(host: String, incognito: Boolean): Boolean =
         if (incognito) host in incognitoOff else host in persisted.value
@@ -242,6 +293,7 @@ class RequestShield private constructor(
                 CosmeticFilters.EMPTY
             }
             cookie = parsed
+            deliverCookieWaiters()
             return parsed
         }
     }
@@ -276,10 +328,11 @@ class RequestShield private constructor(
             loadCosmetic: () -> CosmeticFilters,
             settings: SettingsRepository,
             scope: CoroutineScope,
+            loadCookie: () -> CosmeticFilters = { CosmeticFilters.EMPTY },
         ): RequestShield = RequestShield(
             loadList = { HostBlocklist.EMPTY },
             loadCosmetic = loadCosmetic,
-            loadCookie = { CosmeticFilters.EMPTY },
+            loadCookie = loadCookie,
             settings = settings,
             scope = scope,
         )

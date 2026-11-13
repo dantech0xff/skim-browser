@@ -7,11 +7,16 @@ import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Looper
+import android.os.Message
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.WebViewClient
+import java.util.concurrent.atomic.AtomicBoolean
 import android.widget.FrameLayout
 import androidx.annotation.MainThread
 import androidx.webkit.WebViewCompat
@@ -151,6 +156,15 @@ class WebViewPool(
 
     init {
         activity.registerComponentCallbacks(fontScaleCallbacks)
+        shield.whenCookieChoiceChanges {
+            val refresh = Runnable {
+                if (destroyed) return@Runnable
+                live.values.toList().forEach { entry ->
+                    if (!entry.destroyed) entry.client.refreshCookies(entry.view)
+                }
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) refresh.run() else activity.runOnUiThread(refresh)
+        }
     }
 
     private class Entry(
@@ -272,6 +286,57 @@ class WebViewPool(
         renew(popupTabId)
         trim(keep = setOfNotNull(popupTabId, tab.openerTabId))
         return entry.view
+    }
+
+    /**
+     * Gives [resultMsg] a WebView on this turn, so `window.open` returns, and stops that WebView
+     * at the first address it asks for. [onUrl] receives that address, or null when there is none.
+     */
+    private fun answerBlockedPopup(tab: Tab, resultMsg: Message, onUrl: (String?) -> Unit): () -> Unit {
+        val transport = resultMsg.obj as? WebView.WebViewTransport
+        if (transport == null || destroyed) {
+            sendPopupResult(resultMsg)
+            onUrl(null)
+            return {}
+        }
+        val probe = try {
+            WebView(activity).also { view ->
+                if (tab.incognito) setProfile(view, incognitoProfile())
+            }
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "A blocked popup was answered without a page", e)
+            transport.webView = null
+            sendPopupResult(resultMsg)
+            onUrl(null)
+            return {}
+        }
+        val done = AtomicBoolean(false)
+        fun finish(url: String?, notify: Boolean) {
+            if (!done.compareAndSet(false, true)) return
+            probe.stopLoading()
+            probe.destroy()
+            if (notify) onUrl(url)
+        }
+        probe.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (!request.isForMainFrame) return true
+                val url = request.url?.toString().orEmpty()
+                if (url.isBlank() || url == "about:blank") return true
+                finish(url, notify = true)
+                return true
+            }
+        }
+        transport.webView = probe
+        sendPopupResult(resultMsg)
+        return { finish(null, notify = false) }
+    }
+
+    private fun sendPopupResult(message: Message) {
+        try {
+            message.sendToTarget()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "A blocked popup could not be answered", e)
+        }
     }
 
     /** Saves the state of every live WebView, keeping them all. */
@@ -574,7 +639,7 @@ class WebViewPool(
             domStorageEnabled = true
             setSupportMultipleWindows(true)
             // Without this, WebView answers an ungestured window.open with null and never
-            // calls onCreateWindow, so the blocked popup cannot be opened from the snackbar.
+            // calls onCreateWindow. The result message is sent on that call, so the page continues.
             javaScriptCanOpenWindowsAutomatically = true
             builtInZoomControls = true
             displayZoomControls = false
@@ -631,6 +696,8 @@ class WebViewPool(
                 val choice = interrupts()
                 choice.blockPopups && source?.let(::hostOf) !in choice.popupAllowHosts
             },
+            takeBlockedPopup = { message, onUrl -> answerBlockedPopup(tab, message, onUrl) },
+            loadInTab = tabs::load,
         )
         view.webViewClient = client
         view.webChromeClient = chrome

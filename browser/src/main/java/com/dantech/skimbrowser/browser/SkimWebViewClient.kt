@@ -105,6 +105,8 @@ class SkimWebViewClient(
     private val collapsed = LinkedHashSet<String>()
     private var hideScript: ScriptHandler? = null
     private var cookieScript: ScriptHandler? = null
+    /** True after this document received a cookie stylesheet, so turning hiding off can remove it. */
+    private var cookieStyleInjected = false
     private var documentStartedAt = 0L
     private var lastInteractionAt = NO_INTERACTION
 
@@ -187,6 +189,7 @@ class SkimWebViewClient(
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
         if (early.first > 0) events.onShieldCount(tabId, early.first)
+        cookieStyleInjected = false
         injectHide(view, url)
         injectCookie(view, url)
         early.second?.let { inject(view, CosmeticScript.collapse(it)) }
@@ -517,13 +520,38 @@ class SkimWebViewClient(
     fun armCosmetic(view: WebView, url: String) {
         if (!documentStartSupported || detached) return
         val css = shield.cosmeticCss(url, incognito)
-        val cookie = shield.cookieCss(url, incognito)
-        if (css == null || cookie == null) {
-            applyWhenReady(view, url, arm = true)
-            return
+        if (css == null) {
+            shield.whenCosmeticReady {
+                val apply = Runnable {
+                    if (detached || !stillTheArmedPage(url)) return@Runnable
+                    installDocumentStart(view, url, shield.cosmeticCss(url, incognito))
+                }
+                if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+            }
+        } else {
+            installDocumentStart(view, url, css)
         }
-        installDocumentStart(view, url, css)
-        installCookieDocumentStart(view, url, cookie)
+        val cookie = shield.cookieCss(url, incognito)
+        if (cookie == null) {
+            shield.whenCookieReady {
+                val apply = Runnable {
+                    if (detached || !stillTheArmedPage(url)) return@Runnable
+                    installCookieDocumentStart(view, url, shield.cookieCss(url, incognito))
+                }
+                if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+            }
+        } else {
+            installCookieDocumentStart(view, url, cookie)
+        }
+    }
+
+    /** Applies the current cookie choice to the document this client is showing. */
+    fun refreshCookies(view: WebView) {
+        if (detached) return
+        val url = synchronized(documentGate) { documentUrl ?: loadingUrl } ?: return
+        injectCookie(view, url)
+        val css = shield.cookieCss(url, incognito)
+        if (css != null) installCookieDocumentStart(view, url, css)
     }
 
     private fun removeHideScript() {
@@ -550,14 +578,26 @@ class SkimWebViewClient(
     private fun injectCookie(view: WebView, url: String, wait: Boolean = true) {
         val css = shield.cookieCss(url, incognito)
         if (css == null) {
-            if (wait) applyWhenReady(view, url, arm = false)
+            if (wait) {
+                shield.whenCookieReady {
+                    val apply = Runnable {
+                        if (!detached) injectCookie(view, url, wait = false)
+                    }
+                    if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+                }
+            }
             return
         }
         val host = hostOf(url) ?: return
         if (css.isEmpty()) {
             removeCookieScript()
+            if (cookieStyleInjected) {
+                cookieStyleInjected = false
+                inject(view, CosmeticScript.cookie(host, ""))
+            }
             return
         }
+        cookieStyleInjected = true
         inject(view, CosmeticScript.cookie(host, css))
     }
 
@@ -612,6 +652,7 @@ class SkimWebViewClient(
         val host = hostOf(url) ?: return
         removeCookieScript()
         if (css.isEmpty()) return
+        cookieStyleInjected = true
         try {
             cookieScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.cookie(host, css), ALL_ORIGINS)
         } catch (e: RuntimeException) {
