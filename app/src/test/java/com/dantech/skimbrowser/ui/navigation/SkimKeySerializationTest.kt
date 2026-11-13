@@ -131,6 +131,7 @@ class SkimKeySerializationTest {
             SearchEngineDialogKey,
             ThemeDialogKey,
             PageTextSizeDialogKey,
+            TranslationLanguageDialogKey,
             ClearBrowsingDataKey,
             DeleteAiDataKey,
             ClearSkimHistoryKey,

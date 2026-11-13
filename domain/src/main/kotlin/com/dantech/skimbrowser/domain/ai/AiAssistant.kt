@@ -1,5 +1,6 @@
 package com.dantech.skimbrowser.domain.ai
 
+import com.dantech.skimbrowser.domain.translate.PageTextNode
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -28,4 +29,6 @@ interface AiAssistant {
     fun overviewTabs(session: PageConversation, context: List<TabContext>, prompt: String): Flow<AiReply>
 
     fun askTabs(session: PageConversation, question: String): Flow<AiReply>
+
+    fun translateNodes(host: String, languageTag: String, nodes: List<PageTextNode>, incognito: Boolean): Flow<AiReply>
 }

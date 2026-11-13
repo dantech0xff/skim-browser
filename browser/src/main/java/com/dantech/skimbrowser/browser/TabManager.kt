@@ -20,6 +20,8 @@ import com.dantech.skimbrowser.browser.page.PageContent
 import com.dantech.skimbrowser.browser.page.PageScriptSource
 import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
+import com.dantech.skimbrowser.browser.page.parseTranslationNodes
+import com.dantech.skimbrowser.browser.page.translationCallJson
 import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
@@ -40,6 +42,8 @@ import com.dantech.skimbrowser.domain.tab.currentAfterUndo
 import com.dantech.skimbrowser.domain.tab.partitionUndoClose
 import com.dantech.skimbrowser.domain.tab.placeRestoredTabs
 import com.dantech.skimbrowser.domain.tab.tabsToRestore
+import com.dantech.skimbrowser.domain.translate.PageTextNode
+import com.dantech.skimbrowser.domain.translate.TranslatedText
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -296,6 +300,8 @@ class TabManager(
     /** Makes [tabId] the current tab. A tab offline at its last load reloads if the network is back. */
     @MainThread
     override fun select(tabId: String) {
+        val previous = _state.value.currentTabId
+        if (previous != null && previous != tabId && runtimeOf(previous).find != null) clearFind(previous)
         val tab = openTab(tabId) ?: return
         val now = clock()
         _state.update { s ->
@@ -334,12 +340,14 @@ class TabManager(
                 updateTab(tabId) { it.copy(url = actual, fromNewTabPage = true) }
                 persistTab(tabId)
             }
+            if (runtimeOf(tabId).find != null) engine.value?.clearFind(tabId)
             updateRuntime(tabId) {
                 it.copy(safetyWarning = warning, certificateWarning = null, loadError = null, progress = null, find = null)
             }
             return
         }
         navigations.begin(tabId, actual)
+        if (runtimeOf(tabId).find != null) engine.value?.clearFind(tabId)
         updateTab(tabId) { it.copy(url = actual, fromNewTabPage = it.fromNewTabPage || tab.url == null) }
         updateRuntime(tabId) {
             it.copy(
@@ -367,6 +375,7 @@ class TabManager(
         if (!http.startsWith("http://", ignoreCase = true)) return
         openTab(tabId) ?: return
         navigations.begin(tabId, http)
+        if (runtimeOf(tabId).find != null) engine.value?.clearFind(tabId)
         updateTab(tabId) { it.copy(url = http) }
         updateRuntime(tabId) { it.copy(loadError = null, certificateWarning = null, find = null, httpFallback = null) }
         persistTab(tabId)
@@ -812,6 +821,44 @@ class TabManager(
         evaluateOrNull(live, tabId, scripts.highlightScript(args)) == "true"
     }
 
+    @AnyThread
+    override suspend fun collectPageText(tabId: String): List<PageTextNode> =
+        withContext(mainDispatcher) {
+            if (!scripts.isSupported) return@withContext emptyList()
+            val live = engine.value ?: return@withContext emptyList()
+            val runtime = runtimes[tabId]?.value ?: return@withContext emptyList()
+            if (!runtime.pageLoaded || runtime.loadError != null || runtime.certificateWarning != null) {
+                return@withContext emptyList()
+            }
+            val url = runtime.committedUrl ?: return@withContext emptyList()
+            val nonce = runtime.loadNonce
+            val json = evaluateOrNull(live, tabId, scripts.translationScript(translationCallJson("collect")))
+                ?: return@withContext emptyList()
+            val after = runtimes[tabId]?.value ?: return@withContext emptyList()
+            if (after.loadNonce != nonce || !samePage(after.committedUrl, url)) return@withContext emptyList()
+            parseTranslationNodes(json)
+        }
+
+    @AnyThread
+    override suspend fun replacePageText(
+        tabId: String,
+        rows: List<TranslatedText>,
+    ): Boolean = withContext(mainDispatcher) {
+        if (rows.isEmpty() || !scripts.isSupported) return@withContext false
+        val live = engine.value ?: return@withContext false
+        if (openTab(tabId) == null) return@withContext false
+        evaluateOrNull(live, tabId, scripts.translationScript(translationCallJson("apply", rows))) == "true"
+    }
+
+    @AnyThread
+    override suspend fun showOriginalPageText(tabId: String, original: Boolean): Boolean = withContext(mainDispatcher) {
+        if (!scripts.isSupported) return@withContext false
+        val live = engine.value ?: return@withContext false
+        if (openTab(tabId) == null) return@withContext false
+        val op = if (original) "original" else "translation"
+        evaluateOrNull(live, tabId, scripts.translationScript(translationCallJson(op))) == "true"
+    }
+
     /**
      * The attached engine changed from [previous] to [current]. An engine that went, or that a
      * newer Activity's pool replaced while the older one still lives (the older instance only
@@ -1065,6 +1112,7 @@ class TabManager(
             val nonce = ++lastLoadNonce
             pageStartedSinceVisit += tabId
             historyTitleUpdates.remove(tabId)
+            if (runtime.find != null) engine.value?.clearFind(tabId)
             val shown = runtime.committedUrl
             val saved = shownBeforeStart[tabId]
             if (saved == null || saved.url == shown || shown == null) shownBeforeStart[tabId] = ShownPage(shown, tab.title)

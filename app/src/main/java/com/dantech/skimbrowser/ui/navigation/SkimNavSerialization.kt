@@ -38,6 +38,7 @@ val skimNavConfig: SavedStateConfiguration = SavedStateConfiguration {
             subclass(SearchEngineDialogKey::class, SearchEngineDialogKey.serializer())
             subclass(ThemeDialogKey::class, ThemeDialogKey.serializer())
             subclass(PageTextSizeDialogKey::class, PageTextSizeDialogKey.serializer())
+            subclass(TranslationLanguageDialogKey::class, TranslationLanguageDialogKey.serializer())
             subclass(ClearBrowsingDataKey::class, ClearBrowsingDataKey.serializer())
             subclass(DeleteAiDataKey::class, DeleteAiDataKey.serializer())
             subclass(ClearSkimHistoryKey::class, ClearSkimHistoryKey.serializer())

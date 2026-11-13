@@ -15,9 +15,12 @@ class FakePageScripts : PageScriptSource {
 
     override fun highlightScript(argsJson: String) = "$HIGHLIGHT($argsJson)"
 
+    override fun translationScript(argsJson: String) = "$TRANSLATE($argsJson)"
+
     companion object {
         const val EXTRACT = "skimExtract()"
         const val READERABLE = "skimReaderable()"
         const val HIGHLIGHT = "skimHighlight"
+        const val TRANSLATE = "skimTranslate"
     }
 }

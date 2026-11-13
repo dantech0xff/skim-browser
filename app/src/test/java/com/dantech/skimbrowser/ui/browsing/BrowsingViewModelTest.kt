@@ -380,27 +380,20 @@ class BrowsingViewModelTest {
     }
 
     @Test
-    fun aNewDocumentIsSearchedAgainForTheSameTextOnceItLoaded() = runTest {
+    fun aNewDocumentClearsTheHighlightsAndClosesTheBar() = runTest {
         val (f, id) = openFind()
         val browsing = browsing(f, id)
         type(browsing, "heat")
         passTheRest()
         f.engine.calls.clear()
 
-        // A link on the page: the new document starts, then finishes.
         f.engine.openPage(id, OTHER_PAGE, finish = false)
         runCurrent()
-        assertTrue("the bar stays", browsing.state.value.find != null)
-        assertTrue("not before the document loaded", f.engine.callsOf<Call.Find>().isEmpty())
 
-        f.engine.finishPage(id, OTHER_PAGE)
-        runCurrent()
-
-        assertEquals(listOf(Call.Find(id, "heat")), f.engine.callsOf<Call.Find>())
-        assertEquals("heat", f.manager.runtime(id).value.find?.query)
-        f.manager.events.onFindResult(id, 0, 2)
-        runCurrent()
-        assertEquals(2, checkNotNull(browsing.state.value.find).matchCount)
+        assertNull(browsing.state.value.find)
+        assertNull(f.manager.runtime(id).value.find)
+        assertTrue(f.engine.calls.any { it is Call.ClearFind })
+        assertTrue("the new document is not searched", f.engine.callsOf<Call.Find>().isEmpty())
     }
 
     @Test

@@ -45,6 +45,7 @@ import com.dantech.skimbrowser.ui.navigation.PageTextSizeDialogKey
 import com.dantech.skimbrowser.ui.navigation.SearchEngineDialogKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.ThemeDialogKey
+import com.dantech.skimbrowser.ui.navigation.TranslationLanguageDialogKey
 
 /** Settings (12). */
 @Composable
@@ -77,6 +78,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onDownloads = { navigator.push(DownloadsKey) },
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
         onScamWarnings = model::setScamWarnings,
+        onTranslationLanguage = { navigator.push(TranslationLanguageDialogKey) },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
         onBackup = { navigator.push(BackupKey) },
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
@@ -135,6 +137,22 @@ fun ThemeRoute(
     )
 }
 
+@Composable
+fun TranslationLanguageRoute(
+    onFinished: () -> Unit,
+    model: SettingsViewModel = hiltViewModel(),
+) {
+    val state by model.state.collectAsStateWithLifecycle()
+    TranslationLanguageDialog(
+        selected = state.translationLanguageTag,
+        onSelect = { tag ->
+            model.setTranslationLanguage(tag)
+            onFinished()
+        },
+        onDismiss = onFinished,
+    )
+}
+
 /**
  * Clear browsing data (15). [pages] are the activity's open pages, passed for this call only.
  * The clear runs on the app scope so it finishes after the dialog closes.
@@ -166,6 +184,7 @@ fun SettingsScreen(
     onDownloads: () -> Unit = {},
     onAiPrivacy: () -> Unit,
     onScamWarnings: (Boolean) -> Unit,
+    onTranslationLanguage: () -> Unit = {},
     onClearData: () -> Unit,
     onBackup: () -> Unit = {},
     onPrivacyPolicy: (() -> Unit)?,
@@ -242,9 +261,17 @@ fun SettingsScreen(
                     },
                 ),
                 index = 0,
-                count = 1,
+                count = 2,
                 onClick = onAiPrivacy,
                 leading = { SunnyMark(size = 40.dp, iconSize = 20.dp) },
+            )
+            SkimListItem(
+                headline = stringResource(R.string.settings_translation_language),
+                supporting = stringResource(translationLanguageLabel(state.translationLanguageTag)),
+                index = 1,
+                count = 2,
+                onClick = onTranslationLanguage,
+                leading = { IconTile(R.drawable.ic_public, colors.primaryContainer, colors.onPrimaryContainer) },
             )
         }
         section(R.string.settings_section_privacy_security) {

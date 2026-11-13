@@ -16,7 +16,12 @@ object AiConfig {
     /** Effort for grouping tabs from their titles and hosts. */
     const val EFFORT_GROUPING = "low"
 
+    const val EFFORT_TRANSLATION = "low"
+
     const val GROUPING_MAX_TOKENS = 2048L
+
+    /** One chunk of page text. Smaller than a summary so a long page does not reserve a summary's spend. */
+    const val TRANSLATION_MAX_TOKENS = 2048L
 
     /** The longest page text sent for one tab in an across-tabs answer. */
     const val TAB_TEXT_CHARS = OpenTabLimits.TEXT_CHARS

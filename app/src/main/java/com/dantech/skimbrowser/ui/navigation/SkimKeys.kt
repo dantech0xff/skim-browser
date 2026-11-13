@@ -147,6 +147,9 @@ data object ThemeDialogKey : DialogKey
 @Serializable
 data object PageTextSizeDialogKey : DialogKey
 
+@Serializable
+data object TranslationLanguageDialogKey : DialogKey
+
 /** Clear browsing data (15). */
 @Serializable
 data object ClearBrowsingDataKey : DialogKey

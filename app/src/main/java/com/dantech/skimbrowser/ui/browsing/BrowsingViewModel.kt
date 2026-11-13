@@ -91,18 +91,6 @@ data class FindUiState(
     fun canStep(text: String): Boolean = showsCount(text) && matchCount > 0
 }
 
-/**
- * The browsing screen of tab [tabId]: what its address bar, toolbar and Find in page show, from the
- * tab manager's state and the tab's page, and what their controls do to the tab. Commands are called
- * on the main thread.
- *
- * Find in page shows while its bar is open. It opens here when Find in page starts for the tab
- * elsewhere (the More menu calls [TabManager.find] with an empty text), and closes with [closeFind]
- * (Close, system Back) or when the page fails to load. The field edits [findQuery]; once its text
- * rests for 100 ms the WebView searches it. A new document drops the matches of the last one: once it
- * has loaded, the same text is searched again, which also lets a step still waiting for the old
- * count go.
- */
 @HiltViewModel(assistedFactory = BrowsingViewModel.Factory::class)
 class BrowsingViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
@@ -233,11 +221,9 @@ class BrowsingViewModel @AssistedInject constructor(
             findOpen.value = true
             if (findQuery.text.toString() != started.query) findQuery.setTextAndPlaceCursorAtEnd(started.query)
             searchedNonce = page.loadNonce.takeIf { page.pageLoaded }
-        } else if (page.loadError != null || page.certificateWarning != null || page.safetyWarning != null) {
-            // A page that failed to load, or a warning covering it, has nothing to find.
+        } else if (page.loadError != null || page.certificateWarning != null || page.safetyWarning != null || page.find == null) {
             closeFind()
         } else if (page.pageLoaded && page.loadNonce != searchedNonce) {
-            // A new document: its matches are the WebView's to count again, for the same text.
             searchedNonce = page.loadNonce
             tabs.find(tabId, findQuery.text.toString())
         }

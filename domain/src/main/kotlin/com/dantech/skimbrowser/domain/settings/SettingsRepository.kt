@@ -26,6 +26,8 @@ interface SettingsRepository {
      */
     suspend fun setPageTextZoom(percent: Int?)
 
+    suspend fun setTranslationLanguage(tag: String?)
+
     suspend fun setReaderFont(font: ReaderFont)
 
     suspend fun setOnboardingCompleted()

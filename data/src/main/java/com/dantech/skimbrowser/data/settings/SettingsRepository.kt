@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.dantech.skimbrowser.domain.settings.SettingsRepository as SettingsStore
 import com.dantech.skimbrowser.domain.settings.ThemeSetting
+import com.dantech.skimbrowser.domain.translate.TranslationLanguages
 import com.dantech.skimbrowser.domain.url.normalizeHost
 import java.io.File
 import java.io.IOException
@@ -72,6 +73,13 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             } else {
                 prefs[Keys.PAGE_TEXT_ZOOM] = percent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)
             }
+        }
+    }
+
+    override suspend fun setTranslationLanguage(tag: String?) {
+        val canonical = TranslationLanguages.canonical(tag)
+        dataStore.edit { prefs ->
+            if (canonical == null) prefs.remove(Keys.TRANSLATION_LANGUAGE) else prefs[Keys.TRANSLATION_LANGUAGE] = canonical
         }
     }
 
@@ -154,6 +162,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             readerTextScalePercent = (read(Keys.READER_TEXT_SCALE) ?: defaults.readerTextScalePercent)
                 .coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE),
             pageTextZoomPercent = read(Keys.PAGE_TEXT_ZOOM)?.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE),
+            translationLanguageTag = TranslationLanguages.canonical(read(Keys.TRANSLATION_LANGUAGE)),
             readerFont = enumOrDefault(read(Keys.READER_FONT), defaults.readerFont),
             onboardingCompleted = read(Keys.ONBOARDING_COMPLETED) ?: defaults.onboardingCompleted,
             lastTabId = read(Keys.LAST_TAB_ID)?.takeIf { it.isNotBlank() },
@@ -169,6 +178,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val SEND_RATINGS = booleanPreferencesKey("send_ratings")
         val READER_TEXT_SCALE = intPreferencesKey("reader_text_scale_percent")
         val PAGE_TEXT_ZOOM = intPreferencesKey("page_text_zoom_percent")
+        val TRANSLATION_LANGUAGE = stringPreferencesKey("translation_language")
         val READER_FONT = stringPreferencesKey("reader_font")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val LAST_TAB_ID = stringPreferencesKey("last_tab_id")

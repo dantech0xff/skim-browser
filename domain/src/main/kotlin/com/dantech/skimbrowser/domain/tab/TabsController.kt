@@ -2,6 +2,8 @@ package com.dantech.skimbrowser.domain.tab
 
 import com.dantech.skimbrowser.domain.page.HighlightRequest
 import com.dantech.skimbrowser.domain.page.PageContent
+import com.dantech.skimbrowser.domain.translate.PageTextNode
+import com.dantech.skimbrowser.domain.translate.TranslatedText
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -111,6 +113,12 @@ interface TabsController {
      * tab still shows the document the citation was read from.
      */
     suspend fun highlightBlock(tabId: String, request: HighlightRequest): Boolean
+
+    suspend fun collectPageText(tabId: String): List<PageTextNode> = emptyList()
+
+    suspend fun replacePageText(tabId: String, rows: List<TranslatedText>): Boolean = false
+
+    suspend fun showOriginalPageText(tabId: String, original: Boolean): Boolean = false
 }
 
 /**

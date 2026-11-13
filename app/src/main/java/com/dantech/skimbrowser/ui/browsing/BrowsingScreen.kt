@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.domain.tab.TabGroup
 import com.dantech.skimbrowser.domain.tab.TabNeighbor
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
@@ -100,6 +101,7 @@ fun BrowsingScreen(
     nextTab: TabNeighbor? = null,
     groups: List<TabGroup> = emptyList(),
     onSwipeToTab: (String) -> Unit = {},
+    translation: @Composable () -> Unit = {},
 ) {
     val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val covered = state.loadError != null || state.certificateWarning != null || state.safetyWarning != null
@@ -162,6 +164,19 @@ fun BrowsingScreen(
                     onOpenHttp = actions.onOpenHttp,
                 )
             }
+        }
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(
+                    WindowInsets.navigationBars
+                        .union(WindowInsets.ime)
+                        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
+                )
+                .padding(bottom = ToolbarMetrics.BrowsingBottomOffset + ToolbarMetrics.BrowsingClusterHeight + 8.dp)
+                .padding(horizontal = ToolbarMetrics.BrowsingSideInset),
+        ) {
+            translation()
         }
         val barModifier = Modifier
             .align(Alignment.BottomCenter)

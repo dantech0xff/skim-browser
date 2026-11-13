@@ -33,6 +33,7 @@ class PageScripts(
     private val extract by lazy { scoped(listOf(readerableLibrary, read(READABILITY)), read(EXTRACT)) }
     private val readerable by lazy { scoped(listOf(readerableLibrary), read(READERABLE)) }
     private val highlight by lazy { read(HIGHLIGHT) }
+    private val translate by lazy { read(TRANSLATE) }
 
     override fun extractScript(): String = extract
 
@@ -40,6 +41,8 @@ class PageScripts(
 
     /** The highlight function called with [argsJson], which [highlightArgsJson] already made safe. */
     override fun highlightScript(argsJson: String): String = "($highlight)($argsJson)"
+
+    override fun translationScript(argsJson: String): String = "($translate)($argsJson)"
 
     private fun read(path: String): String =
         open(path).bufferedReader(Charsets.UTF_8).use { it.readText() }.trimEnd().removeSuffix(";")
@@ -50,6 +53,7 @@ class PageScripts(
         private const val EXTRACT = "js/skim-extract.js"
         private const val READERABLE = "js/skim-readerable.js"
         private const val HIGHLIGHT = "js/skim-highlight.js"
+        private const val TRANSLATE = "js/skim-translate.js"
 
         /** The first Chromium that parses Readability: its source uses `??` and `?.`. */
         const val MIN_WEBVIEW_MAJOR_VERSION = 80

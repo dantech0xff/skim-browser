@@ -23,6 +23,7 @@ data class SettingsUiState(
     val theme: ThemeSetting = ThemeSetting.System,
     /** Null follows the system font scale. */
     val pageTextZoomPercent: Int? = null,
+    val translationLanguageTag: String? = null,
     val isDefaultBrowser: Boolean = false,
     val askBeforeSending: Boolean = true,
     val scamWarnings: Boolean = true,
@@ -48,6 +49,7 @@ class SettingsViewModel @Inject constructor(
             searchEngine = stored.searchEngine,
             theme = stored.theme,
             pageTextZoomPercent = stored.pageTextZoomPercent,
+            translationLanguageTag = stored.translationLanguageTag,
             isDefaultBrowser = isDefault,
             askBeforeSending = stored.askBeforeSending,
             scamWarnings = stored.scamWarnings,
@@ -80,5 +82,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setScamWarnings(enabled: Boolean) {
         viewModelScope.launch { settings.setScamWarnings(enabled) }
+    }
+
+    fun setTranslationLanguage(tag: String?) {
+        viewModelScope.launch { settings.setTranslationLanguage(tag) }
     }
 }

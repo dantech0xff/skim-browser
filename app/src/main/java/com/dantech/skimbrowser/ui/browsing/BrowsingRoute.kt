@@ -26,11 +26,13 @@ import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.adjacentTab
+import com.dantech.skimbrowser.domain.translate.PageTranslation
 import com.dantech.skimbrowser.browser.ui.WebViewHost
 import com.dantech.skimbrowser.system.InternetPanel
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.browser.browserBack
 import com.dantech.skimbrowser.ui.browser.perform
+import com.dantech.skimbrowser.ui.ai.AiPermissionDialog
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.search.SearchOverlay
 import com.dantech.skimbrowser.ui.search.searchViewModel
@@ -63,6 +65,11 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
         factory.create(tab.id)
     }
     val state by browsing.state.collectAsStateWithLifecycle()
+    val translationModel = hiltViewModel<PageTranslationViewModel>()
+    val sessions by translationModel.sessions.collectAsStateWithLifecycle()
+    val pageTranslation = sessions[tab.id] ?: PageTranslation.Idle
+    val deviceLanguage = remember(tab.id) { java.util.Locale.getDefault().toLanguageTag() }
+    LaunchedEffect(tab.id, runtime.loadNonce) { translationModel.onDocument(tab.id, runtime.loadNonce) }
     val search = searchViewModel()
     var searching by remember(tab.id) { mutableStateOf(false) }
     val closeSearch = {
@@ -133,6 +140,14 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
         nextTab = openTabs.adjacentTab(forward = true),
         groups = openTabs.groups,
         onSwipeToTab = tabs::select,
+        translation = {
+            PageTranslationBar(
+                state = pageTranslation,
+                onShowOriginal = { original -> translationModel.showOriginal(tab.id, original) },
+                onDismiss = { translationModel.dismiss(tab.id) },
+                onRetry = { translationModel.translate(tab.id, deviceLanguage) },
+            )
+        },
         page = {
             // Insets are device pixels. A WebView's CSS px is one dp, so the page would pad by the
             // screen density if these were passed through unchanged.
@@ -158,6 +173,14 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             )
         },
     )
+    val denied = pageTranslation as? PageTranslation.Failed
+    if (denied != null && denied.reason == PageTranslation.Note.NotAllowed && denied.host.isNotEmpty()) {
+        AiPermissionDialog(
+            host = denied.host,
+            onAllow = { translationModel.allow(tab.id, denied.host, deviceLanguage) },
+            onNotNow = { translationModel.dismiss(tab.id) },
+        )
+    }
     SitePermissionRequests(tab.id, host.sitePermissions)
     if (searching) {
         SearchOverlay(

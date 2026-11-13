@@ -369,6 +369,21 @@ class TabManagerPageTest {
     }
 
     @Test
+    fun leavingATabClearsItsFindHighlights() = runTest {
+        val f = attached()
+        val first = f.manager.newTab(incognito = false, url = "https://a.example/")
+        val second = f.manager.newTab(incognito = false, url = "https://b.example/", background = true)
+        f.engine.openPage(first, "https://a.example/")
+        f.manager.find(first, "heat")
+        f.engine.calls.clear()
+
+        f.manager.select(second)
+
+        assertNull(f.manager.runtime(first).value.find)
+        assertEquals(listOf(Call.ClearFind(first)), f.engine.callsOf<Call.ClearFind>())
+    }
+
+    @Test
     fun findInPageKeepsItsStateInTheRuntime() = runTest {
         val f = attached()
         val id = f.manager.newTab(incognito = false, url = "https://a.example/")

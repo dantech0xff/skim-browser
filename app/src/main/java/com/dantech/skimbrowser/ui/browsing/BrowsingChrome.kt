@@ -1,5 +1,12 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -34,14 +41,16 @@ import com.dantech.skimbrowser.ui.components.AddressLoadProgress
 import com.dantech.skimbrowser.ui.components.TabsCountIcon
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.components.isDarkScheme
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 private val Slot = 32.dp
 private val NavSlot = 22.dp
 private val PillShadow = 3.dp
+private const val FIND_FADE_MS = 160
 
 /**
- * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view
- * and Tabs, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
+ * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view,
+ * Tabs, and More options, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
  */
 @Composable
 fun BrowsingChrome(
@@ -76,43 +85,68 @@ fun BrowsingChrome(
                     NavIcon(R.drawable.ic_chevron_left, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
                     NavIcon(R.drawable.ic_chevron_right, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
                     val find = state.find
-                    if (find != null) {
-                        FindInPageBar(
-                            query = findQuery,
-                            state = find,
-                            incognito = state.incognito,
-                            onPrevious = actions.onFindPrevious,
-                            onNext = actions.onFindNext,
-                            onClose = actions.onCloseFind,
-                            modifier = Modifier.weight(1f),
-                            embedded = true,
-                        )
-                    } else {
-                        AddressBar(
-                            address = state.address,
-                            indicator = state.indicator,
-                            readerAvailable = state.readerAvailable,
-                            loadProgress = null,
-                            onSiteInfo = actions.onSiteInfo,
-                            onEditAddress = actions.onEditAddress,
-                            onReader = actions.onReader,
-                            modifier = Modifier.weight(1f),
-                            embedded = true,
-                        )
-                        val tabsLabel = pluralStringResource(
-                            if (state.incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
-                            state.tabCount,
-                            state.tabCount,
-                        )
-                        Box(
-                            Modifier
-                                .size(Slot)
-                                .clip(CircleShape)
-                                .clickable(onClick = actions.onTabs, role = Role.Button)
-                                .semantics { contentDescription = tabsLabel },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            TabsCountIcon(state.tabCount)
+                    val fade = if (rememberReducedMotion()) snap() else tween<Float>(FIND_FADE_MS)
+                    AnimatedContent(
+                        targetState = find != null,
+                        modifier = Modifier.weight(1f),
+                        transitionSpec = { fadeIn(fade) togetherWith fadeOut(fade) },
+                        label = "findInPage",
+                    ) { open ->
+                        if (open && find != null) {
+                            FindInPageBar(
+                                query = findQuery,
+                                state = find,
+                                incognito = state.incognito,
+                                onPrevious = actions.onFindPrevious,
+                                onNext = actions.onFindNext,
+                                onClose = actions.onCloseFind,
+                                modifier = Modifier.fillMaxWidth(),
+                                embedded = true,
+                            )
+                        } else if (!open) {
+                            AddressBar(
+                                address = state.address,
+                                indicator = state.indicator,
+                                readerAvailable = state.readerAvailable,
+                                loadProgress = null,
+                                onSiteInfo = actions.onSiteInfo,
+                                onEditAddress = actions.onEditAddress,
+                                onReader = actions.onReader,
+                                modifier = Modifier.fillMaxWidth(),
+                                embedded = true,
+                            )
+                        }
+                    }
+                    val tabsLabel = pluralStringResource(
+                        if (state.incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
+                        state.tabCount,
+                        state.tabCount,
+                    )
+                    AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .size(Slot)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = actions.onTabs, role = Role.Button)
+                                    .semantics { contentDescription = tabsLabel },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TabsCountIcon(state.tabCount)
+                            }
+                            Box(
+                                Modifier
+                                    .size(Slot)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = actions.onMore, role = Role.Button),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_more_vert),
+                                    stringResource(R.string.cd_more_options),
+                                    Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
                 }

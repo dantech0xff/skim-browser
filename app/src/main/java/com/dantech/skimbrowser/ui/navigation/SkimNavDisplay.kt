@@ -38,6 +38,7 @@ import com.dantech.skimbrowser.ui.settings.PageTextSizeRoute
 import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
 import com.dantech.skimbrowser.ui.settings.SettingsRoute
 import com.dantech.skimbrowser.ui.settings.ThemeRoute
+import com.dantech.skimbrowser.ui.settings.TranslationLanguageRoute
 import com.dantech.skimbrowser.ui.reader.ReaderRoute
 import com.dantech.skimbrowser.ui.tabs.RenameGroupRoute
 import com.dantech.skimbrowser.ui.tabs.TabsRoute
@@ -194,6 +195,9 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         }
         entry<PageTextSizeDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             PageTextSizeRoute(onFinished = navigator::back)
+        }
+        entry<TranslationLanguageDialogKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
+            TranslationLanguageRoute(onFinished = navigator::back)
         }
         entry<ClearBrowsingDataKey>(metadata = DialogSceneStrategy.dialog(ShortcutDialogProperties)) {
             ClearBrowsingDataRoute(navigator)
