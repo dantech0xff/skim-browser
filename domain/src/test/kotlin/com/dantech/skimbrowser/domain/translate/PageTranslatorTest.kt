@@ -226,6 +226,7 @@ private class ScriptTabs(private val collected: List<PageTextNode>) : TabsContro
     }
     override val state: StateFlow<TabsState> get() = tabsState
     override fun openNewTab(incognito: Boolean, url: String?, background: Boolean, openedByExternalApp: Boolean, closeOnBack: Boolean, openerTabId: String?) = error("unused")
+    override fun openBackgroundTab(url: String, title: String) = error("unused")
     override fun select(tabId: String) = error("unused")
     override fun load(tabId: String, url: String) = error("unused")
     override fun returnToNewTabPage(tabId: String) = error("unused")
