@@ -49,8 +49,8 @@ private val PillShadow = 3.dp
 private const val FIND_FADE_MS = 160
 
 /**
- * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view
- * and Tabs, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
+ * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view,
+ * Tabs, and More options, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
  */
 @Composable
 fun BrowsingChrome(
@@ -123,15 +123,30 @@ fun BrowsingChrome(
                         state.tabCount,
                     )
                     AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
-                        Box(
-                            Modifier
-                                .size(Slot)
-                                .clip(CircleShape)
-                                .clickable(onClick = actions.onTabs, role = Role.Button)
-                                .semantics { contentDescription = tabsLabel },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            TabsCountIcon(state.tabCount)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .size(Slot)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = actions.onTabs, role = Role.Button)
+                                    .semantics { contentDescription = tabsLabel },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                TabsCountIcon(state.tabCount)
+                            }
+                            Box(
+                                Modifier
+                                    .size(Slot)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = actions.onMore, role = Role.Button),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_more_vert),
+                                    stringResource(R.string.cd_more_options),
+                                    Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
                 }

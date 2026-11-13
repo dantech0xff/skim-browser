@@ -144,8 +144,9 @@ class BrowsingScreenTest {
         composeRule.onNodeWithContentDescription("Site information, connection is secure").performClick()
         composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").performClick()
         composeRule.onNodeWithContentDescription("Reader view").performClick()
+        composeRule.onNodeWithContentDescription("More options").performClick()
 
-        assertEquals(listOf("siteInfo", "editAddress", "reader"), calls)
+        assertEquals(listOf("siteInfo", "editAddress", "reader", "more"), calls)
     }
 
     @Test
