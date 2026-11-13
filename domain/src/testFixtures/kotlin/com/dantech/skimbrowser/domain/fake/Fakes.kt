@@ -82,6 +82,11 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override suspend fun setScamWarnings(enabled: Boolean) = update { it.copy(scamWarnings = enabled) }
 
+    override suspend fun replacePortable(settings: SkimSettings, shieldDisabledHosts: Set<String>) {
+        current.value = settings.copy(lastTabId = current.value.lastTabId)
+        shieldOff.value = shieldDisabledHosts
+    }
+
     override suspend fun installId(): String = install
 
     private fun update(change: (SkimSettings) -> SkimSettings) {

@@ -7,6 +7,10 @@ import com.dantech.skimbrowser.data.db.dao.FolderBookmarkCount
 import com.dantech.skimbrowser.data.db.dao.ImportRow
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.db.entity.FolderKind
+import com.dantech.skimbrowser.domain.backup.BackupBookmark
+import com.dantech.skimbrowser.domain.backup.BackupFolder
+import com.dantech.skimbrowser.domain.backup.BookmarkPlacement
+import com.dantech.skimbrowser.domain.backup.FolderStep
 import com.dantech.skimbrowser.testing.assertThrowsSuspending
 import com.dantech.skimbrowser.testing.awaitItemMatching
 import com.dantech.skimbrowser.testing.inMemorySkimDatabase
@@ -195,6 +199,63 @@ class BookmarkDaoTest {
         assertEquals(listOf("Pump rebates", "Heat pumps"), dao.search(containsPattern("PUMP")).first().map { it.title })
         assertEquals(listOf("Osaka"), dao.search(containsPattern("tabi-note")).first().map { it.title })
         assertEquals(listOf("Pump rebates"), dao.matching(containsPattern("pump"), limit = 1).map { it.title })
+    }
+
+    @Test
+    fun replaceClearsTheLibraryAndMergeSkipsAUrlThatIsAlreadySaved() = runTest {
+        dao.addToFolder(BookmarkFolderEntity.MOBILE_ID, "Old", "https://old.example/", "old.example", addedAt = 1)
+        dao.insertImport(
+            fileName = "old.html",
+            rows = listOf(ImportRow.Bookmark(null, "Imported", "https://imported.example/", "imported.example")),
+            now = 2,
+        )
+
+        dao.replaceTree(
+            listOf(
+                BackupFolder(
+                    kind = FolderKind.MOBILE,
+                    name = null,
+                    sourceFileName = null,
+                    bookmarks = listOf(BackupBookmark("Kept", "https://kept.example/", 3)),
+                    folders = listOf(
+                        BackupFolder(
+                            kind = FolderKind.FOLDER,
+                            name = "Work",
+                            sourceFileName = null,
+                            bookmarks = listOf(BackupBookmark("Nested", "https://nested.example/", 4)),
+                        ),
+                    ),
+                ),
+            ),
+            now = 5,
+        )
+
+        val afterReplace = dao.allBookmarks().map { it.url }.sorted()
+        assertEquals(listOf("https://kept.example/", "https://nested.example/"), afterReplace)
+        assertEquals(listOf(FolderKind.MOBILE, FolderKind.FOLDER), dao.allFolders().map { it.kind })
+
+        dao.mergePlacements(
+            listOf(
+                BookmarkPlacement(
+                    steps = listOf(FolderStep(FolderKind.MOBILE, null, null)),
+                    title = "Kept again",
+                    url = "https://kept.example/",
+                    addedAt = 6,
+                ),
+                BookmarkPlacement(
+                    steps = listOf(FolderStep(FolderKind.MOBILE, null, null), FolderStep(FolderKind.FOLDER, "Work", null)),
+                    title = "Extra",
+                    url = "https://extra.example/",
+                    addedAt = 7,
+                ),
+            ),
+            now = 8,
+        )
+
+        assertEquals(
+            listOf("https://extra.example/", "https://kept.example/", "https://nested.example/"),
+            dao.allBookmarks().map { it.url }.sorted(),
+        )
     }
 
     private companion object {

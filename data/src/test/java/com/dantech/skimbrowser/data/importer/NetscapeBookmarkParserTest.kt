@@ -10,6 +10,21 @@ import org.junit.Test
 class NetscapeBookmarkParserTest {
 
     @Test
+    fun theParserFollowsATableOfBookmarkFiles() {
+        val cases = listOf(
+            bookmarkFile("""<DT><A HREF="https://example.com/a">A</A>""") to listOf("https://example.com/a"),
+            bookmarkFile("""<DT><A HREF="javascript:alert(1)">No</A>""", """<DT><A HREF="https://example.com/b">B</A>""") to listOf("https://example.com/b"),
+            "not a bookmark file".toByteArray() to null,
+            bookmarkFile() to emptyList(),
+        )
+
+        for ((bytes, urls) in cases) {
+            val parsed = NetscapeBookmarkParser.parse(bytes)
+            assertEquals(urls, parsed?.let { urlsOf(it) })
+        }
+    }
+
+    @Test
     fun aChromeExportKeepsItsFoldersSubfoldersAndOrder() {
         val nodes = NetscapeBookmarkParser.parse(fixture("chrome-export.html"))
 

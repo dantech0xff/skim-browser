@@ -91,6 +91,29 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.SCAM_WARNINGS] = enabled }
     }
 
+    /** Writes every portable setting in one edit. The install id and the last tab id stay. */
+    override suspend fun replacePortable(settings: SkimSettings, shieldDisabledHosts: Set<String>) {
+        val ratings = settings.sendRatings
+        val pageText = settings.pageTextZoomPercent
+        dataStore.edit { prefs ->
+            prefs[Keys.SEARCH_ENGINE] = settings.searchEngine.name
+            prefs[Keys.THEME] = settings.theme.name
+            prefs[Keys.ASK_BEFORE_SENDING] = settings.askBeforeSending
+            prefs[Keys.KEEP_CHAT_HISTORY] = settings.keepChatHistory
+            if (ratings == null) prefs.remove(Keys.SEND_RATINGS) else prefs[Keys.SEND_RATINGS] = ratings
+            prefs[Keys.READER_TEXT_SCALE] = settings.readerTextScalePercent.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)
+            if (pageText == null) {
+                prefs.remove(Keys.PAGE_TEXT_ZOOM)
+            } else {
+                prefs[Keys.PAGE_TEXT_ZOOM] = pageText.coerceIn(SkimSettings.READER_TEXT_SCALE_RANGE)
+            }
+            prefs[Keys.READER_FONT] = settings.readerFont.name
+            prefs[Keys.ONBOARDING_COMPLETED] = settings.onboardingCompleted
+            prefs[Keys.SCAM_WARNINGS] = settings.scamWarnings
+            prefs[Keys.SHIELD_DISABLED] = shieldDisabledHosts.map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
+        }
+    }
+
     override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
         val key = normalizeHost(host)
         if (key.isEmpty()) return

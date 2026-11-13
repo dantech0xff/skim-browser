@@ -15,6 +15,9 @@ private const val MATCHING =
 @Dao
 abstract class HistoryDao {
 
+    @Query("SELECT * FROM history ORDER BY visitedAt ASC, id ASC")
+    abstract suspend fun allRows(): List<HistoryEntryEntity>
+
     @Query("SELECT * FROM history WHERE url = :url")
     abstract suspend fun byUrl(url: String): HistoryEntryEntity?
 
