@@ -48,6 +48,7 @@ function (args) {
 
   if (op === 'collect') {
     if (!document.body) return [];
+    bag.showing = 'page';
     var view = [];
     var rest = [];
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
@@ -56,12 +57,14 @@ function (args) {
       if (view.length >= MAX_VIEW && rest.length >= MAX_REST) break;
       var parent = node.parentElement;
       if (!parent || SKIP[parent.tagName] || parent.isContentEditable || hidden(parent)) continue;
-      var text = squash(node.nodeValue);
+      var known = bag.weak.get(node);
+      var raw = known != null && bag.originals[known] != null ? bag.originals[known] : node.nodeValue;
+      var text = squash(raw);
       if (text.length < 2 || text.length > MAX_NODE) continue;
       var inView = seen(parent);
       var intoView = inView && view.length < MAX_VIEW;
       if (!intoView && rest.length >= MAX_REST) continue;
-      var id = bag.weak.get(node);
+      var id = known;
       if (id == null) {
         id = bag.next++;
         bag.weak.set(node, id);
