@@ -10,7 +10,6 @@ import com.dantech.skimbrowser.domain.url.registrableDomain
  */
 enum class InterruptKind { POPUP, TOP_FRAME }
 
-/** Allow the navigation, or stop it and tell the person. */
 enum class InterruptVerdict { ALLOW, BLOCK }
 
 /**
@@ -38,24 +37,11 @@ data class InterruptRequest(
     val millisSinceInteraction: Long? = null,
 )
 
-/**
- * Whether [request] may proceed under [policy].
- *
- * A popup without a user gesture is blocked. One with a gesture opens as a tab.
- *
- * A top-frame http(s) load is blocked when it has no gesture, leaves the registrable domain, and
- * the page has not been touched or was last touched [IDLE_AFTER_TOUCH_MS] ago. That is the jump
- * right after load and the jump while the page sits idle. A click, a same-site load, an OAuth
- * return (`code` with `state`, or a token), and a load that starts on a login or payment domain
- * are allowed. `file`, `content` and `javascript` are allowed here so the navigation layer can
- * keep blocking them with no prompt.
- */
 fun decideInterrupt(request: InterruptRequest, policy: InterruptPolicy): InterruptVerdict = when (request.kind) {
     InterruptKind.POPUP -> popupVerdict(request, policy)
     InterruptKind.TOP_FRAME -> navigationVerdict(request, policy)
 }
 
-/** How long after the last touch a cross-site jump still counts as part of that touch. */
 const val IDLE_AFTER_TOUCH_MS = 30_000L
 
 private fun popupVerdict(request: InterruptRequest, policy: InterruptPolicy): InterruptVerdict {

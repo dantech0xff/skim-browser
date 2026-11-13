@@ -57,10 +57,8 @@ interface TabEngine {
      */
     fun withTemporaryWebView(profile: String?, block: (WebView) -> Unit)
 
-    /** Finishes a popup the page opened on its own. False when that tab is not holding one. */
     fun openHeldPopup(tabId: String): Boolean = false
 
-    /** Drops a held popup the person did not open. */
     fun dropHeldPopup(tabId: String) = Unit
 
     /** Loads [url], or hands an app link to another app, after the person allowed a blocked navigation. */

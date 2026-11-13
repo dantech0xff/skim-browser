@@ -78,19 +78,14 @@ class SkimAppViewModel @Inject constructor(
     private val notices: InterruptNotices = InterruptNotices.None,
 ) : ViewModel() {
 
-    /** Popups and redirects the browser stopped. */
     val blocked: Flow<BlockedInterrupt> = notices.blocked
 
-    /** Opens a popup that was held for the snackbar. */
     fun openHeldPopup(tabId: String) = notices.openHeldPopup(tabId)
 
-    /** Drops a held popup the person did not open. */
     fun dropHeldPopup(tabId: String) = notices.dropHeldPopup(tabId)
 
-    /** Continues a redirect or an app link the person allowed once. */
     fun allowBlockedNavigation(tabId: String, url: String) = notices.allowNavigation(tabId, url)
 
-    /** Lets this site open popups, and opens the one that was held. */
     fun alwaysAllowPopups(host: String, tabId: String) {
         viewModelScope.launch {
             settings.setPopupAllowed(host, true)
@@ -98,7 +93,6 @@ class SkimAppViewModel @Inject constructor(
         }
     }
 
-    /** Lets this site redirect, and continues the navigation that was blocked. */
     fun alwaysAllowRedirects(host: String, tabId: String, url: String) {
         viewModelScope.launch {
             settings.setRedirectAllowed(host, true)

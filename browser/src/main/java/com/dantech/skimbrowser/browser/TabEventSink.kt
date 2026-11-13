@@ -64,7 +64,6 @@ interface TabEventSink {
      */
     fun onPopupBlocked(tabId: String)
 
-    /** A main-frame navigation was stopped. [url] is what the page asked to load. */
     fun onRedirectBlocked(tabId: String, url: String)
 
     /** The WebView state of the tab was saved, before eviction, on stop or before a close. */

@@ -92,7 +92,6 @@ class WebViewPool(
     private val timers: WebViewTimers = WebViewTimers.process,
     /** Draws a WebView's thumbnail, or null while it has nothing to show. */
     private val drawThumbnail: (View) -> Bitmap? = ::captureThumbnail,
-    /** Popup and redirect choices. The default blocks both. */
     private val interrupts: () -> InterruptPolicy = { InterruptPolicy() },
 ) : TabEngine {
 

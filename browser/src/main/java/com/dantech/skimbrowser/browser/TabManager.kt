@@ -177,7 +177,6 @@ class TabManager(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    /** Popups and redirects that were stopped, for the snackbar. */
     override val blocked: Flow<BlockedInterrupt> = _blocked.asSharedFlow()
 
     /** Where the WebView layer reports what happens in the tabs. */

@@ -4,9 +4,8 @@ import com.dantech.skimbrowser.domain.url.normalizeHost
 
 /**
  * The script that installs one stylesheet. It looks up a single style element by id and sets its
- * text. The ad hide and the collapse scripts do not walk the page's nodes. The cookie script
- * looks up one banner, and only when the page has locked scrolling, before it hides it. A frame
- * whose host is not the one the script was built for returns without writing.
+ * text. It does not walk the page's nodes. A frame whose host is not [host] returns without
+ * writing, so a script armed for one site does not hide another.
  */
 object CosmeticScript {
     const val HIDE_STYLE_ID = "skim-hide"

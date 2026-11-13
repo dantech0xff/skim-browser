@@ -8,7 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The bundled cookie-banner hides, parsed the same way as the ad cosmetic rules. */
 @RunWith(AndroidJUnit4::class)
 class CookieFiltersAssetTest {
 

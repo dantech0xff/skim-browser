@@ -23,8 +23,7 @@ import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
  *
  * A file input is always answered exactly once, also when the picker is cancelled, a second input
  * replaces it, or the WebView goes away; an unanswered input would block every later one on the
- * page. A window the user asked for opens as a new tab whose WebView the pool makes. A window the
- * page opens on its own is held until the person opens it or the notice goes away.
+ * page.
  *
  * A page's `alert`, `confirm`, `prompt` and leave-page dialogs only show for the tab on screen
  * ([isShown]), so a tab in the background cannot put a dialog over another site, and at most
@@ -54,7 +53,6 @@ class SkimChromeClient(
     /** `FileChooserParams.parseResult`, the platform's reading of a picker result. */
     private val parseFileChooserResult: (resultCode: Int, data: Intent?) -> Array<Uri>? =
         WebChromeClient.FileChooserParams::parseResult,
-    /** True when a window without a gesture should be held instead of opened. */
     private val blockUngesturedPopup: (sourceUrl: String?) -> Boolean = { true },
 ) : WebChromeClient() {
 
@@ -75,7 +73,6 @@ class SkimChromeClient(
         sitePermissions.cancelTab(tabId)
     }
 
-    /** Opens the window that was held for the snackbar. False when there is nothing held. */
     fun openHeldWindow(): Boolean {
         val message = heldWindow ?: return false
         heldWindow = null
