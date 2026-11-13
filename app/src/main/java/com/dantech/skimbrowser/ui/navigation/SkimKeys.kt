@@ -62,6 +62,9 @@ data class TabsKey(val incognito: Boolean, val focusTabId: String? = null) : Ski
 @Serializable
 data object SettingsKey : SkimKey
 
+@Serializable
+data object BackupKey : SkimKey
+
 /** 10 AI and privacy settings. */
 @Serializable
 data object AiPrivacyKey : SkimKey

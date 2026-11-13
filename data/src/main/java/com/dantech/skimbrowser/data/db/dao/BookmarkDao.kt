@@ -7,6 +7,12 @@ import androidx.room.Transaction
 import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.db.entity.FolderKind
+import com.dantech.skimbrowser.domain.backup.BackupFolder
+import com.dantech.skimbrowser.domain.backup.BookmarkPlacement
+import com.dantech.skimbrowser.domain.backup.FolderStep
+import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.url.hostOf
 import kotlinx.coroutines.flow.Flow
 
 // Both LIKE operands share one pattern built by containsPattern, which escapes with a backslash.
@@ -35,6 +41,21 @@ abstract class BookmarkDao {
 
     @Query("SELECT * FROM bookmark_folders ORDER BY position, id")
     abstract fun observeFolders(): Flow<List<BookmarkFolderEntity>>
+
+    @Query("SELECT * FROM bookmark_folders ORDER BY position, id")
+    abstract suspend fun allFolders(): List<BookmarkFolderEntity>
+
+    @Query("SELECT * FROM bookmarks ORDER BY position, id")
+    abstract suspend fun allBookmarks(): List<BookmarkEntity>
+
+    @Query("DELETE FROM bookmark_folders WHERE parentId IS NULL AND id != :mobileId")
+    abstract suspend fun deleteRootsExcept(mobileId: Long)
+
+    @Query("DELETE FROM bookmark_folders WHERE parentId = :parentId")
+    abstract suspend fun deleteChildFolders(parentId: Long)
+
+    @Query("DELETE FROM bookmarks WHERE folderId = :folderId")
+    abstract suspend fun deleteBookmarksIn(folderId: Long)
 
     @Query("SELECT folderId, COUNT(*) AS bookmarkCount FROM bookmarks GROUP BY folderId")
     abstract fun observeCountsByFolder(): Flow<List<FolderBookmarkCount>>
@@ -191,5 +212,104 @@ abstract class BookmarkDao {
             }
         }
         return topId
+    }
+
+    @Transaction
+    open suspend fun replaceTree(tree: List<BackupFolder>, now: Long) {
+        deleteRootsExcept(BookmarkFolderEntity.MOBILE_ID)
+        deleteChildFolders(BookmarkFolderEntity.MOBILE_ID)
+        deleteBookmarksIn(BookmarkFolderEntity.MOBILE_ID)
+        writeFolders(parentId = null, folders = tree, now = now)
+    }
+
+    @Transaction
+    open suspend fun mergePlacements(rows: List<BookmarkPlacement>, now: Long) {
+        val urls = allBookmarks().mapTo(HashSet()) { it.url }
+        val folders = allFolders().toMutableList()
+        for (row in rows) {
+            if (!urls.add(row.url)) continue
+            val host = hostOf(row.url) ?: continue
+            val folderId = ensureFolder(row.steps, folders, now)
+            insert(
+                BookmarkEntity(
+                    folderId = folderId,
+                    title = row.title.cutTo(HistoryRepository.MAX_TITLE_LENGTH),
+                    url = row.url,
+                    host = host,
+                    position = nextPosition(folderId),
+                    addedAt = row.addedAt,
+                ),
+            )
+        }
+    }
+
+    private suspend fun writeFolders(parentId: Long?, folders: List<BackupFolder>, now: Long) {
+        folders.forEachIndexed { index, folder ->
+            val id = if (folder.kind == FolderKind.MOBILE && parentId == null) {
+                BookmarkFolderEntity.MOBILE_ID
+            } else {
+                insertFolder(
+                    BookmarkFolderEntity(
+                        parentId = parentId,
+                        name = folder.name,
+                        kind = folder.kind,
+                        sourceFileName = folder.sourceFileName,
+                        position = index,
+                        createdAt = now,
+                    ),
+                )
+            }
+            folder.bookmarks.forEachIndexed { bookmarkIndex, bookmark ->
+                val host = hostOf(bookmark.url) ?: return@forEachIndexed
+                insert(
+                    BookmarkEntity(
+                        folderId = id,
+                        title = bookmark.title.cutTo(HistoryRepository.MAX_TITLE_LENGTH),
+                        url = bookmark.url,
+                        host = host,
+                        position = bookmarkIndex,
+                        addedAt = bookmark.addedAt,
+                    ),
+                )
+            }
+            writeFolders(id, folder.folders, now)
+        }
+    }
+
+    private suspend fun ensureFolder(
+        steps: List<FolderStep>,
+        folders: MutableList<BookmarkFolderEntity>,
+        now: Long,
+    ): Long {
+        var parent: Long? = null
+        for (step in steps) {
+            val match = folders.firstOrNull { folder ->
+                folder.parentId == parent &&
+                    folder.kind == step.kind &&
+                    folder.name == step.name &&
+                    folder.sourceFileName == step.sourceFileName
+            }
+            if (match != null) {
+                parent = match.id
+                continue
+            }
+            if (step.kind == FolderKind.MOBILE && parent == null) {
+                parent = BookmarkFolderEntity.MOBILE_ID
+                continue
+            }
+            val position = folders.count { it.parentId == parent }
+            val created = BookmarkFolderEntity(
+                parentId = parent,
+                name = step.name,
+                kind = step.kind,
+                sourceFileName = step.sourceFileName,
+                position = position,
+                createdAt = now,
+            )
+            val id = insertFolder(created)
+            folders += created.copy(id = id)
+            parent = id
+        }
+        return parent ?: BookmarkFolderEntity.MOBILE_ID
     }
 }

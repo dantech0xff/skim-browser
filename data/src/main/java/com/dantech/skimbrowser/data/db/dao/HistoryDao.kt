@@ -15,6 +15,9 @@ private const val MATCHING =
 @Dao
 abstract class HistoryDao {
 
+    @Query("SELECT * FROM history ORDER BY visitedAt ASC, id ASC")
+    abstract suspend fun allRows(): List<HistoryEntryEntity>
+
     @Query("SELECT * FROM history WHERE url = :url")
     abstract suspend fun byUrl(url: String): HistoryEntryEntity?
 
@@ -44,6 +47,12 @@ abstract class HistoryDao {
 
     @Query("DELETE FROM history")
     abstract suspend fun deleteAll()
+
+    @Transaction
+    open suspend fun replaceAll(entries: List<HistoryEntryEntity>) {
+        deleteAll()
+        entries.forEach { insert(it.copy(id = 0)) }
+    }
 
     /**
      * Writes [entry] as the one row of its URL. A new URL is inserted with [entry]'s id (0 lets the

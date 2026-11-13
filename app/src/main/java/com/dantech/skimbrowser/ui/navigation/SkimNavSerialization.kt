@@ -19,6 +19,7 @@ val skimNavConfig: SavedStateConfiguration = SavedStateConfiguration {
             subclass(ReaderKey::class, ReaderKey.serializer())
             subclass(TabsKey::class, TabsKey.serializer())
             subclass(SettingsKey::class, SettingsKey.serializer())
+            subclass(BackupKey::class, BackupKey.serializer())
             subclass(AiPrivacyKey::class, AiPrivacyKey.serializer())
             subclass(HistoryKey::class, HistoryKey.serializer())
             subclass(DownloadsKey::class, DownloadsKey.serializer())

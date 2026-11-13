@@ -35,6 +35,12 @@ interface SettingsRepository {
     /** [enabled] false skips the on-device scam check and turns WebView Safe Browsing off. */
     suspend fun setScamWarnings(enabled: Boolean)
 
+    /**
+     * Writes the portable settings and the hosts where blocking is off. The install id and
+     * [SkimSettings.lastTabId] are left as they are.
+     */
+    suspend fun replacePortable(settings: SkimSettings, shieldDisabledHosts: Set<String>)
+
     /** Hosts where ad and tracker blocking is off. Empty until the person turns a site off. */
     val shieldDisabledHosts: Flow<Set<String>>
 

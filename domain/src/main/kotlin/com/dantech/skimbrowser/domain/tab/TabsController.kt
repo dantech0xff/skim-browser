@@ -26,6 +26,8 @@ interface TabsController {
         openerTabId: String?,
     ): String
 
+    fun openBackgroundTab(url: String, title: String): String
+
     /** Makes [tabId] the current tab. */
     fun select(tabId: String)
 

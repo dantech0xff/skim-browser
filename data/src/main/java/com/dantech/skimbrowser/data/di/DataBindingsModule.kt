@@ -1,6 +1,10 @@
 package com.dantech.skimbrowser.data.di
 
+import com.dantech.skimbrowser.data.backup.BackupFileStore
+import com.dantech.skimbrowser.data.backup.BackupLibraryStore
 import com.dantech.skimbrowser.data.importer.BookmarkImporter
+import com.dantech.skimbrowser.domain.backup.BackupFiles
+import com.dantech.skimbrowser.domain.backup.BackupLibrary
 import com.dantech.skimbrowser.data.repo.BookmarkRepository as BookmarkStore
 import com.dantech.skimbrowser.data.repo.ChatRepository as ChatStore
 import com.dantech.skimbrowser.data.repo.HistoryRepository as HistoryStore
@@ -39,4 +43,6 @@ internal abstract class DataBindingsModule {
     @Binds abstract fun savedArticles(store: SavedArticleStore): SavedArticleRepository
     @Binds abstract fun downloads(store: DownloadStore): DownloadLog
     @Binds abstract fun bookmarkFiles(importer: BookmarkImporter): BookmarkFiles
+    @Binds abstract fun backupLibrary(store: BackupLibraryStore): BackupLibrary
+    @Binds abstract fun backupFiles(store: BackupFileStore): BackupFiles
 }

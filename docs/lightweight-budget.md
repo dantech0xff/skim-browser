@@ -87,6 +87,8 @@ A page hides at most 2,300 selectors. The shortest 2,000 are generic rules, and 
 
 Scam and phishing warnings on top of the certificate interstitial measured 4,062,758 bytes, 23,328 above 4,039,430. The dex is the on-device host check and the warning page. The resource table grew because each new string is indexed once per configuration. Safe Browsing itself is Android System WebView. `maxGrowthBytes` stays 8,192. The new baseline is 4,062,758.
 
+Backup and restore, measured on that APK with the same toolchain, is 4,121,754 bytes, 58,996 above 4,062,758. A master assemble on this machine was 4,062,758, the same as the baseline, so the delta is this change. Compressed `classes.dex` grew by 40,083 bytes and `resources.arsc` by 9,844. No library was added. `kotlinx.serialization` was already in the APK. The bytes are the backup codec, the settings screen, and the new strings. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new baseline is 4,121,754.
+
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 
 2. Done. The Anthropic Java SDK is replaced by an OkHttp client that posts the proxy body in `docs/deployment-guide.md` and reads the event stream. On its own, before the font subset, the APK file fell from 5,752,084 bytes to 4,724,249 bytes, and compressed `classes.dex` fell from 3,274,757 bytes to 2,264,741. In this combined APK, compressed `classes.dex` is 2,264,656 bytes. The earlier dex estimate was 1,043,227 bytes (Jackson 417,456, kotlin-reflect 379,522, SDK 246,249).

@@ -282,6 +282,17 @@ class TabManager(
         openerTabId: String?,
     ): String = newTab(incognito, url, background, openedByExternalApp, closeOnBack, openerTabId)
 
+    @MainThread
+    override fun openBackgroundTab(url: String, title: String): String {
+        val id = newTab(incognito = false, url = url, background = true)
+        val clean = title.toVisibleText().cutTo(Tab.MAX_TITLE_LENGTH)
+        if (clean.isNotEmpty()) {
+            updateTab(id) { it.copy(title = clean) }
+            persistTab(id)
+        }
+        return id
+    }
+
     /** Makes [tabId] the current tab. A tab offline at its last load reloads if the network is back. */
     @MainThread
     override fun select(tabId: String) {

@@ -15,6 +15,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class SitePermissionDao {
 
+    @Query("SELECT * FROM site_permissions ORDER BY host")
+    abstract suspend fun allRows(): List<SitePermissionEntity>
+
+    @Query("DELETE FROM site_permissions")
+    abstract suspend fun deleteEveryRow()
+
     @Query("SELECT * FROM site_permissions WHERE host = :host")
     abstract fun observe(host: String): Flow<SitePermissionEntity?>
 
