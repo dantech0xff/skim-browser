@@ -81,6 +81,9 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onTranslationLanguage = { navigator.push(TranslationLanguageDialogKey) },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
         onBackup = { navigator.push(BackupKey) },
+        onBlockPopups = model::setBlockPopups,
+        onBlockOddRedirects = model::setBlockOddRedirects,
+        onHideCookieBanners = model::setHideCookieBanners,
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
         onTerms = legalOpener(navigator, BuildConfig.TERMS_URL),
         onLicenses = { navigator.push(LicensesKey) },
@@ -187,6 +190,9 @@ fun SettingsScreen(
     onTranslationLanguage: () -> Unit = {},
     onClearData: () -> Unit,
     onBackup: () -> Unit = {},
+    onBlockPopups: (Boolean) -> Unit = {},
+    onBlockOddRedirects: (Boolean) -> Unit = {},
+    onHideCookieBanners: (Boolean) -> Unit = {},
     onPrivacyPolicy: (() -> Unit)?,
     onTerms: (() -> Unit)?,
     onLicenses: () -> Unit,
@@ -281,22 +287,49 @@ fun SettingsScreen(
                 icon = R.drawable.ic_shield,
                 checked = state.scamWarnings,
                 index = 0,
-                count = 3,
+                count = PRIVACY_ROWS,
                 onCheckedChange = onScamWarnings,
+            )
+            SwitchRow(
+                headline = stringResource(R.string.settings_block_popups),
+                supporting = stringResource(R.string.settings_block_popups_summary),
+                icon = R.drawable.ic_shield,
+                checked = state.blockPopups,
+                index = 1,
+                count = PRIVACY_ROWS,
+                onCheckedChange = onBlockPopups,
+            )
+            SwitchRow(
+                headline = stringResource(R.string.settings_block_redirects),
+                supporting = stringResource(R.string.settings_block_redirects_summary),
+                icon = R.drawable.ic_shield,
+                checked = state.blockOddRedirects,
+                index = 2,
+                count = PRIVACY_ROWS,
+                onCheckedChange = onBlockOddRedirects,
+            )
+            SwitchRow(
+                headline = stringResource(R.string.settings_hide_cookie_banners),
+                supporting = stringResource(R.string.settings_hide_cookie_banners_summary),
+                icon = R.drawable.ic_shield,
+                checked = state.hideCookieBanners,
+                index = 3,
+                count = PRIVACY_ROWS,
+                onCheckedChange = onHideCookieBanners,
             )
             SkimListItem(
                 headline = stringResource(R.string.downloads_title),
                 supporting = stringResource(R.string.settings_downloads_summary),
-                index = 1,
-                count = 3,
+                index = 4,
+                count = PRIVACY_ROWS,
                 onClick = onDownloads,
                 leading = { IconTile(R.drawable.ic_download, colors.secondaryContainer, colors.onSecondaryContainer) },
             )
             SkimListItem(
                 headline = stringResource(R.string.clear_browsing_data),
                 supporting = stringResource(R.string.settings_clear_browsing_data_summary),
-                index = 2,
-                count = 3,
+                index = 5,
+                count = PRIVACY_ROWS,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
             )
@@ -402,4 +435,5 @@ private fun LazyListScope.section(
     item { SegmentedColumn(content = content) }
 }
 
+private const val PRIVACY_ROWS = 6
 private const val TAG = "Settings"

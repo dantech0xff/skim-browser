@@ -16,6 +16,7 @@
     <string name="action_switch">Switch</string>
     <string name="action_view">View</string>
     <string name="action_open">Open</string>
+    <string name="action_always_allow_site">Always allow on this site</string>
     <string name="action_retry">Retry</string>
     <string name="action_done">Done</string>
     <string name="action_reset">Reset</string>
@@ -183,6 +184,12 @@
     <string name="settings_section_privacy_security">Privacy &amp; security</string>
     <string name="settings_scam_warnings">Scam &amp; phishing warnings</string>
     <string name="settings_scam_warnings_summary">Warns on this device before an address looks like a scam. Safe Browsing is included.</string>
+    <string name="settings_block_popups">Block popups</string>
+    <string name="settings_block_popups_summary">Windows a page opens on its own stay closed.</string>
+    <string name="settings_block_redirects">Block odd redirects</string>
+    <string name="settings_block_redirects_summary">A page cannot jump to another site while you are not using it.</string>
+    <string name="settings_hide_cookie_banners">Hide cookie banners</string>
+    <string name="settings_hide_cookie_banners_summary">Common consent banners are hidden, and the page can scroll.</string>
     <string name="ai_settings_ask_before_sending">Ask before sending a page to the cloud</string>
     <string name="ai_settings_ask_before_sending_summary">Shows a prompt the first time you use AI on a site</string>
     <string name="ai_feedback_consent_title">Send ratings to Skim?</string>
@@ -387,6 +394,8 @@
 
     <!-- Snackbars -->
     <string name="snackbar_tab_closed">Tab closed</string>
+    <string name="snackbar_popup_blocked">Popup blocked</string>
+    <string name="snackbar_redirect_blocked">Redirect blocked</string>
     <plurals name="snackbar_tabs_closed">
         <item quantity="one">%d tab closed</item>
         <item quantity="other">%d tabs closed</item>

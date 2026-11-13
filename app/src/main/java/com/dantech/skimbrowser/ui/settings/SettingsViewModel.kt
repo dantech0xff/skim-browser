@@ -27,6 +27,9 @@ data class SettingsUiState(
     val isDefaultBrowser: Boolean = false,
     val askBeforeSending: Boolean = true,
     val scamWarnings: Boolean = true,
+    val blockPopups: Boolean = true,
+    val blockOddRedirects: Boolean = true,
+    val hideCookieBanners: Boolean = true,
     val versionName: String = "",
     val versionCode: Int = 0,
 )
@@ -53,6 +56,9 @@ class SettingsViewModel @Inject constructor(
             isDefaultBrowser = isDefault,
             askBeforeSending = stored.askBeforeSending,
             scamWarnings = stored.scamWarnings,
+            blockPopups = stored.blockPopups,
+            blockOddRedirects = stored.blockOddRedirects,
+            hideCookieBanners = stored.hideCookieBanners,
             versionName = version.name,
             versionCode = version.code,
         )
@@ -86,5 +92,17 @@ class SettingsViewModel @Inject constructor(
 
     fun setTranslationLanguage(tag: String?) {
         viewModelScope.launch { settings.setTranslationLanguage(tag) }
+    }
+
+    fun setBlockPopups(enabled: Boolean) {
+        viewModelScope.launch { settings.setBlockPopups(enabled) }
+    }
+
+    fun setBlockOddRedirects(enabled: Boolean) {
+        viewModelScope.launch { settings.setBlockOddRedirects(enabled) }
+    }
+
+    fun setHideCookieBanners(enabled: Boolean) {
+        viewModelScope.launch { settings.setHideCookieBanners(enabled) }
     }
 }
