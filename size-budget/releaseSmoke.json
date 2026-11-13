@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
   "variant": "releaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4154515,
-  "downloadSizeBytes": 2628238,
+  "fileSizeBytes": 4168285,
+  "downloadSizeBytes": 3726323,
   "maxGrowthBytes": 8192,
-  "definedMethods": 23214,
-  "referencedMethods": 26549,
+  "definedMethods": 24336,
+  "referencedMethods": 27754,
   "dexFiles": 1,
-  "notes": "Backup and restore baseline was 4121754. Find in page and page translation, measured on that APK, is 4154515, 32761 above 4121754. The added bytes are the translation script (assets/js/skim-translate.js, 1366 compressed), the in-page text replacement, the settings language row, and the menu entry. No library was added. Download size and method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Find-and-translate baseline was 4154515. One releaseSmoke assemble measured 4168285 bytes, 13770 above that. assets/shield/cookie.txt is 9689 compressed bytes and 41781 raw (1800 cookie-banner selectors). The other 4081 bytes are the popup and redirect decision, the settings rows, and the snackbar. No library was added. downloadSizeBytes and the method counts are apkanalyzer on this APK. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }
