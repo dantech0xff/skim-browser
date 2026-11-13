@@ -202,27 +202,69 @@ class SkimChromeClientTest {
 
         assertTrue(client.onCreateWindow(view, false, false, message))
 
-        assertEquals(listOf(Event.PopupBlocked(TAB)), events.events)
+        val blocked = events.events.single() as Event.PopupBlocked
+        assertEquals(TAB, blocked.tabId)
         assertTrue("no tab is made until the person opens it", popupViews.isEmpty())
         assertNull(transport.webView)
 
-        client.cancelHeldWindow()
-        assertFalse(client.openHeldWindow())
+        client.cancelHeldWindow(blocked.holdId)
+        assertFalse(client.openHeldWindow(blocked.holdId))
     }
 
+    @Test
     fun aHeldWindowOpensWhenThePersonAsks() {
         val (message, transport) = windowMessage()
         val delivered = mutableListOf<Message>()
         message.target = Handler(Looper.getMainLooper()) { delivered += Message.obtain(it); true }
 
         assertTrue(client.onCreateWindow(view, false, false, message))
-        assertTrue(client.openHeldWindow())
+        val holdId = (events.events.single() as Event.PopupBlocked).holdId
+        assertTrue(client.openHeldWindow(holdId))
 
-        assertEquals(listOf(Event.PopupBlocked(TAB), Event.PopupRequested(TAB)), events.events)
+        assertEquals(listOf(Event.PopupBlocked(TAB, holdId), Event.PopupRequested(TAB)), events.events)
         assertEquals(listOf("popup-tab"), popupViews)
         assertSame(popupView, transport.webView)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(1, delivered.size)
+    }
+
+    @Test
+    fun aFailedOpenStillAnswersThePage() {
+        popupView = null
+        val (message, transport) = windowMessage()
+        val delivered = mutableListOf<Message>()
+        message.target = Handler(Looper.getMainLooper()) { delivered += Message.obtain(it); true }
+
+        assertTrue(client.onCreateWindow(view, false, false, message))
+        val holdId = (events.events.first() as Event.PopupBlocked).holdId
+
+        assertFalse(client.openHeldWindow(holdId))
+
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("window.open is answered", 1, delivered.size)
+        assertNull(transport.webView)
+    }
+
+    @Test
+    fun dismissingAnOlderHoldDoesNotCancelTheNewerPopup() {
+        val (first, _) = windowMessage()
+        val (second, secondTransport) = windowMessage()
+        val delivered = mutableListOf<Message>()
+        val handler = Handler(Looper.getMainLooper()) { delivered += Message.obtain(it); true }
+        first.target = handler
+        second.target = handler
+
+        assertTrue(client.onCreateWindow(view, false, false, first))
+        val firstId = (events.events.single() as Event.PopupBlocked).holdId
+        assertTrue(client.onCreateWindow(view, false, false, second))
+        val secondId = (events.events.last() as Event.PopupBlocked).holdId
+        shadowOf(Looper.getMainLooper()).idle()
+
+        client.cancelHeldWindow(firstId)
+
+        assertTrue(client.openHeldWindow(secondId))
+        assertSame(popupView, secondTransport.webView)
+        assertTrue(delivered.size >= 1)
     }
 
     @Test

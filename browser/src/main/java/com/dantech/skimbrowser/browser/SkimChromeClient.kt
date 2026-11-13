@@ -58,6 +58,8 @@ class SkimChromeClient(
 
     private var pendingFiles: ValueCallback<Array<Uri>>? = null
     private var heldWindow: Message? = null
+    private var heldId = 0L
+    private var nextHoldId = 0L
     private var detached = false
     private var dialogDocument = NO_DOCUMENT
     private var dialogsShown = 0
@@ -69,22 +71,24 @@ class SkimChromeClient(
     fun detach() {
         detached = true
         answerFiles(pendingFiles, null)
-        cancelHeldWindow()
+        releaseHeld()
         sitePermissions.cancelTab(tabId)
     }
 
-    fun openHeldWindow(): Boolean {
+    /** Opens the hold [id] names. A newer hold on this tab is left alone. */
+    fun openHeldWindow(id: Long): Boolean {
+        if (id != heldId) return false
         val message = heldWindow ?: return false
         heldWindow = null
-        return deliverWindow(message)
+        if (deliverWindow(message)) return true
+        release(message)
+        return false
     }
 
-    /** Drops the held window so `window.open` returns nothing. */
-    fun cancelHeldWindow() {
-        val message = heldWindow ?: return
-        heldWindow = null
-        (message.obj as? WebView.WebViewTransport)?.webView = null
-        send(message)
+    /** Drops the hold [id] names so `window.open` returns nothing. A newer hold is left alone. */
+    fun cancelHeldWindow(id: Long) {
+        if (id != heldId) return
+        releaseHeld()
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
@@ -143,12 +147,25 @@ class SkimChromeClient(
         if (detached) return false
         // A window the page opened on its own is held, so the snackbar can still open it.
         if (!isUserGesture && blockUngesturedPopup(view.url)) {
-            cancelHeldWindow()
+            releaseHeld()
+            nextHoldId += 1
+            heldId = nextHoldId
             heldWindow = resultMsg
-            events.onPopupBlocked(tabId)
+            events.onPopupBlocked(tabId, heldId)
             return true
         }
         return deliverWindow(resultMsg)
+    }
+
+    private fun releaseHeld() {
+        val message = heldWindow ?: return
+        heldWindow = null
+        release(message)
+    }
+
+    private fun release(message: Message) {
+        (message.obj as? WebView.WebViewTransport)?.webView = null
+        send(message)
     }
 
     private fun deliverWindow(resultMsg: Message): Boolean {

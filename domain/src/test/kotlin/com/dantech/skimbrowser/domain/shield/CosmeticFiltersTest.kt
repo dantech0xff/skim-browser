@@ -155,6 +155,7 @@ class CosmeticFiltersTest {
         assertTrue(script.contains("overflow"))
         assertTrue(script.contains("position"))
         assertTrue(script.contains("#onetrust-consent-sdk"))
+        assertFalse(script.contains("[id*="))
         assertTrue(script.contains("\\n"))
         assertFalse(script.contains("\n"))
     }

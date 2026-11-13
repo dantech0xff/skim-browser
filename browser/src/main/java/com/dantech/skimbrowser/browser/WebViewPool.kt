@@ -462,13 +462,13 @@ class WebViewPool(
         }
     }
 
-    override fun openHeldPopup(tabId: String): Boolean {
+    override fun openHeldPopup(tabId: String, holdId: Long): Boolean {
         val entry = live[tabId]?.takeUnless { it.destroyed } ?: return false
-        return entry.chrome.openHeldWindow()
+        return entry.chrome.openHeldWindow(holdId)
     }
 
-    override fun dropHeldPopup(tabId: String) {
-        live[tabId]?.takeUnless { it.destroyed }?.chrome?.cancelHeldWindow()
+    override fun dropHeldPopup(tabId: String, holdId: Long) {
+        live[tabId]?.takeUnless { it.destroyed }?.chrome?.cancelHeldWindow(holdId)
     }
 
     override fun openPermitted(tabId: String, url: String) {

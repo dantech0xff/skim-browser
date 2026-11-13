@@ -196,7 +196,7 @@ class RequestShield private constructor(
         }
     }
 
-    private fun rulesReady(): Boolean = choicesReady.get() && cosmetic != null
+    private fun rulesReady(): Boolean = choicesReady.get() && cosmetic != null && cookie != null
 
     private fun isOff(host: String, incognito: Boolean): Boolean =
         if (incognito) host in incognitoOff else host in persisted.value

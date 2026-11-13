@@ -37,7 +37,7 @@ class RecordingEvents : TabEventSink {
 
         data class PopupClosed(val popupTabId: String) : Event
 
-        data class PopupBlocked(val tabId: String) : Event
+        data class PopupBlocked(val tabId: String, val holdId: Long) : Event
 
         data class RedirectBlocked(val tabId: String, val url: String) : Event
 
@@ -117,8 +117,8 @@ class RecordingEvents : TabEventSink {
         events += Event.PopupClosed(popupTabId)
     }
 
-    override fun onPopupBlocked(tabId: String) {
-        events += Event.PopupBlocked(tabId)
+    override fun onPopupBlocked(tabId: String, holdId: Long) {
+        events += Event.PopupBlocked(tabId, holdId)
     }
 
     override fun onRedirectBlocked(tabId: String, url: String) {

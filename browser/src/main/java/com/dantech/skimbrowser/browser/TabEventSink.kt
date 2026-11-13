@@ -62,7 +62,7 @@ interface TabEventSink {
      * The page tried to open a window without a user gesture, and popup blocking is on for this
      * site. The window is held until [SkimChromeClient.openHeldWindow] or cancelled.
      */
-    fun onPopupBlocked(tabId: String)
+    fun onPopupBlocked(tabId: String, holdId: Long)
 
     fun onRedirectBlocked(tabId: String, url: String)
 

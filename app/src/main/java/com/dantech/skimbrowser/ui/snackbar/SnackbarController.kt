@@ -47,12 +47,12 @@ sealed interface SnackbarAction {
     /** View: opens Bookmarks at the folder an import created (03). */
     data class ViewImported(val folderId: Long) : SnackbarAction
 
-    data class OpenBlockedPopup(val tabId: String) : SnackbarAction
+    data class OpenBlockedPopup(val tabId: String, val holdId: Long) : SnackbarAction
 
     /** Allow: loads a redirect, or hands an app link over, that was blocked. */
     data class AllowBlockedNavigation(val tabId: String, val url: String) : SnackbarAction
 
-    data class AlwaysAllowPopups(val host: String, val tabId: String) : SnackbarAction
+    data class AlwaysAllowPopups(val host: String, val tabId: String, val holdId: Long) : SnackbarAction
 
     data class AlwaysAllowRedirects(val host: String, val tabId: String, val url: String) : SnackbarAction
 }

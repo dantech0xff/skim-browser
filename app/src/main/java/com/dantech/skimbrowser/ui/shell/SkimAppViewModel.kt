@@ -80,16 +80,16 @@ class SkimAppViewModel @Inject constructor(
 
     val blocked: Flow<BlockedInterrupt> = notices.blocked
 
-    fun openHeldPopup(tabId: String) = notices.openHeldPopup(tabId)
+    fun openHeldPopup(tabId: String, holdId: Long) = notices.openHeldPopup(tabId, holdId)
 
-    fun dropHeldPopup(tabId: String) = notices.dropHeldPopup(tabId)
+    fun dropHeldPopup(tabId: String, holdId: Long) = notices.dropHeldPopup(tabId, holdId)
 
     fun allowBlockedNavigation(tabId: String, url: String) = notices.allowNavigation(tabId, url)
 
-    fun alwaysAllowPopups(host: String, tabId: String) {
+    fun alwaysAllowPopups(host: String, tabId: String, holdId: Long) {
         viewModelScope.launch {
             settings.setPopupAllowed(host, true)
-            notices.openHeldPopup(tabId)
+            notices.openHeldPopup(tabId, holdId)
         }
     }
 

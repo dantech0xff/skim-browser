@@ -381,13 +381,13 @@ class TabManager(
     }
 
     @MainThread
-    override fun openHeldPopup(tabId: String) {
-        engine.value?.openHeldPopup(tabId)
+    override fun openHeldPopup(tabId: String, holdId: Long) {
+        engine.value?.openHeldPopup(tabId, holdId)
     }
 
     @MainThread
-    override fun dropHeldPopup(tabId: String) {
-        engine.value?.dropHeldPopup(tabId)
+    override fun dropHeldPopup(tabId: String, holdId: Long) {
+        engine.value?.dropHeldPopup(tabId, holdId)
     }
 
     /** An http(s) URL loads in the tab. Anything else is an app link the person just allowed. */
@@ -1318,9 +1318,9 @@ class TabManager(
             finalizeClose(close(listOf(popupTabId)))
         }
 
-        override fun onPopupBlocked(tabId: String) {
+        override fun onPopupBlocked(tabId: String, holdId: Long) {
             val tab = openTab(tabId) ?: return
-            _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.POPUP, tab.url?.let(::hostOf), null))
+            _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.POPUP, tab.url?.let(::hostOf), null, holdId))
         }
 
         override fun onRedirectBlocked(tabId: String, url: String) {

@@ -98,8 +98,8 @@ fun SkimApp(
             when (event.kind) {
                 InterruptKind.POPUP -> viewModel.snackbar.show(
                     UiText.Res(R.string.snackbar_popup_blocked),
-                    SnackbarAction.OpenBlockedPopup(event.tabId),
-                    secondary = event.host?.let { SnackbarAction.AlwaysAllowPopups(it, event.tabId) },
+                    SnackbarAction.OpenBlockedPopup(event.tabId, event.holdId),
+                    secondary = event.host?.let { SnackbarAction.AlwaysAllowPopups(it, event.tabId, event.holdId) },
                 )
                 InterruptKind.TOP_FRAME -> {
                     val url = event.url ?: return@collect
@@ -126,15 +126,15 @@ fun SkimApp(
                     placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
                     onAction = { action ->
                         when (action) {
-                            is SnackbarAction.OpenBlockedPopup -> viewModel.openHeldPopup(action.tabId)
+                            is SnackbarAction.OpenBlockedPopup -> viewModel.openHeldPopup(action.tabId, action.holdId)
                             is SnackbarAction.AllowBlockedNavigation -> viewModel.allowBlockedNavigation(action.tabId, action.url)
-                            is SnackbarAction.AlwaysAllowPopups -> viewModel.alwaysAllowPopups(action.host, action.tabId)
+                            is SnackbarAction.AlwaysAllowPopups -> viewModel.alwaysAllowPopups(action.host, action.tabId, action.holdId)
                             is SnackbarAction.AlwaysAllowRedirects -> viewModel.alwaysAllowRedirects(action.host, action.tabId, action.url)
                             else -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload)
                         }
                     },
                     onClosed = { action ->
-                        if (action is SnackbarAction.OpenBlockedPopup) viewModel.dropHeldPopup(action.tabId)
+                        if (action is SnackbarAction.OpenBlockedPopup) viewModel.dropHeldPopup(action.tabId, action.holdId)
                     },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )

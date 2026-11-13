@@ -33,13 +33,10 @@ object CosmeticScript {
         append("var hs=getComputedStyle(r);var bs=b?getComputedStyle(b):null;")
         append("var hidden=hs.overflow==='hidden'||hs.overflowY==='hidden'||")
         append("(bs&&(bs.overflow==='hidden'||bs.overflowY==='hidden'||bs.position==='fixed'));")
-        append("if(hidden){var q=null;try{q=document.querySelector(")
+        append("if(hidden){try{if(document.querySelector(")
         append(jsString(COOKIE_PROBES))
-        append(");}catch(e){}")
-        append("if(!q){try{q=document.querySelector(")
-        append(jsString(COOKIE_NAME_PROBE))
-        append(");}catch(e){}}")
-        append("if(q)lock=true;}}catch(e){}")
+        append("))lock=true;}catch(e){}}")
+        append("}catch(e){}")
         append("var s=document.getElementById(")
         append(jsString(COOKIE_STYLE_ID))
         append(");")
@@ -90,10 +87,6 @@ private const val COOKIE_PROBES = "#onetrust-consent-sdk,#onetrust-banner-sdk,#C
     "#CybotCookiebotDialogBodyUnderlay,#didomi-host,#usercentrics-root,#sp_message_container," +
     "#qc-cmp2-container,#tarteaucitronRoot,.osano-cm-window,.fc-consent-root,.cc-window," +
     "#cookie-law-info-bar,#hs-eu-cookie-confirmation,.cky-consent-container,#cmplz-cookiebanner-container"
-
-private const val COOKIE_NAME_PROBE =
-    "[id*='cookie'],[id*='Cookie'],[id*='consent'],[id*='Consent'],[id*='gdpr'],[id*='GDPR']," +
-        "[class*='cookie'],[class*='Cookie'],[class*='consent'],[class*='Consent']"
 
 /** A JavaScript string literal. `<` is escaped so the text cannot close a script element. */
 internal fun jsString(value: String): String = buildString(value.length + 2) {
