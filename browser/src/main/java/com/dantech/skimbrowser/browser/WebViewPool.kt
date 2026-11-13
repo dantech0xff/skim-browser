@@ -574,6 +574,9 @@ class WebViewPool(
             javaScriptEnabled = true
             domStorageEnabled = true
             setSupportMultipleWindows(true)
+            // Without this, WebView answers an ungestured window.open with null and never
+            // calls onCreateWindow, so the blocked popup cannot be opened from the snackbar.
+            javaScriptCanOpenWindowsAutomatically = true
             builtInZoomControls = true
             displayZoomControls = false
             allowFileAccess = false

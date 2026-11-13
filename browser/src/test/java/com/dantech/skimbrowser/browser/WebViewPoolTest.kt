@@ -612,6 +612,8 @@ class WebViewPoolTest {
         val view = livePage(f, pool, id)
 
         assertEquals(PageTextZoom.ofFontScale(activity.resources.configuration.fontScale), view.settings.textZoom)
+        assertTrue(view.settings.supportMultipleWindows())
+        assertTrue(view.settings.javaScriptCanOpenWindowsAutomatically)
 
         val larger = Configuration(activity.resources.configuration)
         larger.fontScale = 1.3f

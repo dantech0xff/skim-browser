@@ -16,8 +16,9 @@ import org.junit.runner.RunWith
 
 /**
  * Windows that pages open (`window.open`, sign-in and payment popups) on the device's WebView:
- * only after a tap, as a foreground tab that stays linked to its opener, kept alive with it when the
- * app goes to the background, and closed back to the opener by `window.close()`.
+ * a tap opens a foreground tab that stays linked to its opener, kept alive with it when the app
+ * goes to the background, and closed back to the opener by `window.close()`. A window the page
+ * opens on its own is not shown and does not load.
  */
 @HiltAndroidTest
 @RunWith(AndroidJUnit4::class)
@@ -74,9 +75,10 @@ class PopupAndTrimTest {
     fun aPageCannotOpenAWindowWithoutATap() {
         val (opener, _) = showOpener()
 
-        val opened = rig.evaluate(opener, "String(window.open('/popup.html?unasked', 'skim-unasked'))")
+        // The open is scheduled so this call does not wait on the held window.
+        val scheduled = rig.evaluate(opener, "setTimeout(function(){window.open('/popup.html?unasked','skim-unasked')},0);'scheduled'")
 
-        assertEquals("the page gets no window", "null", jsValue(opened))
+        assertEquals("scheduled", jsValue(scheduled))
         assertTrue("and no tab opens", holdsFor(NO_WINDOW_MS) { rig.tabs.state.value.tabs.size == 1 })
         assertTrue(rig.pages.requests("/popup.html").isEmpty())
     }
