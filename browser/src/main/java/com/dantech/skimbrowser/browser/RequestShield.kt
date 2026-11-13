@@ -234,8 +234,9 @@ class RequestShield private constructor(
         }
     }
 
-    override fun whenCookieChoiceChanges(action: () -> Unit) {
+    override fun whenCookieChoiceChanges(action: () -> Unit): () -> Unit {
         synchronized(cookieChoiceListeners) { cookieChoiceListeners += action }
+        return { synchronized(cookieChoiceListeners) { cookieChoiceListeners.remove(action) } }
     }
 
     private fun adsReady(): Boolean = choicesReady.get() && cosmetic != null

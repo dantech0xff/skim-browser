@@ -51,8 +51,11 @@ interface ShieldChoices {
         action()
     }
 
-    /** Runs [action] when the cookie-banner switch changes after this call. */
-    fun whenCookieChoiceChanges(action: () -> Unit) = Unit
+    /**
+     * Runs [action] when the cookie-banner switch changes after this call.
+     * The returned function removes [action].
+     */
+    fun whenCookieChoiceChanges(action: () -> Unit): () -> Unit = ({ })
 
     /**
      * Stylesheet that hides cookie banners on [documentUrl]. Empty when hiding is off, the URL

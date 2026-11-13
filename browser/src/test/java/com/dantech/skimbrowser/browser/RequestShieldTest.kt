@@ -132,6 +132,26 @@ class RequestShieldTest {
         assertEquals(1, changes)
     }
 
+    @Test(timeout = 5_000)
+    fun aRemovedCookieListenerIsNotCalled() = runBlocking {
+        val settings = FakeSettingsRepository()
+        val shield = RequestShield.loading(
+            loadCosmetic = { CosmeticFilters.EMPTY },
+            settings = settings,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+        var changes = 0
+        val stop = shield.whenCookieChoiceChanges { changes += 1 }
+        var kept = 0
+        shield.whenCookieChoiceChanges { kept += 1 }
+
+        stop()
+        settings.setHideCookieBanners(false)
+
+        assertEquals(0, changes)
+        assertEquals(1, kept)
+    }
+
     private companion object {
         const val PAGE = "https://www.example.com/story"
         const val OTHER = "https://news.example/story"

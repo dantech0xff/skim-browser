@@ -13,10 +13,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import java.util.concurrent.atomic.AtomicBoolean
 import android.widget.FrameLayout
 import androidx.annotation.MainThread
 import androidx.webkit.WebViewCompat
@@ -154,9 +151,11 @@ class WebViewPool(
         }
     }
 
+    private val stopCookieChoice: () -> Unit
+
     init {
         activity.registerComponentCallbacks(fontScaleCallbacks)
-        shield.whenCookieChoiceChanges {
+        stopCookieChoice = shield.whenCookieChoiceChanges {
             val refresh = Runnable {
                 if (destroyed) return@Runnable
                 live.values.toList().forEach { entry ->
@@ -310,25 +309,11 @@ class WebViewPool(
             onUrl(null)
             return {}
         }
-        val done = AtomicBoolean(false)
-        fun finish(url: String?, notify: Boolean) {
-            if (!done.compareAndSet(false, true)) return
-            probe.stopLoading()
-            probe.destroy()
-            if (notify) onUrl(url)
-        }
-        probe.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                if (!request.isForMainFrame) return true
-                val url = request.url?.toString().orEmpty()
-                if (url.isBlank() || url == "about:blank") return true
-                finish(url, notify = true)
-                return true
-            }
-        }
+        val held = PopupProbe(probe, onUrl)
+        probe.webViewClient = held.client
         transport.webView = probe
         sendPopupResult(resultMsg)
-        return { finish(null, notify = false) }
+        return held::abandon
     }
 
     private fun sendPopupResult(message: Message) {
@@ -387,6 +372,7 @@ class WebViewPool(
      */
     fun destroyAll() {
         if (destroyed) return
+        stopCookieChoice()
         activity.unregisterComponentCallbacks(fontScaleCallbacks)
         if (!savedSinceStop) saveAll()
         if (started) {

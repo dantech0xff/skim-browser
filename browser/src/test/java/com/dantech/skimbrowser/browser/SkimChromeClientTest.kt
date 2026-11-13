@@ -264,6 +264,24 @@ class SkimChromeClientTest {
     }
 
     @Test
+    fun anOpenBeforeABlankWindowDoesNotKeepTheProbe() {
+        var report: ((String?) -> Unit)? = null
+        reportPopup = { onUrl -> report = onUrl }
+        val (message, _) = windowMessage()
+        message.target = Handler(Looper.getMainLooper()) { true }
+
+        assertTrue(client.onCreateWindow(view, false, false, message))
+        val holdId = (events.events.single() as Event.PopupBlocked).holdId
+        assertFalse(client.openHeldWindow(holdId))
+
+        report?.invoke(null)
+        report?.invoke("https://ads.example/late")
+
+        assertTrue(loads.isEmpty())
+        assertFalse(client.openHeldWindow(holdId))
+    }
+
+    @Test
     fun aFailedOpenStillAnswersThePage() {
         reportPopup = { onUrl -> onUrl(null) }
         val (message, transport) = windowMessage()
