@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** What Backup & restore shows. Copy is resolved by the screen. */
 @Immutable
 data class BackupUiState(
     val bookmarks: Boolean = true,
@@ -56,7 +55,6 @@ data class BackupUiState(
     fun sections(): Set<BackupSection> = BackupSection.entries.filter(::checked).toSet()
 }
 
-/** The outcome of the last export or import, until the person dismisses it. */
 sealed interface BackupNotice {
     data class Failed(val failure: BackupFailure) : BackupNotice
 
@@ -69,10 +67,6 @@ sealed interface BackupNotice {
     data object HtmlFailed : BackupNotice
 }
 
-/**
- * Backup & restore. The screen only reports the file the person picked. Reading, writing, and
- * the choice to replace data happen here, off the call that paints the screen.
- */
 @HiltViewModel
 class BackupViewModel @Inject constructor(
     private val exportBackup: ExportBackup,
@@ -89,7 +83,6 @@ class BackupViewModel @Inject constructor(
     private val _state = MutableStateFlow(BackupUiState())
     val state: StateFlow<BackupUiState> = _state.asStateFlow()
 
-    /** Checks or unchecks [section]. A section the open file does not contain stays off. */
     fun setSection(section: BackupSection, checked: Boolean) {
         val file = _state.value.fileSections
         if (file != null && section !in file) return
@@ -106,7 +99,6 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    /** Writes the checked sections to [location]. */
     fun exportTo(location: String) {
         val sections = _state.value.sections()
         if (sections.isEmpty()) {
@@ -133,7 +125,6 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    /** Reads [location]. A bookmark HTML file is imported on its own. JSON waits for merge or replace. */
     fun importFrom(location: String) {
         viewModelScope.launch {
             _state.update { it.copy(working = true, notice = null, preview = null, confirmReplace = false) }

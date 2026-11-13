@@ -1,16 +1,11 @@
 package com.dantech.skimbrowser.domain.backup
 
-/** A backup ready to write, or a library that does not fit in one file. */
 sealed interface ExportOutcome {
     data class Ready(val document: BackupDocument) : ExportOutcome
 
     data object TooLarge : ExportOutcome
 }
 
-/**
- * Builds the backup file from the sections the person checked. A section that is not checked is
- * left out of the file entirely.
- */
 class ExportBackup(private val library: BackupLibrary) {
     suspend operator fun invoke(
         sections: Set<BackupSection>,

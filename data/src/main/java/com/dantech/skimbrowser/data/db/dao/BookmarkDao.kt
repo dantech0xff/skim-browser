@@ -214,7 +214,6 @@ abstract class BookmarkDao {
         return topId
     }
 
-    /** Clears every folder except Mobile bookmarks, then writes [tree] in one transaction. */
     @Transaction
     open suspend fun replaceTree(tree: List<BackupFolder>, now: Long) {
         deleteRootsExcept(BookmarkFolderEntity.MOBILE_ID)
@@ -223,7 +222,6 @@ abstract class BookmarkDao {
         writeFolders(parentId = null, folders = tree, now = now)
     }
 
-    /** Adds [rows] under their folder paths. A URL already stored is left as it is. */
     @Transaction
     open suspend fun mergePlacements(rows: List<BookmarkPlacement>, now: Long) {
         val urls = allBookmarks().mapTo(HashSet()) { it.url }

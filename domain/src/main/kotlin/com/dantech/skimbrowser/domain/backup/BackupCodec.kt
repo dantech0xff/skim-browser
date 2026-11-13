@@ -27,26 +27,18 @@ import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import kotlinx.serialization.json.intOrNull
 
-/** A backup file after it has been read, or the reason it was refused. */
 sealed interface BackupDecode {
     data class Ok(val document: BackupDocument) : BackupDecode
 
     data class Rejected(val failure: BackupFailure) : BackupDecode
 }
 
-/**
- * The backup file format. [encode] and [decode] are pure. A file is refused when it is not this
- * schema, names a schema version this build does not read, or is larger or more deeply nested
- * than [MAX_BYTES] and [MAX_DEPTH]. Unknown fields are ignored, so a token or a chat that a
- * crafted file adds is dropped and cannot come back out.
- */
+/** Unknown JSON fields are dropped, so a token or a chat in a crafted file cannot come back out. */
 object BackupCodec {
     const val SCHEMA_VERSION = 1
 
-    /** The most bytes read from a file. Ten megabytes holds a large export and stops a huge one. */
     const val MAX_BYTES = 10 * 1024 * 1024
 
-    /** Nesting deeper than this is refused before the parser walks it. */
     const val MAX_DEPTH = 32
 
     const val MAX_BOOKMARKS = 20_000
@@ -74,10 +66,6 @@ object BackupCodec {
 
     fun decode(text: String): BackupDecode = decode(text.byteInputStream())
 
-    /**
-     * Reads [input] up to [maxBytes]. Parsing stops as soon as the cap or the depth cap is hit,
-     * so the rest of a huge file is never pulled in.
-     */
     @OptIn(ExperimentalSerializationApi::class)
     fun decode(input: InputStream, maxBytes: Int = MAX_BYTES): BackupDecode {
         val guarded = GuardedInputStream(input, maxBytes, MAX_DEPTH)
@@ -102,10 +90,8 @@ object BackupCodec {
         }
     }
 
-    /** True when [bytes] look like a Netscape bookmark file rather than a JSON backup. */
     fun looksLikeHtml(bytes: ByteArray): Boolean = sniff(bytes) == Sniff.HTML
 
-    /** The first meaningful byte of [bytes], skipping a UTF-8 BOM and whitespace. */
     fun sniff(bytes: ByteArray): Sniff {
         var index = 0
         if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
@@ -264,10 +250,6 @@ private fun Throwable.tooLarge(): Boolean {
     return false
 }
 
-/**
- * Counts bytes and brace depth as the JSON parser reads. A string's braces do not count.
- * Throws [BackupTooLarge] at the cap so the parser never sees the rest.
- */
 private class GuardedInputStream(
     private val upstream: InputStream,
     private val maxBytes: Int,

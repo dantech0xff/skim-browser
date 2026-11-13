@@ -282,7 +282,6 @@ class TabManager(
         openerTabId: String?,
     ): String = newTab(incognito, url, background, openedByExternalApp, closeOnBack, openerTabId)
 
-    /** Opens a background tab and keeps [title] until the page replaces it. */
     @MainThread
     override fun openBackgroundTab(url: String, title: String): String {
         val id = newTab(incognito = false, url = url, background = true)

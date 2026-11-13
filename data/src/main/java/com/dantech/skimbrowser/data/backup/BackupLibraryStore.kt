@@ -28,7 +28,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-/** Reads and writes the on-device data a backup is allowed to carry. */
 @Singleton
 class BackupLibraryStore @Inject constructor(
     private val database: SkimDatabase,

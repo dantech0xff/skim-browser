@@ -91,7 +91,6 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         dataStore.edit { it[Keys.SCAM_WARNINGS] = enabled }
     }
 
-    /** Writes every portable setting in one edit. The install id and the last tab id stay. */
     override suspend fun replacePortable(settings: SkimSettings, shieldDisabledHosts: Set<String>) {
         val ratings = settings.sendRatings
         val pageText = settings.pageTextZoomPercent

@@ -7,7 +7,6 @@ import com.dantech.skimbrowser.domain.permission.SitePermission
 import com.dantech.skimbrowser.domain.settings.SkimSettings
 import com.dantech.skimbrowser.domain.tab.Tab
 
-/** How many items [document] would apply for [sections]. A section that is absent counts as zero. */
 fun preview(document: BackupDocument, sections: Set<BackupSection>): BackupCounts = BackupCounts(
     bookmarks = if (BackupSection.BOOKMARKS in sections) countBookmarks(document.bookmarks.orEmpty()) else 0,
     history = if (BackupSection.HISTORY in sections) document.history.orEmpty().size else 0,
@@ -16,10 +15,6 @@ fun preview(document: BackupDocument, sections: Set<BackupSection>): BackupCount
     sitePermissions = if (BackupSection.SITE_PERMISSIONS in sections) document.sitePermissions.orEmpty().size else 0,
 )
 
-/**
- * The bookmark tree stored on the phone, parents before children. A folder whose parent is missing
- * is skipped, and a parent cycle is not followed.
- */
 fun backupFolders(folders: List<BookmarkFolder>, bookmarks: List<Bookmark>): List<BackupFolder> {
     val byParent = folders.groupBy { it.parentId }
     val marks = bookmarks.groupBy { it.folderId }
@@ -40,10 +35,6 @@ fun backupFolders(folders: List<BookmarkFolder>, bookmarks: List<Bookmark>): Lis
     return build(null)
 }
 
-/**
- * Bookmarks from [incoming] whose URL is not already in [existingUrls] or earlier in the file.
- * The path includes every folder from the root, so a merge can create only the folders it needs.
- */
 fun bookmarksToAdd(existingUrls: Set<String>, incoming: List<BackupFolder>): List<BookmarkPlacement> {
     val seen = existingUrls.toMutableSet()
     val rows = ArrayList<BookmarkPlacement>()
@@ -62,10 +53,6 @@ fun bookmarksToAdd(existingUrls: Set<String>, incoming: List<BackupFolder>): Lis
     return rows
 }
 
-/**
- * One row per URL. The later visit wins. The same visit time keeps the later row in [entries],
- * so a second merge of the same file changes nothing.
- */
 fun dedupedHistory(entries: List<BackupHistory>): List<BackupHistory> {
     val byUrl = LinkedHashMap<String, BackupHistory>()
     for (entry in entries) {
@@ -75,14 +62,9 @@ fun dedupedHistory(entries: List<BackupHistory>): List<BackupHistory> {
     return byUrl.values.toList()
 }
 
-/** History rows as the backup file stores them. */
 fun historyRows(entries: List<HistoryEntry>): List<BackupHistory> =
     entries.map { BackupHistory(it.url, it.title, it.visitedAt) }
 
-/**
- * Normal web tabs in list order. Incognito tabs and tabs with no page are left out.
- * [order] is the place in that list.
- */
 fun backupTabs(tabs: List<Tab>): List<BackupTab> {
     var order = 0
     return tabs.mapNotNull { tab ->
@@ -95,10 +77,6 @@ fun backupTabs(tabs: List<Tab>): List<BackupTab> {
     }
 }
 
-/**
- * Tabs to open, in [order]. Merge skips a URL that is already open. Replace opens every URL in
- * the file once, and names the normal tabs that were open so the caller can close them after.
- */
 fun tabsToRestore(open: List<OpenTabRef>, incoming: List<BackupTab>, mode: ImportMode): TabRestore {
     val existing = open.mapNotNull { tab -> tab.url?.takeIf { !tab.incognito } }.toSet()
     val unique = LinkedHashMap<String, BackupTab>()
@@ -113,10 +91,6 @@ fun tabsToRestore(open: List<OpenTabRef>, incoming: List<BackupTab>, mode: Impor
     return TabRestore(chosen, closeIds)
 }
 
-/**
- * Site decisions to store. Merge keeps a host the file does not mention and lets the file win
- * for a host it does mention. Replace keeps only the file. A repeated host keeps the later row.
- */
 fun permissionsToWrite(
     existing: List<BackupSitePermission>,
     incoming: List<BackupSitePermission>,
@@ -135,7 +109,6 @@ fun permissionRows(rows: List<SitePermission>): List<BackupSitePermission> = row
     BackupSitePermission(it.host, it.skimAi, it.location, it.camera, it.microphone)
 }
 
-/** The portable part of [settings], plus the hosts where blocking is off. */
 fun portableSettings(settings: SkimSettings, shieldDisabledHosts: Set<String>): BackupSettings = BackupSettings(
     searchEngine = settings.searchEngine,
     theme = settings.theme,
@@ -150,7 +123,6 @@ fun portableSettings(settings: SkimSettings, shieldDisabledHosts: Set<String>): 
     shieldDisabledHosts = shieldDisabledHosts,
 )
 
-/** [portable] written back onto [current] without touching the last tab id. */
 fun settingsFromPortable(current: SkimSettings, portable: BackupSettings): SkimSettings = current.copy(
     searchEngine = portable.searchEngine,
     theme = portable.theme,

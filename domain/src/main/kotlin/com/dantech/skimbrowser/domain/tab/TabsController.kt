@@ -26,18 +26,7 @@ interface TabsController {
         openerTabId: String?,
     ): String
 
-    /**
-     * Opens a normal tab behind the current one and shows [title] until the page sets its own.
-     * The default opens the tab and leaves the title empty.
-     */
-    fun openBackgroundTab(url: String, title: String): String = openNewTab(
-        incognito = false,
-        url = url,
-        background = true,
-        openedByExternalApp = false,
-        closeOnBack = false,
-        openerTabId = null,
-    )
+    fun openBackgroundTab(url: String, title: String): String
 
     /** Makes [tabId] the current tab. */
     fun select(tabId: String)

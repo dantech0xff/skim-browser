@@ -83,6 +83,8 @@ class CollectOpenTabsTest {
             openerTabId: String?,
         ): String = error("unused")
 
+        override fun openBackgroundTab(url: String, title: String): String = error("unused")
+
         override fun select(tabId: String) = error("unused")
         override fun load(tabId: String, url: String) = error("unused")
         override fun returnToNewTabPage(tabId: String) = error("unused")

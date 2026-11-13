@@ -62,7 +62,6 @@ data class TabsKey(val incognito: Boolean, val focusTabId: String? = null) : Ski
 @Serializable
 data object SettingsKey : SkimKey
 
-/** Backup and restore. Not on a board. The file stays on the device. */
 @Serializable
 data object BackupKey : SkimKey
 

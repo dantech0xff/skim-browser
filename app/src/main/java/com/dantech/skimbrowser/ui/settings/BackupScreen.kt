@@ -34,7 +34,6 @@ import com.dantech.skimbrowser.ui.components.SkimButtonStyle
 import com.dantech.skimbrowser.ui.components.SkimListItem
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 
-/** Settings › Backup & restore. The person picks the file. The view model reads and writes it. */
 @Composable
 fun BackupRoute(navigator: SkimNavigator, model: BackupViewModel = hiltViewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
