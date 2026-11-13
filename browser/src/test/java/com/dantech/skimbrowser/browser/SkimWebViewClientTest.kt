@@ -272,6 +272,19 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun aServerRedirectIsNotAnOddRedirect() {
+        client.onPageStarted(view, PAGE, null)
+
+        assertFalse(
+            client.shouldOverrideUrlLoading(
+                view,
+                request("https://ads.example/offer", mainFrame = true, gesture = false, redirect = true),
+            ),
+        )
+        assertTrue(events.events.none { it is Event.RedirectBlocked })
+    }
+
+    @Test
     fun anotherAppOpensOnlyAfterAGesture() {
         assertTrue(client.shouldOverrideUrlLoading(view, request("tel:+6561234567", mainFrame = true, gesture = false)))
         assertTrue("blocked without a gesture", host.started.isEmpty())
@@ -635,8 +648,12 @@ class SkimWebViewClientTest {
         return SslError(primary, certificate, url)
     }
 
-    private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
-        TestWebResourceRequest(url, mainFrame, gesture)
+    private fun request(
+        url: String,
+        mainFrame: Boolean,
+        gesture: Boolean = true,
+        redirect: Boolean = false,
+    ): WebResourceRequest = TestWebResourceRequest(url, mainFrame, gesture, redirect)
 
     private fun client(
         shield: ShieldChoices,

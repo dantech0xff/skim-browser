@@ -305,7 +305,10 @@ class SkimWebViewClient(
                 events.onSafetyWarning(tabId, hit)
                 return true
             }
-            if (decideInterrupt(interruptRequest(url, request.hasGesture()), policy()) == InterruptVerdict.BLOCK) {
+            // isRedirect is a server hop. Those stay on the navigation tracker and are not odd redirects.
+            if (!request.isRedirect &&
+                decideInterrupt(interruptRequest(url, request.hasGesture()), policy()) == InterruptVerdict.BLOCK
+            ) {
                 abandonLoad()
                 events.onRedirectBlocked(tabId, url)
                 return true
