@@ -48,6 +48,12 @@ abstract class HistoryDao {
     @Query("DELETE FROM history")
     abstract suspend fun deleteAll()
 
+    @Transaction
+    open suspend fun replaceAll(entries: List<HistoryEntryEntity>) {
+        deleteAll()
+        entries.forEach { insert(it.copy(id = 0)) }
+    }
+
     /**
      * Writes [entry] as the one row of its URL. A new URL is inserted with [entry]'s id (0 lets the
      * database pick one, an Undo passes the old id). An existing URL keeps its row and id, its

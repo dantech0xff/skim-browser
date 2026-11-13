@@ -6,6 +6,7 @@ import com.dantech.skimbrowser.data.db.dao.HistoryDao
 import com.dantech.skimbrowser.data.db.dao.SitePermissionDao
 import com.dantech.skimbrowser.data.db.entity.BookmarkEntity
 import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
+import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
 import com.dantech.skimbrowser.data.db.entity.SitePermissionEntity
 import com.dantech.skimbrowser.domain.backup.BackupFolder
 import com.dantech.skimbrowser.domain.backup.BackupHistory
@@ -19,6 +20,9 @@ import com.dantech.skimbrowser.domain.backup.settingsFromPortable
 import com.dantech.skimbrowser.domain.bookmark.Bookmark
 import com.dantech.skimbrowser.domain.bookmark.BookmarkFolder
 import com.dantech.skimbrowser.domain.history.HistoryRepository
+import com.dantech.skimbrowser.domain.text.cutTo
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.permission.SitePermissionKind
 import com.dantech.skimbrowser.domain.permission.SitePermissionRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
@@ -68,8 +72,20 @@ class BackupLibraryStore @Inject constructor(
     }
 
     override suspend fun replaceHistory(entries: List<BackupHistory>) {
-        history.clearAll()
-        for (entry in entries) history.recordVisit(entry.url, entry.title, entry.visitedAt)
+        val rows = entries.mapNotNull { entry ->
+            if (!isWebUrl(entry.url) || entry.url.length > HistoryRepository.MAX_URL_LENGTH) return@mapNotNull null
+            val host = hostOf(entry.url) ?: return@mapNotNull null
+            HistoryEntryEntity(
+                url = entry.url,
+                title = entry.title.cutTo(HistoryRepository.MAX_TITLE_LENGTH),
+                host = host,
+                visitedAt = entry.visitedAt,
+            )
+        }
+        withContext(NonCancellable) {
+            historyRows.replaceAll(rows)
+            database.checkpointTruncate()
+        }
     }
 
     override suspend fun mergeHistory(entries: List<BackupHistory>) {

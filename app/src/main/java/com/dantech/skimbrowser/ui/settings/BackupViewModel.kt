@@ -23,11 +23,13 @@ import com.dantech.skimbrowser.domain.bookmark.ImportResult
 import com.dantech.skimbrowser.domain.tab.TabsController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Immutable
 data class BackupUiState(
@@ -213,16 +215,19 @@ class BackupViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(working = true, confirmReplace = false) }
             val open = tabs.state.value.tabs.map { OpenTabRef(it.id, it.url, it.incognito) }
-            val restore = applyBackup(document, sections, mode, open, System.currentTimeMillis())
-            restore.open.forEach { tab -> tabs.openBackgroundTab(tab.url, tab.title) }
-            if (restore.closeIds.isNotEmpty()) tabs.finalizeClose(tabs.close(restore.closeIds))
+            val counts = withContext(NonCancellable) {
+                val restore = applyBackup(document, sections, mode, open, System.currentTimeMillis())
+                restore.open.forEach { tab -> tabs.openBackgroundTab(tab.url, tab.title) }
+                if (restore.closeIds.isNotEmpty()) tabs.finalizeClose(tabs.close(restore.closeIds))
+                preview(document, sections)
+            }
             pending = null
             _state.update {
                 it.copy(
                     working = false,
                     preview = null,
                     fileSections = null,
-                    notice = BackupNotice.Restored(preview(document, sections)),
+                    notice = BackupNotice.Restored(counts),
                 )
             }
         }

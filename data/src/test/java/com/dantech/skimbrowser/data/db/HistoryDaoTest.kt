@@ -110,6 +110,21 @@ class HistoryDaoTest {
     }
 
     @Test
+    fun replaceAllKeepsTheNewRowsOnlyAfterTheDelete() = runTest {
+        dao.insert(entry(url = URL, title = "Old", visitedAt = 1))
+
+        dao.replaceAll(
+            listOf(
+                entry(url = "https://new.example/a", title = "A", visitedAt = 2),
+                entry(url = "https://new.example/b", title = "B", visitedAt = 3),
+            ),
+        )
+
+        assertEquals(listOf("https://new.example/a", "https://new.example/b"), dao.allRows().map { it.url })
+        assertNull(dao.byUrl(URL))
+    }
+
+    @Test
     fun removeReturnsTheDeletedEntryOnce() = runTest {
         val id = dao.insert(entry(url = URL, title = "Heat pumps", visitedAt = 100))
 
