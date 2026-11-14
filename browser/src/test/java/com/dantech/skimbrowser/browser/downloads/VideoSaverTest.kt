@@ -50,6 +50,98 @@ import org.junit.runner.RunWith
 class VideoSaverTest {
 
     @Test
+    fun anExtensionlessProtectedPlaylistIsRefusedBeforeARowExists() = runTest {
+        val server = MockWebServer()
+        val locked = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"
+        server.enqueue(MockResponse().setBody(locked))
+        server.enqueue(MockResponse().setBody(locked))
+        server.start()
+        val log = CountingLog()
+        val saver = saver(log, this)
+        try {
+            assertEquals(
+                VideoSaveResult.Protected,
+                saver.save("t", VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/play").toString()))),
+            )
+            assertEquals(0, log.started)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun anExtensionlessPlaylistIsListedAsHlsAndAProtectedOneIsRefused() = runTest {
+        val server = MockWebServer()
+        val master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720\n720.m3u8\n"
+        val locked = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"
+        server.enqueue(MockResponse().setBody(master))
+        server.enqueue(MockResponse().setBody(master))
+        server.enqueue(MockResponse().setBody(locked))
+        server.enqueue(MockResponse().setBody(locked))
+        server.start()
+        val saver = saver(CountingLog(), this)
+        try {
+            val open = saver.qualities(
+                "t",
+                VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/play").toString())),
+            )
+            val ready = open as VideoQualities.Ready
+            assertEquals("720p", ready.variants.single().qualityLabel)
+            assertTrue(ready.variants.single().source is VideoSource.Hls)
+            val refused = saver.qualities(
+                "t",
+                VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/locked").toString())),
+            )
+            assertEquals(VideoQualities.Protected, refused)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aProgressiveDownloadSendsRefererUserAgentAndOriginCookies() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("video-bytes"))
+        server.start()
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        saver.attach { "SkimTest/1" }
+        val variant = VideoVariant(
+            "Story",
+            "Video",
+            "video/mp4",
+            null,
+            VideoSource.Progressive(server.url("/v.mp4").toString(), mapOf("Referer" to "https://news.example/story")),
+        )
+        try {
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            val sent = server.takeRequest(1, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals("https://news.example/story", sent?.getHeader("Referer"))
+            assertEquals("SkimTest/1", sent?.getHeader("User-Agent"))
+            assertEquals("session=1", sent?.getHeader("Cookie"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun anAes128PlaylistIsRefusedWithoutACrash() = runTest {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"https://cdn.example/key\"\nseg.ts\n"))
+        server.start()
+        val log = CountingLog()
+        val saver = saver(log, this)
+        val variant = VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))
+        try {
+            assertEquals(VideoSaveResult.Protected, saver.save("t", variant))
+            assertEquals(0, log.started)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aProtectedPlaylistIsRefusedBeforeADownloadRowExists() = runTest {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"))

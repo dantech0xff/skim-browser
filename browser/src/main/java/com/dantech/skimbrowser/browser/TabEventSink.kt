@@ -82,6 +82,12 @@ interface TabEventSink {
     fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String)
 
     /**
+     * A `playing` event from the main frame. [report] is untrusted: only an http(s) address of
+     * limited length, for the page now showing, is kept.
+     */
+    fun onVideoPlaying(tabId: String, report: String) = Unit
+
+    /**
      * Whether [tabId] may continue a load whose certificate is [fingerprint] for [host].
      * [CertificateAction.Proceed] only after the person already chose that pair in this session.
      * Incognito tabs answer from their own list.

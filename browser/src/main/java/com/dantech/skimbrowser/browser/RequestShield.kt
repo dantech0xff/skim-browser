@@ -152,6 +152,12 @@ class RequestShield private constructor(
         return list().blocks(documentHost, requestHost)
     }
 
+    override fun knownTracker(documentUrl: String?, requestUrl: String): Boolean {
+        if (!choicesReady.get()) return false
+        val requestHost = hostOf(requestUrl) ?: return false
+        return list().blocks(documentUrl?.let(::hostOf), requestHost)
+    }
+
     override fun clearIncognito() {
         incognitoOff.clear()
     }

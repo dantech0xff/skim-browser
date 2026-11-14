@@ -80,6 +80,7 @@ class VideoDownloadViewModel @AssistedInject constructor(
                 mediaUrls = runtime.mediaUrls,
                 userAgent = null,
                 cookieHeader = null,
+                pageDocuments = runtime.pageDocuments,
             )
             val collected = collectVariants(extractors, hints)
             val ready = mutableListOf<VideoVariant>()

@@ -44,23 +44,36 @@ data class CollectedVideos(
 )
 
 suspend fun collectVariants(extractors: Iterable<VideoExtractor>, hints: PageVideoHints): CollectedVideos {
-    val matched = extractors.filter { it.matches(hints.pageUrl) }.sortedWith(
-        compareBy<VideoExtractor> { if (it.id == "generic") 1 else 0 }.thenBy { it.id },
-    )
+    val matched = extractors.filter { it.matches(hints.pageUrl) }
+    val specific = matched.filter { it.id != "generic" }.sortedBy { it.id }
+    val generic = matched.filter { it.id == "generic" }
     val found = mutableListOf<VideoVariant>()
-    var failure: VideoExtractFailure? = null
-    for (extractor in matched) {
+    var failure = readExtractors(specific, hints, found, null)
+    if (found.isEmpty() && failure == null) {
+        failure = readExtractors(generic, hints, found, failure)
+    }
+    val variants = found.distinctBy { it.source.address() }
+    return CollectedVideos(variants, failure.takeIf { variants.isEmpty() })
+}
+
+private suspend fun readExtractors(
+    extractors: List<VideoExtractor>,
+    hints: PageVideoHints,
+    found: MutableList<VideoVariant>,
+    failure: VideoExtractFailure?,
+): VideoExtractFailure? {
+    var refused = failure
+    for (extractor in extractors) {
         try {
             found += extractor.extract(hints)
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (refused: VideoExtractException) {
-            if (failure == null) failure = refused.failure
+        } catch (error: VideoExtractException) {
+            if (refused == null) refused = error.failure
         } catch (_: Exception) {
         }
     }
-    val variants = found.distinctBy { it.source.address() }
-    return CollectedVideos(variants, failure.takeIf { variants.isEmpty() })
+    return refused
 }
 
 /**
@@ -198,11 +211,13 @@ internal fun variant(
     mime: String?,
     source: VideoSource,
     pageUrl: String,
+    userAgent: String? = null,
 ): VideoVariant {
     val headers = sourceHeaders(source).toMutableMap()
     if (pageUrl.startsWith("http://") || pageUrl.startsWith("https://")) {
         headers.putIfAbsent("Referer", pageUrl)
     }
+    userAgent?.takeIf { it.isNotBlank() }?.let { headers.putIfAbsent("User-Agent", it) }
     val withHeaders = when (source) {
         is VideoSource.Progressive -> source.copy(headers = headers)
         is VideoSource.Hls -> source.copy(headers = headers)

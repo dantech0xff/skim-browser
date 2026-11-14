@@ -21,6 +21,12 @@ interface ShieldChoices {
      */
     fun blocks(documentUrl: String?, requestUrl: String, incognito: Boolean): Boolean
 
+    /**
+     * True when [requestUrl]'s host is on the ad and tracker list, including when blocking is off
+     * for the page. A video sniffer uses this so an ad file is not offered as a download.
+     */
+    fun knownTracker(documentUrl: String?, requestUrl: String): Boolean = false
+
     /** Forgets incognito choices. The session calls this when it ends. */
     fun clearIncognito()
 

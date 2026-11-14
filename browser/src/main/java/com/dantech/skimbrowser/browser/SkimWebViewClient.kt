@@ -23,6 +23,7 @@ import com.dantech.skimbrowser.domain.interrupt.InterruptRequest
 import com.dantech.skimbrowser.domain.interrupt.InterruptVerdict
 import com.dantech.skimbrowser.domain.interrupt.decideInterrupt
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.pageIdentity
 import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
@@ -32,7 +33,9 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewCompat
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
-import com.dantech.skimbrowser.domain.video.mediaStream
+import com.dantech.skimbrowser.domain.video.MediaLook
+import com.dantech.skimbrowser.domain.video.MediaSight
+import com.dantech.skimbrowser.domain.video.sightMedia
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.shield.ShieldStatSink
@@ -105,9 +108,8 @@ class SkimWebViewClient(
     private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
     private val mainThread = Handler(Looper.getMainLooper())
-    /** Media URLs for the document currently being fetched, flushed once that document starts. */
-    private val mediaSeen = LinkedHashSet<String>()
-    private var mediaPage: String? = null
+    /** Media URLs for the navigation currently being fetched, flushed once that document starts. */
+    private val mediaLedger = MediaLedger()
     private val loadingCollapsed = LinkedHashSet<String>()
     private val collapsed = LinkedHashSet<String>()
     private var hideScript: ScriptHandler? = null
@@ -178,6 +180,7 @@ class SkimWebViewClient(
         documentStartedAt = now()
         lastInteractionAt = NO_INTERACTION
         val early = synchronized(documentGate) {
+            if (url != null) mediaLedger.noteDocumentStart(url)
             val sameDocument = url != null && url == loadingUrl
             val carried = if (sameDocument) loadingBlocked.get() else 0
             val carriedHosts = if (carriesCollapse(url, loadingUrl)) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
@@ -195,7 +198,7 @@ class SkimWebViewClient(
         }
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
-        val seen = synchronized(documentGate) { if (mediaPage == url) mediaSeen.toList() else emptyList() }
+        val seen = synchronized(documentGate) { mediaLedger.recorded(url) }
         seen.forEach { events.onMediaUrl(tabId, url, it) }
         if (early.first > 0) events.onShieldCount(tabId, early.first)
         cookieStyleInjected = false
@@ -213,9 +216,12 @@ class SkimWebViewClient(
             shield.warmCosmetic()
             return null
         }
-        val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
-        if (!shield.blocks(document, url, incognito)) {
-            noteMedia(document, url)
+        val observed = synchronized(documentGate) {
+            val page = loadingUrl ?: documentUrl ?: return@synchronized null
+            page to mediaLedger.capture(page)
+        }
+        if (!shield.blocks(observed?.first, url, incognito)) {
+            if (observed != null) noteMedia(observed.first, observed.second, request)
             return null
         }
         noteBlocked(view, url)
@@ -483,6 +489,7 @@ class SkimWebViewClient(
 
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
+            mediaLedger.noteMainFrame(url)
             loadingUrl = url
             loadingBlocked.set(0)
             loadingCollapsed.clear()
@@ -500,6 +507,7 @@ class SkimWebViewClient(
             loadingUrl = null
             loadingBlocked.set(0)
             loadingCollapsed.clear()
+            mediaLedger.abandonTo(documentUrl)
         }
     }
 
@@ -697,40 +705,36 @@ class SkimWebViewClient(
         )
     }
 
-    /**
-     * True when [started] is the in-flight main frame even if WebView spells the URL differently.
-     * A fragment, a trailing slash, or a `www` prefix is the same page. Another path is not.
-     */
-    private fun carriesCollapse(started: String?, loading: String?): Boolean {
-        if (started == null || loading == null) return false
-        if (started == loading || sameNavigation(started, loading)) return true
-        val startedHost = hostOf(started)
-        val loadingHost = hostOf(loading)
-        if (startedHost == null || startedHost != loadingHost) return false
-        return pagePath(started) == pagePath(loading)
-    }
+    /** True when [started] is the in-flight main frame, including a different spelling of that page. */
+    private fun carriesCollapse(started: String?, loading: String?): Boolean =
+        started != null && loading != null && pageIdentity(started) == pageIdentity(loading)
 
-    private fun pagePath(url: String): String {
-        val noHash = url.substringBefore('#').trimEnd('/')
-        val rest = noHash.substringAfter("://", noHash)
-        val slash = rest.indexOf('/')
-        return if (slash < 0) "" else rest.substring(slash)
-    }
-
-    private fun noteMedia(page: String?, url: String) {
-        if (page == null || mediaStream(url, null) == null) return
-        val added = synchronized(documentGate) {
-            if (mediaPage != page) {
-                mediaPage = page
-                mediaSeen.clear()
-            }
-            mediaSeen.add(url)
+    private fun noteMedia(page: String, watch: MediaWatch, request: WebResourceRequest) {
+        val url = request.url?.toString() ?: return
+        if (shield.knownTracker(page, url)) return
+        val headers = request.requestHeaders
+        val sight = sightMedia(
+            MediaLook(
+                url = url,
+                range = requestHeader(headers, "Range"),
+                accept = requestHeader(headers, "Accept"),
+            ),
+            tracker = false,
+            knownManifests = watch.known,
+        ) ?: return
+        val record = when (sight) {
+            is MediaSight.File -> sight.url
+            is MediaSight.Segment -> sight.manifestUrl ?: return
         }
+        val added = synchronized(documentGate) { mediaLedger.commit(watch.epoch, page, record) }
         if (!added) return
         mainThread.post {
-            if (!detached) events.onMediaUrl(tabId, page, url)
+            if (!detached) events.onMediaUrl(tabId, page, record)
         }
     }
+
+    private fun requestHeader(headers: Map<String, String>, name: String): String? =
+        headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value
 
     /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */
     private fun rememberCollapsed(host: String) {

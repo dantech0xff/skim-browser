@@ -15,7 +15,6 @@ import com.dantech.skimbrowser.domain.video.VideoExtractException
 import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import com.dantech.skimbrowser.domain.video.VideoExtractor
 import com.dantech.skimbrowser.domain.video.GenericVideoExtractor
-import com.dantech.skimbrowser.domain.video.PAGE_DOCUMENT
 import com.dantech.skimbrowser.domain.video.TikTokVideoExtractor
 import com.dantech.skimbrowser.domain.video.VideoCommands
 import com.dantech.skimbrowser.domain.video.VideoQualities
@@ -97,7 +96,7 @@ class VideoDownloadSheetTest {
             ),
         )
         val json = """{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]}}"""
-        tabs.runtimes["t"] = TabRuntime(mediaUrls = listOf(PAGE_DOCUMENT + json))
+        tabs.runtimes["t"] = TabRuntime(pageDocuments = listOf(json))
         val commands = RecordingCommands()
         val model = VideoDownloadViewModel("t", tabs, setOf(TikTokVideoExtractor(), GenericVideoExtractor()), commands)
         assertTrue(model.state.value.choices.isNotEmpty())

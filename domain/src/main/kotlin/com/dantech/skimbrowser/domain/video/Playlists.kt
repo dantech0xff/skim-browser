@@ -32,13 +32,19 @@ data class DashManifest(
     val audios: List<DashFile>,
 )
 
-/** SAMPLE-AES and Widevine playlists cannot be saved. AES-128 is the same refusal: the bytes would not play. */
+/**
+ * SAMPLE-AES, FairPlay (`com.apple.streamingkey`), and Widevine cannot be saved. AES-128 is the
+ * same refusal: the bytes would not play. The caller turns that into a protected result and does
+ * not throw.
+ */
 fun hlsProtected(playlist: String): Boolean = playlist.lineSequence().any { line ->
     if (!line.trim().startsWith("#EXT-X-KEY", ignoreCase = true)) return@any false
     val method = attr(line, "METHOD").orEmpty()
     val format = attr(line, "KEYFORMAT").orEmpty()
-    method.equals("NONE", ignoreCase = true).not() && method.isNotEmpty() ||
-        format.contains("widevine", ignoreCase = true)
+    val encrypted = method.isNotEmpty() && !method.equals("NONE", ignoreCase = true)
+    val drmFormat = format.contains("widevine", ignoreCase = true) ||
+        format.contains("com.apple.streamingkey", ignoreCase = true)
+    encrypted || drmFormat
 }
 
 fun dashProtected(mpd: String): Boolean = mpd.contains("ContentProtection", ignoreCase = true)

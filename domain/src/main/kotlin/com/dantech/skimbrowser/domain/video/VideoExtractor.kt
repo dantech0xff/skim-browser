@@ -1,6 +1,14 @@
 package com.dantech.skimbrowser.domain.video
 
-data class PageVideoHints(val pageUrl: String, val pageTitle: String?, val mediaUrls: List<String>, val userAgent: String?, val cookieHeader: String?)
+data class PageVideoHints(
+    val pageUrl: String,
+    val pageTitle: String?,
+    val mediaUrls: List<String>,
+    val userAgent: String?,
+    val cookieHeader: String?,
+    /** Page JSON the probe found. Kept apart from [mediaUrls], which is only sniffed files. */
+    val pageDocuments: List<String> = emptyList(),
+)
 
 sealed interface VideoSource {
     data class Progressive(val url: String, val headers: Map<String, String> = emptyMap()) : VideoSource
@@ -29,8 +37,13 @@ interface VideoExtractor {
 }
 
 /** A download can be offered for this page: a media address was seen, or an extractor knows the page. */
-fun videoCanBeSaved(pageUrl: String?, mediaUrls: List<String>, extractors: Iterable<VideoExtractor>): Boolean {
-    if (mediaUrls.isNotEmpty()) return true
+fun videoCanBeSaved(
+    pageUrl: String?,
+    mediaUrls: List<String>,
+    extractors: Iterable<VideoExtractor>,
+    pageDocuments: List<String> = emptyList(),
+): Boolean {
+    if (mediaUrls.isNotEmpty() || pageDocuments.isNotEmpty()) return true
     val page = pageUrl ?: return false
     return extractors.any { extractor -> extractor.pageUrlSufficient && extractor.matches(page) }
 }
