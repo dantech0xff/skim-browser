@@ -472,12 +472,18 @@ class VideoSaverTest {
                 DownloadHeader("Referer", "https://example.com/watch"),
                 DownloadHeader(VIDEO_KIND, VIDEO_SEPARATE),
                 DownloadHeader(VIDEO_AUDIO, server.url("/a1.mp4").toString()),
-                DownloadHeader(VIDEO_QUALITY, "360p"),
+                DownloadHeader(VIDEO_QUALITY, "360p MP4 separate audio"),
             ),
         )
         try {
             assertEquals(VideoSaveResult.Started, saver.saveAgain(retry))
             assertEquals(listOf("DASH-VIDEODASH-AUDIO"), muxed)
+            val paths = buildList { repeat(server.requestCount) { add(server.takeRequest().path) } }
+            org.junit.Assert.assertTrue(paths.toString(), paths.contains("/360v.mp4"))
+            org.junit.Assert.assertFalse(paths.toString(), paths.contains("/720v.mp4"))
+            assertEquals(360, qualityHeight("360p MP4 separate audio"))
+            assertEquals(1080, qualityHeight("1080p60"))
+            assertEquals(null, qualityHeight("DASH"))
         } finally {
             server.shutdown()
         }

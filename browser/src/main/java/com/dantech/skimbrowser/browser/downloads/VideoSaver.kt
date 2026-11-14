@@ -614,12 +614,8 @@ class VideoSaver(
         if (dashProtected(fetched.text)) return null
         val manifest = parseDash(fetched.text, fetched.url)
         if (manifest.protected) return null
-        val height = quality.removeSuffix("p").toIntOrNull()
-        val video = if (height != null) {
-            manifest.videos.firstOrNull { it.height == height }
-        } else {
-            manifest.videos.maxByOrNull { it.height ?: 0 }
-        } ?: return null
+        val height = qualityHeight(quality) ?: return null
+        val video = manifest.videos.firstOrNull { it.height == height } ?: return null
         val audio = manifest.audios.firstOrNull() ?: return null
         return VideoSource.SeparateAv(video.url, audio.url, source.headers)
     }
@@ -736,6 +732,9 @@ private class ByteBudget(private val max: Long) {
 }
 
 internal fun segmentTitle(title: String): String = title.trim().removeSuffix(".m3u8").removeSuffix(".m3u").ifBlank { title.trim() }
+
+internal fun qualityHeight(label: String): Int? =
+    Regex("""(\d+)p""", RegexOption.IGNORE_CASE).find(label)?.groupValues?.get(1)?.toIntOrNull()
 
 internal fun hlsQuality(item: HlsVariant): String {
     val resolution = item.resolution
