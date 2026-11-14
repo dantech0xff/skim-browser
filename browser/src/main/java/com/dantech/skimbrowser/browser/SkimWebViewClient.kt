@@ -32,7 +32,9 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewCompat
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
-import com.dantech.skimbrowser.domain.video.mediaStream
+import com.dantech.skimbrowser.domain.video.MediaLook
+import com.dantech.skimbrowser.domain.video.MediaSight
+import com.dantech.skimbrowser.domain.video.sightMedia
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import com.dantech.skimbrowser.domain.shield.ShieldStatSink
@@ -215,7 +217,7 @@ class SkimWebViewClient(
         }
         val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
         if (!shield.blocks(document, url, incognito)) {
-            noteMedia(document, url)
+            noteMedia(document, request)
             return null
         }
         noteBlocked(view, url)
@@ -717,18 +719,36 @@ class SkimWebViewClient(
         return if (slash < 0) "" else rest.substring(slash)
     }
 
-    private fun noteMedia(page: String?, url: String) {
-        if (page == null || mediaStream(url, null) == null) return
+    private fun noteMedia(page: String?, request: WebResourceRequest) {
+        val url = request.url?.toString() ?: return
+        if (page == null || shield.knownTracker(page, url)) return
+        val headers = request.requestHeaders
+        val known = synchronized(documentGate) {
+            if (mediaPage == page) mediaSeen.toList() else emptyList()
+        }
+        val sight = sightMedia(
+            MediaLook(
+                url = url,
+                range = headers["Range"] ?: headers["range"],
+                accept = headers["Accept"] ?: headers["accept"],
+            ),
+            tracker = false,
+            knownManifests = known,
+        ) ?: return
+        val record = when (sight) {
+            is MediaSight.File -> sight.url
+            is MediaSight.Segment -> sight.manifestUrl ?: return
+        }
         val added = synchronized(documentGate) {
             if (mediaPage != page) {
                 mediaPage = page
                 mediaSeen.clear()
             }
-            mediaSeen.add(url)
+            mediaSeen.add(record)
         }
         if (!added) return
         mainThread.post {
-            if (!detached) events.onMediaUrl(tabId, page, url)
+            if (!detached) events.onMediaUrl(tabId, page, record)
         }
     }
 

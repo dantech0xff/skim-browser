@@ -53,6 +53,42 @@ class SkimWebViewClientTest {
     )
 
     @Test
+    fun aMediaRequestIsObservedAndASegmentThumbnailOrTrackerIsNot() = runBlocking {
+        val shield = RequestShield.of(HostBlocklist.of(blockAll = setOf("ads.example")))
+        shield.setDisabled("daylightjournal.com", incognito = true, disabled = true)
+        val events = RecordingEvents()
+        val client = client(shield, events, incognito = true)
+        client.shouldInterceptRequest(view, request(PAGE, mainFrame = true))
+        assertEquals(null, client.shouldInterceptRequest(view, request("https://cdn.example/v.mp4", mainFrame = false)))
+        assertEquals(null, client.shouldInterceptRequest(view, request("https://cdn.example/a.m3u8", mainFrame = false)))
+        assertEquals(null, client.shouldInterceptRequest(view, request("https://cdn.example/seg.ts", mainFrame = false)))
+        assertEquals(null, client.shouldInterceptRequest(view, request("https://cdn.example/thumbs/poster.jpg", mainFrame = false)))
+        assertEquals(
+            null,
+            client.shouldInterceptRequest(
+                view,
+                TestWebResourceRequest(
+                    "https://video.example/playback",
+                    mainFrame = false,
+                    headers = mapOf("Range" to "bytes=0-", "Accept" to "video/mp4"),
+                ),
+            ),
+        )
+        val ad = client.shouldInterceptRequest(view, request("https://ads.example/ad.mp4", mainFrame = false))
+        ShadowLooper.idleMainLooper()
+
+        assertEquals(null, ad)
+        assertEquals(
+            listOf(
+                "https://cdn.example/v.mp4",
+                "https://cdn.example/a.m3u8",
+                "https://video.example/playback",
+            ),
+            events.eventsOf<Event.MediaUrl>().map { it.mediaUrl },
+        )
+    }
+
+    @Test
     fun aTrackerRequestIsAnsweredEmptyAndTheMainFrameIsNot() {
         val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("google-analytics.com")))
         val events = RecordingEvents()

@@ -1131,11 +1131,18 @@ class TabManager(
         if (videoChecked[tabId] == nonce) return
         videoChecked[tabId] = nonce
         appScope.launch(mainDispatcher) {
-            val raw = evaluateOrNull(live, tabId, VIDEO_PROBE) ?: return@launch
-            if (runtimeOf(tabId).loadNonce != nonce) return@launch
-            val page = runtimeOf(tabId).committedUrl ?: return@launch
-            mediaFromProbe(raw).forEach { events.onMediaUrl(tabId, page, it) }
+            readVideo(live, tabId, nonce)
+            delay(PLAYBACK_PROBE_DELAY_MS)
+            readVideo(live, tabId, nonce)
         }
+    }
+
+    /** Reads the playing file and any page JSON the site extractors need. A second read catches autoplay. */
+    private suspend fun readVideo(live: TabEngine, tabId: String, nonce: Long) {
+        val raw = evaluateOrNull(live, tabId, VIDEO_PROBE) ?: return
+        if (runtimeOf(tabId).loadNonce != nonce) return
+        val page = runtimeOf(tabId).committedUrl ?: return
+        mediaFromProbe(raw).forEach { events.onMediaUrl(tabId, page, it) }
     }
 
     private suspend fun evaluateOrNull(live: TabEngine, tabId: String, script: String): String? = try {
@@ -1446,13 +1453,50 @@ class TabManager(
         private const val MAX_HISTORY_TITLE_UPDATES = 5
         private const val EVENT_BUFFER = 64
         private const val MAX_MEDIA_URLS = 32
+
+        /** How long after the first read to look again, so a video that starts as the page finishes is seen. */
+        private const val PLAYBACK_PROBE_DELAY_MS = 1_200L
+
+        /**
+         * Reports a playing file's address, duration, and size, and the page JSON site extractors
+         * read. `blob:` and MediaSource addresses are skipped. The listener fills `__skimPlayed`
+         * when playback starts after this script has already returned.
+         */
         private val VIDEO_PROBE = """
             (function(){
-              var urls = [];
-              var nodes = document.querySelectorAll('video,source');
+              var played = window.__skimPlayed || (window.__skimPlayed = []);
+              function keep(src) {
+                if (!src) return false;
+                if (src.indexOf('blob:') === 0 || src.indexOf('mediasource:') === 0) return false;
+                return src.indexOf('http://') === 0 || src.indexOf('https://') === 0;
+              }
+              function sample(el) {
+                var src = el.currentSrc || el.src || '';
+                if (!keep(src)) return;
+                for (var n = 0; n < played.length; n++) {
+                  if (played[n].src === src) return;
+                }
+                if (played.length >= 32) return;
+                var duration = el.duration;
+                played.push({
+                  src: src,
+                  duration: (typeof duration === 'number' && isFinite(duration)) ? duration : 0,
+                  width: el.videoWidth || 0,
+                  height: el.videoHeight || 0
+                });
+              }
+              function started(el) {
+                return el.ended || el.currentTime > 0 || (!el.paused && el.readyState >= 2);
+              }
+              function arm(el) {
+                if (!el || el.__skimArm) return;
+                el.__skimArm = 1;
+                el.addEventListener('playing', function(){ sample(el); });
+              }
+              var nodes = document.querySelectorAll('video');
               for (var i = 0; i < nodes.length; i++) {
-                var src = nodes[i].currentSrc || nodes[i].src || '';
-                if (src && src.indexOf('blob:') !== 0) urls.push(src);
+                arm(nodes[i]);
+                if (started(nodes[i])) sample(nodes[i]);
               }
               var docs = [];
               var scripts = document.scripts || [];
@@ -1462,7 +1506,7 @@ class TabManager(
                   docs.push(text.length > 200000 ? text.slice(0, 200000) : text);
                 }
               }
-              return {urls: urls, docs: docs};
+              return {urls: played.slice(), docs: docs};
             })()
         """.trimIndent()
         private const val HIT_BUFFER = 8

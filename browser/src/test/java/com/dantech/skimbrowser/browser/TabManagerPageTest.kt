@@ -51,6 +51,28 @@ class TabManagerPageTest {
     // Page reports
 
     @Test
+    fun aPlayingFileIsOfferedUntilTheNextPage() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        val probe = """
+            {"urls":[
+              {"src":"https://cdn.example/playing.mp4","duration":12,"width":1280,"height":720},
+              {"src":"blob:https://news.example/1","duration":12,"width":1280,"height":720},
+              {"src":"https://cdn.example/thumb.mp4","duration":1,"width":120,"height":80}
+            ],"docs":[]}
+        """.trimIndent()
+        f.engine.evaluator = { _, script -> if ("__skimPlayed" in script) probe else null }
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        advanceTimeBy(2_000)
+        assertEquals(listOf("https://cdn.example/playing.mp4"), f.manager.runtime(id).value.mediaUrls)
+
+        f.engine.evaluator = { _, _ -> null }
+        f.engine.openPage(id, "https://news.example/next", "Next")
+        advanceTimeBy(2_000)
+        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
     fun pageReportsUpdateTheRuntimeAndTheTab() = runTest {
         val f = attached()
         val id = f.manager.newTab(incognito = false)

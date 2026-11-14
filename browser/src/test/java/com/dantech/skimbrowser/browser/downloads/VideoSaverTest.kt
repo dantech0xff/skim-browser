@@ -50,6 +50,49 @@ import org.junit.runner.RunWith
 class VideoSaverTest {
 
     @Test
+    fun aProgressiveDownloadSendsRefererUserAgentAndOriginCookies() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("video-bytes"))
+        server.start()
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        saver.attach { "SkimTest/1" }
+        val variant = VideoVariant(
+            "Story",
+            "Video",
+            "video/mp4",
+            null,
+            VideoSource.Progressive(server.url("/v.mp4").toString(), mapOf("Referer" to "https://news.example/story")),
+        )
+        try {
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            val sent = server.takeRequest(1, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals("https://news.example/story", sent?.getHeader("Referer"))
+            assertEquals("SkimTest/1", sent?.getHeader("User-Agent"))
+            assertEquals("session=1", sent?.getHeader("Cookie"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun anAes128PlaylistIsRefusedWithoutACrash() = runTest {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"https://cdn.example/key\"\nseg.ts\n"))
+        server.start()
+        val log = CountingLog()
+        val saver = saver(log, this)
+        val variant = VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))
+        try {
+            assertEquals(VideoSaveResult.Protected, saver.save("t", variant))
+            assertEquals(0, log.started)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aProtectedPlaylistIsRefusedBeforeADownloadRowExists() = runTest {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"))
