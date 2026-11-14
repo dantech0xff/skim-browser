@@ -82,6 +82,7 @@ class VideoExtractTest {
         assertTrue(found.any { it.startsWith(PAGE_DOCUMENT) })
         assertTrue(isThumbnailSample(1.2, 160, 90))
         assertFalse(isThumbnailSample(12.5, 1280, 720))
+        assertFalse(isThumbnailSample(1_800.0, 144, 144))
         assertFalse(isThumbnailSample(0.0, 0, 0))
     }
 
@@ -205,20 +206,28 @@ class VideoExtractTest {
                 "https://cdn.example/a.m3u8",
                 "https://cdn.example/seg.ts",
                 "https://other.example/clip.mov",
+                "https://files.example/movie.webm",
                 "https://cdn.example/thumbs/poster.mp4",
                 "https://video.example/playback",
                 "${PAGE_DOCUMENT}{}",
             ),
         )
         val variants = GenericVideoExtractor().extract(hints)
-        assertEquals(listOf(MediaStream.Hls, MediaStream.Progressive, MediaStream.Progressive), variants.map { streamOf(it) })
+        assertEquals(
+            listOf(MediaStream.Hls, MediaStream.Progressive, MediaStream.Progressive, MediaStream.Progressive),
+            variants.map { streamOf(it) },
+        )
         val hls = variants.first().source as VideoSource.Hls
         assertEquals("https://cdn.example/a.m3u8", hls.playlistUrl)
         assertEquals("https://news.example/story", hls.headers["Referer"])
         assertEquals("test", hls.headers["User-Agent"])
         assertEquals("Story", variants.first().title)
         assertEquals("https://other.example/clip.mov", (variants[1].source as VideoSource.Progressive).url)
-        assertEquals("https://video.example/playback", (variants[2].source as VideoSource.Progressive).url)
+        assertEquals("video/quicktime", variants[1].mimeType)
+        assertEquals("https://files.example/movie.webm", (variants[2].source as VideoSource.Progressive).url)
+        assertEquals("video/webm", variants[2].mimeType)
+        assertEquals("https://video.example/playback", (variants[3].source as VideoSource.Progressive).url)
+        assertEquals("video/mp4", variants[3].mimeType)
     }
 
     @Test

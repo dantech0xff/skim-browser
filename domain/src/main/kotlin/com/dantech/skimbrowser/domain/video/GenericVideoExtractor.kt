@@ -17,7 +17,7 @@ class GenericVideoExtractor : VideoExtractor {
         if (url.startsWith(PAGE_DOCUMENT) || isThumbnailUrl(url) || isMediaSegment(url, null)) return null
         val agent = hints.userAgent
         return when (mediaStream(url, null)) {
-            MediaStream.Progressive -> offer(hints, qualityFromUrl(url), "video/mp4", VideoSource.Progressive(url), agent)
+            MediaStream.Progressive -> offer(hints, qualityFromUrl(url), progressiveMime(url), VideoSource.Progressive(url), agent)
             MediaStream.Hls -> offer(hints, "HLS", "application/vnd.apple.mpegurl", VideoSource.Hls(url), agent)
             MediaStream.Dash -> offer(hints, "DASH", "application/dash+xml", VideoSource.Dash(url), agent)
             null -> if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -35,6 +35,15 @@ class GenericVideoExtractor : VideoExtractor {
         source: VideoSource,
         agent: String?,
     ): VideoVariant = variant(hints.pageTitle, quality, mime, source, hints.pageUrl, agent)
+}
+
+internal fun progressiveMime(url: String): String {
+    val path = url.substringBefore('?').substringBefore('#').lowercase()
+    return when {
+        path.endsWith(".webm") -> "video/webm"
+        path.endsWith(".mov") -> "video/quicktime"
+        else -> "video/mp4"
+    }
 }
 
 internal fun qualityFromUrl(url: String): String {

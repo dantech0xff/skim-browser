@@ -130,6 +130,7 @@ class SkimWebViewClient(
     /** A finger went down on this page. The odd-redirect check treats that as the person being here. */
     fun noteInteraction() {
         lastInteractionAt = now()
+        if (!detached) events.onPageInteraction(tabId)
     }
 
     /**
@@ -729,8 +730,8 @@ class SkimWebViewClient(
         val sight = sightMedia(
             MediaLook(
                 url = url,
-                range = headers["Range"] ?: headers["range"],
-                accept = headers["Accept"] ?: headers["accept"],
+                range = requestHeader(headers, "Range"),
+                accept = requestHeader(headers, "Accept"),
             ),
             tracker = false,
             knownManifests = known,
@@ -751,6 +752,9 @@ class SkimWebViewClient(
             if (!detached) events.onMediaUrl(tabId, page, record)
         }
     }
+
+    private fun requestHeader(headers: Map<String, String>, name: String): String? =
+        headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value
 
     /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */
     private fun rememberCollapsed(host: String) {

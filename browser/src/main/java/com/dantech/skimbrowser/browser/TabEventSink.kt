@@ -81,6 +81,9 @@ interface TabEventSink {
     /** A media file or playlist for [pageUrl], the document it belongs to. Called on the main thread. */
     fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String)
 
+    /** A touch on the page. The video probe reads again, so a file that starts playing is seen. */
+    fun onPageInteraction(tabId: String) = Unit
+
     /**
      * Whether [tabId] may continue a load whose certificate is [fingerprint] for [host].
      * [CertificateAction.Proceed] only after the person already chose that pair in this session.

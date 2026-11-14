@@ -65,13 +65,15 @@ fun isThumbnailUrl(url: String): Boolean {
 }
 
 /**
- * A sample the page probe reported. A tiny picture, or a short clip that is also small, is a
- * thumbnail. Unknown duration and unknown size stay, because playback may not have metadata yet.
+ * A sample the page probe reported. A short clip that is also small is a thumbnail. A long video
+ * stays even when the picture is small. Unknown duration counts as a thumbnail only at thumbnail size.
  */
 fun isThumbnailSample(durationSeconds: Double, width: Int, height: Int): Boolean {
-    if (width in 1..THUMB_EDGE && height in 1..THUMB_EDGE) return true
-    return durationSeconds > 0.0 && durationSeconds < THUMB_SECONDS &&
-        width in 1..THUMB_WIDE && height in 1..THUMB_SHORT
+    val tiny = width in 1..THUMB_EDGE && height in 1..THUMB_EDGE
+    val compact = width in 1..THUMB_WIDE && height in 1..THUMB_SHORT
+    val short = durationSeconds > 0.0 && durationSeconds < THUMB_SECONDS
+    if (tiny && (short || durationSeconds <= 0.0)) return true
+    return short && compact
 }
 
 /** Drops a single file that lives in the same folder as a playlist. The playlist names the qualities. */

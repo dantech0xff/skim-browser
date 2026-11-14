@@ -74,6 +74,17 @@ class SkimWebViewClientTest {
                 ),
             ),
         )
+        assertEquals(
+            null,
+            client.shouldInterceptRequest(
+                view,
+                TestWebResourceRequest(
+                    "https://video.example/mixed",
+                    mainFrame = false,
+                    headers = mapOf("RANGE" to "bytes=0-", "ACCEPT" to "video/webm"),
+                ),
+            ),
+        )
         val ad = client.shouldInterceptRequest(view, request("https://ads.example/ad.mp4", mainFrame = false))
         ShadowLooper.idleMainLooper()
 
@@ -83,6 +94,7 @@ class SkimWebViewClientTest {
                 "https://cdn.example/v.mp4",
                 "https://cdn.example/a.m3u8",
                 "https://video.example/playback",
+                "https://video.example/mixed",
             ),
             events.eventsOf<Event.MediaUrl>().map { it.mediaUrl },
         )
