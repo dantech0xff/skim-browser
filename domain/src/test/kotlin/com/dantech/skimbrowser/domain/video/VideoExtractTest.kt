@@ -306,6 +306,30 @@ class VideoExtractTest {
         assertTrue(listed.any { (it.source as? VideoSource.Progressive)?.url == "https://video.fbcdn.net/other.mp4" })
     }
 
+    @Test
+    fun aMuxedGooglevideoRenditionStaysBesideASeparateOne() {
+        val variants = listOf(
+            VideoVariant(
+                "Talk",
+                "1080p",
+                "video/mp4",
+                null,
+                VideoSource.SeparateAv(
+                    "https://rr.googlevideo.com/videoplayback?id=clip&itag=137",
+                    "https://rr.googlevideo.com/videoplayback?id=clip&itag=140",
+                ),
+            ),
+            VideoVariant(
+                "Talk",
+                "360p",
+                "video/mp4",
+                null,
+                VideoSource.Progressive("https://rr.googlevideo.com/videoplayback?id=clip&itag=18"),
+            ),
+        )
+        assertEquals(listOf("1080p", "360p"), listedQualities(variants).map { it.qualityLabel })
+    }
+
     private fun extractor(
         name: String,
         page: String,

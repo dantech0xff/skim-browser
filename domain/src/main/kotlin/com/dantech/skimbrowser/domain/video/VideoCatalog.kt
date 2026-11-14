@@ -72,11 +72,11 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
         (variant.source as? VideoSource.SeparateAv)?.let { clipDirectory(it.videoUrl) }
     }.toSet()
     val pairedVideoPaths = variants.mapNotNull { variant ->
-        (variant.source as? VideoSource.SeparateAv)?.let { mediaPath(it.videoUrl) }
+        (variant.source as? VideoSource.SeparateAv)?.videoUrl
     }.toSet()
     val kept = variants.filter { variant ->
         val source = variant.source
-        if (source is VideoSource.Progressive && mediaPath(source.url) in pairedVideoPaths) return@filter false
+        if (source is VideoSource.Progressive && sameMedia(source.url, pairedVideoPaths)) return@filter false
         val directory = clipDirectory(source.mediaAddress())
         if (directory !in pairedDirectories) return@filter true
         when (source) {
@@ -98,6 +98,34 @@ internal fun clipDirectory(url: String): String {
 }
 
 private fun mediaPath(url: String): String = url.substringBefore('?').substringBefore('#')
+
+/**
+ * The same file. The full address is the identity, so two `/videoplayback` renditions that differ
+ * by `itag` stay apart. A Facebook signature (`oh`, `oe`) is not part of the file.
+ */
+private fun sameMedia(url: String, paired: Set<String>): Boolean {
+    if (url in paired) return true
+    val identity = mediaIdentity(url)
+    return paired.any { mediaIdentity(it) == identity }
+}
+
+private fun mediaIdentity(url: String): String {
+    val bare = url.substringBefore('#')
+    val path = bare.substringBefore('?')
+    val query = bare.substringAfter('?', "")
+    if (query.isEmpty() || !facebookHost(url)) return bare
+    val kept = query.split('&').filter { param ->
+        param.substringBefore('=').lowercase() !in FACEBOOK_SIGNATURE
+    }.sorted()
+    return if (kept.isEmpty()) path else "$path?${kept.joinToString("&")}"
+}
+
+private fun facebookHost(url: String): Boolean {
+    val host = hostOf(url)?.lowercase() ?: return false
+    return host == "fbcdn.net" || host.endsWith(".fbcdn.net") || host == "facebook.com" || host.endsWith(".facebook.com")
+}
+
+private val FACEBOOK_SIGNATURE = setOf("oh", "oe")
 
 /** A page title with a trailing site name removed, including a repeated `| Facebook`. */
 fun videoCaption(title: String): String {
