@@ -330,7 +330,7 @@ class VideoSaver(
             if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
             val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio", budget)
             val out = File(dir, "mux.mp4")
-            mux(video, audio, out)
+            muxWithRoom(video, audio, out)
             return publish(out, name, "video/mp4")
         } finally {
             dir.deleteRecursively()
@@ -505,7 +505,7 @@ class VideoSaver(
                 videoFile.await() to audioFile.await()
             }
             val out = File(dir, "mux.mp4")
-            mux(video, audio, out)
+            muxWithRoom(video, audio, out)
             return publish(out, name, "video/mp4")
         } finally {
             dir.deleteRecursively()
@@ -533,7 +533,7 @@ class VideoSaver(
                 soFar += part.length()
             }
             val joined = File(dir, "joined")
-            joined.outputStream().use { out -> parts.forEach { file -> file.inputStream().use { it.copyTo(out) } } }
+            joined.outputStream().use { out -> copyWithRoom(parts, out) }
             return publish(joined, name, containerMime(joined, urls))
         } finally {
             dir.deleteRecursively()
@@ -724,16 +724,49 @@ class VideoSaver(
         throw DownloadException("Too many redirects")
     }
 
-    /** [freeBytes] already shrinks as bytes land on disk, so the reserve is not added to the running total. */
-    private fun requireRoom() {
+    /**
+     * Leaves [InProcessDownloader.MIN_FREE_BYTES] free. [pending] is a copy that is not on disk yet.
+     * Bytes already written are already gone from [freeBytes], so they are not added again.
+     */
+    private fun requireRoom(pending: Long = 0) {
         val free = freeBytes()
-        if (free != Long.MAX_VALUE && free < InProcessDownloader.MIN_FREE_BYTES) {
+        val needed = InProcessDownloader.MIN_FREE_BYTES + pending.coerceAtLeast(0)
+        if (free != Long.MAX_VALUE && free < needed) {
             throw DownloadException("Too little free space")
         }
     }
 
-    private suspend fun publish(file: File, name: String, mime: String): DownloadEvent.DownloadCompleted =
-        store.save(DownloadNames.sanitize(name, mime), mime) { out -> file.inputStream().use { it.copyTo(out) } }
+    private fun muxWithRoom(video: File, audio: File, out: File) {
+        requireRoom(video.length() + audio.length())
+        mux(video, audio, out)
+    }
+
+    private suspend fun publish(file: File, name: String, mime: String): DownloadEvent.DownloadCompleted {
+        requireRoom(file.length())
+        return store.save(DownloadNames.sanitize(name, mime), mime) { out -> copyWithRoom(listOf(file), out) }
+    }
+
+    private suspend fun copyWithRoom(files: List<File>, out: OutputStream) {
+        var pending = files.sumOf { it.length() }
+        requireRoom(pending)
+        val buffer = ByteArray(COPY_BUFFER)
+        var written = 0L
+        for (file in files) {
+            file.inputStream().use { input ->
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    out.write(buffer, 0, read)
+                    written += read
+                    pending -= read
+                    if (written == read.toLong() || written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) {
+                        requireRoom(pending)
+                    }
+                }
+            }
+        }
+    }
 
     private data class TextBody(val text: String, val url: String)
 

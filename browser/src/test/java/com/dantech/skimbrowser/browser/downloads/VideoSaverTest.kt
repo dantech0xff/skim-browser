@@ -1030,7 +1030,7 @@ class VideoSaverTest {
         val log = CountingLog()
         val scope = CoroutineScope(Dispatchers.Unconfined)
         val variant = VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
-        val room = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 8 })
+        val room = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 16 })
         val tight = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES - 1 })
         try {
             assertEquals(VideoSaveResult.Started, room.save("t", variant))
@@ -1040,6 +1040,64 @@ class VideoSaverTest {
             assertEquals("space", log.reason)
         } finally {
             server.shutdown()
+        }
+    }
+
+    @Test
+    fun aSecondCopyIsRefusedWhenStagingAlreadyUsedTheReserve() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val ranged = """
+            #EXTM3U
+            #EXT-X-MAP:URI="big.mp4",BYTERANGE="8@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:8@8
+            big.mp4
+        """.trimIndent()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("range.m3u8") -> MockResponse().setBody(ranged)
+                    path.contains("big.mp4") -> MockResponse().setResponseCode(206).setBody("0123456789ABCDEF")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val tightDir = File(context.cacheDir, "video-space-tight")
+        val roomDir = File(context.cacheDir, "video-space-room")
+        tightDir.deleteRecursively()
+        roomDir.deleteRecursively()
+        val reserve = InProcessDownloader.MIN_FREE_BYTES
+        fun occupied(dir: File) = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val variant = VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
+        val tight = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            freeBytes = { reserve + 24 - occupied(tightDir) },
+            workDir = tightDir,
+        )
+        val room = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            freeBytes = { reserve + 32 - occupied(roomDir) },
+            workDir = roomDir,
+        )
+        try {
+            assertEquals(VideoSaveResult.Started, tight.save("t", variant))
+            assertEquals("space", log.reason)
+            log.reason = null
+            assertEquals(VideoSaveResult.Started, room.save("t", variant))
+            assertEquals(null, log.reason)
+        } finally {
+            server.shutdown()
+            tightDir.deleteRecursively()
+            roomDir.deleteRecursively()
         }
     }
 
@@ -1099,6 +1157,7 @@ class VideoSaverTest {
         rangeHost: (String) -> Boolean = ::isRangeHost,
         maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
         freeBytes: () -> Long = { Long.MAX_VALUE },
+        workDir: File? = null,
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -1112,7 +1171,7 @@ class VideoSaverTest {
             tracker = DownloadTracker(FakeSystemDownloads(), scope, log = log),
             tabs = tabs,
             cookies = { _, _ -> "session=1" },
-            workDir = File(context.cacheDir, "video-test"),
+            workDir = workDir ?: File(context.cacheDir, "video-test"),
             scope = scope,
             io = io,
             mux = mux,
