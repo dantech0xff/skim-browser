@@ -97,9 +97,34 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
             is VideoSource.Progressive -> !isVideoOnlyRendition(source.url)
         }
     }
-    return kept
-        .distinctBy { it.source.address() }
+    return collapseHeights(kept.distinctBy { it.source.address() })
         .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+}
+
+/**
+ * One row per height of one clip when a paired video and audio file exists, or when every row
+ * at that height is an HLS playlist. A paired row wins. Mixed files that are not a pair stay,
+ * so two different clips that share a folder name both remain.
+ */
+private fun collapseHeights(variants: List<VideoVariant>): List<VideoVariant> {
+    val groups = linkedMapOf<String, MutableList<VideoVariant>>()
+    for (variant in variants) {
+        val height = qualityHeight(variant.qualityLabel)
+        val key = if (height == null) {
+            "u:${variant.source.address()}"
+        } else {
+            "h:${clipId(variant.source.mediaAddress())}:$height"
+        }
+        groups.getOrPut(key) { mutableListOf() }.add(variant)
+    }
+    return groups.values.flatMap { rows ->
+        val pairs = rows.filter { it.source is VideoSource.SeparateAv }
+        when {
+            pairs.isNotEmpty() -> listOf(pairs.first())
+            rows.size > 1 && rows.all { it.source is VideoSource.Hls } -> listOf(rows.first())
+            else -> rows
+        }
+    }
 }
 
 /** The folder name that identifies one clip, even when the hosts differ. */

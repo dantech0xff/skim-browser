@@ -374,8 +374,20 @@ class VideoSaver(
         val total = if (known) spans.sumOf { it.length ?: 0L } else -1L
         var soFar = 0L
         dest.outputStream().use { out ->
-            for (span in spans) {
-                soFar += appendSpan(span, headers, agent, incognito, out, soFar, total, localId, budget)
+            for ((index, span) in spans.withIndex()) {
+                soFar += appendSpan(
+                    span,
+                    headers,
+                    agent,
+                    incognito,
+                    out,
+                    soFar,
+                    total,
+                    localId,
+                    budget,
+                    segmentIndex = index,
+                    segmentCount = spans.size,
+                )
             }
         }
         return dest
@@ -391,6 +403,8 @@ class VideoSaver(
         total: Long,
         localId: Long,
         budget: ByteBudget,
+        segmentIndex: Int = 0,
+        segmentCount: Int = 1,
     ): Long {
         val start = span.start
         val length = span.length
@@ -416,8 +430,24 @@ class VideoSaver(
             }
             return fetch(span.url, headers, agent, incognito) { response ->
                 val body = response.body ?: throw DownloadException("The response has no body")
-                val reported = body.contentLength().takeIf { it > 0 } ?: total
-                copyBody(body, out, soFar, reported, onProgress = { written, size -> log.noteProgress(localId, written, size) }, charge = budget)
+                val segmentLength = body.contentLength()
+                copyBody(
+                    body,
+                    out,
+                    soFar,
+                    -1L,
+                    onProgress = { written, _ ->
+                        val (arrived, implied) = hlsProgress(
+                            cumulative = written,
+                            segmentIndex = segmentIndex,
+                            bytesIntoSegment = written - soFar,
+                            segmentLength = segmentLength,
+                            segmentCount = segmentCount,
+                        )
+                        log.noteProgress(localId, arrived, implied)
+                    },
+                    charge = budget,
+                )
             }
         }
         val end = start + length - 1
@@ -793,7 +823,15 @@ class VideoSaver(
         if (playlist.variants.isEmpty()) {
             return VideoQualities.Ready(listOf(variant.copy(title = title, mimeType = "video/mp2t")))
         }
-        val rows = playlist.variants.map { item ->
+        val chosen = playlist.variants
+            .groupBy { it.url }
+            .map { (_, group) ->
+                group.maxBy { item -> audioRate(preferredHlsAudio(playlist.audios, item.audioGroup)?.url) }
+            }
+            .groupBy { hlsQuality(it) }
+            .map { (_, group) -> group.maxBy { it.bandwidth ?: 0 } }
+            .sortedByDescending { qualityHeight(hlsQuality(it)) ?: -1 }
+        val rows = chosen.map { item ->
             val audio = preferredHlsAudio(playlist.audios, item.audioGroup)?.url
             variant.copy(
                 title = title,
@@ -802,9 +840,7 @@ class VideoSaver(
                 sizeBytes = null,
                 source = VideoSource.Hls(item.url, source.headers, audio),
             )
-        }.groupBy { (it.source as VideoSource.Hls).playlistUrl }
-            .map { (_, group) -> group.maxBy { audioRate((it.source as VideoSource.Hls).audioPlaylistUrl) } }
-            .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+        }
         return VideoQualities.Ready(rows)
     }
 
@@ -1136,6 +1172,29 @@ internal fun hlsQuality(item: HlsVariant): String {
     if (!resolution.isNullOrBlank()) return resolution
     val bandwidth = item.bandwidth ?: return "HLS"
     return "${bandwidth / 1000} kbps"
+}
+
+/**
+ * Progress for one HLS segment when the playlist does not know each file's length.
+ * [cumulative] is every byte saved so far. The second value is the implied whole file, so
+ * [cumulative] divided by it is the share of segments finished, including the current one.
+ */
+internal fun hlsProgress(
+    cumulative: Long,
+    segmentIndex: Int,
+    bytesIntoSegment: Long,
+    segmentLength: Long,
+    segmentCount: Int,
+): Pair<Long, Long> {
+    if (cumulative < 0L || segmentCount <= 0) return cumulative to -1L
+    val into = when {
+        segmentLength > 0L -> bytesIntoSegment.coerceIn(0L, segmentLength).toDouble() / segmentLength.toDouble()
+        bytesIntoSegment > 0L -> 1.0
+        else -> 0.0
+    }
+    val fraction = ((segmentIndex.coerceAtLeast(0) + into) / segmentCount.toDouble()).coerceIn(0.0, 1.0)
+    if (fraction <= 0.0) return cumulative to -1L
+    return cumulative to (cumulative / fraction).toLong().coerceAtLeast(cumulative)
 }
 
 internal fun projectedTotal(known: List<Long>, count: Int): Long {

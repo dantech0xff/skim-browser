@@ -723,12 +723,10 @@ class VideoSaverTest {
                 saver.save("t", VideoVariant("x36xhzz.m3u8", "184p", null, null, VideoSource.Hls(server.url("/x36xhzz.m3u8").toString()))),
             )
             val steps = log.progress
-            org.junit.Assert.assertTrue(steps.toString(), steps.size >= 3)
+            assertEquals(steps.toString(), 4L to 12L, steps.first())
+            assertEquals(steps.toString(), 6L to 9L, steps[steps.indexOfLast { it.first == 6L }])
+            assertEquals(12L to 12L, steps.last())
             org.junit.Assert.assertTrue(steps.toString(), steps.zipWithNext().all { (before, after) -> after.first >= before.first })
-            org.junit.Assert.assertTrue(steps.toString(), steps.dropLast(1).all { (soFar, total) -> total > soFar })
-            assertEquals(12L, steps.last().first)
-            assertEquals(steps.last().first, steps.last().second)
-            org.junit.Assert.assertFalse(steps.any { (soFar, total) -> total == second.length.toLong() && soFar > total })
         } finally {
             server.shutdown()
         }
