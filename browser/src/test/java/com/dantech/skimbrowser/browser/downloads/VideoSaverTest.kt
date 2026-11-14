@@ -27,6 +27,7 @@ import com.dantech.skimbrowser.domain.video.VideoQualities
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
+import com.dantech.skimbrowser.domain.video.listedQualities
 import com.dantech.skimbrowser.domain.video.qualityHeight
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -698,6 +699,42 @@ class VideoSaverTest {
     }
 
     @Test
+    fun anHlsDownloadKeepsCumulativeBytesAndARisingPercent() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val first = "a".repeat(4)
+        val second = "b".repeat(2)
+        val third = "c".repeat(6)
+        val seg1 = server.url("/s1.ts").toString()
+        val seg2 = server.url("/s2.ts").toString()
+        val seg3 = server.url("/s3.ts").toString()
+        val playlist = "#EXTM3U\n#EXTINF:1,\n$seg1\n#EXTINF:1,\n$seg2\n#EXTINF:1,\n$seg3\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(first))
+        server.enqueue(MockResponse().setBody(second))
+        server.enqueue(MockResponse().setBody(third))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("x36xhzz.m3u8", "184p", null, null, VideoSource.Hls(server.url("/x36xhzz.m3u8").toString()))),
+            )
+            val steps = log.progress
+            org.junit.Assert.assertTrue(steps.toString(), steps.size >= 3)
+            org.junit.Assert.assertTrue(steps.toString(), steps.zipWithNext().all { (before, after) -> after.first >= before.first })
+            org.junit.Assert.assertTrue(steps.toString(), steps.dropLast(1).all { (soFar, total) -> total > soFar })
+            assertEquals(12L, steps.last().first)
+            assertEquals(steps.last().first, steps.last().second)
+            org.junit.Assert.assertFalse(steps.any { (soFar, total) -> total == second.length.toLong() && soFar > total })
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aRedditDashPlaylistPairsEachHeightWithItsAudio() = runBlocking {
         val server = MockWebServer()
         server.start()
@@ -758,6 +795,88 @@ class VideoSaverTest {
             assertEquals(VideoSaveResult.Started, saver.save("t", ready.first { it.qualityLabel == "854p" }))
             assertEquals(listOf("VIDEO-854AUDIO"), muxed)
             assertEquals("My cat coming downstairs _ r_aww.mp4", log.name)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aRedditDashPlaylistAndHlsMasterListEachHeightOnce() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val root = server.url("/b48r5omjmwkh1/").toString()
+        val mpd = """
+            <MPD>
+              <Period>
+                <AdaptationSet contentType="video" maxHeight="1920" maxWidth="1080" mimeType="video/mp4">
+                  <Representation bandwidth="8000000" codecs="avc1.640028" height="1920" id="1080" width="1080"><BaseURL>CMAF_1080.mp4</BaseURL></Representation>
+                  <Representation bandwidth="1000000" codecs="avc1.640028" height="1920" id="1080b" width="1080"><BaseURL>CMAF_1080_low.mp4</BaseURL></Representation>
+                  <Representation bandwidth="1386640" codecs="avc1.4d401f" height="1280" id="720" width="720"><BaseURL>CMAF_720.mp4</BaseURL></Representation>
+                  <Representation bandwidth="761086" codecs="avc1.4d401f" height="854" id="480" width="480"><BaseURL>CMAF_480.mp4</BaseURL></Representation>
+                </AdaptationSet>
+                <AdaptationSet contentType="video" mimeType="video/mp4">
+                  <Role schemeIdUri="urn:mpeg:dash:role:2011" value="supplementary"/>
+                  <Representation bandwidth="400000" height="1350" id="e1350" width="760"><BaseURL>extra_1350.mp4</BaseURL></Representation>
+                  <Representation bandwidth="300000" height="900" id="e900" width="506"><BaseURL>extra_900.mp4</BaseURL></Representation>
+                  <Representation bandwidth="200000" height="600" id="e600" width="338"><BaseURL>extra_600.mp4</BaseURL></Representation>
+                  <Representation bandwidth="150000" height="450" id="e450" width="254"><BaseURL>extra_450.mp4</BaseURL></Representation>
+                  <Representation bandwidth="100000" height="338" id="e338" width="190"><BaseURL>extra_338.mp4</BaseURL></Representation>
+                  <Representation bandwidth="80000" height="276" id="e276" width="156"><BaseURL>extra_276.mp4</BaseURL></Representation>
+                </AdaptationSet>
+                <AdaptationSet contentType="audio" mimeType="audio/mp4">
+                  <Representation audioSamplingRate="48000" bandwidth="132121" codecs="mp4a.40.2" id="128"><BaseURL>CMAF_AUDIO_128.mp4</BaseURL></Representation>
+                  <Representation audioSamplingRate="48000" bandwidth="67739" codecs="mp4a.40.2" id="64"><BaseURL>CMAF_AUDIO_64.mp4</BaseURL></Representation>
+                </AdaptationSet>
+              </Period>
+            </MPD>
+        """.trimIndent()
+        val master = """
+            #EXTM3U
+            #EXT-X-VERSION:4
+            #EXT-X-MEDIA:URI="CMAF_AUDIO_128.m3u8",TYPE=AUDIO,GROUP-ID="7",NAME="audio 0",DEFAULT=YES,AUTOSELECT=YES
+            #EXT-X-MEDIA:URI="CMAF_AUDIO_64.m3u8",TYPE=AUDIO,GROUP-ID="6",NAME="audio 0",DEFAULT=YES,AUTOSELECT=YES
+            #EXT-X-STREAM-INF:BANDWIDTH=9000000,RESOLUTION=1080x1920,AUDIO="7"
+            CMAF_1080.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1080x1920,AUDIO="6"
+            CMAF_1080_low.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=1454379,RESOLUTION=720x1280,AUDIO="7"
+            CMAF_720.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=828825,RESOLUTION=480x854,AUDIO="6"
+            CMAF_480.m3u8
+        """.trimIndent()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("DASHPlaylist") -> MockResponse().setBody(mpd)
+                    path.contains("HLSPlaylist") -> MockResponse().setBody(master)
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        val title = "My cat coming downstairs"
+        try {
+            val dash = saver.qualities(
+                "t",
+                VideoVariant(title, "DASH", null, null, VideoSource.Dash(root + "DASHPlaylist.mpd")),
+            ) as VideoQualities.Ready
+            val hls = saver.qualities(
+                "t",
+                VideoVariant(title, "HLS", null, null, VideoSource.Hls(root + "HLSPlaylist.m3u8")),
+            ) as VideoQualities.Ready
+            assertEquals(listOf("1920p", "1280p", "854p"), hls.variants.map { it.qualityLabel })
+            val hlsTop = hls.variants.first().source as VideoSource.Hls
+            org.junit.Assert.assertTrue(hlsTop.playlistUrl.endsWith("CMAF_1080.m3u8"))
+            val fallback = VideoVariant(title, "1920p", "video/mp4", null, VideoSource.Progressive(root + "1920.mp4"))
+            val listed = listedQualities(dash.variants + hls.variants + listOf(fallback))
+            assertEquals(listOf("1920p", "1280p", "854p"), listed.map { it.qualityLabel })
+            org.junit.Assert.assertTrue(listed.all { it.title == title })
+            val pair = listed.first().source as VideoSource.SeparateAv
+            org.junit.Assert.assertTrue(pair.videoUrl.endsWith("CMAF_1080.mp4"))
+            org.junit.Assert.assertTrue(pair.audioUrl.endsWith("CMAF_AUDIO_128.mp4"))
         } finally {
             server.shutdown()
         }
