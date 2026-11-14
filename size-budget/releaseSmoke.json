@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk",
   "variant": "playReleaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4380533,
+  "fileSizeBytes": 4396917,
   "downloadSizeBytes": 3751332,
   "maxGrowthBytes": 8192,
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "The news wall on top of the blocking-stats baseline 4270381 measured 4380533 bytes, 110152 above that. No library was added. The bytes are the feed parser, the file cache, and the New tab list. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 5017528. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Generic media detection on top of the news-wall baseline 4380533 measured 4396917 bytes, 16384 above that. No library was added. The bytes are the media sniffer, the playing-file report, and the playlist peek. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 5033912. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }
