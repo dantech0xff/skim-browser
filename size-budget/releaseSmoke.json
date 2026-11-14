@@ -8,5 +8,5 @@
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "The video-save playReleaseSmoke was 4206653. Offering a download from the page address, ranged googlevideo fetches, and playlist qualities measured 4223465 bytes, 16812 above that. No library was added. The YouTube extractor is not in this APK. fullReleaseSmoke stayed within its allowance. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "The video-save playReleaseSmoke was 4206653. Offering a download from the page address, ranged googlevideo fetches, and playlist qualities measured 4223465 bytes, 16812 above that. The current play file is 4225733, 2268 above this baseline and inside the allowance. No library was added. The YouTube extractor is not in this APK. fullReleaseSmoke is baselined separately at 4862728. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

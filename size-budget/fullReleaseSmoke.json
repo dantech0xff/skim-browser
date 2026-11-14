@@ -2,8 +2,8 @@
   "apk": "app/build/outputs/apk/full/releaseSmoke/app-full-releaseSmoke.apk",
   "variant": "fullReleaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4843648,
+  "fileSizeBytes": 4862728,
   "downloadSizeBytes": 4381242,
   "maxGrowthBytes": 8192,
-  "notes": "playReleaseSmoke on the same assemble is 4206653 bytes. fullReleaseSmoke is 4843648, 636995 above that and 103904 above the previous full baseline of 4739744. The previous gap is NewPipe Extractor 0.26.5, Rhino 1.8.1, and protobuf-javalite. The new bytes are the shared video save, which this flavor also ships. apkanalyzer apk download-size on this file reported 4381242. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "The previous fullReleaseSmoke baseline was 4843648. A fresh assembleFullReleaseSmoke of the page-address offer, ranged googlevideo fetches, and playlist qualities is 4862728 bytes, 19080 above that. The play file from the same tree is 4225733, 2268 above its baseline of 4223465 and inside the 8192 allowance, so the play baseline stays. The gap between the two files is still 636995. No library was added. downloadSizeBytes was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }
