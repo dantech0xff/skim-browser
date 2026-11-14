@@ -130,7 +130,6 @@ class SkimWebViewClient(
     /** A finger went down on this page. The odd-redirect check treats that as the person being here. */
     fun noteInteraction() {
         lastInteractionAt = now()
-        if (!detached) events.onPageInteraction(tabId)
     }
 
     /**

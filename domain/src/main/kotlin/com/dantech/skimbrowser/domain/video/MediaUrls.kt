@@ -53,6 +53,12 @@ fun mediaFromProbe(json: String): List<String> {
     return (urls + docs.map { PAGE_DOCUMENT + it }).distinct()
 }
 
+/** The page a playing-event report names, when the payload is the probe object plus `page`. */
+fun playingPage(json: String): String? {
+    val root = runCatching { Json.parseToJsonElement(json) }.getOrNull() as? JsonObject ?: return null
+    return (root["page"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+}
+
 private fun probeSample(sample: JsonObject): String? {
     val src = (sample["src"] as? JsonPrimitive)?.contentOrNull ?: return null
     if (!playableAddress(src)) return null

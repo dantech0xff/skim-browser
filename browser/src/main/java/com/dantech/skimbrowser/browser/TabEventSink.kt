@@ -81,8 +81,11 @@ interface TabEventSink {
     /** A media file or playlist for [pageUrl], the document it belongs to. Called on the main thread. */
     fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String)
 
-    /** A touch on the page. The video probe reads again, so a file that starts playing is seen. */
-    fun onPageInteraction(tabId: String) = Unit
+    /**
+     * A `playing` event from the page. [report] is the probe object plus the page address.
+     * A report for a page that is no longer showing is ignored.
+     */
+    fun onVideoPlaying(tabId: String, report: String) = Unit
 
     /**
      * Whether [tabId] may continue a load whose certificate is [fingerprint] for [host].

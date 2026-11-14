@@ -28,6 +28,7 @@ import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.video.mediaFromProbe
+import com.dantech.skimbrowser.domain.video.playingPage
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -201,7 +202,6 @@ class TabManager(
     private val shownBeforeStart = HashMap<String, ShownPage>()
     private val readerableChecked = HashMap<String, Long>()
     private val videoChecked = HashMap<String, Long>()
-    private val videoProbeJobs = HashMap<String, Job>()
     private val historyTitleUpdates = HashMap<String, Int>()
     private val titleWrites = HashMap<String, Job>()
     private val pendingLoads = LinkedHashMap<String, String>()
@@ -1069,7 +1069,6 @@ class TabManager(
         shownBeforeStart.remove(tabId)
         readerableChecked.remove(tabId)
         videoChecked.remove(tabId)
-        videoProbeJobs.remove(tabId)?.cancel()
         historyTitleUpdates.remove(tabId)
     }
 
@@ -1134,12 +1133,10 @@ class TabManager(
         videoChecked[tabId] = nonce
         appScope.launch(mainDispatcher) {
             readVideo(live, tabId, nonce)
-            delay(PLAYBACK_PROBE_DELAY_MS)
-            readVideo(live, tabId, nonce)
         }
     }
 
-    /** Reads the playing file and any page JSON the site extractors need. A second read catches autoplay. */
+    /** Reads files already playing, and the page JSON the site extractors need. Later plays arrive on their own. */
     private suspend fun readVideo(live: TabEngine, tabId: String, nonce: Long) {
         val raw = evaluateOrNull(live, tabId, VIDEO_PROBE) ?: return
         if (runtimeOf(tabId).loadNonce != nonce) return
@@ -1190,7 +1187,6 @@ class TabManager(
                     mediaUrls = emptyList(),
                 )
             }
-            videoProbeJobs.remove(tabId)?.cancel()
             // Keep the stored http address until https commits. A restart can then offer it again.
             if (!upgradeAttempt && (tab.url != url || tab.title.isNotEmpty())) {
                 updateTab(tabId) { it.copy(url = url, title = "") }
@@ -1370,17 +1366,12 @@ class TabManager(
             stateStore.save(tabId, state, tab.incognito)
         }
 
-        override fun onPageInteraction(tabId: String) {
-            val live = engine.value ?: return
-            if (openTab(tabId) == null || !scripts.isSupported) return
-            val nonce = runtimeOf(tabId).loadNonce
-            if (videoChecked[tabId] != nonce) return
-            videoProbeJobs.remove(tabId)?.cancel()
-            videoProbeJobs[tabId] = appScope.launch(mainDispatcher) {
-                delay(PROBE_AFTER_TOUCH_MS)
-                videoProbeJobs.remove(tabId)
-                readVideo(live, tabId, nonce)
-            }
+        override fun onVideoPlaying(tabId: String, report: String) {
+            val open = openTab(tabId) ?: return
+            val page = runtimeOf(tabId).committedUrl ?: open.url ?: return
+            val reported = playingPage(report) ?: return
+            if (!sameNavigation(page, reported)) return
+            mediaFromProbe(report).forEach { onMediaUrl(tabId, page, it) }
         }
 
         override fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String) {
@@ -1470,16 +1461,9 @@ class TabManager(
         private const val EVENT_BUFFER = 64
         private const val MAX_MEDIA_URLS = 32
 
-        /** How long after the first read to look again, so a video that starts as the page finishes is seen. */
-        private const val PLAYBACK_PROBE_DELAY_MS = 1_200L
-
-        /** How long after the latest touch to read the probe, so Play has started the file. */
-        private const val PROBE_AFTER_TOUCH_MS = 700L
-
         /**
-         * Reports a playing file's address, duration, and size, and the page JSON site extractors
-         * read. `blob:` and MediaSource addresses are skipped. The listener fills `__skimPlayed`
-         * when playback starts after this script has already returned.
+         * Reports files already playing, and the page JSON site extractors read. A later `playing`
+         * event posts the new file through `SkimVideo`. `blob:` and MediaSource addresses are skipped.
          */
         private val VIDEO_PROBE = """
             (function(){
@@ -1489,33 +1473,44 @@ class TabManager(
                 if (src.indexOf('blob:') === 0 || src.indexOf('mediasource:') === 0) return false;
                 return src.indexOf('http://') === 0 || src.indexOf('https://') === 0;
               }
-              function sample(el) {
+              function take(el) {
                 var src = el.currentSrc || el.src || '';
-                if (!keep(src)) return;
+                if (!keep(src)) return null;
                 for (var n = 0; n < played.length; n++) {
-                  if (played[n].src === src) return;
+                  if (played[n].src === src) return null;
                 }
-                if (played.length >= 32) return;
+                if (played.length >= 32) return null;
                 var duration = el.duration;
-                played.push({
+                var item = {
                   src: src,
                   duration: (typeof duration === 'number' && isFinite(duration)) ? duration : 0,
                   width: el.videoWidth || 0,
                   height: el.videoHeight || 0
-                });
+                };
+                played.push(item);
+                return item;
+              }
+              function publish(item) {
+                var body = JSON.stringify({page: String(location.href || ''), urls: [item], docs: []});
+                try {
+                  if (window.SkimVideo && SkimVideo.postMessage) SkimVideo.postMessage(body);
+                } catch (e) {}
+              }
+              if (!window.__skimWatch) {
+                window.__skimWatch = 1;
+                document.addEventListener('playing', function (ev) {
+                  var el = ev.target;
+                  if (!el || String(el.tagName) !== 'VIDEO') return;
+                  var item = take(el);
+                  if (item) publish(item);
+                }, true);
               }
               function started(el) {
                 return el.ended || el.currentTime > 0 || (!el.paused && el.readyState >= 2);
               }
-              function arm(el) {
-                if (!el || el.__skimArm) return;
-                el.__skimArm = 1;
-                el.addEventListener('playing', function(){ sample(el); });
-              }
               var nodes = document.querySelectorAll('video');
               for (var i = 0; i < nodes.length; i++) {
-                arm(nodes[i]);
-                if (started(nodes[i])) sample(nodes[i]);
+                if (started(nodes[i])) take(nodes[i]);
               }
               var docs = [];
               var scripts = document.scripts || [];

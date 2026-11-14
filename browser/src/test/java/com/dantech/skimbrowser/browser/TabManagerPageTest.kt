@@ -73,37 +73,39 @@ class TabManagerPageTest {
     }
 
     @Test
-    fun aPlayAfterThePageFinishesIsStillOffered() = runTest {
+    fun aPlayingEventOffersTheFileAndAStalePageDoesNot() = runTest {
         val f = attached()
         val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
-        var payload = """{"urls":[],"docs":[]}"""
-        f.engine.evaluator = { _, script -> if ("__skimPlayed" in script) payload else null }
+        var notifiesOnPlaying = false
+        f.engine.evaluator = { _, script ->
+            if ("__skimPlayed" in script) {
+                notifiesOnPlaying = "addEventListener('playing'" in script && "SkimVideo.postMessage" in script
+            }
+            """{"urls":[],"docs":[]}"""
+        }
         f.engine.openPage(id, "https://news.example/story", "Story")
-        advanceTimeBy(2_000)
-        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
-
-        payload = """{"urls":[{"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}],"docs":[]}"""
-        f.events.onPageInteraction(id)
-        advanceTimeBy(1_000)
+        runCurrent()
+        assertTrue(notifiesOnPlaying)
+        val playing = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360},
+              {"src":"blob:https://news.example/1","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
         assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
-    }
 
-    @Test
-    fun aPlayTapAfterAScrollStillFindsTheVideo() = runTest {
-        val f = attached()
-        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
-        var payload = """{"urls":[],"docs":[]}"""
-        f.engine.evaluator = { _, script -> if ("__skimPlayed" in script) payload else null }
-        f.engine.openPage(id, "https://news.example/story", "Story")
-        advanceTimeBy(2_000)
-        f.events.onPageInteraction(id)
-        advanceTimeBy(800)
-        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
-
-        payload = """{"urls":[{"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}],"docs":[]}"""
-        f.events.onPageInteraction(id)
-        advanceTimeBy(1_000)
+        val stale = """
+            {"page":"https://other.example/old","urls":[
+              {"src":"https://cdn.example/old.mp4","duration":40,"width":1280,"height":720}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, stale)
         assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+
+        f.engine.openPage(id, "https://news.example/next", "Next")
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
     }
 
     @Test

@@ -52,6 +52,8 @@ class VideoExtractTest {
         assertNull(sightMedia(MediaLook("https://cdn.example/song.mp3", range = "bytes=0-"), false))
         assertNull(sightMedia(MediaLook("https://cdn.example/song.m4a", range = "bytes=0-1"), false))
         assertNull(sightMedia(MediaLook("https://cdn.example/song", accept = "audio/mpeg, video/*;q=0.1"), false))
+        assertEquals("https://news.example/story", playingPage("""{"page":"https://news.example/story","urls":[],"docs":[]}"""))
+        assertNull(playingPage("{}"))
         assertEquals(MediaStream.Hls, textPlaylist("#EXTM3U\n#EXTINF:1,\nseg.ts\n"))
         assertEquals(MediaStream.Dash, textPlaylist("<?xml version=\"1.0\"?><MPD></MPD>"))
         assertNull(textPlaylist("\u0000\u0000\u0000 ftypisom"))
