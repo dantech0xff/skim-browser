@@ -535,7 +535,6 @@
     <string name="settings_ai_privacy_summary_no_ask">Reads sites when you ask</string>
     <string name="snackbar_download_failed">Couldn\'t download %s</string>
     <string name="snackbar_share_failed">Couldn\'t share this image</string>
-
     <string name="settings_shield_stats">Blocking stats</string>
     <string name="settings_shield_stats_summary">Ads and trackers blocked on this device.</string>
     <string name="shield_stats_title">Blocking stats</string>
@@ -577,4 +576,25 @@
         <item quantity="one">%1$s ad or tracker blocked today</item>
         <item quantity="other">%1$s ads and trackers blocked today</item>
     </plurals>
+    <string name="news_settings_section">News</string>
+    <string name="settings_news_wall">News on the New tab page</string>
+    <string name="settings_news_wall_summary">Show headlines from public feeds. Off means Skim does not fetch them.</string>
+    <string name="news_section">News</string>
+    <string name="news_topic_top">Top</string>
+    <string name="news_topic_tech">Tech</string>
+    <string name="news_topic_business">Business</string>
+    <string name="news_topic_world">World</string>
+    <string name="news_topic_sports">Sports</string>
+    <string name="news_topic_entertainment">Entertainment</string>
+    <string name="news_sources">Sources</string>
+    <string name="news_add_feed">Add feed</string>
+    <string name="news_feed_url">Feed address</string>
+    <string name="news_feed_url_invalid">Enter a new https feed address.</string>
+    <string name="news_done">Done</string>
+    <string name="news_empty">No stories right now. Pull to refresh.</string>
+    <string name="news_loading">Loading stories</string>
+    <string name="news_open_new_tab">Open in new tab</string>
+    <string name="news_share">Share</string>
+    <string name="news_hide_source">Hide this source</string>
+    <string name="news_meta">%1$s · %2$s</string>
 </resources>

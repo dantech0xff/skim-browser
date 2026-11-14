@@ -47,6 +47,7 @@ import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.ShieldStatsKey
 import com.dantech.skimbrowser.ui.navigation.ThemeDialogKey
 import com.dantech.skimbrowser.ui.navigation.TranslationLanguageDialogKey
+import com.dantech.skimbrowser.ui.news.NewsPreferencesViewModel
 
 /** Settings (12). */
 @Composable
@@ -63,6 +64,8 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onDispose { lifecycle.removeObserver(observer) }
     }
     val state by model.state.collectAsStateWithLifecycle()
+    val news = hiltViewModel<NewsPreferencesViewModel>()
+    val newsOn by news.enabled.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,
         onBack = navigator::back,
@@ -87,6 +90,8 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onBlockOddRedirects = model::setBlockOddRedirects,
         onHideCookieBanners = model::setHideCookieBanners,
         onSaveVideos = model::setSaveVideos,
+        onNewsWall = newsOn?.let { news::setEnabled },
+        newsWallOn = newsOn == true,
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
         onTerms = legalOpener(navigator, BuildConfig.TERMS_URL),
         onLicenses = { navigator.push(LicensesKey) },
@@ -198,6 +203,8 @@ fun SettingsScreen(
     onBlockOddRedirects: (Boolean) -> Unit = {},
     onHideCookieBanners: (Boolean) -> Unit = {},
     onSaveVideos: (Boolean) -> Unit = {},
+    onNewsWall: ((Boolean) -> Unit)? = null,
+    newsWallOn: Boolean = true,
     onPrivacyPolicy: (() -> Unit)?,
     onTerms: (() -> Unit)?,
     onLicenses: () -> Unit,
@@ -367,6 +374,19 @@ fun SettingsScreen(
                 onClick = onBackup,
                 leading = { IconTile(R.drawable.ic_download, colors.primaryContainer, colors.onPrimaryContainer) },
             )
+        }
+        if (onNewsWall != null) {
+            section(R.string.news_settings_section) {
+                SwitchRow(
+                    headline = stringResource(R.string.settings_news_wall),
+                    supporting = stringResource(R.string.settings_news_wall_summary),
+                    icon = R.drawable.ic_article,
+                    checked = newsWallOn,
+                    index = 0,
+                    count = 1,
+                    onCheckedChange = onNewsWall,
+                )
+            }
         }
         section(R.string.settings_section_about) {
             AboutRow(R.drawable.ic_shield, R.string.settings_privacy_policy, 0, onPrivacyPolicy)

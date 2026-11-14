@@ -40,7 +40,7 @@ import kotlin.coroutines.coroutineContext
  * A save that fails or is cancelled leaves nothing behind: the row or file being written is
  * deleted. The address the file came from is never stored with it.
  */
-class MediaStoreDownloads(
+open class MediaStoreDownloads(
     private val context: Context,
     private val sdkInt: Int = Build.VERSION.SDK_INT,
     /** The public Downloads folder, written directly before scoped storage. */
@@ -61,7 +61,7 @@ class MediaStoreDownloads(
      *
      * @throws IOException when the file cannot be saved; nothing is left behind.
      */
-    suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted {
+    open suspend fun save(fileName: String, mimeType: String, write: suspend (OutputStream) -> Unit): DownloadEvent.DownloadCompleted {
         var published: Uri? = null
         try {
             return withContext(ioDispatcher) {
