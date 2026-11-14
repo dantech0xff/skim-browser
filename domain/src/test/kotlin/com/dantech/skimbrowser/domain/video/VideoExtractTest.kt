@@ -276,8 +276,15 @@ class VideoExtractTest {
             VideoVariant("cat", "HLS", null, null, VideoSource.Hls("https://v.redd.it/abc/HLSPlaylist.m3u8")),
             VideoVariant("cat", "720p", "video/mp4", null, VideoSource.Progressive("https://v.redd.it/abc/DASH_720.mp4")),
             VideoVariant("Talk", "360p", "video/mp4", null, VideoSource.Progressive("https://rr.googlevideo.com/videoplayback?id=1")),
+            VideoVariant("other", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/other/master.m3u8")),
+            VideoVariant("other", "720p", "video/mp4", null, VideoSource.Progressive("https://cdn.example/other/clip.mp4")),
         )
-        assertEquals(listOf("1280p", "480p", "360p"), listedQualities(variants).map { it.qualityLabel })
+        val listed = listedQualities(variants)
+        assertEquals(listOf("1280p", "720p", "720p", "480p", "360p"), listed.map { it.qualityLabel })
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/other/master.m3u8" })
+        assertTrue(listed.any { (it.source as? VideoSource.Progressive)?.url == "https://cdn.example/other/clip.mp4" })
+        assertTrue(listed.none { (it.source as? VideoSource.Hls)?.playlistUrl?.contains("v.redd.it") == true })
+        assertTrue(listed.none { (it.source as? VideoSource.Progressive)?.url?.contains("DASH_") == true })
     }
 
     private fun extractor(

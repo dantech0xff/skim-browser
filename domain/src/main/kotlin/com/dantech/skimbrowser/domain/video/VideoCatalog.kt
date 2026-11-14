@@ -65,27 +65,31 @@ suspend fun collectVariants(extractors: Iterable<VideoExtractor>, hints: PageVid
 
 /**
  * One row per quality, highest first. A DASH pair replaces the video-only playlist and the
- * video-only rendition files of that same clip.
+ * video-only rendition files that share its directory. Another clip on the same page stays.
  */
 fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
-    val hasPair = variants.any { it.source is VideoSource.SeparateAv }
-    val pairedHeights = variants.mapNotNull { variant ->
-        if (variant.source is VideoSource.SeparateAv) qualityHeight(variant.qualityLabel) else null
+    val pairedDirectories = variants.mapNotNull { variant ->
+        (variant.source as? VideoSource.SeparateAv)?.let { clipDirectory(it.videoUrl) }
     }.toSet()
     val kept = variants.filter { variant ->
-        if (!hasPair) return@filter true
+        val directory = clipDirectory(variant.source.mediaAddress())
+        if (directory !in pairedDirectories) return@filter true
         when (val source = variant.source) {
             is VideoSource.SeparateAv -> true
             is VideoSource.Hls, is VideoSource.Dash -> false
-            is VideoSource.Progressive -> {
-                val height = qualityHeight(variant.qualityLabel)
-                (height == null || height !in pairedHeights) && !isVideoOnlyRendition(source.url)
-            }
+            is VideoSource.Progressive -> !isVideoOnlyRendition(source.url)
         }
     }
     return kept
         .distinctBy { it.source.address() }
         .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+}
+
+/** The directory of a media file, so two files of one clip can be told from another clip. */
+internal fun clipDirectory(url: String): String {
+    val path = url.substringBefore('?').substringBefore('#')
+    val slash = path.lastIndexOf('/')
+    return if (slash >= 0) path.substring(0, slash) else path
 }
 
 /** A page title with a trailing site name removed, including a repeated `| Facebook`. */

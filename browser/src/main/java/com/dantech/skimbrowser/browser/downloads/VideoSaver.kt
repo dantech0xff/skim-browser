@@ -785,7 +785,31 @@ private val MP4_BOXES = setOf("ftyp", "moof", "styp", "mdat", "sidx", "free")
 
 internal fun isNetworkFailure(error: Throwable): Boolean {
     if (error is DownloadException) return false
-    return error is java.io.IOException && error !is java.io.FileNotFoundException
+    return when (error) {
+        is java.net.UnknownHostException,
+        is java.net.SocketTimeoutException,
+        is java.net.ConnectException,
+        is java.net.NoRouteToHostException,
+        is java.net.SocketException,
+        is java.net.ProtocolException,
+        is javax.net.ssl.SSLException,
+        is java.io.InterruptedIOException,
+        is java.io.EOFException -> true
+        is java.io.IOException -> droppedTransfer(error.message)
+        else -> false
+    }
+}
+
+private fun droppedTransfer(message: String?): Boolean {
+    val text = message?.lowercase() ?: return false
+    return "unexpected end of stream" in text ||
+        "stream was reset" in text ||
+        "connection reset" in text ||
+        "connection abort" in text ||
+        "broken pipe" in text ||
+        "timed out" in text ||
+        "timeout" in text ||
+        "failed to connect" in text
 }
 
 private class ByteBudget(private val max: Long) {
