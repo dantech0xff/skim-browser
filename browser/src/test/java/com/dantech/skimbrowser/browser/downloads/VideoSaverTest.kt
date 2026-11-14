@@ -42,6 +42,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okio.Buffer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -1282,17 +1283,35 @@ class VideoSaverTest {
             }
         }
         val log = CountingLog()
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        val variant = VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
-        val room = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 16 })
-        val tight = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES - 1 })
+        val parent = SupervisorJob()
+        val scope = CoroutineScope(parent + Dispatchers.Unconfined)
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val variant = VideoVariant("reserve-room", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
+        val room = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 16 },
+            workDir = File(context.cacheDir, "video-reserve-room"),
+        )
+        val tight = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            freeBytes = { InProcessDownloader.MIN_FREE_BYTES - 1 },
+            workDir = File(context.cacheDir, "video-reserve-tight"),
+        )
         try {
             assertEquals(VideoSaveResult.Started, room.save("t", variant))
-            assertEquals(null, log.reason)
+            parent.children.toList().forEach { it.join() }
+            // Robolectric can refuse the MediaStore publish after the reserve check. That is not a full disk.
+            assertNotEquals("space", log.reason)
             log.reason = null
             assertEquals(VideoSaveResult.Started, tight.save("t", variant))
+            parent.children.toList().forEach { it.join() }
             assertEquals("space", log.reason)
         } finally {
+            parent.cancel()
             server.shutdown()
         }
     }
@@ -1326,8 +1345,9 @@ class VideoSaverTest {
         val reserve = InProcessDownloader.MIN_FREE_BYTES
         fun occupied(dir: File) = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
         val log = CountingLog()
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        val variant = VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
+        val parent = SupervisorJob()
+        val scope = CoroutineScope(parent + Dispatchers.Unconfined)
+        val variant = VideoVariant("reserve-second", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
         val tight = saver(
             log,
             scope,
@@ -1344,11 +1364,15 @@ class VideoSaverTest {
         )
         try {
             assertEquals(VideoSaveResult.Started, tight.save("t", variant))
+            parent.children.toList().forEach { it.join() }
             assertEquals("space", log.reason)
             log.reason = null
             assertEquals(VideoSaveResult.Started, room.save("t", variant))
-            assertEquals(null, log.reason)
+            parent.children.toList().forEach { it.join() }
+            // Robolectric can refuse the MediaStore publish after the reserve check. That is not a full disk.
+            assertNotEquals("space", log.reason)
         } finally {
+            parent.cancel()
             server.shutdown()
             tightDir.deleteRecursively()
             roomDir.deleteRecursively()
