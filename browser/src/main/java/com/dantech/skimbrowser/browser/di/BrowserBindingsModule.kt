@@ -12,6 +12,7 @@ import com.dantech.skimbrowser.browser.TabEngineBridge
 import com.dantech.skimbrowser.browser.TabEngineSource
 import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.RequestShield
+import com.dantech.skimbrowser.browser.ShieldStatRecorder
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.WebViewProfiles
 import com.dantech.skimbrowser.browser.page.PageScriptSource
@@ -20,6 +21,8 @@ import com.dantech.skimbrowser.domain.ai.NetworkAvailability
 import com.dantech.skimbrowser.domain.download.DownloadCommands
 import com.dantech.skimbrowser.domain.browsing.SiteDataCleaner
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import com.dantech.skimbrowser.domain.shield.ShieldStatSink
+import com.dantech.skimbrowser.domain.shield.ShieldStats
 import com.dantech.skimbrowser.domain.tab.IncognitoDecisions
 import com.dantech.skimbrowser.domain.tab.IncognitoSupport
 import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
@@ -49,6 +52,8 @@ internal abstract class BrowserBindingsModule {
     @Binds abstract fun pageScripts(impl: PageScripts): PageScriptSource
     @Binds abstract fun siteDataCleaner(impl: BrowsingDataCleaner): SiteDataCleaner
     @Binds abstract fun shieldChoices(impl: RequestShield): ShieldChoices
+    @Binds abstract fun shieldStatSink(impl: ShieldStatRecorder): ShieldStatSink
+    @Binds abstract fun shieldStats(impl: ShieldStatRecorder): ShieldStats
     @Binds abstract fun downloadCommands(impl: DownloadActions): DownloadCommands
 
     companion object {

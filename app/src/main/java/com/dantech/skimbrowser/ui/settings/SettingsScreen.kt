@@ -44,6 +44,7 @@ import com.dantech.skimbrowser.ui.navigation.DownloadsKey
 import com.dantech.skimbrowser.ui.navigation.PageTextSizeDialogKey
 import com.dantech.skimbrowser.ui.navigation.SearchEngineDialogKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import com.dantech.skimbrowser.ui.navigation.ShieldStatsKey
 import com.dantech.skimbrowser.ui.navigation.ThemeDialogKey
 import com.dantech.skimbrowser.ui.navigation.TranslationLanguageDialogKey
 
@@ -77,6 +78,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onPageTextSize = { navigator.push(PageTextSizeDialogKey) },
         onDownloads = { navigator.push(DownloadsKey) },
         onAiPrivacy = { navigator.push(AiPrivacyKey) },
+        onShieldStats = { navigator.push(ShieldStatsKey) },
         onScamWarnings = model::setScamWarnings,
         onTranslationLanguage = { navigator.push(TranslationLanguageDialogKey) },
         onClearData = { navigator.push(ClearBrowsingDataKey) },
@@ -187,6 +189,7 @@ fun SettingsScreen(
     onPageTextSize: () -> Unit,
     onDownloads: () -> Unit = {},
     onAiPrivacy: () -> Unit,
+    onShieldStats: () -> Unit = {},
     onScamWarnings: (Boolean) -> Unit,
     onTranslationLanguage: () -> Unit = {},
     onClearData: () -> Unit,
@@ -283,12 +286,22 @@ fun SettingsScreen(
             )
         }
         section(R.string.settings_section_privacy_security) {
+            SettingsRow(
+                headline = stringResource(R.string.settings_shield_stats),
+                supporting = stringResource(R.string.settings_shield_stats_summary),
+                icon = R.drawable.ic_shield,
+                container = colors.primaryContainer,
+                content = colors.onPrimaryContainer,
+                index = 0,
+                count = PRIVACY_ROWS,
+                onClick = onShieldStats,
+            )
             SwitchRow(
                 headline = stringResource(R.string.settings_scam_warnings),
                 supporting = stringResource(R.string.settings_scam_warnings_summary),
                 icon = R.drawable.ic_shield,
                 checked = state.scamWarnings,
-                index = 0,
+                index = 1,
                 count = PRIVACY_ROWS,
                 onCheckedChange = onScamWarnings,
             )
@@ -297,7 +310,7 @@ fun SettingsScreen(
                 supporting = stringResource(R.string.settings_block_popups_summary),
                 icon = R.drawable.ic_shield,
                 checked = state.blockPopups,
-                index = 1,
+                index = 2,
                 count = PRIVACY_ROWS,
                 onCheckedChange = onBlockPopups,
             )
@@ -306,7 +319,7 @@ fun SettingsScreen(
                 supporting = stringResource(R.string.settings_block_redirects_summary),
                 icon = R.drawable.ic_shield,
                 checked = state.blockOddRedirects,
-                index = 2,
+                index = 3,
                 count = PRIVACY_ROWS,
                 onCheckedChange = onBlockOddRedirects,
             )
@@ -315,7 +328,7 @@ fun SettingsScreen(
                 supporting = stringResource(R.string.settings_hide_cookie_banners_summary),
                 icon = R.drawable.ic_shield,
                 checked = state.hideCookieBanners,
-                index = 3,
+                index = 4,
                 count = PRIVACY_ROWS,
                 onCheckedChange = onHideCookieBanners,
             )
@@ -324,14 +337,14 @@ fun SettingsScreen(
                 supporting = stringResource(R.string.settings_save_videos_summary),
                 icon = R.drawable.ic_download,
                 checked = state.saveVideos,
-                index = 4,
+                index = 5,
                 count = PRIVACY_ROWS,
                 onCheckedChange = onSaveVideos,
             )
             SkimListItem(
                 headline = stringResource(R.string.downloads_title),
                 supporting = stringResource(R.string.settings_downloads_summary),
-                index = 5,
+                index = 6,
                 count = PRIVACY_ROWS,
                 onClick = onDownloads,
                 leading = { IconTile(R.drawable.ic_download, colors.secondaryContainer, colors.onSecondaryContainer) },
@@ -339,7 +352,7 @@ fun SettingsScreen(
             SkimListItem(
                 headline = stringResource(R.string.clear_browsing_data),
                 supporting = stringResource(R.string.settings_clear_browsing_data_summary),
-                index = 6,
+                index = 7,
                 count = PRIVACY_ROWS,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
@@ -446,5 +459,5 @@ private fun LazyListScope.section(
     item { SegmentedColumn(content = content) }
 }
 
-private const val PRIVACY_ROWS = 7
+private const val PRIVACY_ROWS = 8
 private const val TAG = "Settings"

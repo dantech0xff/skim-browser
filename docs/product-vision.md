@@ -8,6 +8,8 @@ Skim is an AI-powered web browser for Android. The app shows no ads of its own. 
 
 The snapshot is built by `tools/compile_blocklist.py` from a pinned upstream commit. Hosts ship as hashes. Cosmetic `##` and `#@#` rules ship as a stylesheet the page installs when blocking is on for that site. `shield/cookie.txt` is the EasyList Cookie general hide list from that same pin, capped at 1,800 selectors, and it is installed only while cookie banners are hidden. EasyList and EasyPrivacy are dual-licensed; Skim uses the GPL-3.0-or-later option and attributes The EasyList authors (https://easylist.to/). The app does not download a newer list, so a refresh is a new APK and the install does not contact EasyList. Procedural and scriptlet rules are not applied. The AI proxy stays the contract in `docs/deployment-guide.md`.
 
+Blocked requests, popups, redirects, and cosmetic rules are counted on the device. The totals and the estimate of data and time saved stay in the local database. A private tab adds to the counts and does not add a site to the list. The formula is `docs/privacy-stats.md`.
+
 ## Android only
 
 Skim runs on Android. This version does not include an iOS app, a desktop app, or a web client.

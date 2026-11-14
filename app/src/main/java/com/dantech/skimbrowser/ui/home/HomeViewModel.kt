@@ -17,6 +17,8 @@ import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
+import com.dantech.skimbrowser.domain.shield.ShieldStats
+import java.time.Instant
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -67,6 +69,8 @@ data class HomeUiState(
     val continueChats: ImmutableList<ContinueCard> = persistentListOf(),
     /** False hides the mic: no app takes speech input. */
     val voiceAvailable: Boolean = false,
+    /** Ads and trackers blocked today. Zero hides the counter on Home. */
+    val blockedToday: Long = 0,
 ) {
     val showsHero: Boolean get() = eligibleTabCount > 0
 
@@ -94,14 +98,16 @@ class HomeViewModel @Inject constructor(
     @VoiceAvailable voiceAvailable: Boolean,
     @WallClock private val clock: () -> Long = System::currentTimeMillis,
     @WallZone private val zone: @JvmSuppressWildcards () -> ZoneId = ZoneId::systemDefault,
+    private val stats: ShieldStats = ShieldStats.Empty,
 ) : ViewModel() {
 
     val state: StateFlow<HomeUiState> = combine(
         tabs.state.map { pagesEligibleForAsk(it) }.distinctUntilChanged(),
         shortcuts.observe().map { it.toImmutableList() },
         chats.observeRecentPageChats(CONTINUE_CARDS).map { recent -> recent.map(::continueCard).toImmutableList() },
-    ) { tabCount, shortcutList, cards ->
-        HomeUiState(tabCount, shortcutList, cards, voiceAvailable)
+        stats.observe(today()).map { it.today.requests }.distinctUntilChanged(),
+    ) { tabCount, shortcutList, cards, blockedToday ->
+        HomeUiState(tabCount, shortcutList, cards, voiceAvailable, blockedToday)
     }
         .catch { e -> Log.w(TAG, "Home stopped updating: ${e.javaClass.simpleName}") }
         .stateIn(
@@ -144,6 +150,8 @@ class HomeViewModel @Inject constructor(
             snippet = chat.snippet.orEmpty(),
         )
     }
+
+    private fun today(): Long = Instant.ofEpochMilli(clock()).atZone(zone()).toLocalDate().toEpochDay()
 
     internal companion object {
         /** Home shows the two newest page chats. */

@@ -35,6 +35,7 @@ import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.history.HistoryRepository
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
+import com.dantech.skimbrowser.domain.shield.ShieldStatSink
 import com.dantech.skimbrowser.domain.tab.GroupingSnapshot
 import com.dantech.skimbrowser.domain.tab.PersistedTab
 import com.dantech.skimbrowser.domain.tab.PersistedTabGroup
@@ -113,6 +114,7 @@ class TabManager(
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
     private val safety: SafetyGate = SafetyGate.Off,
     private val navigations: TabNavigations = TabNavigations(),
+    private val stats: ShieldStatSink = ShieldStatSink.Ignore,
 ) : TabsController, TabRestore, InterruptNotices {
 
     @Inject constructor(
@@ -129,12 +131,14 @@ class TabManager(
         certificates: CertificateSessions,
         safety: ProcessSafetyGate,
         navigations: TabNavigations,
+        stats: ShieldStatSink,
     ) : this(
         tabRepo, history, settings, incognito, stateStore, thumbnails, network, appScope, scripts, engines,
         certificates,
         restoreTimeoutMs = RESTORE_TIMEOUT_MS,
         safety = safety,
         navigations = navigations,
+        stats = stats,
     )
 
     /** A close that can still be undone; [replacementId] is the tab the close made current. */
@@ -1340,11 +1344,13 @@ class TabManager(
 
         override fun onPopupBlocked(tabId: String, holdId: Long) {
             val tab = openTab(tabId) ?: return
+            stats.onPopupBlocked(tab.incognito)
             _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.POPUP, tab.url?.let(::hostOf), null, holdId))
         }
 
         override fun onRedirectBlocked(tabId: String, url: String) {
             val tab = openTab(tabId) ?: return
+            stats.onRedirectBlocked(tab.incognito)
             _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.TOP_FRAME, tab.url?.let(::hostOf), url))
         }
 

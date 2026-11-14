@@ -37,6 +37,7 @@ import com.dantech.skimbrowser.ui.settings.LicensesRoute
 import com.dantech.skimbrowser.ui.settings.PageTextSizeRoute
 import com.dantech.skimbrowser.ui.settings.SearchEngineRoute
 import com.dantech.skimbrowser.ui.settings.SettingsRoute
+import com.dantech.skimbrowser.ui.shield.ShieldStatsRoute
 import com.dantech.skimbrowser.ui.settings.ThemeRoute
 import com.dantech.skimbrowser.ui.settings.TranslationLanguageRoute
 import com.dantech.skimbrowser.ui.reader.ReaderRoute
@@ -181,6 +182,7 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         }
         entry<TabsKey> { key -> TabsRoute(key, navigator) }
         entry<SettingsKey> { SettingsRoute(navigator) }
+        entry<ShieldStatsKey> { ShieldStatsRoute(navigator) }
         entry<BackupKey> { BackupRoute(navigator) }
         entry<AiPrivacyKey> { AiPrivacyRoute(navigator) }
         entry<HistoryKey> { HistoryRoute(navigator) }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -43,6 +44,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -60,6 +62,7 @@ import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.components.segmentedShapes
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.text.asString
+import java.text.NumberFormat
 import kotlinx.collections.immutable.ImmutableList
 
 /** What the controls of Home (04) do. */
@@ -82,6 +85,8 @@ data class HomeActions(
     val onOpenChat: (chatId: Long) -> Unit,
     /** See all, beside Continue with Skim. */
     val onSeeAllChats: () -> Unit,
+    /** The blocked-today counter. Shown only while that count is above zero. */
+    val onOpenStats: () -> Unit = {},
 )
 
 /**
@@ -132,6 +137,22 @@ fun HomeScreen(
                     onClick = actions.onSearch,
                     onVoice = if (state.voiceAvailable) actions.onVoice else null,
                 )
+                if (state.blockedToday > 0) {
+                    val count = state.blockedToday.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.home_blocked_today,
+                            count,
+                            NumberFormat.getIntegerInstance().format(state.blockedToday),
+                        ),
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 48.dp)
+                            .clickable(role = Role.Button, onClick = actions.onOpenStats),
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
             if (state.showsHero) {
                 Spacer(Modifier.height(SectionGap))

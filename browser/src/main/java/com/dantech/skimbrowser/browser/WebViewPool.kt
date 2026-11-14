@@ -23,6 +23,7 @@ import android.view.MotionEvent
 import com.dantech.skimbrowser.domain.interrupt.InterruptPolicy
 import com.dantech.skimbrowser.domain.page.PageTextZoom
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import com.dantech.skimbrowser.domain.shield.ShieldStatSink
 import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.url.isWebUrl
@@ -94,6 +95,7 @@ class WebViewPool(
     /** Draws a WebView's thumbnail, or null while it has nothing to show. */
     private val drawThumbnail: (View) -> Bitmap? = ::captureThumbnail,
     private val interrupts: () -> InterruptPolicy = { InterruptPolicy() },
+    private val stats: ShieldStatSink = ShieldStatSink.Ignore,
 ) : TabEngine {
 
     /**
@@ -618,6 +620,7 @@ class WebViewPool(
             safety = safety,
             navigations = navigations,
             policy = interrupts,
+            stats = stats,
         ) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
         }
