@@ -8,7 +8,8 @@ Modules are declared in `settings.gradle.kts`.
 | `:data` | `data/src/main/java/com/dantech/skimbrowser/data/`. Room, DataStore, repositories, bookmark import. `@Binds` in `data/src/main/java/com/dantech/skimbrowser/data/di/`. |
 | `:browser` | `browser/src/main/java/com/dantech/skimbrowser/browser/`. Tab engine, WebView pool, downloads, page scripts. `@Binds` in `browser/src/main/java/com/dantech/skimbrowser/browser/di/`. Depends on `:domain` and `:data`. |
 | `:ai` | `ai/src/main/java/com/dantech/skimbrowser/ai/`. Claude adapter, chat sessions, tab grouping. `@Binds` in `ai/src/main/java/com/dantech/skimbrowser/ai/di/`. Depends on `:domain` and `:browser`. |
-| `:app` | `SkimApplication` and `MainActivity`. Screens in `app/src/main/java/com/dantech/skimbrowser/ui/`. Process resources, use cases, and `ClaudeClientFactory` (it reads `BuildConfig`) in `app/src/main/java/com/dantech/skimbrowser/di/`. |
+| `:app` | `SkimApplication` and `MainActivity`. Screens in `app/src/main/java/com/dantech/skimbrowser/ui/`. Process resources, use cases, and `ClaudeClientFactory` (it reads `BuildConfig`) in `app/src/main/java/com/dantech/skimbrowser/di/`. Flavors `play` and `full` are the `distribution` dimension. `play` is the default. |
+| `:extractor-youtube` | `extractor-youtube/src/main/java/com/dantech/skimbrowser/extractor/youtube/`. YouTube `VideoExtractor`. `@IntoSet` in `di/YoutubeExtractorModule.kt`. The app depends on this module only with `fullImplementation`. |
 | `:baselineprofile` | `baselineprofile/` |
 | `:macrobenchmark` | `macrobenchmark/` |
 
@@ -25,4 +26,4 @@ Boundaries and the decisions behind them are `docs/system-architecture.md`.
 | `app/src/androidTest` | Instrumented tests, including `ReleaseSmokeTest`. |
 | `app/src/test/screenshots` | Roborazzi goldens. Board images share names with `design/screens/`. |
 
-`DomainBoundaryTest` is the layer check (`app/src/test/java/com/dantech/skimbrowser/domain/DomainBoundaryTest.kt`). `:app:testDebugUnitTest` runs the other modules' unit tests first. That dependency is in `app/build.gradle.kts`.
+`DomainBoundaryTest` is the layer check (`app/src/test/java/com/dantech/skimbrowser/domain/DomainBoundaryTest.kt`). `:app:testPlayDebugUnitTest` runs the other modules' unit tests first. That dependency is in `app/build.gradle.kts`.

@@ -18,13 +18,15 @@ Leave `skim.aiProxyUrl` empty unless you want live Ask Skim. No build embeds an 
 From the repo root, pass `--no-configuration-cache`. KSP does not serialize into the configuration cache.
 
 ```
-./gradlew :app:assembleDebug --no-configuration-cache
+./gradlew :app:assemblePlayDebug --no-configuration-cache
 ```
 
-Release builds need https URLs. The command and the empty defaults are in the README section "Release". `releaseSmoke` is the minified build used for size and smoke checks. It does not need those URLs.
+`play` is the Google Play flavor and the default. `full` is the GitHub and F-Droid flavor. Only `full` contains the YouTube extractor. The README section "Distribution flavors" lists the tasks.
+
+Release builds need https URLs. The command and the empty defaults are in the README section "Release". `releaseSmoke` is the minified build used for size and smoke checks. It does not need those URLs. Assemble both flavors:
 
 ```
-./gradlew :app:assembleReleaseSmoke --no-configuration-cache
+./gradlew :app:assemblePlayReleaseSmoke :app:assembleFullReleaseSmoke --no-configuration-cache
 ```
 
 ## Test
@@ -32,28 +34,28 @@ Release builds need https URLs. The command and the empty defaults are in the RE
 Run the unit tests for the module you changed. When the change is in `:app` or crosses a module boundary, run the app suite. That task runs the module suites first.
 
 ```
-./gradlew :app:testDebugUnitTest --no-configuration-cache
-./gradlew :app:lintDebug --no-configuration-cache
-./gradlew :app:koverHtmlReportDebug --no-configuration-cache
+./gradlew :app:testPlayDebugUnitTest --no-configuration-cache
+./gradlew :app:lintPlayDebug :app:lintFullDebug --no-configuration-cache
+./gradlew :app:koverHtmlReportPlayDebug --no-configuration-cache
 ```
 
-Kover writes `app/build/reports/kover/`. The `:app` report aggregates `:domain`, `:data`, `:browser`, and `:ai`. The Gradle build does not fail on a percentage. CI fails when the aggregated line rate is under 80 percent. The check is `tools/check_line_coverage.py` against `app/build/reports/kover/reportDebug.xml`.
+Kover writes `app/build/reports/kover/`. The play report aggregates `:domain`, `:data`, `:browser`, and `:ai`. The Gradle build does not fail on a percentage. CI fails when the aggregated line rate is under 80 percent. The check is `tools/check_line_coverage.py` against `app/build/reports/kover/reportPlayDebug.xml`.
 
 ```
 python3 tools/check_line_coverage.py --self-test
-python3 tools/check_line_coverage.py app/build/reports/kover/reportDebug.xml
+python3 tools/check_line_coverage.py app/build/reports/kover/reportPlayDebug.xml
 ```
 
 Screenshot goldens are Roborazzi images under `app/src/test/screenshots/`. Verify them after a UI change.
 
 ```
-./gradlew :app:verifyRoborazziDebug --no-configuration-cache
+./gradlew :app:verifyRoborazziPlayDebug --no-configuration-cache
 ```
 
-Record a golden only for a deliberate UI change, and name the test class you changed. `:app:verifyRoborazziDebug` is not in CI. A Linux run against the committed goldens failed five images. One of them, `boards/06d-ai-permission-first-time-per-site.png`, differed in 70,298 of 1,507,920 pixels. Run verify on the machine that recorded the goldens.
+Record a golden only for a deliberate UI change, and name the test class you changed. `:app:verifyRoborazziPlayDebug` is not in CI. A Linux run against the committed goldens failed five images. One of them, `boards/06d-ai-permission-first-time-per-site.png`, differed in 70,298 of 1,507,920 pixels. Run verify on the machine that recorded the goldens.
 
 ```
-./gradlew :app:recordRoborazziDebug --no-configuration-cache --tests 'com.dantech.skimbrowser.ui.example.*'
+./gradlew :app:recordRoborazziPlayDebug --no-configuration-cache --tests 'com.dantech.skimbrowser.ui.example.*'
 ```
 
 Screenshots use Robolectric at `w412dp-h915dp-xhdpi` (824 by 1830). WebView does not paint, so the page area of boards 05 to 06d is empty.
@@ -71,4 +73,4 @@ Do not install a system image for this project. Instrumented tests run on the de
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on every push to `master`. The job runs unit tests, `:app:lintDebug`, the Kover line floor, and `:app:assembleReleaseSmoke`. It writes `local.properties` with an empty `skim.aiProxyUrl` and no key. It installs Android platform 37.0 and build-tools 36.0.0, which is the pair a clean SDK downloaded for `compileSdk { version = release(37) }`. Gradle dependencies are cached by `gradle/actions/setup-gradle`. `.github/workflows/proxy.yml` runs the Worker tests in `proxy/` with no secrets.
+`.github/workflows/ci.yml` runs on every pull request and on every push to `master`. The job runs `:app:testPlayDebugUnitTest`, `:app:lintPlayDebug`, `:app:lintFullDebug`, the Kover line floor, and both `releaseSmoke` flavors. It also fails if the play APK contains the YouTube extractor. It writes `local.properties` with an empty `skim.aiProxyUrl` and no key. It installs Android platform 37.0 and build-tools 36.0.0, which is the pair a clean SDK downloaded for `compileSdk { version = release(37) }`. Gradle dependencies are cached by `gradle/actions/setup-gradle`. `.github/workflows/proxy.yml` runs the Worker tests in `proxy/` with no secrets.

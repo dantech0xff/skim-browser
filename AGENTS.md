@@ -52,6 +52,6 @@ Unit tests that construct a `TabManager` or a ViewModel use `MainDispatcherRule`
 
 `app/src/test/java/com/dantech/skimbrowser/domain/DomainBoundaryTest.kt` reads source text. A fully qualified name fails the same way an import does. Do not add an exception to make it pass.
 
-Before reporting a code change done, run the affected module's unit test with `--tests` and `--no-configuration-cache`. Run `:app:testDebugUnitTest` when the change is in `:app` or crosses a module boundary. Run `:app:verifyRoborazziDebug` when a golden exists for the UI you changed. Do not run the connected suite, Macrobenchmark, or `:app:designParity` unless the task needs that evidence.
+Before reporting a code change done, run the affected module's unit test with `--tests` and `--no-configuration-cache`. Run `:app:testPlayDebugUnitTest` when the change is in `:app` or crosses a module boundary. Run `:extractor-youtube:testDebugUnitTest` when the change is in that module. Run `:app:verifyRoborazziPlayDebug` when a golden exists for the UI you changed. Do not run the connected suite, Macrobenchmark, or `:app:designParity` unless the task needs that evidence.
 
 No API keys, proxy URLs, or machine paths in source, tests, docs, or `gradle.properties`. Where a debug key may live is the README section "local.properties".

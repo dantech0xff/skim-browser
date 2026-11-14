@@ -2,7 +2,7 @@
 
 This page records the size of the minified app and the cuts that are not made yet. The gate is `size-budget/releaseSmoke.json`. CI runs `.github/workflows/size.yml`.
 
-The measured artifact is the universal `releaseSmoke` APK from `./gradlew :app:assembleReleaseSmoke --no-configuration-cache`. That variant is minified like `release` and signed with the debug key. It is the build the README uses for smoke checks. There are no ABI splits, so one APK contains the native libraries for every ABI. `release` is the same minify settings plus the proxy URL check. It was not the measured file, because that check needs URLs this measurement does not need.
+The primary artifact is the universal `playReleaseSmoke` APK from `./gradlew :app:assemblePlayReleaseSmoke --no-configuration-cache`. That variant is minified like `release` and signed with the debug key. It is the Play flavor, which has no YouTube extractor. The full flavor is measured separately in `size-budget/fullReleaseSmoke.json`. There are no ABI splits, so one APK contains the native libraries for every ABI. `release` is the same minify settings plus the proxy URL check. It was not the measured file, because that check needs URLs this measurement does not need.
 
 RAM and startup are out of scope. A cloud emulator crashes in the system WebView, and a software-rendered emulator does not produce a number worth keeping. This page has no device memory or startup figure.
 
@@ -93,6 +93,8 @@ Find in page now clears its highlights when the tab changes or a new document st
 
 Popup blocking, odd-redirect blocking, and cookie-banner hiding, measured on that find-and-translate APK, is 4,168,285 bytes, 13,770 above 4,154,515. `assets/shield/cookie.txt` is 9,689 compressed bytes and 41,781 raw (1,800 generic hides from the EasyList Cookie general list, plus the banner roots the scroll unlock looks for). The other 4,081 bytes are the decision code, the three Settings rows, and the snackbar. No library was added. `apkanalyzer apk download-size` on this file reported 3,722,681. Defined methods are 24,326 and references are 27,744. Those three figures are this APK. The new baseline is 4,168,285.
 
+The `distribution` flavors do not change that play file. One `assemblePlayReleaseSmoke` after the flavor split wrote 4,168,285 bytes, the same as the popup-blocking APK. The output path is now `app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk`. `assembleFullReleaseSmoke` on the same machine wrote 4,739,744 bytes, 571,459 above the play file. Compressed `classes.dex` in the full APK is 2,906,190 bytes, 479,244 above the play dex of 2,426,946. The rest of the gap is Rhino's resource files and the zip structure. `apkanalyzer apk download-size` on the full file reported 4,280,974. The play download estimate was not remeasured, because the file size did not change. `maxGrowthBytes` stays 8,192 for both files. The full baseline is 4,739,744.
+
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 
 2. Done. The Anthropic Java SDK is replaced by an OkHttp client that posts the proxy body in `docs/deployment-guide.md` and reads the event stream. On its own, before the font subset, the APK file fell from 5,752,084 bytes to 4,724,249 bytes, and compressed `classes.dex` fell from 3,274,757 bytes to 2,264,741. In this combined APK, compressed `classes.dex` is 2,264,656 bytes. The earlier dex estimate was 1,043,227 bytes (Jackson 417,456, kotlin-reflect 379,522, SDK 246,249).
@@ -105,15 +107,16 @@ Compose was the largest dex share on the old APK, at 983,085 bytes, and it stays
 
 ## Update the baseline
 
-The CI job fails when the `releaseSmoke` APK file is larger than `fileSizeBytes` plus `maxGrowthBytes`. `maxGrowthBytes` is 8,192. A pull request that grows the APK by more than that has to change `fileSizeBytes` in the same pull request and say why in this document.
+The CI job fails when either releaseSmoke APK is larger than its `fileSizeBytes` plus `maxGrowthBytes`. `maxGrowthBytes` is 8,192 on both files. A pull request that grows an APK by more than that has to change that file's `fileSizeBytes` in the same pull request and say why in this document.
 
 `maxGrowthBytes` is a starting allowance. Two local clean builds had the same file size, so 8,192 bytes covers a small toolchain difference. A new library should fail the check. Set the allowance to 0 if any growth should fail.
 
 To update after an intentional size change, run the following from the repo root with no proxy URL and no API key.
 
 ```
-./gradlew :app:assembleReleaseSmoke --no-configuration-cache
-python3 tools/check_apk_budget.py
+./gradlew :app:assemblePlayReleaseSmoke :app:assembleFullReleaseSmoke --no-configuration-cache
+python3 tools/check_apk_budget.py --baseline size-budget/releaseSmoke.json
+python3 tools/check_apk_budget.py --baseline size-budget/fullReleaseSmoke.json
 ```
 
 The script prints the new file size and the growth. Put the new file size in `fileSizeBytes`. If you also remeasure the download estimate, put that in `downloadSizeBytes`. Update the tables on this page so they match the JSON. Commit both files.

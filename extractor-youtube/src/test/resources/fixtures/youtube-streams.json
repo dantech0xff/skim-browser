@@ -1,0 +1,51 @@
+{
+  "title": "Fixture video",
+  "pageUrl": "https://www.youtube.com/watch?v=fixture",
+  "muxed": [
+    {
+      "id": "18",
+      "url": "https://example.invalid/360.mp4",
+      "videoOnly": false,
+      "resolution": "360p",
+      "mime": "video/mp4"
+    }
+  ],
+  "videoOnly": [
+    {
+      "id": "136",
+      "url": "https://example.invalid/720.mp4",
+      "videoOnly": true,
+      "resolution": "720p",
+      "mime": "video/mp4"
+    },
+    {
+      "id": "248",
+      "url": "https://example.invalid/1080.webm",
+      "videoOnly": true,
+      "resolution": "1080p",
+      "mime": "video/webm"
+    },
+    {
+      "id": "drm",
+      "url": "<MPD>not a url</MPD>",
+      "videoOnly": true,
+      "resolution": "2160p",
+      "mime": "video/mp4",
+      "isUrl": false
+    }
+  ],
+  "audio": [
+    {
+      "id": "140",
+      "url": "https://example.invalid/audio.m4a",
+      "mime": "audio/mp4",
+      "bitrate": 128000
+    },
+    {
+      "id": "251",
+      "url": "https://example.invalid/audio.webm",
+      "mime": "audio/webm",
+      "bitrate": 160000
+    }
+  ]
+}

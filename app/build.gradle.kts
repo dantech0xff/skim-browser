@@ -85,13 +85,24 @@ android {
             isDebuggable = false
         }
     }
+    flavorDimensions += "distribution"
+    productFlavors {
+        // Play is the default so existing variant-agnostic tasks and the size gate stay on it.
+        create("play") {
+            dimension = "distribution"
+            isDefault = true
+        }
+        create("full") {
+            dimension = "distribution"
+        }
+    }
     sourceSets {
         getByName("androidTest") {
             // The release smoke test reads the same SSE files the unit tests load from the classpath.
             assets.directories.add("../ai/src/testFixtures/resources")
         }
     }
-    // `./gradlew :app:connectedReleaseSmokeAndroidTest -Pskim.testBuildType=releaseSmoke`
+    // `./gradlew :app:connectedPlayReleaseSmokeAndroidTest -Pskim.testBuildType=releaseSmoke`
     testBuildType = providers.gradleProperty("skim.testBuildType").orElse("debug").get()
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -301,7 +312,57 @@ val checkSkimReleaseConfig = tasks.register<CheckSkimReleaseConfig>("checkSkimRe
     )
 }
 
+/**
+ * Fails when the play runtime classpath, APK, or R8 mapping contains NewPipe, Rhino,
+ * or the YouTube extractor. The full flavor is the only variant allowed to ship them.
+ */
+abstract class VerifyPlayHasNoYouTube : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val apkDirectory: DirectoryProperty
+
+    @get:Optional
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val mappingFile: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val script: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val command = mutableListOf(
+            "python3",
+            script.get().asFile.absolutePath,
+            "--apk",
+            apkDirectory.get().asFile.absolutePath,
+        )
+        mappingFile.orNull?.asFile?.takeIf { it.isFile }?.let { mapping ->
+            command += listOf("--mapping", mapping.absolutePath)
+        }
+        val process = ProcessBuilder(command).redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().readText()
+        val code = process.waitFor()
+        logger.lifecycle(output.trim())
+        if (code != 0) {
+            throw GradleException("Play variant contains YouTube extractor code.\n$output")
+        }
+    }
+}
+
 androidComponents {
+    beforeVariants(selector().all()) { builder ->
+        val application = builder as com.android.build.api.variant.ApplicationVariantBuilder
+        if (application.flavorName == "full") {
+            // The app unit tests do not depend on the flavor. Running them twice blows the CI timeout.
+            // AGP 9 hides these setters from Kotlin, so the call goes through the Java method.
+            application.javaClass.getMethod("setEnableUnitTest", Boolean::class.javaPrimitiveType)
+                .invoke(application, false)
+            application.javaClass.getMethod("setEnableAndroidTest", Boolean::class.javaPrimitiveType)
+                .invoke(application, false)
+        }
+    }
     onVariants(selector().all()) { variant ->
         val variantName = variant.name.replaceFirstChar { it.uppercase() }
         if (variant.buildType == "release") {
@@ -322,6 +383,18 @@ androidComponents {
         if (variant.buildType != "debug") {
             tasks.named("check") { dependsOn(verifyNoApiKey) }
         }
+        if (variant.name.startsWith("play")) {
+            val verifyNoYouTube = tasks.register<VerifyPlayHasNoYouTube>("verifyNoYouTube$variantName") {
+                group = "verification"
+                description = "Fails when the $variantName APK or R8 mapping contains YouTube extractor code."
+                apkDirectory.set(variant.artifacts.get(SingleArtifact.APK))
+                script.set(layout.settingsDirectory.file("tools/check_play_has_no_youtube.py"))
+                if (variant.buildType != "debug") {
+                    mappingFile.set(layout.buildDirectory.file("outputs/mapping/${variant.name}/mapping.txt"))
+                }
+            }
+            tasks.named { it == "assemble$variantName" }.configureEach { finalizedBy(verifyNoYouTube) }
+        }
     }
 }
 
@@ -330,6 +403,7 @@ dependencies {
     implementation(project(":data"))
     implementation(project(":browser"))
     implementation(project(":ai"))
+    add("fullImplementation", project(":extractor-youtube"))
     kover(project(":domain"))
     kover(project(":data"))
     kover(project(":browser"))
@@ -397,11 +471,15 @@ val moduleUnitTests = arrayOf(
     ":data:testDebugUnitTest",
     ":browser:testDebugUnitTest",
     ":ai:testDebugUnitTest",
+    ":extractor-youtube:testDebugUnitTest",
 )
-tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
+tasks.matching { it.name == "testDebugUnitTest" || it.name == "testPlayDebugUnitTest" }.configureEach {
     dependsOn(*moduleUnitTests)
 }
-tasks.matching { it.name == "koverHtmlReportDebug" || it.name == "koverXmlReportDebug" }.configureEach {
+tasks.matching {
+    it.name == "koverHtmlReportDebug" || it.name == "koverXmlReportDebug" ||
+        it.name == "koverHtmlReportPlayDebug" || it.name == "koverXmlReportPlayDebug"
+}.configureEach {
     dependsOn(*moduleUnitTests)
 }
 

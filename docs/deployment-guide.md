@@ -15,18 +15,22 @@ The build types are in `app/build.gradle.kts`.
 | `releaseSmoke` | Minified like release, for `ReleaseSmokeTest`. Not a variant that ships. Select it with the `skim.testBuildType` property. The command is in the README section "Device checks". |
 | `benchmark` | For `:macrobenchmark`. Same local stand-in as `releaseSmoke`. Not a variant that ships. |
 
+Each build type combines with a `distribution` flavor. `play` is the Google Play build and the default. `full` is the GitHub and F-Droid build. Only `full` depends on `:extractor-youtube`. `playReleaseSmoke` is the primary size artifact. `fullReleaseSmoke` has its own budget in `size-budget/fullReleaseSmoke.json`. `:baselineprofile` and `:macrobenchmark` select `play`.
+
+`verifyNoYouTubePlayRelease`, `verifyNoYouTubePlayReleaseSmoke`, and the same task for the other play build types scan the APK and, when R8 wrote one, `mapping.txt`. They fail if NewPipe, Rhino, or `YoutubeVideoExtractor` is present. `assemblePlay*` finalizes that task. The script is `tools/check_play_has_no_youtube.py`.
+
 `CheckSkimReleaseConfig` runs before a `release` build. It requires https values for `skim.aiProxyUrl`, `skim.termsUrl`, `skim.privacyUrl`, and `skim.aiDataPolicyUrl`, and it fails when `skim.aiProxyUrl` is set in the committed `gradle.properties`. `releaseSmoke` does not run that check. The task is `checkSkimReleaseConfig` in `app/build.gradle.kts`.
 
 A local proxy URL belongs in `local.properties` or in CI (`-P` or `ORG_GRADLE_PROJECT_skim_aiProxyUrl`). It does not belong in `gradle.properties` or in git. The Anthropic key belongs only in the Worker secret. `VerifyNoApiKey` scans every variant, debug included, for the `sk-ant-` prefix. `assemble` finalizes that task. For a non-debug variant, `bundle` finalizes it too, and `check` depends on it. The needle lives in that task, in `app/build.gradle.kts`.
 
-R8 has no `packageScope`. `app/src/main/keepRules/rules.keep` has no keep rules. The Anthropic SDK's `-dontwarn com.google.auto.value.AutoValue` line is gone with the SDK.
+R8 has no `packageScope`. `app/src/main/keepRules/rules.keep` has no keep rules. The Anthropic SDK's `-dontwarn com.google.auto.value.AutoValue` line is gone with the SDK. Task names include the flavor, so the release key scan is `verifyNoApiKeyPlayRelease` and `verifyNoApiKeyFullRelease`.
 
 ## Ship when all of these are true
 
 1. The proxy meets the contract below.
 2. `:app:check` is green.
 3. `assembleRelease` and `bundleRelease` are green with the real proxy URL and the three legal URLs. The commands are in the README.
-4. `verifyNoApiKeyRelease` reports no `sk-ant-` match for both the APK and the AAB.
+4. `verifyNoApiKeyPlayRelease` reports no `sk-ant-` match for both the APK and the AAB. For a full build, `verifyNoApiKeyFullRelease` reports the same.
 5. `ReleaseSmokeTest` is green on `skim_api36`. Logcat has no `AnthropicInvalidDataException`, `ClassNotFoundException`, or `SerializationException`.
 6. `connectedDebugAndroidTest` is green on `skim_api36` (incognito tests not skipped) and on `skim_api28`. Device setup is the README section "Device checks".
 7. Process death, memory pressure, and `FLAG_SECURE` still need a manual pass on `skim_api36`. The checklist that used to describe those steps is not in the repo. A green instrumented test does not replace that pass.
