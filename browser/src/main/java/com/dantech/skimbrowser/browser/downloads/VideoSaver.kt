@@ -253,8 +253,8 @@ class VideoSaver(
         val fetched = getText(url, headers, agent, incognito)
         val manifest = parseDash(fetched.text, fetched.url)
         if (manifest.protected) throw DownloadException("The video is protected")
-        val video = manifest.videos.maxByOrNull { it.height ?: 0 } ?: throw DownloadException("The manifest has no video")
-        val audio = manifest.audios.firstOrNull()
+        val video = rankedVideos(manifest.videos).firstOrNull() ?: throw DownloadException("The manifest has no video")
+        val audio = preferredAudio(manifest.audios)
         return if (audio == null) {
             saveSegments(listOf(video.url), headers, agent, incognito, name, localId)
         } else {
@@ -587,7 +587,7 @@ class VideoSaver(
         if (manifest.protected) return VideoQualities.Protected
         val videos = rankedVideos(manifest.videos)
         if (videos.isEmpty()) return VideoQualities.Ready(listOf(variant))
-        val audio = manifest.audios.maxByOrNull { it.bandwidth ?: 0 }
+        val audio = preferredAudio(manifest.audios)
         val rows = videos.map { file ->
             val label = file.height?.let { "${it}p" } ?: variant.qualityLabel
             if (audio == null) {
@@ -650,8 +650,8 @@ class VideoSaver(
         val manifest = parseDash(fetched.text, fetched.url)
         if (manifest.protected) return null
         val height = qualityHeight(quality) ?: return null
-        val video = manifest.videos.firstOrNull { it.height == height } ?: return null
-        val audio = manifest.audios.firstOrNull() ?: return null
+        val video = rankedVideos(manifest.videos).firstOrNull { it.height == height } ?: return null
+        val audio = preferredAudio(manifest.audios) ?: return null
         return VideoSource.SeparateAv(video.url, audio.url, source.headers)
     }
 
@@ -756,6 +756,9 @@ internal fun failureCode(error: Throwable): String {
 }
 
 /** One video file per height, tallest first. A repeated height keeps the larger bandwidth. */
+internal fun preferredAudio(audios: List<com.dantech.skimbrowser.domain.video.DashFile>): com.dantech.skimbrowser.domain.video.DashFile? =
+    audios.maxByOrNull { it.bandwidth ?: 0 }
+
 internal fun rankedVideos(videos: List<com.dantech.skimbrowser.domain.video.DashFile>): List<com.dantech.skimbrowser.domain.video.DashFile> =
     videos.groupBy { file -> file.height?.let { "h:$it" } ?: file.url }
         .map { (_, files) -> files.maxBy { it.bandwidth ?: 0 } }

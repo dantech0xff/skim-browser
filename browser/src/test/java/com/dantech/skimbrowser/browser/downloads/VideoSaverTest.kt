@@ -494,6 +494,90 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aDashRefreshKeepsTheHigherBandwidthAudio() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val video = server.url("/360v.mp4").toString()
+        val lowAudio = server.url("/low-audio.mp4").toString()
+        val highAudio = server.url("/high-audio.mp4").toString()
+        val manifest = """
+            <MPD>
+              <AdaptationSet contentType="video">
+                <Representation height="360" bandwidth="400000"><BaseURL>$video</BaseURL></Representation>
+              </AdaptationSet>
+              <AdaptationSet contentType="audio">
+                <Representation bandwidth="64000"><BaseURL>$lowAudio</BaseURL></Representation>
+                <Representation bandwidth="128000"><BaseURL>$highAudio</BaseURL></Representation>
+              </AdaptationSet>
+            </MPD>
+        """.trimIndent()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains(".mpd") -> MockResponse().setBody(manifest)
+                    path.contains("360v") -> MockResponse().setBody("VIDEO")
+                    path.contains("high-audio") -> MockResponse().setBody("HIGH")
+                    path.contains("low-audio") -> MockResponse().setBody("LOW")
+                    else -> MockResponse().setResponseCode(403)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val extractor = object : VideoExtractor {
+            override val id = "page"
+            override val pageUrlSufficient = true
+            override fun matches(pageUrl: String) = pageUrl.contains("example.com")
+            override suspend fun extract(hints: PageVideoHints) = listOf(
+                VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/a.mpd").toString())),
+            )
+        }
+        val muxed = mutableListOf<String>()
+        val saver = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            mux = { videoFile, audioFile, out ->
+                muxed += videoFile.readText() + audioFile.readText()
+                out.writeText("MUXED")
+            },
+            extractors = setOf(extractor),
+        )
+        try {
+            val offered = saver.qualities("t", VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/a.mpd").toString())))
+            val pair = (offered as VideoQualities.Ready).variants.single().source as VideoSource.SeparateAv
+            assertEquals(highAudio, pair.audioUrl)
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.saveAgain(
+                    DownloadRetry(
+                        tabId = "t",
+                        url = server.url("/expired-video.mp4").toString(),
+                        userAgent = "agent",
+                        contentDisposition = null,
+                        mimeType = "video/mp4",
+                        userInitiated = true,
+                        incognito = false,
+                        headers = listOf(
+                            DownloadHeader("Referer", "https://example.com/watch"),
+                            DownloadHeader(VIDEO_KIND, VIDEO_SEPARATE),
+                            DownloadHeader(VIDEO_AUDIO, server.url("/expired-audio.mp4").toString()),
+                            DownloadHeader(VIDEO_QUALITY, "360p"),
+                        ),
+                    ),
+                ),
+            )
+            assertEquals(listOf("VIDEOHIGH"), muxed)
+            val paths = buildList { repeat(server.requestCount) { add(server.takeRequest().path.orEmpty()) } }
+            org.junit.Assert.assertTrue(paths.toString(), paths.any { it.contains("high-audio") })
+            org.junit.Assert.assertFalse(paths.toString(), paths.any { it.contains("low-audio") })
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aQueryRangeWithoutContentRangeContinuesUntilTheFileEnds() = runBlocking {
         val server = MockWebServer()
         server.start()
