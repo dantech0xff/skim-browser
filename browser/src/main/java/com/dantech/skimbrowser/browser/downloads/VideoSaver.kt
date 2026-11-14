@@ -21,8 +21,11 @@ import com.dantech.skimbrowser.domain.video.VideoVariant
 import com.dantech.skimbrowser.domain.video.collectVariants
 import com.dantech.skimbrowser.domain.video.dashProtected
 import com.dantech.skimbrowser.domain.video.MediaSpan
+import com.dantech.skimbrowser.domain.video.MediaStream
 import com.dantech.skimbrowser.domain.video.mediaAddress
 import com.dantech.skimbrowser.domain.video.mediaSpans
+import com.dantech.skimbrowser.domain.video.mediaStream
+import com.dantech.skimbrowser.domain.video.textPlaylist
 import com.dantech.skimbrowser.domain.video.parseDash
 import com.dantech.skimbrowser.domain.video.parseHls
 import com.dantech.skimbrowser.domain.video.preferredHlsAudio
@@ -159,7 +162,12 @@ class VideoSaver(
         return when (val source = variant.source) {
             is VideoSource.Hls -> hlsQualities(variant, source, agent, incognito)
             is VideoSource.Dash -> dashQualities(variant, source, agent, incognito)
-            else -> VideoQualities.Ready(listOf(variant))
+            is VideoSource.Progressive -> when (playlistAt(source.url, source.headers, agent, incognito)) {
+                MediaStream.Hls -> hlsQualities(variant, VideoSource.Hls(source.url, source.headers), agent, incognito)
+                MediaStream.Dash -> dashQualities(variant, VideoSource.Dash(source.url, source.headers), agent, incognito)
+                else -> VideoQualities.Ready(listOf(variant))
+            }
+            is VideoSource.SeparateAv -> VideoQualities.Ready(listOf(variant))
         }
     }
 
@@ -261,6 +269,11 @@ class VideoSaver(
         retry: DownloadRetry,
         quality: String,
     ): DownloadEvent.DownloadCompleted {
+        when (playlistAt(url, headers, agent, incognito)) {
+            MediaStream.Hls -> return savePlaylist(url, headers, agent, incognito, name, localId, null)
+            MediaStream.Dash -> return saveDash(url, headers, agent, incognito, name, localId, retry.tabId)
+            else -> Unit
+        }
         try {
             return writeProgressive(url, headers, agent, incognito, name, localId, retry.mimeType)
         } catch (e: CancellationException) {
@@ -867,6 +880,44 @@ class VideoSaver(
         }
     }
 
+    /** An extensionless address whose body is a playlist. A named file is left alone. */
+    private suspend fun playlistAt(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+    ): MediaStream? {
+        if (mediaStream(url, null) != null || rangeHost(url)) return null
+        return try {
+            textPlaylist(peekText(url, headers, agent, incognito))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun peekText(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+    ): String = fetch(url, headers + mapOf("Range" to "bytes=0-${PEEK_BYTES - 1}"), agent, incognito) { response ->
+        val stream = response.body?.byteStream() ?: return@fetch ""
+        try {
+            val buffer = ByteArray(PEEK_BYTES)
+            var total = 0
+            while (total < buffer.size) {
+                val read = stream.read(buffer, total, buffer.size - total)
+                if (read < 0) break
+                total += read
+            }
+            if (total == 0) "" else String(buffer, 0, total, Charsets.ISO_8859_1)
+        } finally {
+            stream.close()
+        }
+    }
+
     private data class TextBody(val text: String, val url: String)
 
     private sealed interface FetchStep<out T> {
@@ -1125,6 +1176,7 @@ class VideoSaver(
         const val MAX_PLAYLIST_CHARS = 2 * 1024 * 1024
         const val RANGE_CHUNK = 10L * 1024 * 1024
         const val REPORT_BYTES = 256L * 1024
+        const val PEEK_BYTES = 2048
     }
 }
 

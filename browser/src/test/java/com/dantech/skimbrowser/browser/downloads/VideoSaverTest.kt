@@ -50,6 +50,35 @@ import org.junit.runner.RunWith
 class VideoSaverTest {
 
     @Test
+    fun anExtensionlessPlaylistIsListedAsHlsAndAProtectedOneIsRefused() = runTest {
+        val server = MockWebServer()
+        val master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720\n720.m3u8\n"
+        val locked = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"
+        server.enqueue(MockResponse().setBody(master))
+        server.enqueue(MockResponse().setBody(master))
+        server.enqueue(MockResponse().setBody(locked))
+        server.enqueue(MockResponse().setBody(locked))
+        server.start()
+        val saver = saver(CountingLog(), this)
+        try {
+            val open = saver.qualities(
+                "t",
+                VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/play").toString())),
+            )
+            val ready = open as VideoQualities.Ready
+            assertEquals("720p", ready.variants.single().qualityLabel)
+            assertTrue(ready.variants.single().source is VideoSource.Hls)
+            val refused = saver.qualities(
+                "t",
+                VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/locked").toString())),
+            )
+            assertEquals(VideoQualities.Protected, refused)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aProgressiveDownloadSendsRefererUserAgentAndOriginCookies() = runBlocking {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("video-bytes"))

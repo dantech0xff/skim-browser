@@ -97,11 +97,32 @@ fun preferManifests(variants: List<VideoVariant>): List<VideoVariant> {
 private fun looksLikeMedia(look: MediaLook): Boolean {
     val range = look.range?.trim().orEmpty()
     if (range.startsWith("bytes", ignoreCase = true)) return true
-    val accept = look.accept?.lowercase().orEmpty()
-    return accept.split(',').any { part ->
-        val type = part.trim().substringBefore(';').trim()
-        type == "video" || type.startsWith("video/")
+    return preferredAcceptIsVideo(look.accept)
+}
+
+/** Video is the type the request prefers. A low-priority video type behind audio does not count. */
+private fun preferredAcceptIsVideo(accept: String?): Boolean {
+    if (accept.isNullOrBlank()) return false
+    var bestVideo = -1.0
+    var bestOther = -1.0
+    for (part in accept.split(',')) {
+        val piece = part.trim()
+        if (piece.isEmpty()) continue
+        val type = piece.substringBefore(';').trim().lowercase()
+        if (type == "*/*") continue
+        val q = qualityValue(piece)
+        if (type == "video" || type.startsWith("video/")) {
+            if (q > bestVideo) bestVideo = q
+        } else if (q > bestOther) {
+            bestOther = q
+        }
     }
+    return bestVideo >= 0.0 && bestVideo >= bestOther
+}
+
+private fun qualityValue(part: String): Double {
+    val marker = part.split(';').firstOrNull { it.trim().startsWith("q=", ignoreCase = true) } ?: return 1.0
+    return marker.substringAfter('=').trim().toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: 1.0
 }
 
 private fun obviousNonMedia(url: String): Boolean {
@@ -119,7 +140,19 @@ private val THUMB_SEGMENTS = setOf("thumb", "thumbs", "thumbnail", "thumbnails",
 private val NON_MEDIA_EXTENSIONS = setOf(
     "js", "mjs", "css", "html", "htm", "json", "xml", "txt", "map", "pdf",
     "woff", "woff2", "ttf", "otf", "wasm", "vtt", "srt",
+    "mp3", "m4a", "m4b", "ogg", "oga", "wav", "opus", "flac", "aac", "wma",
 )
+
+/** A playlist body the address did not name. Null when the bytes are a media file. */
+fun textPlaylist(prefix: String): MediaStream? {
+    val text = prefix.trimStart()
+    if (text.startsWith("#EXTM3U", ignoreCase = true)) return MediaStream.Hls
+    val start = text.take(64).lowercase()
+    if (start.startsWith("<mpd") || (start.startsWith("<?xml") && text.take(2048).contains("<mpd", ignoreCase = true))) {
+        return MediaStream.Dash
+    }
+    return null
+}
 
 private const val THUMB_EDGE = 160
 private const val THUMB_WIDE = 320
