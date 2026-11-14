@@ -108,17 +108,13 @@ private fun collapseHeights(variants: List<VideoVariant>): List<VideoVariant> {
         val key = if (height == null) {
             "u:${variant.source.address()}"
         } else {
-            "h:${clipId(variant.source.mediaAddress())}:$height"
+            "h:${clipDirectory(variant.source.mediaAddress())}:$height"
         }
         groups.getOrPut(key) { mutableListOf() }.add(variant)
     }
     return groups.values.flatMap { rows ->
         val pairs = rows.filter { it.source is VideoSource.SeparateAv }
-        when {
-            pairs.isNotEmpty() -> listOf(pairs.first())
-            rows.size > 1 && rows.all { it.source is VideoSource.Hls } -> listOf(rows.first())
-            else -> rows
-        }
+        if (pairs.isEmpty()) rows else pairs
     }
 }
 

@@ -431,23 +431,37 @@ class VideoSaver(
             return fetch(span.url, headers, agent, incognito) { response ->
                 val body = response.body ?: throw DownloadException("The response has no body")
                 val segmentLength = body.contentLength()
-                copyBody(
+                val copied = copyBody(
                     body,
                     out,
                     soFar,
                     -1L,
                     onProgress = { written, _ ->
-                        val (arrived, implied) = hlsProgress(
+                        val into = written - soFar
+                        val progress = hlsProgress(
                             cumulative = written,
                             segmentIndex = segmentIndex,
-                            bytesIntoSegment = written - soFar,
+                            bytesIntoSegment = into,
                             segmentLength = segmentLength,
                             segmentCount = segmentCount,
+                            segmentFinished = segmentLength > 0L && into >= segmentLength,
                         )
-                        log.noteProgress(localId, arrived, implied)
+                        log.noteProgress(localId, progress.arrived, progress.implied)
                     },
                     charge = budget,
                 )
+                if (segmentLength <= 0L) {
+                    val progress = hlsProgress(
+                        cumulative = soFar + copied,
+                        segmentIndex = segmentIndex,
+                        bytesIntoSegment = copied,
+                        segmentLength = segmentLength,
+                        segmentCount = segmentCount,
+                        segmentFinished = true,
+                    )
+                    log.noteProgress(localId, progress.arrived, progress.implied)
+                }
+                copied
             }
         }
         val end = start + length - 1
@@ -1182,11 +1196,12 @@ internal fun hlsProgress(
     bytesIntoSegment: Long,
     segmentLength: Long,
     segmentCount: Int,
+    segmentFinished: Boolean,
 ): HlsBytes {
     if (cumulative < 0L || segmentCount <= 0) return HlsBytes(cumulative, -1L)
     val into = when {
         segmentLength > 0L -> bytesIntoSegment.coerceIn(0L, segmentLength).toDouble() / segmentLength.toDouble()
-        bytesIntoSegment > 0L -> 1.0
+        segmentFinished && bytesIntoSegment > 0L -> 1.0
         else -> 0.0
     }
     val fraction = ((segmentIndex.coerceAtLeast(0) + into) / segmentCount.toDouble()).coerceIn(0.0, 1.0)

@@ -733,6 +733,40 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aChunkedHlsSegmentStaysBelowOneHundredPercentUntilItEnds() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val bytes = ByteArray(300 * 1024) { 7 }
+        val segment = server.url("/s0.ts").toString()
+        val playlist = "#EXTM3U\n#EXTINF:4,\n$segment\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setChunkedBody(okio.Buffer().write(bytes), 64 * 1024))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip.m3u8", "184p", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))),
+            )
+            val steps = log.progress
+            val full = bytes.size.toLong()
+            org.junit.Assert.assertTrue(
+                steps.toString(),
+                steps.any { (soFar, total) -> soFar in 1 until full && (total < 0L || soFar < total) },
+            )
+            org.junit.Assert.assertTrue(
+                steps.toString(),
+                steps.dropLast(1).none { (soFar, total) -> total > 0L && soFar >= total && soFar < full },
+            )
+            assertEquals(full to full, steps.last())
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aRedditDashPlaylistPairsEachHeightWithItsAudio() = runBlocking {
         val server = MockWebServer()
         server.start()
