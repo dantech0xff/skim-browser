@@ -18,7 +18,7 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
 import com.dantech.skimbrowser.domain.shortcut.ShortcutRepository
 import com.dantech.skimbrowser.domain.shield.ShieldStats
-import java.time.Instant
+import com.dantech.skimbrowser.domain.shield.localEpochDays
 import com.dantech.skimbrowser.ui.components.siteLetter
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -30,12 +30,14 @@ import java.time.ZoneId
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -88,6 +90,7 @@ data class HomeUiState(
  * @param clock the time the Continue cards count from.
  * @param zone the time zone their calendar days are counted in.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val tabs: TabsController,
@@ -105,7 +108,9 @@ class HomeViewModel @Inject constructor(
         tabs.state.map { pagesEligibleForAsk(it) }.distinctUntilChanged(),
         shortcuts.observe().map { it.toImmutableList() },
         chats.observeRecentPageChats(CONTINUE_CARDS).map { recent -> recent.map(::continueCard).toImmutableList() },
-        stats.observe(today()).map { it.today.requests }.distinctUntilChanged(),
+        localEpochDays(clock, zone).flatMapLatest { day ->
+            stats.observe(day).map { it.today.requests }
+        }.distinctUntilChanged(),
     ) { tabCount, shortcutList, cards, blockedToday ->
         HomeUiState(tabCount, shortcutList, cards, voiceAvailable, blockedToday)
     }
@@ -150,8 +155,6 @@ class HomeViewModel @Inject constructor(
             snippet = chat.snippet.orEmpty(),
         )
     }
-
-    private fun today(): Long = Instant.ofEpochMilli(clock()).atZone(zone()).toLocalDate().toEpochDay()
 
     internal companion object {
         /** Home shows the two newest page chats. */

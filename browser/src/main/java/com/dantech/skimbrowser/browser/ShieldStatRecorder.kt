@@ -45,6 +45,7 @@ class ShieldStatRecorder internal constructor(
     private val zone: () -> ZoneId,
     private val io: CoroutineDispatcher,
     private val flushDelayMs: Long,
+    private val beforeDrain: suspend () -> Unit = {},
 ) : ShieldStatSink, ShieldStats {
 
     @Inject constructor(
@@ -63,6 +64,8 @@ class ShieldStatRecorder internal constructor(
     private val generation = AtomicLong()
     private val scheduled = AtomicBoolean()
     private val gate = Mutex()
+    /** Held for the generation bump, the buffer clear, and the drain that follows a wait. */
+    private val batchLock = Any()
 
     override fun onRequestBlocked(url: String, incognito: Boolean) {
         val host = if (incognito) null else hostOf(url)
@@ -88,8 +91,10 @@ class ShieldStatRecorder internal constructor(
     override fun observe(todayEpochDay: Long): Flow<ShieldSnapshot> = store.observe(todayEpochDay)
 
     override suspend fun reset() {
-        generation.incrementAndGet()
-        buffer.clear()
+        synchronized(batchLock) {
+            generation.incrementAndGet()
+            buffer.clear()
+        }
         gate.withLock { store.clear() }
     }
 
@@ -102,9 +107,14 @@ class ShieldStatRecorder internal constructor(
             try {
                 val wait = if (buffer.pending() >= ShieldStatBuffer.FLUSH_AT) 0L else flushDelayMs
                 if (wait > 0) delay(wait)
-                if (token != generation.get()) return@launch
-                val batch = buffer.drain()
-                if (batch.isEmpty() || token != generation.get()) return@launch
+                beforeDrain()
+                val batch = synchronized(batchLock) {
+                    if (generation.get() != token) {
+                        null
+                    } else {
+                        buffer.drain().ifEmpty { null }
+                    }
+                } ?: return@launch
                 gate.withLock {
                     if (token != generation.get()) return@withLock
                     store.add(batch)

@@ -33,8 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shield.ByteUnit
 import com.dantech.skimbrowser.domain.shield.DurationUnit
-import com.dantech.skimbrowser.domain.shield.ShieldSnapshot
-import com.dantech.skimbrowser.domain.shield.ShieldTotals
+import com.dantech.skimbrowser.domain.shield.ShieldEstimate
 import com.dantech.skimbrowser.domain.shield.scaleBytes
 import com.dantech.skimbrowser.domain.shield.scaleDuration
 import com.dantech.skimbrowser.ui.components.DialogAction
@@ -76,7 +75,7 @@ fun ShieldStatsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        item { TotalsTable(state.snapshot) }
+        item { TotalsTable(state) }
         item {
             Text(
                 text = stringResource(R.string.shield_stats_chart_title),
@@ -84,10 +83,10 @@ fun ShieldStatsScreen(
                 style = MaterialTheme.typography.titleMedium,
             )
         }
-        item { WeekChart(state.snapshot.chart) }
+        item { WeekChart(state.chart) }
         item {
             SectionLabel(stringResource(R.string.shield_stats_top_sites), first = false)
-            if (state.snapshot.topHosts.isEmpty()) {
+            if (state.topHosts.isEmpty()) {
                 Text(
                     text = stringResource(R.string.shield_stats_no_sites),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -95,7 +94,7 @@ fun ShieldStatsScreen(
                 )
             } else {
                 Column(Modifier.padding(horizontal = 16.dp)) {
-                    state.snapshot.topHosts.forEach { host ->
+                    state.topHosts.forEach { host ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(host.host, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                             Text(grouped(host.count), style = MaterialTheme.typography.bodyLarge)
@@ -135,15 +134,15 @@ fun ShieldStatsScreen(
 }
 
 @Composable
-private fun TotalsTable(snapshot: ShieldSnapshot) {
+private fun TotalsTable(state: ShieldStatsUiState) {
     Column(Modifier.padding(horizontal = 16.dp)) {
         HeaderRow()
-        CountRow(stringResource(R.string.shield_stats_requests), snapshot.today.requests, snapshot.week.requests, snapshot.allTime.requests)
-        CountRow(stringResource(R.string.shield_stats_popups), snapshot.today.popups, snapshot.week.popups, snapshot.allTime.popups)
-        CountRow(stringResource(R.string.shield_stats_redirects), snapshot.today.redirects, snapshot.week.redirects, snapshot.allTime.redirects)
-        CountRow(stringResource(R.string.shield_stats_cosmetic), snapshot.today.cosmetic, snapshot.week.cosmetic, snapshot.allTime.cosmetic)
-        TextRow(stringResource(R.string.shield_stats_data), byteText(snapshot.today), byteText(snapshot.week), byteText(snapshot.allTime))
-        TextRow(stringResource(R.string.shield_stats_time), timeText(snapshot.today), timeText(snapshot.week), timeText(snapshot.allTime))
+        CountRow(stringResource(R.string.shield_stats_requests), state.today.requests, state.week.requests, state.allTime.requests)
+        CountRow(stringResource(R.string.shield_stats_popups), state.today.popups, state.week.popups, state.allTime.popups)
+        CountRow(stringResource(R.string.shield_stats_redirects), state.today.redirects, state.week.redirects, state.allTime.redirects)
+        CountRow(stringResource(R.string.shield_stats_cosmetic), state.today.cosmetic, state.week.cosmetic, state.allTime.cosmetic)
+        TextRow(stringResource(R.string.shield_stats_data), byteText(state.today), byteText(state.week), byteText(state.allTime))
+        TextRow(stringResource(R.string.shield_stats_time), timeText(state.today), timeText(state.week), timeText(state.allTime))
     }
 }
 
@@ -228,8 +227,8 @@ private fun WeekChart(counts: List<Long>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun byteText(totals: ShieldTotals): String {
-    val scaled = scaleBytes(totals.bytes)
+private fun byteText(period: ShieldPeriodUi): String {
+    val scaled = scaleBytes(period.bytes)
     val number = if (scaled.tenths == 0) grouped(scaled.whole) else "${grouped(scaled.whole)}.${scaled.tenths}"
     val unit = when (scaled.unit) {
         ByteUnit.BYTE -> R.string.shield_stats_bytes
@@ -241,9 +240,10 @@ private fun byteText(totals: ShieldTotals): String {
 }
 
 @Composable
-private fun timeText(totals: ShieldTotals): String {
-    val scaled = scaleDuration(totals.timeSavedMillis)
-    val quiet = totals.requests == 0L && totals.bytes == 0L
+private fun timeText(period: ShieldPeriodUi): String {
+    val saved = ShieldEstimate.timeSavedMillis(period.bytes, period.requests)
+    val scaled = scaleDuration(saved)
+    val quiet = period.requests == 0L && period.bytes == 0L
     if (scaled.unit == DurationUnit.NONE) {
         return if (quiet) {
             pluralStringResource(R.plurals.shield_stats_seconds, 0, 0)

@@ -78,6 +78,37 @@ class ShieldStatRecorderTest {
         assertEquals(1, store.clears)
     }
 
+    @Test
+    fun anEventRecordedAfterResetSurvivesTheOldFlush() = runTest {
+        val store = RecordingStore()
+        lateinit var recorder: ShieldStatRecorder
+        var slipped = false
+        recorder = ShieldStatRecorder(
+            store = store,
+            scope = this,
+            clock = { 0L },
+            zone = { ZoneOffset.UTC },
+            io = StandardTestDispatcher(testScheduler),
+            flushDelayMs = ShieldStatRecorder.FLUSH_DELAY_MS,
+            beforeDrain = {
+                if (slipped) return@ShieldStatRecorder
+                slipped = true
+                recorder.reset()
+                recorder.onRequestBlocked("https://later.example/b.js", incognito = false)
+            },
+        )
+        recorder.onRequestBlocked("https://ads.example/a.js", incognito = false)
+        runCurrent()
+        advanceTimeBy(ShieldStatRecorder.FLUSH_DELAY_MS)
+        runCurrent()
+        advanceTimeBy(ShieldStatRecorder.FLUSH_DELAY_MS)
+        runCurrent()
+        assertEquals(1, store.adds)
+        val day = store.last.single()
+        assertEquals(1L, day.requests)
+        assertEquals(mapOf("later.example" to 1L), day.hosts)
+    }
+
     private fun kotlinx.coroutines.test.TestScope.recorder(store: RecordingStore) = ShieldStatRecorder(
         store = store,
         scope = this,

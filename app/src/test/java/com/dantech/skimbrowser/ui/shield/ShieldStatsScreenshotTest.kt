@@ -42,7 +42,7 @@ class ShieldStatsScreenshotTest {
     fun resetAsksBeforeItClears() {
         var resets = 0
         composeRule.setSkimContent {
-            ShieldStatsScreen(state = ShieldStatsUiState(sample()), onBack = {}, onReset = { resets++ })
+            ShieldStatsScreen(state = sample().toUi(), onBack = {}, onReset = { resets++ })
         }
         composeRule.onNodeWithText("Reset stats").performClick()
         composeRule.onNodeWithText("Reset blocking stats?").assertExists()
@@ -53,7 +53,7 @@ class ShieldStatsScreenshotTest {
 
     private fun show(dark: Boolean) {
         composeRule.setSkimContent(dark = dark) {
-            ShieldStatsScreen(state = ShieldStatsUiState(sample()), onBack = {}, onReset = {})
+            ShieldStatsScreen(state = sample().toUi(), onBack = {}, onReset = {})
         }
         composeRule.waitForIdle()
     }
