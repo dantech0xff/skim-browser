@@ -22,12 +22,67 @@ class VideoExtractTest {
     @Test
     fun aMediaAddressIsAFileOrAPlaylistAndASegmentIsNeither() {
         assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/v.mp4", null))
+        assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/v.mov", null))
         assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/clip", "video/webm"))
         assertEquals(MediaStream.Hls, mediaStream("https://cdn.example/a.m3u8?x=1", null))
         assertEquals(MediaStream.Dash, mediaStream("https://cdn.example/p", "application/dash+xml"))
         assertNull(mediaStream("https://cdn.example/seg-1.ts", null))
         assertNull(mediaStream("https://cdn.example/seg.m4s", "video/mp2t"))
         assertNull(mediaStream("https://cdn.example/poster.jpg", "image/jpeg"))
+    }
+
+    @Test
+    fun aSnifferKeepsWholeFilesAndMapsASegmentToItsPlaylist() {
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.mp4"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.webm"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.mov"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.m4v"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Hls, (sightMedia(MediaLook("https://cdn.example/a.m3u8"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Dash, (sightMedia(MediaLook("https://cdn.example/a.mpd"), false) as MediaSight.File).stream)
+        val ranged = sightMedia(MediaLook("https://video.example/playback", range = "bytes=0-"), tracker = false)
+        assertEquals("https://video.example/playback", (ranged as MediaSight.File).url)
+        val accepted = sightMedia(MediaLook("https://video.example/clip", accept = "video/mp4, */*;q=0.8"), tracker = false)
+        assertEquals(MediaStream.Progressive, (accepted as MediaSight.File).stream)
+        assertNull(sightMedia(MediaLook("https://cdn.example/app.js", range = "bytes=0-"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/thumb.jpg"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/thumbs/poster.mp4"), false))
+        assertNull(sightMedia(MediaLook("https://ads.example/ad.mp4"), tracker = true))
+        assertNull(sightMedia(MediaLook("blob:https://news.example/1"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/nope"), false))
+
+        val playlist = "https://cdn.example/hls/master.m3u8"
+        val nested = "https://cdn.example/hls/720/index.m3u8"
+        val segment = sightMedia(
+            MediaLook("https://cdn.example/hls/720/seg-1.ts"),
+            tracker = false,
+            knownManifests = listOf(playlist, nested, "https://cdn.example/other/clip.mp4"),
+        ) as MediaSight.Segment
+        assertEquals(nested, segment.manifestUrl)
+        val alone = sightMedia(MediaLook("https://cdn.example/hls/seg-1.m4s"), tracker = false) as MediaSight.Segment
+        assertNull(alone.manifestUrl)
+    }
+
+    @Test
+    fun aProbeDropsBlobMediaSourceAndThumbnailsAndKeepsAPlayingFile() {
+        val json = """
+            {"urls":[
+              "https://cdn.example/direct.mp4",
+              "blob:https://news.example/1",
+              "mediasource:https://news.example/2",
+              {"src":"https://cdn.example/playing.mp4","duration":12.5,"width":1280,"height":720},
+              {"src":"https://cdn.example/thumb.mp4","duration":1.2,"width":160,"height":90},
+              {"src":"blob:https://news.example/3","duration":20,"width":1920,"height":1080}
+            ],"docs":["{\"play_addr\":\"https://v.example/a.mp4\"}"]}
+        """.trimIndent()
+        val found = mediaFromProbe(json)
+        assertEquals(
+            listOf("https://cdn.example/direct.mp4", "https://cdn.example/playing.mp4"),
+            found.filterNot { it.startsWith(PAGE_DOCUMENT) },
+        )
+        assertTrue(found.any { it.startsWith(PAGE_DOCUMENT) })
+        assertTrue(isThumbnailSample(1.2, 160, 90))
+        assertFalse(isThumbnailSample(12.5, 1280, 720))
+        assertFalse(isThumbnailSample(0.0, 0, 0))
     }
 
     @Test
@@ -46,6 +101,10 @@ class VideoExtractTest {
         assertTrue(parseHls(sample, "https://cdn.example/a.m3u8").protected)
         val widevine = "#EXT-X-KEY:METHOD=SAMPLE-AES,KEYFORMAT=\"urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed\",URI=\"data:text/plain,widevine\""
         assertTrue(hlsProtected(widevine))
+        val fairplay = "#EXT-X-KEY:METHOD=SAMPLE-AES,KEYFORMAT=\"com.apple.streamingkeydelivery\",URI=\"skd://x\""
+        assertTrue(hlsProtected(fairplay))
+        val aes = "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"https://cdn.example/key\"\nseg.ts"
+        assertTrue(parseHls(aes, "https://cdn.example/a.m3u8").protected)
         assertTrue(dashProtected("<MPD><ContentProtection schemeIdUri=\"urn:uuid:edef8ba9\"/></MPD>"))
     }
 
@@ -145,12 +204,21 @@ class VideoExtractTest {
                 "https://cdn.example/a.mp4",
                 "https://cdn.example/a.m3u8",
                 "https://cdn.example/seg.ts",
+                "https://other.example/clip.mov",
+                "https://cdn.example/thumbs/poster.mp4",
+                "https://video.example/playback",
                 "${PAGE_DOCUMENT}{}",
             ),
         )
         val variants = GenericVideoExtractor().extract(hints)
-        assertEquals(listOf(MediaStream.Progressive, MediaStream.Hls), variants.map { streamOf(it) })
-        assertEquals("https://news.example/story", (variants.first().source as VideoSource.Progressive).headers["Referer"])
+        assertEquals(listOf(MediaStream.Hls, MediaStream.Progressive, MediaStream.Progressive), variants.map { streamOf(it) })
+        val hls = variants.first().source as VideoSource.Hls
+        assertEquals("https://cdn.example/a.m3u8", hls.playlistUrl)
+        assertEquals("https://news.example/story", hls.headers["Referer"])
+        assertEquals("test", hls.headers["User-Agent"])
+        assertEquals("Story", variants.first().title)
+        assertEquals("https://other.example/clip.mov", (variants[1].source as VideoSource.Progressive).url)
+        assertEquals("https://video.example/playback", (variants[2].source as VideoSource.Progressive).url)
     }
 
     @Test
@@ -229,13 +297,29 @@ class VideoExtractTest {
         val hints = hints(page, "Talk", listOf("https://cdn.example/also.mp4"))
         val collected = collectVariants(listOf(generic, youtube), hints)
         assertEquals(
-            listOf("https://rr.example/video|https://rr.example/audio", "https://cdn.example/also.mp4"),
+            listOf("https://rr.example/video|https://rr.example/audio"),
             collected.variants.map { it.source.address() },
         )
         assertNull(collected.failure)
         assertTrue(collected.variants.first().source is VideoSource.SeparateAv)
 
-        val refused = collectVariants(listOf(extractor("youtube", page) { throw VideoExtractException(VideoExtractFailure.DRM) }), hints(page, "Talk", emptyList()))
+        val elsewhere = collectVariants(
+            listOf(generic, youtube),
+            hints("https://news.example/story", "Story", listOf("https://cdn.example/also.mp4")),
+        )
+        assertEquals(listOf("https://cdn.example/also.mp4"), elsewhere.variants.map { it.source.address() })
+
+        val emptySite = extractor("tiktok", "https://www.tiktok.com/@a/video/1") { emptyList() }
+        val fellBack = collectVariants(
+            listOf(emptySite, generic),
+            hints("https://www.tiktok.com/@a/video/1", "clip", listOf("https://cdn.example/also.mp4")),
+        )
+        assertEquals(listOf("https://cdn.example/also.mp4"), fellBack.variants.map { it.source.address() })
+
+        val refused = collectVariants(
+            listOf(generic, extractor("youtube", page) { throw VideoExtractException(VideoExtractFailure.DRM) }),
+            hints(page, "Talk", listOf("https://cdn.example/also.mp4")),
+        )
         assertTrue(refused.variants.isEmpty())
         assertEquals(VideoExtractFailure.DRM, refused.failure)
 

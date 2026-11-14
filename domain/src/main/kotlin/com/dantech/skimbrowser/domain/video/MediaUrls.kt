@@ -21,7 +21,8 @@ fun mediaStream(url: String, contentType: String?): MediaStream? {
         path.endsWith(".m3u8") || type == "application/vnd.apple.mpegurl" || type == "application/x-mpegurl" ->
             MediaStream.Hls
         path.endsWith(".mpd") || type == "application/dash+xml" -> MediaStream.Dash
-        path.endsWith(".mp4") || path.endsWith(".m4v") || path.endsWith(".webm") || type?.startsWith("video/") == true ->
+        path.endsWith(".mp4") || path.endsWith(".m4v") || path.endsWith(".webm") || path.endsWith(".mov") ||
+            type?.startsWith("video/") == true ->
             MediaStream.Progressive
         else -> null
     }
@@ -39,13 +40,33 @@ const val PAGE_DOCUMENT = "skim-page:"
 /** The object `evaluateJavascript` returns from the video probe: file URLs and page JSON already on the document. */
 fun mediaFromProbe(json: String): List<String> {
     val root = runCatching { Json.parseToJsonElement(json) }.getOrNull() as? JsonObject ?: return emptyList()
-    val urls = (root["urls"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
-        .filter { (it.startsWith("http://") || it.startsWith("https://")) && !it.startsWith("blob:") }
+    val urls = (root["urls"] as? JsonArray).orEmpty().mapNotNull { element ->
+        when (element) {
+            is JsonPrimitive -> element.contentOrNull?.takeIf(::playableAddress)
+            is JsonObject -> probeSample(element)
+            else -> null
+        }
+    }
     val docs = (root["docs"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
         .map { it.take(MAX_PAGE_DOCUMENT) }
         .filter { it.isNotBlank() }
     return (urls + docs.map { PAGE_DOCUMENT + it }).distinct()
 }
+
+private fun probeSample(sample: JsonObject): String? {
+    val src = (sample["src"] as? JsonPrimitive)?.contentOrNull ?: return null
+    if (!playableAddress(src)) return null
+    val duration = (sample["duration"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
+    val width = (sample["width"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+    val height = (sample["height"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+    if (isThumbnailSample(duration, width, height) || isThumbnailUrl(src)) return null
+    return src
+}
+
+private fun playableAddress(url: String): Boolean =
+    (url.startsWith("http://") || url.startsWith("https://")) &&
+        !url.startsWith("blob:") &&
+        !url.startsWith("mediasource:")
 
 private const val MAX_PAGE_DOCUMENT = 200_000
 
