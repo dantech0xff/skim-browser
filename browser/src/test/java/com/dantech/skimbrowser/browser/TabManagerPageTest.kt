@@ -89,6 +89,24 @@ class TabManagerPageTest {
     }
 
     @Test
+    fun aPlayTapAfterAScrollStillFindsTheVideo() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        var payload = """{"urls":[],"docs":[]}"""
+        f.engine.evaluator = { _, script -> if ("__skimPlayed" in script) payload else null }
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        advanceTimeBy(2_000)
+        f.events.onPageInteraction(id)
+        advanceTimeBy(800)
+        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
+
+        payload = """{"urls":[{"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}],"docs":[]}"""
+        f.events.onPageInteraction(id)
+        advanceTimeBy(1_000)
+        assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
     fun pageReportsUpdateTheRuntimeAndTheTab() = runTest {
         val f = attached()
         val id = f.manager.newTab(incognito = false)

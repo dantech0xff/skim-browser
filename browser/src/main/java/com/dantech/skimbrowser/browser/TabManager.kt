@@ -201,7 +201,7 @@ class TabManager(
     private val shownBeforeStart = HashMap<String, ShownPage>()
     private val readerableChecked = HashMap<String, Long>()
     private val videoChecked = HashMap<String, Long>()
-    private val videoProbeAt = HashMap<String, Long>()
+    private val videoProbeJobs = HashMap<String, Job>()
     private val historyTitleUpdates = HashMap<String, Int>()
     private val titleWrites = HashMap<String, Job>()
     private val pendingLoads = LinkedHashMap<String, String>()
@@ -1069,7 +1069,7 @@ class TabManager(
         shownBeforeStart.remove(tabId)
         readerableChecked.remove(tabId)
         videoChecked.remove(tabId)
-        videoProbeAt.remove(tabId)
+        videoProbeJobs.remove(tabId)?.cancel()
         historyTitleUpdates.remove(tabId)
     }
 
@@ -1190,7 +1190,7 @@ class TabManager(
                     mediaUrls = emptyList(),
                 )
             }
-            videoProbeAt.remove(tabId)
+            videoProbeJobs.remove(tabId)?.cancel()
             // Keep the stored http address until https commits. A restart can then offer it again.
             if (!upgradeAttempt && (tab.url != url || tab.title.isNotEmpty())) {
                 updateTab(tabId) { it.copy(url = url, title = "") }
@@ -1375,12 +1375,10 @@ class TabManager(
             if (openTab(tabId) == null || !scripts.isSupported) return
             val nonce = runtimeOf(tabId).loadNonce
             if (videoChecked[tabId] != nonce) return
-            val at = elapsedRealtime()
-            val previous = videoProbeAt[tabId]
-            if (previous != null && at - previous < PROBE_GAP_MS) return
-            videoProbeAt[tabId] = at
-            appScope.launch(mainDispatcher) {
+            videoProbeJobs.remove(tabId)?.cancel()
+            videoProbeJobs[tabId] = appScope.launch(mainDispatcher) {
                 delay(PROBE_AFTER_TOUCH_MS)
+                videoProbeJobs.remove(tabId)
                 readVideo(live, tabId, nonce)
             }
         }
@@ -1475,11 +1473,8 @@ class TabManager(
         /** How long after the first read to look again, so a video that starts as the page finishes is seen. */
         private const val PLAYBACK_PROBE_DELAY_MS = 1_200L
 
-        /** How long after a touch to read the probe, so Play has started the file. */
+        /** How long after the latest touch to read the probe, so Play has started the file. */
         private const val PROBE_AFTER_TOUCH_MS = 700L
-
-        /** Touches closer than this share one probe. */
-        private const val PROBE_GAP_MS = 2_000L
 
         /**
          * Reports a playing file's address, duration, and size, and the page JSON site extractors
