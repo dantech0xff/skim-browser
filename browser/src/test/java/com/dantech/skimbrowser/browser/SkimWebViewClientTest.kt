@@ -101,6 +101,16 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun aDownloadThatLeavesThePageOpenStillRecordsTheNextFile() = runBlocking {
+        client.onPageStarted(view, PAGE, null)
+        client.shouldInterceptRequest(view, request("https://cdn.example/file.pdf", mainFrame = true))
+        client.abandonLoad()
+        assertEquals(null, client.shouldInterceptRequest(view, request("https://cdn.example/v.mp4", mainFrame = false)))
+        ShadowLooper.idleMainLooper()
+        assertEquals(listOf("https://cdn.example/v.mp4"), events.eventsOf<Event.MediaUrl>().map { it.mediaUrl })
+    }
+
+    @Test
     fun aTrackerRequestIsAnsweredEmptyAndTheMainFrameIsNot() {
         val shield = RequestShield.of(HostBlocklist.of(blockThird = setOf("google-analytics.com")))
         val events = RecordingEvents()

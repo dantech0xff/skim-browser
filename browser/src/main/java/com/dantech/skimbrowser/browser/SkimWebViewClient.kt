@@ -23,6 +23,7 @@ import com.dantech.skimbrowser.domain.interrupt.InterruptRequest
 import com.dantech.skimbrowser.domain.interrupt.InterruptVerdict
 import com.dantech.skimbrowser.domain.interrupt.decideInterrupt
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.pageIdentity
 import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
@@ -506,6 +507,7 @@ class SkimWebViewClient(
             loadingUrl = null
             loadingBlocked.set(0)
             loadingCollapsed.clear()
+            mediaLedger.abandonTo(documentUrl)
         }
     }
 
@@ -703,25 +705,9 @@ class SkimWebViewClient(
         )
     }
 
-    /**
-     * True when [started] is the in-flight main frame even if WebView spells the URL differently.
-     * A fragment, a trailing slash, or a `www` prefix is the same page. Another path is not.
-     */
-    private fun carriesCollapse(started: String?, loading: String?): Boolean {
-        if (started == null || loading == null) return false
-        if (started == loading || sameNavigation(started, loading)) return true
-        val startedHost = hostOf(started)
-        val loadingHost = hostOf(loading)
-        if (startedHost == null || startedHost != loadingHost) return false
-        return pagePath(started) == pagePath(loading)
-    }
-
-    private fun pagePath(url: String): String {
-        val noHash = url.substringBefore('#').trimEnd('/')
-        val rest = noHash.substringAfter("://", noHash)
-        val slash = rest.indexOf('/')
-        return if (slash < 0) "" else rest.substring(slash)
-    }
+    /** True when [started] is the in-flight main frame, including a different spelling of that page. */
+    private fun carriesCollapse(started: String?, loading: String?): Boolean =
+        started != null && loading != null && pageIdentity(started) == pageIdentity(loading)
 
     private fun noteMedia(page: String, watch: MediaWatch, request: WebResourceRequest) {
         val url = request.url?.toString() ?: return

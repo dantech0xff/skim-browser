@@ -10,6 +10,7 @@ import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -541,6 +542,21 @@ class VideoExtractTest {
         assertEquals(MAX_REMEMBERED_MEDIA, remembered.size)
         assertFalse(remembered.contains("https://cdn.example/n-0.mp4"))
         assertFalse(remembered.contains("https://cdn.example/n-1.mp4"))
+
+        val json = """{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]}}"""
+        val documents = rememberPageDocument(emptyList(), PAGE_DOCUMENT + json)
+        val files = (0 until 40).fold(emptyList<String>()) { urls, index ->
+            rememberMediaUrl(urls, "https://cdn.example/file-$index.mp4")
+        }
+        assertEquals(listOf(json), documents)
+        assertEquals(MAX_REMEMBERED_MEDIA, files.size)
+        assertFalse(files.any { it.startsWith(PAGE_DOCUMENT) })
+        val saved = runBlocking {
+            TikTokVideoExtractor().extract(
+                PageVideoHints("https://www.tiktok.com/@a/video/1", "clip", files, "test", null, documents),
+            )
+        }
+        assertEquals("https://v.tiktok.com/a/download.mp4", (saved.single().source as VideoSource.Progressive).url)
     }
 
     @Test
@@ -577,9 +593,10 @@ class VideoExtractTest {
     private fun hints(page: String, title: String?, media: List<String>) = PageVideoHints(
         pageUrl = page,
         pageTitle = title,
-        mediaUrls = media,
+        mediaUrls = media.filterNot { it.startsWith(PAGE_DOCUMENT) },
         userAgent = "test",
         cookieHeader = "session=secret",
+        pageDocuments = media.mapNotNull { it.takeIf { url -> url.startsWith(PAGE_DOCUMENT) }?.removePrefix(PAGE_DOCUMENT) },
     )
 
     private fun streamOf(variant: VideoVariant): MediaStream = when (variant.source) {

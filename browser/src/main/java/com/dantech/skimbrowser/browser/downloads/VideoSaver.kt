@@ -1022,6 +1022,7 @@ class VideoSaver(
             mediaUrls = tabs.runtime(tabId).value.mediaUrls,
             userAgent = agent,
             cookieHeader = cookies(incognito, page),
+            pageDocuments = tabs.runtime(tabId).value.pageDocuments,
         )
         val found = collectVariants(extractors, hints).variants
         val direct = found.firstOrNull { variant ->
@@ -1052,6 +1053,7 @@ class VideoSaver(
             mediaUrls = tabs.runtime(tabId).value.mediaUrls,
             userAgent = agent,
             cookieHeader = cookies(incognito, page),
+            pageDocuments = tabs.runtime(tabId).value.pageDocuments,
         )
         val found = collectVariants(extractors, hints).variants
         val height = qualityHeight(quality)

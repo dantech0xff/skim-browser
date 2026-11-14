@@ -58,4 +58,38 @@ class MediaLedgerTest {
         assertFalse(ledger.commit(segment.epoch, page, "https://cdn.example/a.m3u8"))
         assertEquals(listOf("https://cdn.example/a.m3u8"), ledger.recorded(page))
     }
+
+    @Test
+    fun aDocumentStartThatOnlyRespellsTheAddressKeepsTheInFlightFiles() {
+        val ledger = MediaLedger()
+        val fetched = "https://news.example/story"
+        ledger.noteMainFrame(fetched)
+        val watch = ledger.capture(fetched)
+        assertTrue(ledger.commit(watch.epoch, fetched, "https://cdn.example/clip.mp4"))
+
+        ledger.noteDocumentStart("https://www.news.example/story/")
+        assertEquals(listOf("https://cdn.example/clip.mp4"), ledger.recorded("https://news.example/story#part"))
+        assertTrue(ledger.commit(watch.epoch, fetched, "https://cdn.example/late.mp4"))
+        assertEquals(
+            listOf("https://cdn.example/clip.mp4", "https://cdn.example/late.mp4"),
+            ledger.recorded("https://www.news.example/story"),
+        )
+    }
+
+    @Test
+    fun anAbandonedDownloadReturnsRecordingToThePageStillShowing() {
+        val ledger = MediaLedger()
+        val story = "https://news.example/story"
+        ledger.noteDocumentStart(story)
+        val before = ledger.capture(story)
+        assertTrue(ledger.commit(before.epoch, story, "https://cdn.example/a.m3u8"))
+
+        ledger.noteMainFrame("https://cdn.example/file.pdf")
+        val during = ledger.capture(story)
+        ledger.abandonTo(story)
+
+        assertFalse(ledger.commit(during.epoch, "https://cdn.example/file.pdf", "https://cdn.example/file.pdf"))
+        assertTrue(ledger.commit(during.epoch, story, "https://cdn.example/v.mp4"))
+        assertEquals(listOf("https://cdn.example/a.m3u8", "https://cdn.example/v.mp4"), ledger.recorded(story))
+    }
 }

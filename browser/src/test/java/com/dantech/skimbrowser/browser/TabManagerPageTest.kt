@@ -3,6 +3,7 @@ package com.dantech.skimbrowser.browser
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.domain.video.MAX_BRIDGE_URL_LENGTH
 import com.dantech.skimbrowser.domain.video.MAX_REMEMBERED_MEDIA
+import com.dantech.skimbrowser.domain.video.PAGE_DOCUMENT
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.domain.tab.PageEvent
 
@@ -146,6 +147,21 @@ class TabManagerPageTest {
         assertEquals("https://cdn.example/the-one.mp4", urls.first())
         assertEquals(MAX_REMEMBERED_MEDIA, urls.size)
         assertFalse(urls.contains("https://cdn.example/feed-0.mp4"))
+    }
+
+    @Test
+    fun fortySniffedFilesDoNotEvictThePageJson() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://www.tiktok.com/@a/video/1")
+        val page = "https://www.tiktok.com/@a/video/1"
+        f.engine.openPage(id, page, "clip")
+        val json = """{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]}}"""
+        f.events.onMediaUrl(id, page, PAGE_DOCUMENT + json)
+        repeat(40) { index -> f.events.onMediaUrl(id, page, "https://cdn.example/file-$index.mp4") }
+        val runtime = f.manager.runtime(id).value
+        assertEquals(listOf(json), runtime.pageDocuments)
+        assertEquals(MAX_REMEMBERED_MEDIA, runtime.mediaUrls.size)
+        assertFalse(runtime.mediaUrls.any { it.startsWith(PAGE_DOCUMENT) })
     }
 
     @Test

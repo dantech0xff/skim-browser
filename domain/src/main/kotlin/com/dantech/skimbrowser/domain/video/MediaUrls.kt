@@ -36,7 +36,7 @@ fun isMediaSegment(url: String, contentType: String?): Boolean {
     return path.endsWith(".ts") || path.endsWith(".m4s") || path.endsWith(".aac") || type == "video/mp2t"
 }
 
-/** Page JSON the script already found, carried in [PageVideoHints.mediaUrls] without a new field. */
+/** Prefix on a probe result that is page JSON, not a file address. The tab stores it in its own slot. */
 const val PAGE_DOCUMENT = "skim-page:"
 
 /** The object `evaluateJavascript` returns from the video probe: file URLs and page JSON already on the document. */
@@ -106,11 +106,22 @@ fun rememberPlayed(newestFirst: List<PlayedClip>, clip: PlayedClip, limit: Int =
     return (listOf(clip) + older).take(limit.coerceAtLeast(0))
 }
 
-/** [newestFirst] plus [url], newest at the front, dropping the oldest past [limit]. */
+/** How many page-JSON documents one page keeps. Newest first. A file address never takes one of these slots. */
+const val MAX_PAGE_DOCUMENTS = 4
+
+/** [newestFirst] plus a file [url], newest at the front, dropping the oldest file past [limit]. */
 fun rememberMediaUrl(newestFirst: List<String>, url: String, limit: Int = MAX_REMEMBERED_MEDIA): List<String> {
-    if (url.isBlank() || limit <= 0) return newestFirst
-    val older = newestFirst.filterNot { it == url }
+    if (url.isBlank() || url.startsWith(PAGE_DOCUMENT) || limit <= 0) return newestFirst
+    val older = newestFirst.filterNot { it == url || it.startsWith(PAGE_DOCUMENT) }
     return (listOf(url) + older).take(limit)
+}
+
+/** [newestFirst] plus the JSON in [document], newest first, within [limit]. The `skim-page:` prefix is not stored. */
+fun rememberPageDocument(newestFirst: List<String>, document: String, limit: Int = MAX_PAGE_DOCUMENTS): List<String> {
+    val text = document.removePrefix(PAGE_DOCUMENT).trim()
+    if (text.isEmpty() || limit <= 0) return newestFirst
+    val older = newestFirst.filterNot { it == text }
+    return (listOf(text) + older).take(limit)
 }
 
 private fun probeSample(sample: JsonObject): String? {

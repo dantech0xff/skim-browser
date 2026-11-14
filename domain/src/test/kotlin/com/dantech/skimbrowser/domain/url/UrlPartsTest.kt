@@ -94,6 +94,17 @@ class UrlPartsTest {
     }
 
     @Test
+    fun aFragmentATrailingSlashAndWwwAreTheSamePage() {
+        val story = pageIdentity("https://news.example/story")
+        assertEquals(story, pageIdentity("https://news.example/story/"))
+        assertEquals(story, pageIdentity("https://news.example/story#part"))
+        assertEquals(story, pageIdentity("https://WWW.News.Example/story"))
+        assertEquals(story, pageIdentity("https://www.news.example/story/#section"))
+        assertFalse(pageIdentity("https://news.example/story") == pageIdentity("https://news.example/other"))
+        assertFalse(pageIdentity("https://news.example/story") == pageIdentity("http://news.example/story"))
+    }
+
+    @Test
     fun aPageAndItsFrameOriginMatchWithoutThePathOrDefaultPort() {
         assertTrue(sameWebOrigin("https://news.example/story?q=1#part", "https://news.example"))
         assertTrue(sameWebOrigin("https://News.Example:443/story", "https://news.example/"))

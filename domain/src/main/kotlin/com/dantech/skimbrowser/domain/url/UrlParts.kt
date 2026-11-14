@@ -105,6 +105,41 @@ fun hostOf(url: String): String? {
 fun withoutFragment(url: String): String = url.substringBefore('#')
 
 /**
+ * The page [url] names: fragment dropped, one trailing slash dropped, host lowercased, and a
+ * leading `www.` removed. The path and query keep their case. Two WebView spellings of one page
+ * share this value.
+ */
+fun pageIdentity(url: String): String {
+    val noHash = url.trim().substringBefore('#').trimEnd('/')
+    val marker = "://"
+    val split = noHash.indexOf(marker)
+    if (split < 0) return noHash.lowercase()
+    val scheme = noHash.substring(0, split).lowercase()
+    val rest = noHash.substring(split + marker.length).replace('\\', '/')
+    val slash = rest.indexOf('/')
+    val authority = if (slash < 0) rest else rest.substring(0, slash)
+    val pathAndQuery = if (slash < 0) "" else rest.substring(slash)
+    val at = authority.lastIndexOf('@')
+    val userInfo = if (at < 0) "" else authority.substring(0, at + 1)
+    val hostPort = if (at < 0) authority else authority.substring(at + 1)
+    return "$scheme://$userInfo${normalizeHostPort(hostPort)}$pathAndQuery"
+}
+
+private fun normalizeHostPort(hostPort: String): String {
+    if (hostPort.startsWith("[")) {
+        val end = hostPort.indexOf(']')
+        if (end < 1) return hostPort.lowercase()
+        return hostPort.substring(0, end + 1).lowercase() + hostPort.substring(end + 1)
+    }
+    val colon = hostPort.lastIndexOf(':')
+    val port = if (colon >= 0 && hostPort.substring(colon + 1).all { it.isDigit() }) hostPort.substring(colon) else ""
+    val name = if (port.isEmpty()) hostPort else hostPort.substring(0, colon)
+    val lower = name.lowercase()
+    val bare = if (lower.startsWith("www.") && lower.length > "www.".length) lower.removePrefix("www.") else lower
+    return bare + port
+}
+
+/**
  * The https form of an http URL. Null when [url] is not http, or when its host is loopback:
  * a local page is left on http because nothing there is listening on https.
  */

@@ -31,7 +31,9 @@ import com.dantech.skimbrowser.domain.video.bridgeUrl
 import com.dantech.skimbrowser.domain.video.mediaFromPlayingBridge
 import com.dantech.skimbrowser.domain.video.mediaFromProbe
 import com.dantech.skimbrowser.domain.video.playingPage
+import com.dantech.skimbrowser.domain.video.PAGE_DOCUMENT
 import com.dantech.skimbrowser.domain.video.rememberMediaUrl
+import com.dantech.skimbrowser.domain.video.rememberPageDocument
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -1189,6 +1191,7 @@ class TabManager(
                     isSecure = isHttps(url),
                     blockedCount = 0,
                     mediaUrls = emptyList(),
+                    pageDocuments = emptyList(),
                 )
             }
             // Keep the stored http address until https commits. A restart can then offer it again.
@@ -1383,6 +1386,12 @@ class TabManager(
             val runtime = runtimeOf(tabId)
             val page = runtime.committedUrl ?: open.url
             if (page != null && !sameNavigation(page, pageUrl)) return
+            if (mediaUrl.startsWith(PAGE_DOCUMENT)) {
+                val documents = rememberPageDocument(runtime.pageDocuments, mediaUrl)
+                if (documents == runtime.pageDocuments) return
+                updateRuntime(tabId) { it.copy(pageDocuments = documents) }
+                return
+            }
             val remembered = rememberMediaUrl(runtime.mediaUrls, mediaUrl, MAX_MEDIA_URLS)
             if (remembered == runtime.mediaUrls) return
             updateRuntime(tabId) { it.copy(mediaUrls = remembered) }
