@@ -12,6 +12,9 @@ import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.tab.RecordingTabs
 import com.dantech.skimbrowser.domain.tab.Tab
+import com.dantech.skimbrowser.domain.video.PageVideoHints
+import com.dantech.skimbrowser.domain.video.VideoExtractor
+import com.dantech.skimbrowser.domain.video.VideoQualities
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
@@ -326,11 +329,145 @@ class VideoSaverTest {
         )
     }
 
+    @Test
+    fun aRangedDownloadAsksForEachSliceAndReportsTheWholeSize() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val segment = server.url("/seg.ts").toString()
+        val playlist = "#EXTM3U\n#EXTINF:1,\n$segment\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setResponseCode(206).addHeader("Content-Range", "bytes 0-3/8").setBody("VIDE"))
+        server.enqueue(MockResponse().setResponseCode(206).addHeader("Content-Range", "bytes 4-7/8").setBody("O123"))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined, rangeChunkBytes = 4, rangeHost = { true })
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("x36xhzz.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))),
+            )
+            val ranges = buildList {
+                repeat(server.requestCount) { add(server.takeRequest().requestUrl?.queryParameter("range")) }
+            }.filterNotNull()
+            assertEquals(listOf("0-3", "4-7"), ranges)
+            org.junit.Assert.assertTrue(log.progress.toString(), log.progress.any { it.second == 8L })
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aForbiddenAudioTrackIsFetchedAgainFromThePage() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        server.enqueue(MockResponse().setBody("VIDEO"))
+        server.enqueue(MockResponse().setResponseCode(403))
+        val freshVideo = server.url("/v2.mp4").toString()
+        val freshAudio = server.url("/a2.mp4").toString()
+        server.enqueue(MockResponse().setBody("VIDEO2"))
+        server.enqueue(MockResponse().setBody("AUDIO2"))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val extractor = object : VideoExtractor {
+            override val id = "page"
+            override val pageUrlSufficient = true
+            override fun matches(pageUrl: String) = pageUrl.contains("example.com")
+            override suspend fun extract(hints: PageVideoHints) = listOf(
+                VideoVariant("clip", "360p", "video/mp4", null, VideoSource.SeparateAv(freshVideo, freshAudio)),
+            )
+        }
+        val muxed = mutableListOf<String>()
+        val saver = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            mux = { video, audio, out ->
+                muxed += video.readText() + audio.readText()
+                out.writeText("MUXED")
+            },
+            extractors = setOf(extractor),
+        )
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save(
+                    "t",
+                    VideoVariant(
+                        "clip",
+                        "360p",
+                        "video/mp4",
+                        null,
+                        VideoSource.SeparateAv(server.url("/v1.mp4").toString(), server.url("/a1.mp4").toString()),
+                    ),
+                ),
+            )
+            assertEquals(listOf("VIDEO2AUDIO2"), muxed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun rangedBytesUseTheQueryAndAMasterPlaylistBecomesQualities() = runBlocking {
+        assertEquals(true, isRangeHost("https://rr.googlevideo.com/videoplayback?id=1"))
+        assertEquals(false, isRangeHost("https://cdn.example/a.mp4"))
+        assertEquals("0-3", withRange("https://rr.googlevideo.com/videoplayback?id=1", 0, 3).substringAfter("range="))
+        val server = MockWebServer()
+        server.start()
+        val low = server.url("/low.m3u8")
+        val high = server.url("/high.m3u8")
+        val master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=400000,RESOLUTION=640x360\n$low\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720\n$high\n"
+        server.enqueue(MockResponse().setBody(master))
+        val protected = "<MPD><ContentProtection schemeIdUri=\"urn:uuid:widevine\"/></MPD>"
+        server.enqueue(MockResponse().setBody(protected))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            val hls = saver.qualities("t", VideoVariant("x36xhzz.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/master.m3u8").toString())))
+            val ready = (hls as VideoQualities.Ready).variants
+            assertEquals(listOf("360p", "720p"), ready.map { it.qualityLabel })
+            assertEquals("x36xhzz", ready.first().title)
+            assertEquals("video/mp2t", ready.first().mimeType)
+            val dash = saver.qualities("t", VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/a.mpd").toString())))
+            assertEquals(VideoQualities.Protected, dash)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aKnownLengthIsReportedWhileTheFileArrivesAndAFailureKeepsItsReason() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val segment = server.url("/seg.ts").toString()
+        val playlist = "#EXTM3U\n#EXTINF:1,\n$segment\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody("12345678"))
+        server.enqueue(MockResponse().setResponseCode(403))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))))
+            org.junit.Assert.assertTrue(log.progress.toString(), log.progress.any { it.second == 8L && it.first > 0L })
+            assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/missing.m3u8").toString()))))
+            assertEquals("The server answered 403", log.reason)
+        } finally {
+            server.shutdown()
+        }
+    }
+
     private fun saver(
         log: CountingLog,
         scope: CoroutineScope,
         io: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO,
         maxPlaylistChars: Int = 2 * 1024 * 1024,
+        extractors: Set<VideoExtractor> = emptySet(),
+        rangeChunkBytes: Long = 10L * 1024 * 1024,
+        rangeHost: (String) -> Boolean = ::isRangeHost,
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -350,6 +487,9 @@ class VideoSaverTest {
             mux = mux,
             freeBytes = { Long.MAX_VALUE },
             maxPlaylistChars = maxPlaylistChars,
+            extractors = extractors,
+            rangeChunkBytes = rangeChunkBytes,
+            rangeHost = rangeHost,
         )
     }
 }
@@ -358,6 +498,8 @@ private class CountingLog : DownloadLog {
     var started = 0
     var failed = 0
     var finished = false
+    var reason: String? = null
+    val progress = mutableListOf<Pair<Long, Long>>()
 
     override fun observe(): Flow<List<DownloadItem>> = flowOf(emptyList())
     override suspend fun noteStarted(draft: DownloadDraft): Long {
@@ -365,12 +507,15 @@ private class CountingLog : DownloadLog {
         return started.toLong()
     }
     override suspend fun noteSystem(localId: Long, systemId: Long) = Unit
-    override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) = Unit
+    override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) {
+        progress += soFar to total
+    }
     override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) {
         finished = true
     }
-    override suspend fun noteFailed(localId: Long) {
+    override suspend fun noteFailed(localId: Long, reason: String?) {
         failed += 1
+        this.reason = reason
     }
     override suspend fun remove(id: Long): DownloadItem? = null
     override suspend fun clearIncognito() = Unit

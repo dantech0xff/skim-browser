@@ -18,6 +18,7 @@ import com.dantech.skimbrowser.domain.video.GenericVideoExtractor
 import com.dantech.skimbrowser.domain.video.PAGE_DOCUMENT
 import com.dantech.skimbrowser.domain.video.TikTokVideoExtractor
 import com.dantech.skimbrowser.domain.video.VideoCommands
+import com.dantech.skimbrowser.domain.video.VideoQualities
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
@@ -168,4 +169,7 @@ private class RecordingCommands : VideoCommands {
         saved = variant
         return result
     }
+
+    override suspend fun qualities(tabId: String, variant: VideoVariant): VideoQualities =
+        VideoQualities.Ready(listOf(variant))
 }

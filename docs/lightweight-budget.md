@@ -97,6 +97,8 @@ The `distribution` flavors do not change that play file. One `assemblePlayReleas
 
 Saving the video on the page, measured with `assemblePlayReleaseSmoke` on that flavor split, is 4,206,653 bytes, 38,368 above 4,168,285. No library was added. Media3 and ExoPlayer are not in the APK. Compressed `classes.dex` is 2,453,554. The bytes are the in-process save, the HLS and DASH fetch, the MediaMuxer path, the sheet, and the Settings row. `apkanalyzer apk download-size` on this file reported 3,751,332. Defined methods are 24,529 and references are 27,969. The YouTube extractor is not in the play APK. `maxGrowthBytes` stays 8,192. The new play baseline is 4,206,653.
 
+Offering a download from the page address, fetching googlevideo in ranges, and listing playlist qualities then measured 4,223,465 bytes, 16,812 above 4,206,653. No library was added. The download-size estimate and the method counts were not remeasured. The full flavor grew by 428 bytes, inside its 8,192 allowance, so its baseline stays 4,843,648. The new play baseline is 4,223,465.
+
 The same save path is in the full flavor. One `assembleFullReleaseSmoke` on that machine wrote 4,843,648 bytes, 103,904 above 4,739,744. Compressed `classes.dex` in the full APK is 3,006,980. `apkanalyzer apk download-size` on the full file reported 4,381,242. The full file is 636,995 above the play file. NewPipe, Rhino, and protobuf-javalite stay only in that flavor. `maxGrowthBytes` stays 8,192. The new full baseline is 4,843,648.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.

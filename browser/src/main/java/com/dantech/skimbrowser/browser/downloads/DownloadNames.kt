@@ -15,9 +15,11 @@ object DownloadNames {
      * `download` attribute or the URL) and whose type is [mime] (sniffed from the first bytes when
      * known, else the server's).
      *
-     * Only the last path segment is kept, so `../` and backslashes cannot leave the Downloads
-     * folder; control, bidi and zero-width characters are removed, so "Invoice" + U+202E + "fdp.apk" cannot
-     * pass for a PDF; characters storage rejects become `_`; leading and trailing dots go. The
+     * Slashes and backslashes become `_`, so `../` cannot leave the Downloads folder and a title
+     * such as `r/aww` keeps both words. Control, bidi and zero-width characters are removed, so
+     * "Invoice" + U+202E + "fdp.apk" cannot pass for a PDF; characters storage rejects become `_`;
+     * a trailing site name such as ` _ TikTok` or ` | Facebook` is removed. Leading and trailing
+     * dots go. The
      * extension follows [mime]: one that names another type is replaced, a missing one is added,
      * and only a generic type (`application/octet-stream`, `text/plain`) leaves the name's own. A
      * type Android has no extension for drops an extension that names another type. The result
@@ -25,11 +27,10 @@ object DownloadNames {
      */
     fun sanitize(raw: String?, mime: String?): String {
         val type = mime?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)?.ifEmpty { null }
-        val cleaned = raw.orEmpty()
+        val cleaned = stripSiteSuffix(raw.orEmpty())
             .replace('\\', '/')
-            .substringAfterLast('/')
             .toVisibleText()
-            .map { if (it in RESERVED) '_' else it }
+            .map { if (it == '/' || it in RESERVED) '_' else it }
             .joinToString("")
             .trim { it == '.' || it.isWhitespace() }
 
@@ -37,11 +38,23 @@ object DownloadNames {
         val ownExtension = cleaned.substring(dot + 1).takeIf { dot > 0 && isExtension(it) }
         val base = (if (ownExtension != null) cleaned.substring(0, dot) else cleaned)
             .trim { it == '.' || it.isWhitespace() }
+            .takeUnless { name -> name.all { it == '_' || it == '.' || it.isWhitespace() } }
+            .orEmpty()
             .ifEmpty { FALLBACK_NAME }
         return fit(base, extensionFor(ownExtension, type))
     }
 
+    private fun stripSiteSuffix(raw: String): String {
+        var name = raw.trim()
+        while (true) {
+            val next = SITE_SUFFIX.replace(name, "").trim()
+            if (next == name) return name
+            name = next
+        }
+    }
+
     private fun extensionFor(own: String?, type: String?): String? {
+        if (type == "video/mp2t") return "ts"
         if (type == null || type in GENERIC_TYPES) {
             return own ?: if (type == TEXT_PLAIN) "txt" else null
         }
@@ -98,6 +111,7 @@ object DownloadNames {
     private const val TEXT_PLAIN = "text/plain"
 
     private val RESERVED = setOf('"', '*', ':', '<', '>', '?', '|', '/')
+    private val SITE_SUFFIX = Regex("""(?:\s+\|\s+|\s+_\s+)(?:TikTok|Facebook|Reddit)\s*$""", RegexOption.IGNORE_CASE)
 
     /** Types that say nothing about the file, so the page's own extension stays. */
     private val GENERIC_TYPES = setOf(

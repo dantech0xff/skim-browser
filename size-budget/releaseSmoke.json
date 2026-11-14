@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk",
   "variant": "playReleaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4206653,
+  "fileSizeBytes": 4223465,
   "downloadSizeBytes": 3751332,
   "maxGrowthBytes": 8192,
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "Popup-blocking playReleaseSmoke was 4168285. One assemblePlayReleaseSmoke measured 4206653 bytes, 38368 above that. No library was added. The YouTube extractor is not in this APK. fullReleaseSmoke is size-budget/fullReleaseSmoke.json. downloadSizeBytes 3751332, defined methods 24529, and references 27969 are apkanalyzer on this APK. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "The video-save playReleaseSmoke was 4206653. Offering a download from the page address, ranged googlevideo fetches, and playlist qualities measured 4223465 bytes, 16812 above that. No library was added. The YouTube extractor is not in this APK. fullReleaseSmoke stayed within its allowance. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

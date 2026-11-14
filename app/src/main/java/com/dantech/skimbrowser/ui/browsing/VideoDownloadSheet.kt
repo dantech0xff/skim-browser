@@ -23,9 +23,11 @@ import com.dantech.skimbrowser.domain.video.PageVideoHints
 import com.dantech.skimbrowser.domain.video.VideoCommands
 import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import com.dantech.skimbrowser.domain.video.VideoExtractor
+import com.dantech.skimbrowser.domain.video.VideoQualities
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoVariant
 import com.dantech.skimbrowser.domain.video.collectVariants
+import kotlinx.coroutines.CancellationException
 import com.dantech.skimbrowser.ui.components.SkimListItem
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.navigation.VideoDownloadKey
@@ -78,13 +80,30 @@ class VideoDownloadViewModel @AssistedInject constructor(
                 cookieHeader = null,
             )
             val collected = collectVariants(extractors, hints)
-            variants = collected.variants
+            val ready = mutableListOf<VideoVariant>()
+            var protected = collected.failure == com.dantech.skimbrowser.domain.video.VideoExtractFailure.DRM
+            for (variant in collected.variants) {
+                try {
+                    when (val offer = videos.qualities(tabId, variant)) {
+                        is VideoQualities.Ready -> ready += offer.variants
+                        VideoQualities.Protected -> protected = true
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                }
+            }
+            variants = ready.distinctBy { it.source }
             _state.value = VideoDownloadUiState(
                 loading = false,
                 choices = variants.mapIndexed { index, variant ->
                     VideoChoice(index, variant.title, variant.qualityLabel, variant.sizeBytes)
                 },
-                notice = collected.failure?.let(::videoNotice),
+                notice = when {
+                    variants.isNotEmpty() -> null
+                    protected -> R.string.video_protected
+                    else -> collected.failure?.let(::videoNotice)
+                },
             )
         }
     }

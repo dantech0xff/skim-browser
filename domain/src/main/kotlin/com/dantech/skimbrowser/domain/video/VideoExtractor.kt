@@ -14,5 +14,19 @@ data class VideoVariant(val title: String, val qualityLabel: String, val mimeTyp
 interface VideoExtractor {
     val id: String
     fun matches(pageUrl: String): Boolean
+
+    /**
+     * True when [matches] is enough to offer a download before the page has revealed a media
+     * address. A file or a playlist still found on the page is offered either way.
+     */
+    val pageUrlSufficient: Boolean get() = false
+
     suspend fun extract(hints: PageVideoHints): List<VideoVariant>
+}
+
+/** A download can be offered for this page: a media address was seen, or an extractor knows the page. */
+fun videoCanBeSaved(pageUrl: String?, mediaUrls: List<String>, extractors: Iterable<VideoExtractor>): Boolean {
+    if (mediaUrls.isNotEmpty()) return true
+    val page = pageUrl ?: return false
+    return extractors.any { extractor -> extractor.pageUrlSufficient && extractor.matches(page) }
 }

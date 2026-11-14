@@ -151,7 +151,14 @@ private fun statusText(item: DownloadItem): String {
             }
         }
         DownloadPhase.Done -> stringResource(R.string.downloads_done, size)
-        DownloadPhase.Failed -> stringResource(R.string.downloads_failed, size)
+        DownloadPhase.Failed -> {
+            val reason = item.failureReason
+            if (reason.isNullOrBlank()) {
+                stringResource(R.string.downloads_failed, size)
+            } else {
+                stringResource(R.string.downloads_failed_reason, reason)
+            }
+        }
     }
 }
 

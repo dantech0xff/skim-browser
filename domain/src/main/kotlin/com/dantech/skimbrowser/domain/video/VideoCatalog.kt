@@ -19,9 +19,18 @@ sealed interface VideoSaveResult {
     data object Protected : VideoSaveResult
 }
 
+/** Qualities a variant expands to, or a refusal when the playlist is protected. */
+sealed interface VideoQualities {
+    data class Ready(val variants: List<VideoVariant>) : VideoQualities
+    data object Protected : VideoQualities
+}
+
 /** The browser saves a variant the person picked, and a failed video row the person retries. */
 interface VideoCommands {
     suspend fun save(tabId: String, variant: VideoVariant): VideoSaveResult
+
+    /** One row per quality. A master playlist becomes its variants. A protected manifest is refused. */
+    suspend fun qualities(tabId: String, variant: VideoVariant): VideoQualities
 }
 
 /** Variants a page can save, plus the refusal when every matching extractor declined. */

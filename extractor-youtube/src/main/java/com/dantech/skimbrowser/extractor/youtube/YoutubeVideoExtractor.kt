@@ -9,6 +9,8 @@ internal class YoutubeVideoExtractor(
 ) : VideoExtractor {
     override val id: String = "youtube"
 
+    override val pageUrlSufficient: Boolean = true
+
     override fun matches(pageUrl: String): Boolean = YoutubeUrls.matches(pageUrl)
 
     override suspend fun extract(hints: PageVideoHints): List<VideoVariant> {

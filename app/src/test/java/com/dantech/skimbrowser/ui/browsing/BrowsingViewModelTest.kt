@@ -719,7 +719,7 @@ class BrowsingViewModelTest {
 
     /** The view model of [tabId]'s screen while the screen shows it: its state is collected. */
     private fun TestScope.browsing(f: TabManagerFixture, tabId: String): BrowsingViewModel {
-        val viewModel = kept { BrowsingViewModel(tabId, f.manager) }
+        val viewModel = kept { BrowsingViewModel(tabId, f.manager, emptySet()) }
         backgroundScope.launch { viewModel.state.collect {} }
         runCurrent()
         return viewModel

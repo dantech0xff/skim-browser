@@ -22,7 +22,7 @@ import okhttp3.Response
 import okio.BufferedSource
 
 /** A download that could not be made; the message never holds an address or a cookie. */
-class DownloadException(message: String) : IOException(message)
+class DownloadException(message: String, val code: Int? = null) : IOException(message)
 
 /** The largest file Skim downloads itself (from an incognito tab). */
 const val MAX_IN_PROCESS_DOWNLOAD_BYTES = 2L * 1024 * 1024 * 1024

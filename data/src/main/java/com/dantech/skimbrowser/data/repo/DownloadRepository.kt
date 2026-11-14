@@ -97,9 +97,11 @@ class DownloadRepository(private val file: File) : DownloadLog {
         }
     }
 
-    override suspend fun noteFailed(localId: Long) {
+    override suspend fun noteFailed(localId: Long, reason: String?) {
         edit { current ->
-            0L to current.map { if (it.id == localId) it.copy(phase = DownloadPhase.Failed) else it }
+            0L to current.map { row ->
+                if (row.id == localId) row.copy(phase = DownloadPhase.Failed, failureReason = reason?.take(120)) else row
+            }
         }
     }
 
@@ -171,6 +173,7 @@ private data class Row(
     val userInitiated: Boolean?,
     val retryIncognito: Boolean?,
     val headers: List<DownloadHeader> = emptyList(),
+    val failureReason: String? = null,
 ) {
     fun toItem(): DownloadItem {
         val retry = if (url.isNullOrBlank() || tabId.isNullOrBlank() || userInitiated == null || retryIncognito == null) {
@@ -178,7 +181,7 @@ private data class Row(
         } else {
             DownloadRetry(tabId, url, userAgent, contentDisposition, requestMime, userInitiated, retryIncognito, headers)
         }
-        return DownloadItem(id, fileName, phase, bytesSoFar, bytesTotal, uri, mime, incognito, retry, systemId)
+        return DownloadItem(id, fileName, phase, bytesSoFar, bytesTotal, uri, mime, incognito, retry, systemId, failureReason)
     }
 
     fun encode(): String = listOf(
@@ -199,12 +202,13 @@ private data class Row(
         userInitiated?.let { if (it) "1" else "0" }.orEmpty(),
         retryIncognito?.let { if (it) "1" else "0" }.orEmpty(),
         encodeHeaders(headers),
+        esc(failureReason),
     ).joinToString(SEP)
 }
 
 private fun decode(line: String): Row? {
     val parts = line.split(SEP)
-    if (parts.size != 16 && parts.size != 17) return null
+    if (parts.size !in 16..18) return null
     val phase = enumValues<DownloadPhase>().firstOrNull { it.name == parts[2] } ?: return null
     return Row(
         id = parts[0].toLongOrNull() ?: return null,
@@ -231,7 +235,8 @@ private fun decode(line: String): Row? {
             "0" -> false
             else -> null
         },
-        headers = if (parts.size == 17) decodeHeaders(parts[16]) else emptyList(),
+        headers = if (parts.size >= 17) decodeHeaders(parts[16]) else emptyList(),
+        failureReason = if (parts.size >= 18) unesc(parts[17]).ifEmpty { null } else null,
     )
 }
 

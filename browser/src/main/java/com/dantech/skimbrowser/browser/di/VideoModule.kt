@@ -49,6 +49,7 @@ internal object VideoModule {
         incognito: IncognitoSession,
         profiles: BrowserProfiles,
         @AppScope scope: CoroutineScope,
+        extractors: Set<@JvmSuppressWildcards VideoExtractor>,
     ): VideoSaver = VideoSaver(
         httpClient = { client.get() },
         store = MediaStoreDownloads(app),
@@ -58,6 +59,7 @@ internal object VideoModule {
         cookies = { private, url -> cookieHeader(incognito, profiles, private, url) },
         workDir = File(app.cacheDir, "video"),
         scope = scope,
+        extractors = extractors,
     )
 
     @Provides fun videoCommands(saver: VideoSaver): VideoCommands = saver

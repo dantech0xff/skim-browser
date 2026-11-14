@@ -305,7 +305,7 @@ class DownloadTrackerTest {
             finishedBytes = bytes
         }
 
-        override suspend fun noteFailed(localId: Long) {
+        override suspend fun noteFailed(localId: Long, reason: String?) {
             failures += 1
         }
 
