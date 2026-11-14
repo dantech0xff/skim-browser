@@ -23,7 +23,11 @@ import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -102,6 +106,9 @@ class NewsWallViewModel @Inject constructor(
     private val refreshing = MutableStateFlow(false)
     private val feedError = MutableStateFlow(false)
     private val refreshGate = Mutex()
+    private val refreshScope = CoroutineScope(
+        viewModelScope.coroutineContext + SupervisorJob(viewModelScope.coroutineContext[Job]),
+    )
     private var seen: NewsPreferences? = null
 
     val state: StateFlow<NewsWallUiState> = repository.preferences().flatMapLatest { prefs ->
@@ -125,12 +132,16 @@ class NewsWallViewModel @Inject constructor(
                 .collect { prefs ->
                     val previous = seen
                     seen = prefs
-                    if (!prefs.enabled) return@collect
+                    if (!prefs.enabled) {
+                        cancelRefreshes()
+                        return@collect
+                    }
                     val sourcesChanged = previous != null && (
                         previous.hiddenSourceIds != prefs.hiddenSourceIds ||
                             previous.customFeedUrls != prefs.customFeedUrls
                         )
-                    refresh(force = sourcesChanged)
+                    val topicChanged = previous != null && previous.topic != prefs.topic
+                    refresh(force = sourcesChanged, wait = sourcesChanged || topicChanged)
                 }
         }
     }
@@ -140,9 +151,15 @@ class NewsWallViewModel @Inject constructor(
 
     fun allowThumbnails(): Boolean = thumbnails.showThumbnails()
 
-    fun refresh(force: Boolean) {
-        viewModelScope.launch {
-            if (!force && refreshGate.isLocked) return@launch
+    fun refresh(force: Boolean) = refresh(force, wait = force)
+
+    /**
+     * [wait] queues behind a fetch already running. A topic change waits, so that topic is loaded
+     * when the current round finishes. A second open of Home does not, so two opens share one fetch.
+     */
+    private fun refresh(force: Boolean, wait: Boolean) {
+        refreshScope.launch {
+            if (!force && !wait && refreshGate.isLocked) return@launch
             refreshGate.withLock {
                 try {
                     if (!repository.currentPreferences().enabled) return@withLock
@@ -157,6 +174,10 @@ class NewsWallViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun cancelRefreshes() {
+        refreshScope.coroutineContext.cancelChildren()
     }
 
     fun selectTopic(topic: NewsTopic) = launchEdit { repository.setTopic(topic) }
@@ -225,11 +246,19 @@ class NewsWallViewModel @Inject constructor(
 class NewsPreferencesViewModel @Inject constructor(
     private val repository: NewsRepository,
 ) : ViewModel() {
-    val enabled: StateFlow<Boolean> = repository.preferences()
+    val enabled: StateFlow<Boolean?> = repository.preferences()
         .map { it.enabled }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setEnabled(enabled: Boolean) {
-        viewModelScope.launch { repository.setEnabled(enabled) }
+        viewModelScope.launch {
+            try {
+                repository.setEnabled(enabled)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Log.w("NewsWall", "News choice was not saved: ${e.javaClass.simpleName}")
+            }
+        }
     }
 }

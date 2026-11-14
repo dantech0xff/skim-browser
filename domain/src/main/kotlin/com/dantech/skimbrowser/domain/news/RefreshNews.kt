@@ -28,10 +28,7 @@ class RefreshNews(
         if (!force && cached != null && NewsBoard.isFresh(cached.fetchedAtMillis, now)) return@withContext
         val group = NewsCatalog.languageGroup(language)
         val feeds = NewsCatalog.feeds(group, prefs.topic, prefs.hiddenSourceIds, prefs.customFeedUrls)
-        if (feeds.isEmpty()) {
-            repository.saveSnapshot(language, prefs.topic, NewsSnapshot(emptyList(), clock()))
-            return@withContext
-        }
+        if (feeds.isEmpty()) return@withContext
         val fetched = fetch(feeds)
         if (!repository.currentPreferences().enabled) return@withContext
         if (fetched.all { it == null }) return@withContext
@@ -44,6 +41,7 @@ class RefreshNews(
         feeds.map { feed ->
             async {
                 gate.withPermit {
+                    if (!repository.currentPreferences().enabled) return@withPermit null
                     val xml = runCatching { client.fetch(feed.url) }.getOrNull() ?: return@withPermit null
                     runCatching { parser.parse(xml, feed.sourceId, feed.sourceName) }.getOrDefault(emptyList())
                 }

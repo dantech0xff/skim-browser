@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.domain.news.RefreshNews
 import com.dantech.skimbrowser.domain.news.ThumbnailPolicy
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import java.time.ZoneOffset
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -144,9 +145,44 @@ class NewsWallViewModelTest {
         assertTrue(client.urls.size > afterFirst)
     }
 
+    @Test
+    fun switchingTopicDuringAFetchStillLoadsThatTopic() = runTest(dispatcher) {
+        val client = HoldingClient()
+        val store = MemoryNews()
+        val vm = viewModel(store, client, images = true, now = 1)
+        assertEquals(4, client.urls.size)
+
+        vm.selectTopic(NewsTopic.SPORTS)
+        client.release()
+
+        assertTrue(client.urls.any { it == "https://feeds.bbci.co.uk/sport/rss.xml" })
+        assertEquals(NewsTopic.SPORTS, store.currentPreferences().topic)
+    }
+
+    @Test
+    fun turningNewsOffLeavesAFeedThatHasNotStarted() = runTest(dispatcher) {
+        val client = HoldingClient()
+        val vm = viewModel(MemoryNews(), client, images = true, now = 1)
+        assertEquals(4, client.urls.size)
+
+        vm.setEnabled(false)
+        client.release()
+
+        assertEquals(4, client.urls.size)
+        assertFalse(vm.state.value.enabled)
+    }
+
     private fun viewModel(
         store: MemoryNews,
         client: RecordingClient,
+        images: Boolean,
+        now: Long = 0,
+        clock: () -> Long = { now },
+    ) = viewModel(store, client as NewsFeedClient, images, now, clock)
+
+    private fun viewModel(
+        store: MemoryNews,
+        client: NewsFeedClient,
         images: Boolean,
         now: Long = 0,
         clock: () -> Long = { now },
@@ -177,13 +213,28 @@ class NewsWallViewModelTest {
         }
     }
 
+    private class HoldingClient : NewsFeedClient {
+        val urls = mutableListOf<String>()
+        private val hold = CompletableDeferred<Unit>()
+
+        override suspend fun fetch(url: String): String {
+            urls += url
+            hold.await()
+            return "<rss/>"
+        }
+
+        fun release() {
+            hold.complete(Unit)
+        }
+    }
+
     private class MemoryNews(
         prefs: NewsPreferences = NewsPreferences(),
         snapshot: NewsSnapshot? = null,
         private val failSave: Boolean = false,
     ) : NewsRepository {
         private val prefs = MutableStateFlow(prefs)
-        private val stored = MutableStateFlow(snapshot)
+        private val stored = mutableMapOf(NewsTopic.TOP to MutableStateFlow(snapshot))
 
         override fun preferences(): Flow<NewsPreferences> = prefs
         override suspend fun currentPreferences(): NewsPreferences = prefs.value
@@ -197,11 +248,13 @@ class NewsWallViewModelTest {
             }
         }
         override suspend fun addCustomFeed(url: String): Boolean = false
-        override fun snapshot(language: String, topic: NewsTopic): Flow<NewsSnapshot?> = stored
-        override suspend fun currentSnapshot(language: String, topic: NewsTopic): NewsSnapshot? = stored.value
+        override fun snapshot(language: String, topic: NewsTopic): Flow<NewsSnapshot?> = bucket(topic)
+        override suspend fun currentSnapshot(language: String, topic: NewsTopic): NewsSnapshot? = bucket(topic).value
         override suspend fun saveSnapshot(language: String, topic: NewsTopic, snapshot: NewsSnapshot) {
             if (failSave) throw java.io.IOException("full")
-            stored.value = snapshot
+            bucket(topic).value = snapshot
         }
+
+        private fun bucket(topic: NewsTopic) = stored.getOrPut(topic) { MutableStateFlow(null) }
     }
 }

@@ -57,6 +57,35 @@ class RefreshNewsTest {
     }
 
     @Test
+    fun hidingEverySourceLeavesTheStoredList() = runTest {
+        val cached = NewsSnapshot(listOf(article("https://example.com/kept", "Kept", 1)), fetchedAtMillis = 1_000)
+        val store = MemoryNews(
+            prefs = NewsPreferences(hiddenSourceIds = setOf("google-news", "bbc", "guardian", "verge", "ars")),
+            snapshot = cached,
+        )
+        val client = RecordingClient(body = RSS)
+        refresh(store, client, clock = { 5_000 }).invoke("en", force = true)
+
+        assertTrue(client.urls.isEmpty())
+        assertTrue(store.saved.isEmpty())
+        assertEquals(cached, store.stored.value)
+    }
+
+    @Test
+    fun aFeedStillWaitingDoesNotStartAfterNewsIsTurnedOff() = runTest {
+        val store = MemoryNews()
+        var started = 0
+        val client = RecordingClient(body = RSS, onFetch = {
+            started++
+            if (started == 4) store.prefs = store.prefs.copy(enabled = false)
+        })
+        refresh(store, client, clock = { NewsBoard.TTL_MILLIS + 1 }).invoke("en", force = true)
+
+        assertEquals(4, started)
+        assertTrue(store.saved.isEmpty())
+    }
+
+    @Test
     fun turningNewsOffDuringAFetchDoesNotPublishTheResult() = runTest {
         val store = MemoryNews(snapshot = NewsSnapshot(listOf(article("https://example.com/kept", "Kept", 1)), 0))
         val client = RecordingClient(body = RSS, onFetch = { store.prefs = store.prefs.copy(enabled = false) })

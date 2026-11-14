@@ -8,6 +8,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoField
 import java.util.Locale
 import javax.inject.Inject
 import org.xmlpull.v1.XmlPullParser
@@ -181,7 +182,9 @@ internal fun parseNewsDate(raw: String): Long? {
     }
     for (pattern in DATE_PATTERNS) {
         try {
-            return Instant.from(pattern.parse(normalized)).toEpochMilli()
+            val parsed = pattern.parse(normalized)
+            if (parsed.get(ChronoField.YEAR) < 100) continue
+            return Instant.from(parsed).toEpochMilli()
         } catch (e: DateTimeParseException) {
             continue
         } catch (e: java.time.DateTimeException) {
@@ -192,7 +195,7 @@ internal fun parseNewsDate(raw: String): Long? {
 }
 
 private val GMT_OFFSET = Regex("""GMT([+-])(\d{1,2})\s*$""", RegexOption.IGNORE_CASE)
-private val DATE_PATTERNS = listOf(DateTimeFormatter.RFC_1123_DATE_TIME) + listOf(
-    "EEE, dd MMM yyyy HH:mm:ss XX",
+private val DATE_PATTERNS = listOf(
     "EEE, dd MMM yy HH:mm:ss XX",
-).map { DateTimeFormatter.ofPattern(it, Locale.US) }
+    "EEE, dd MMM yyyy HH:mm:ss XX",
+).map { DateTimeFormatter.ofPattern(it, Locale.US) } + DateTimeFormatter.RFC_1123_DATE_TIME

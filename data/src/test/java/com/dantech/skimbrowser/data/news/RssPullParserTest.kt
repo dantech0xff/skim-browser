@@ -41,9 +41,9 @@ class RssPullParserTest {
 
         assertEquals(2, stories.size)
         assertEquals("GMT+7 story", stories[0].title)
-        assertTrue(stories[0].publishedAtMillis != null)
+        assertEquals(Instant.parse("2026-11-14T15:48:32Z").toEpochMilli(), stories[0].publishedAtMillis)
         assertEquals("Two digit year", stories[1].title)
-        assertTrue(stories[1].publishedAtMillis != null)
+        assertEquals(Instant.parse("2026-11-14T15:53:16Z").toEpochMilli(), stories[1].publishedAtMillis)
         assertNull(stories[0].thumbnailUrl)
     }
 
