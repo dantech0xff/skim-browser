@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okio.Buffer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -137,6 +138,34 @@ class VideoSaverTest {
             assertEquals(VideoSaveResult.Started, saver.save("t", variant))
             assertEquals(2, log.started)
             assertEquals(2, log.failed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aUtf16DashManifestIsReadWithItsCharset() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val clip = server.url("/clip.mp4")
+        val xml = "<MPD><AdaptationSet contentType=\"video\"><Representation height=\"480\"><BaseURL>$clip</BaseURL></Representation></AdaptationSet></MPD>"
+        val encoded = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + xml.toByteArray(Charsets.UTF_16LE)
+        repeat(2) {
+            server.enqueue(
+                MockResponse()
+                    .setHeader("Content-Type", "application/dash+xml; charset=utf-16le")
+                    .setBody(Buffer().write(encoded)),
+            )
+        }
+        server.enqueue(MockResponse().setBody("dash-bytes"))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/a.mpd").toString()))))
+            val paths = buildList { repeat(server.requestCount) { add(server.takeRequest().path) } }
+            org.junit.Assert.assertTrue(paths.toString(), paths.contains("/clip.mp4"))
+            assertEquals(1, log.started)
         } finally {
             server.shutdown()
         }

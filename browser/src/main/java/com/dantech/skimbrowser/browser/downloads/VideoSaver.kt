@@ -28,6 +28,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 
 /**
  * Saves a video in this process. Android's download manager is not used: a file the person asked
@@ -303,6 +304,7 @@ class VideoSaver(
     /** Stops once [maxPlaylistChars] bytes are in hand, before the rest of a chunked body arrives. */
     private suspend fun readLimited(response: Response): String {
         val body = response.body ?: return ""
+        val type = body.contentType()
         val declared = body.contentLength()
         if (declared > maxPlaylistChars) throw DownloadException("The playlist is larger than the limit")
         val stream = body.byteStream()
@@ -322,7 +324,7 @@ class VideoSaver(
         } finally {
             stream.close()
         }
-        return out.toString(Charsets.UTF_8)
+        return out.toByteArray().toResponseBody(type).string()
     }
 
     private suspend fun <T> fetch(
