@@ -122,6 +122,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             prefs[Keys.BLOCK_POPUPS] = settings.blockPopups
             prefs[Keys.BLOCK_ODD_REDIRECTS] = settings.blockOddRedirects
             prefs[Keys.HIDE_COOKIE_BANNERS] = settings.hideCookieBanners
+            prefs[Keys.SAVE_VIDEOS] = settings.saveVideos
             prefs[Keys.SHIELD_DISABLED] = shieldDisabledHosts.map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
         }
     }
@@ -136,6 +137,10 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
 
     override suspend fun setHideCookieBanners(enabled: Boolean) {
         dataStore.edit { it[Keys.HIDE_COOKIE_BANNERS] = enabled }
+    }
+
+    override suspend fun setSaveVideos(enabled: Boolean) {
+        dataStore.edit { it[Keys.SAVE_VIDEOS] = enabled }
     }
 
     override suspend fun setPopupAllowed(host: String, allowed: Boolean) = editHostSet(Keys.POPUP_ALLOW, host, allowed)
@@ -197,6 +202,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             blockPopups = read(Keys.BLOCK_POPUPS) ?: defaults.blockPopups,
             blockOddRedirects = read(Keys.BLOCK_ODD_REDIRECTS) ?: defaults.blockOddRedirects,
             hideCookieBanners = read(Keys.HIDE_COOKIE_BANNERS) ?: defaults.hideCookieBanners,
+            saveVideos = read(Keys.SAVE_VIDEOS) ?: defaults.saveVideos,
         )
     }
 
@@ -218,6 +224,7 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val BLOCK_POPUPS = booleanPreferencesKey("block_popups")
         val BLOCK_ODD_REDIRECTS = booleanPreferencesKey("block_odd_redirects")
         val HIDE_COOKIE_BANNERS = booleanPreferencesKey("hide_cookie_banners")
+        val SAVE_VIDEOS = booleanPreferencesKey("save_videos")
         val POPUP_ALLOW = stringSetPreferencesKey("popup_allow_hosts")
         val REDIRECT_ALLOW = stringSetPreferencesKey("redirect_allow_hosts")
     }

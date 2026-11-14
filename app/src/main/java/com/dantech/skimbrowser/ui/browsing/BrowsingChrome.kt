@@ -124,6 +124,21 @@ fun BrowsingChrome(
                     )
                     AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (state.videoAvailable) {
+                                Box(
+                                    Modifier
+                                        .size(Slot)
+                                        .clip(CircleShape)
+                                        .clickable(onClick = actions.onDownloadVideo, role = Role.Button),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_download),
+                                        stringResource(R.string.cd_download_video),
+                                        Modifier.size(20.dp),
+                                    )
+                                }
+                            }
                             Box(
                                 Modifier
                                     .size(Slot)

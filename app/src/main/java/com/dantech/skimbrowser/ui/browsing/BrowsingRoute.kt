@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.map
 import com.dantech.skimbrowser.browser.LocalBrowserHost
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
@@ -65,6 +66,9 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
         factory.create(tab.id)
     }
     val state by browsing.state.collectAsStateWithLifecycle()
+    val saveVideos by remember(shell) { shell.settings().settings.map { it.saveVideos } }
+        .collectAsStateWithLifecycle(initialValue = true)
+    val shown = if (saveVideos) state else state.copy(videoAvailable = false)
     val translationModel = hiltViewModel<PageTranslationViewModel>()
     val sessions by translationModel.sessions.collectAsStateWithLifecycle()
     val pageTranslation = sessions[tab.id] ?: PageTranslation.Idle
@@ -104,7 +108,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
     }
 
     BrowsingScreen(
-        state = state,
+        state = shown,
         findQuery = browsing.findQuery,
         actions = BrowsingActions(
             onSiteInfo = { navigator.openSiteInfo(tab.id) },
@@ -128,6 +132,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onForward = browsing::goForward,
             onTabs = { navigator.openTabs(tab.incognito) },
             onMore = { navigator.openMoreMenu(tab.id) },
+            onDownloadVideo = { navigator.openVideoDownload(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,
             onLeaveUnsafeCertificate = leaveUnsafeCertificate,

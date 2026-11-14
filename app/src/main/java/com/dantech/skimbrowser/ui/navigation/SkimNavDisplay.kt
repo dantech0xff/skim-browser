@@ -46,6 +46,7 @@ import com.dantech.skimbrowser.ui.browser.BrowserRoute
 import com.dantech.skimbrowser.ui.browsing.BrowsingRoute
 import com.dantech.skimbrowser.ui.browsing.LinkOptionsRoute
 import com.dantech.skimbrowser.ui.browsing.MoreMenuRoute
+import com.dantech.skimbrowser.ui.browsing.VideoDownloadRoute
 import com.dantech.skimbrowser.ui.browsing.SiteInfoRoute
 import com.dantech.skimbrowser.ui.home.NewTabPageRoute
 import com.dantech.skimbrowser.ui.home.ShortcutDialogProperties
@@ -140,6 +141,9 @@ private fun skimEntries(navigator: SkimNavigator): (NavKey) -> NavEntry<NavKey> 
         }
         entry<MoreMenuKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_more_options)) { key ->
             MoreMenuRoute(key, navigator)
+        }
+        entry<VideoDownloadKey>(metadata = BottomSheetSceneStrategy.bottomSheet(R.string.cd_download_video)) { key ->
+            VideoDownloadRoute(key, navigator)
         }
         entry<LinkOptionsKey>(
             metadata = { key ->

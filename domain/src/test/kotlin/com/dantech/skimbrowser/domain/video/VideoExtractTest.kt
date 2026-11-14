@@ -1,0 +1,186 @@
+package com.dantech.skimbrowser.domain.video
+
+import com.dantech.skimbrowser.domain.download.DownloadHeader
+import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_KIND
+import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
+import com.dantech.skimbrowser.domain.download.videoKind
+import com.dantech.skimbrowser.domain.download.wireHeaders
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class VideoExtractTest {
+
+    @Test
+    fun aMediaAddressIsAFileOrAPlaylistAndASegmentIsNeither() {
+        assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/v.mp4", null))
+        assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/clip", "video/webm"))
+        assertEquals(MediaStream.Hls, mediaStream("https://cdn.example/a.m3u8?x=1", null))
+        assertEquals(MediaStream.Dash, mediaStream("https://cdn.example/p", "application/dash+xml"))
+        assertNull(mediaStream("https://cdn.example/seg-1.ts", null))
+        assertNull(mediaStream("https://cdn.example/seg.m4s", "video/mp2t"))
+        assertNull(mediaStream("https://cdn.example/poster.jpg", "image/jpeg"))
+    }
+
+    @Test
+    fun sampleAesAndWidevinePlaylistsAreProtectedAndAClearPlaylistKeepsItsSegments() {
+        val clear = """
+            #EXTM3U
+            #EXT-X-KEY:METHOD=NONE
+            #EXTINF:4,
+            https://cdn.example/seg.mp4
+        """.trimIndent()
+        val parsed = parseHls(clear, "https://cdn.example/master.m3u8")
+        assertFalse(parsed.protected)
+        assertEquals(listOf("https://cdn.example/seg.mp4"), parsed.segments)
+
+        val sample = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://x\"\nseg.ts"
+        assertTrue(parseHls(sample, "https://cdn.example/a.m3u8").protected)
+        val widevine = "#EXT-X-KEY:METHOD=SAMPLE-AES,KEYFORMAT=\"urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed\",URI=\"data:text/plain,widevine\""
+        assertTrue(hlsProtected(widevine))
+        assertTrue(dashProtected("<MPD><ContentProtection schemeIdUri=\"urn:uuid:edef8ba9\"/></MPD>"))
+    }
+
+    @Test
+    fun aDashManifestWithSeparateAudioNamesBothFiles() {
+        val mpd = """
+            <MPD>
+              <AdaptationSet contentType="video">
+                <Representation height="720" bandwidth="800000"><BaseURL>DASH_720.mp4</BaseURL></Representation>
+              </AdaptationSet>
+              <AdaptationSet contentType="audio">
+                <Representation bandwidth="128000"><BaseURL>DASH_AUDIO.mp4</BaseURL></Representation>
+              </AdaptationSet>
+            </MPD>
+        """.trimIndent()
+        val manifest = parseDash(mpd, "https://v.redd.it/abc/DASHPlaylist.mpd")
+        assertFalse(manifest.protected)
+        assertEquals("https://v.redd.it/abc/DASH_720.mp4", manifest.videos.single().url)
+        assertEquals("https://v.redd.it/abc/DASH_AUDIO.mp4", manifest.audios.single().url)
+    }
+
+    @Test
+    fun aMasterPlaylistNamesEachRendition() {
+        val master = """
+            #EXTM3U
+            #EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720
+            720.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=200000,RESOLUTION=640x360
+            360.m3u8
+        """.trimIndent()
+        val playlist = parseHls(master, "https://cdn.example/master.m3u8")
+        assertEquals("https://cdn.example/720.m3u8", playlist.variants.first().url)
+        assertEquals(800000, playlist.variants.first().bandwidth)
+        assertEquals("640x360", playlist.variants.last().resolution)
+    }
+
+    @Test
+    fun theGenericExtractorOffersFilesSeenOnAnyPage() = runTest {
+        val hints = hints(
+            "https://news.example/story",
+            "Story",
+            listOf(
+                "https://cdn.example/a.mp4",
+                "https://cdn.example/a.m3u8",
+                "https://cdn.example/seg.ts",
+                "${PAGE_DOCUMENT}{}",
+            ),
+        )
+        val variants = GenericVideoExtractor().extract(hints)
+        assertEquals(listOf(MediaStream.Progressive, MediaStream.Hls), variants.map { streamOf(it) })
+        assertEquals("https://news.example/story", (variants.first().source as VideoSource.Progressive).headers["Referer"])
+    }
+
+    @Test
+    fun tiktokJsonInThePageBecomesProgressiveFiles() = runTest {
+        val json = """
+            {"video":{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]},
+            "bit_rate":[{"gear_name":"720","play_addr":{"url_list":["https://v.tiktok.com/a/720.mp4"]}}]}}
+        """.trimIndent()
+        val variants = TikTokVideoExtractor().extract(hints("https://www.tiktok.com/@a/video/1", "clip", listOf(PAGE_DOCUMENT + json)))
+        assertEquals(setOf("https://v.tiktok.com/a/download.mp4", "https://v.tiktok.com/a/720.mp4"), variants.map { (it.source as VideoSource.Progressive).url }.toSet())
+        assertTrue(variants.any { it.qualityLabel == "720p" })
+        assertFalse(TikTokVideoExtractor().matches("https://example.com/"))
+    }
+
+    @Test
+    fun facebookReelsAndFbWatchReadThePageFilesAndSkipAProtectedManifest() = runTest {
+        val extractor = FacebookVideoExtractor()
+        assertTrue(extractor.matches("https://fb.watch/abc"))
+        assertTrue(extractor.matches("https://www.facebook.com/reel/1"))
+        val clear = """
+            {"playable_url":"https://video.fbcdn.net/sd.mp4","playable_url_quality_hd":"https://video.fbcdn.net/hd.mp4"}
+        """.trimIndent()
+        val saved = extractor.extract(hints("https://m.facebook.com/reel/1", null, listOf(PAGE_DOCUMENT + clear)))
+        assertEquals("HD", saved.first { (it.source as VideoSource.Progressive).url.endsWith("hd.mp4") }.qualityLabel)
+        val locked = """{"dash_manifest":"<MPD><ContentProtection schemeIdUri=\"widevine\"/></MPD>"}"""
+        assertTrue(extractor.extract(hints("https://www.facebook.com/watch", null, listOf(PAGE_DOCUMENT + locked))).isEmpty())
+    }
+
+    @Test
+    fun facebookDashWithSeparateAudioIsOneMuxedVariant() = runTest {
+        val xml = """
+            <MPD><AdaptationSet contentType="video"><Representation height="1080"><BaseURL>https://video.fbcdn.net/v.mp4</BaseURL></Representation></AdaptationSet>
+            <AdaptationSet contentType="audio"><Representation><BaseURL>https://video.fbcdn.net/a.mp4</BaseURL></Representation></AdaptationSet></MPD>
+        """.trimIndent()
+        val json = """{"dash_manifest":${kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.serializer<String>(), xml)}}"""
+        val variants = FacebookVideoExtractor().extract(hints("https://www.facebook.com/reel/9", "reel", listOf(PAGE_DOCUMENT + json)))
+        val source = variants.single().source as VideoSource.SeparateAv
+        assertEquals("https://video.fbcdn.net/v.mp4", source.videoUrl)
+        assertEquals("https://video.fbcdn.net/a.mp4", source.audioUrl)
+    }
+
+    @Test
+    fun redditOffersTheDashManifestTheHlsPlaylistAndTheFallbackFile() = runTest {
+        val json = """
+            {"reddit_video":{"dash_url":"https://v.redd.it/abc/DASHPlaylist.mpd",
+            "hls_url":"https://v.redd.it/abc/HLSPlaylist.m3u8",
+            "fallback_url":"https://v.redd.it/abc/DASH_720.mp4?source=fallback"}}
+        """.trimIndent()
+        val variants = RedditVideoExtractor().extract(hints("https://www.reddit.com/r/videos/comments/1/x", "post", listOf(PAGE_DOCUMENT + json)))
+        assertTrue(variants.any { it.source is VideoSource.Dash })
+        assertTrue(variants.any { it.source is VideoSource.Hls })
+        val file = variants.first { it.source is VideoSource.Progressive }
+        assertEquals("720p", file.qualityLabel)
+        assertTrue(RedditVideoExtractor().matches("https://v.redd.it/abc"))
+    }
+
+    @Test
+    fun aRetryKeepsTheReferrerAndDropsTheCookie() {
+        val retry = DownloadRetry(
+            tabId = "t",
+            url = "https://cdn.example/a.mp4",
+            userAgent = "agent",
+            contentDisposition = null,
+            mimeType = "video/mp4",
+            userInitiated = true,
+            incognito = false,
+            headers = listOf(
+                DownloadHeader("Referer", "https://www.tiktok.com/v"),
+                DownloadHeader("Cookie", "session=secret"),
+                DownloadHeader(VIDEO_KIND, VIDEO_PROGRESSIVE),
+            ),
+        )
+        assertEquals(mapOf("Referer" to "https://www.tiktok.com/v"), retry.wireHeaders())
+        assertEquals(VIDEO_PROGRESSIVE, retry.videoKind())
+    }
+
+    private fun hints(page: String, title: String?, media: List<String>) = PageVideoHints(
+        pageUrl = page,
+        pageTitle = title,
+        mediaUrls = media,
+        userAgent = "test",
+        cookieHeader = "session=secret",
+    )
+
+    private fun streamOf(variant: VideoVariant): MediaStream = when (variant.source) {
+        is VideoSource.Progressive -> MediaStream.Progressive
+        is VideoSource.Hls -> MediaStream.Hls
+        is VideoSource.Dash -> MediaStream.Dash
+        is VideoSource.SeparateAv -> MediaStream.Progressive
+    }
+}

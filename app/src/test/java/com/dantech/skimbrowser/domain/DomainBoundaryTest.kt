@@ -19,6 +19,17 @@ class DomainBoundaryTest {
     }
 
     @Test
+    fun domainBoundaryScansTheJavaContract() {
+        val javaRoot = moduleSourceRoot("domain", "java")
+        val files = kotlinFiles(javaRoot.resolve("domain"))
+        assertTrue(
+            files.joinToString { it.invariantSeparatorsPath },
+            files.any { it.invariantSeparatorsPath.endsWith("domain/video/VideoExtractor.kt") },
+        )
+        assertTrue(violationsIn("domain").none { it.contains("VideoExtractor.kt") })
+    }
+
+    @Test
     fun uiSourcesDoNotImportTheDataLayer() {
         val violations = violationsIn("ui").filter { it.contains(DATA) }
         assertTrue(violations.joinToString("\n"), violations.isEmpty())
@@ -104,7 +115,7 @@ class DomainBoundaryTest {
 
     private fun violationsIn(layer: String): List<String> {
         val roots = when (layer) {
-            "domain" -> listOf(moduleSourceRoot("domain", "kotlin"))
+            "domain" -> listOf("kotlin", "java").map { moduleSourceRoot("domain", it) }
             // :app's di/browser and di/ai are activity and BuildConfig wiring, not library sources.
             "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"))
             else -> listOf(sourceRoot())

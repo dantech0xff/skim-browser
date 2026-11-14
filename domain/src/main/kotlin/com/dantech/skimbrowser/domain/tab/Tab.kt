@@ -95,6 +95,11 @@ data class TabRuntime(
     /** Requests the shield answered empty for the current document. */
     val blockedCount: Int = 0,
     /**
+     * Media addresses seen for the current document: network URLs and `skim-page:` documents the
+     * page already held. Cleared when the next document starts. Not kept across process death.
+     */
+    val mediaUrls: List<String> = emptyList(),
+    /**
      * A scam warning covering the page. Not kept across process death: proceeding is for this
      * process only, and a new process warns again.
      */

@@ -32,6 +32,7 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewCompat
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
+import com.dantech.skimbrowser.domain.video.mediaStream
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
 import java.io.ByteArrayInputStream
@@ -101,6 +102,9 @@ class SkimWebViewClient(
     private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
     private val mainThread = Handler(Looper.getMainLooper())
+    /** Media URLs for the document currently being fetched, flushed once that document starts. */
+    private val mediaSeen = LinkedHashSet<String>()
+    private var mediaPage: String? = null
     private val loadingCollapsed = LinkedHashSet<String>()
     private val collapsed = LinkedHashSet<String>()
     private var hideScript: ScriptHandler? = null
@@ -188,6 +192,8 @@ class SkimWebViewClient(
         }
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
+        val seen = synchronized(documentGate) { if (mediaPage == url) mediaSeen.toList() else emptyList() }
+        seen.forEach { events.onMediaUrl(tabId, url, it) }
         if (early.first > 0) events.onShieldCount(tabId, early.first)
         cookieStyleInjected = false
         injectHide(view, url)
@@ -205,7 +211,10 @@ class SkimWebViewClient(
             return null
         }
         val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
-        if (!shield.blocks(document, url, incognito)) return null
+        if (!shield.blocks(document, url, incognito)) {
+            noteMedia(document, url)
+            return null
+        }
         noteBlocked(view, url)
         return emptyResponse()
     }
@@ -701,6 +710,21 @@ class SkimWebViewClient(
         val rest = noHash.substringAfter("://", noHash)
         val slash = rest.indexOf('/')
         return if (slash < 0) "" else rest.substring(slash)
+    }
+
+    private fun noteMedia(page: String?, url: String) {
+        if (page == null || mediaStream(url, null) == null) return
+        val added = synchronized(documentGate) {
+            if (mediaPage != page) {
+                mediaPage = page
+                mediaSeen.clear()
+            }
+            mediaSeen.add(url)
+        }
+        if (!added) return
+        mainThread.post {
+            if (!detached) events.onMediaUrl(tabId, page, url)
+        }
     }
 
     /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */

@@ -70,6 +70,8 @@ data class BrowsingUiState(
     val httpFallback: String? = null,
     /** A scam warning covering the page. Null on an ordinary load. */
     val safetyWarning: SafetyWarning? = null,
+    /** A video file or playlist was seen on this document, and saving videos is on. */
+    val videoAvailable: Boolean = false,
 )
 
 /**
@@ -274,6 +276,7 @@ internal fun browsingUiState(
         },
         indicator = if (certificate != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error, safety),
         readerAvailable = runtime.readerable && error == null && certificate == null && safety == null,
+        videoAvailable = runtime.mediaUrls.isNotEmpty() && error == null && certificate == null && safety == null,
         progress = runtime.progress,
         loadError = error,
         certificateWarning = certificate,

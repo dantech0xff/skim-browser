@@ -27,6 +27,7 @@ import com.dantech.skimbrowser.domain.interrupt.InterruptKind
 import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.video.mediaFromProbe
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -195,6 +196,7 @@ class TabManager(
     private val pageStartedSinceVisit = HashSet<String>()
     private val shownBeforeStart = HashMap<String, ShownPage>()
     private val readerableChecked = HashMap<String, Long>()
+    private val videoChecked = HashMap<String, Long>()
     private val historyTitleUpdates = HashMap<String, Int>()
     private val titleWrites = HashMap<String, Job>()
     private val pendingLoads = LinkedHashMap<String, String>()
@@ -1061,6 +1063,7 @@ class TabManager(
         pageStartedSinceVisit.remove(tabId)
         shownBeforeStart.remove(tabId)
         readerableChecked.remove(tabId)
+        videoChecked.remove(tabId)
         historyTitleUpdates.remove(tabId)
     }
 
@@ -1118,6 +1121,19 @@ class TabManager(
         }
     }
 
+    private fun checkVideo(tabId: String, nonce: Long) {
+        if (!scripts.isSupported) return
+        val live = engine.value ?: return
+        if (videoChecked[tabId] == nonce) return
+        videoChecked[tabId] = nonce
+        appScope.launch(mainDispatcher) {
+            val raw = evaluateOrNull(live, tabId, VIDEO_PROBE) ?: return@launch
+            if (runtimeOf(tabId).loadNonce != nonce) return@launch
+            val page = runtimeOf(tabId).committedUrl ?: return@launch
+            mediaFromProbe(raw).forEach { events.onMediaUrl(tabId, page, it) }
+        }
+    }
+
     private suspend fun evaluateOrNull(live: TabEngine, tabId: String, script: String): String? = try {
         live.evaluate(tabId, script)
     } catch (e: CancellationException) {
@@ -1158,6 +1174,7 @@ class TabManager(
                     loadNonce = nonce,
                     isSecure = isHttps(url),
                     blockedCount = 0,
+                    mediaUrls = emptyList(),
                 )
             }
             // Keep the stored http address until https commits. A restart can then offer it again.
@@ -1247,7 +1264,10 @@ class TabManager(
             if (!navigations.matches(tabId, url)) return
             val runtime = updateRuntime(tabId) { it.copy(pageLoaded = true, progress = null) }
             _pageEvents.tryEmit(PageEvent.PageFinished(tabId, url, runtime.loadNonce))
-            if (runtime.loadError == null && runtime.certificateWarning == null) checkReaderable(tabId, runtime.loadNonce)
+            if (runtime.loadError == null && runtime.certificateWarning == null) {
+                checkReaderable(tabId, runtime.loadNonce)
+                checkVideo(tabId, runtime.loadNonce)
+            }
         }
 
         override fun onLoadError(tabId: String, errorCode: Int, description: String?, url: String) {
@@ -1334,6 +1354,15 @@ class TabManager(
             stateStore.save(tabId, state, tab.incognito)
         }
 
+        override fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String) {
+            val open = openTab(tabId) ?: return
+            val runtime = runtimeOf(tabId)
+            val page = runtime.committedUrl ?: open.url
+            if (page != null && !sameNavigation(page, pageUrl)) return
+            if (mediaUrl in runtime.mediaUrls || runtime.mediaUrls.size >= MAX_MEDIA_URLS) return
+            updateRuntime(tabId) { it.copy(mediaUrls = it.mediaUrls + mediaUrl) }
+        }
+
         override fun onShieldCount(tabId: String, count: Int) {
             openTab(tabId) ?: return
             if (count < 0) return
@@ -1410,6 +1439,26 @@ class TabManager(
         private const val TITLE_WRITE_DELAY_MS = 1_000L
         private const val MAX_HISTORY_TITLE_UPDATES = 5
         private const val EVENT_BUFFER = 64
+        private const val MAX_MEDIA_URLS = 32
+        private val VIDEO_PROBE = """
+            (function(){
+              var urls = [];
+              var nodes = document.querySelectorAll('video,source');
+              for (var i = 0; i < nodes.length; i++) {
+                var src = nodes[i].currentSrc || nodes[i].src || '';
+                if (src && src.indexOf('blob:') !== 0) urls.push(src);
+              }
+              var docs = [];
+              var scripts = document.scripts || [];
+              for (var j = 0; j < scripts.length && docs.length < 4; j++) {
+                var text = scripts[j].textContent || '';
+                if (text.indexOf('play_addr') >= 0 || text.indexOf('playAddr') >= 0 || text.indexOf('playable_url') >= 0 || text.indexOf('dash_url') >= 0 || text.indexOf('browser_native_hd_url') >= 0) {
+                  docs.push(text.length > 200000 ? text.slice(0, 200000) : text);
+                }
+              }
+              return {urls: urls, docs: docs};
+            })()
+        """.trimIndent()
         private const val HIT_BUFFER = 8
         private const val NO_LOAD = 0L
         private const val ABOUT_BLANK = "about:blank"

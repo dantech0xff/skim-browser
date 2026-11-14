@@ -62,6 +62,8 @@ data class BrowsingActions(
     val onForward: () -> Unit,
     val onTabs: () -> Unit,
     val onMore: () -> Unit,
+    /** Download the video playing on this page. Shown only while [BrowsingUiState.videoAvailable]. */
+    val onDownloadVideo: () -> Unit = {},
     /** The AI FAB, while it is on. */
     val onAskPage: () -> Unit,
     /** Opens the http page when https, tried first, could not connect. */

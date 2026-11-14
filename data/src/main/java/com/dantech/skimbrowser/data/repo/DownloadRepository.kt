@@ -6,6 +6,7 @@ import com.dantech.skimbrowser.domain.download.DownloadDraft
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadPhase
+import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadRetry
 import java.io.File
 import javax.inject.Inject
@@ -54,6 +55,7 @@ class DownloadRepository(private val file: File) : DownloadLog {
             requestMime = draft.retry?.mimeType,
             userInitiated = draft.retry?.userInitiated,
             retryIncognito = draft.retry?.incognito,
+            headers = draft.retry?.headers.orEmpty().filterNot { it.name.equals("Cookie", ignoreCase = true) },
         )
         id to (listOf(row) + current)
     }
@@ -168,12 +170,13 @@ private data class Row(
     val requestMime: String?,
     val userInitiated: Boolean?,
     val retryIncognito: Boolean?,
+    val headers: List<DownloadHeader> = emptyList(),
 ) {
     fun toItem(): DownloadItem {
         val retry = if (url.isNullOrBlank() || tabId.isNullOrBlank() || userInitiated == null || retryIncognito == null) {
             null
         } else {
-            DownloadRetry(tabId, url, userAgent, contentDisposition, requestMime, userInitiated, retryIncognito)
+            DownloadRetry(tabId, url, userAgent, contentDisposition, requestMime, userInitiated, retryIncognito, headers)
         }
         return DownloadItem(id, fileName, phase, bytesSoFar, bytesTotal, uri, mime, incognito, retry, systemId)
     }
@@ -195,12 +198,13 @@ private data class Row(
         esc(requestMime),
         userInitiated?.let { if (it) "1" else "0" }.orEmpty(),
         retryIncognito?.let { if (it) "1" else "0" }.orEmpty(),
+        encodeHeaders(headers),
     ).joinToString(SEP)
 }
 
 private fun decode(line: String): Row? {
     val parts = line.split(SEP)
-    if (parts.size != 16) return null
+    if (parts.size != 16 && parts.size != 17) return null
     val phase = enumValues<DownloadPhase>().firstOrNull { it.name == parts[2] } ?: return null
     return Row(
         id = parts[0].toLongOrNull() ?: return null,
@@ -227,7 +231,24 @@ private fun decode(line: String): Row? {
             "0" -> false
             else -> null
         },
+        headers = if (parts.size == 17) decodeHeaders(parts[16]) else emptyList(),
     )
+}
+
+private const val HEADER_PAIR = "\u001e"
+private const val HEADER_NAME = "\u001d"
+
+private fun encodeHeaders(headers: List<DownloadHeader>): String = headers.joinToString(HEADER_PAIR) { header ->
+    esc(header.name) + HEADER_NAME + esc(header.value)
+}
+
+private fun decodeHeaders(field: String): List<DownloadHeader> {
+    if (field.isEmpty()) return emptyList()
+    return field.split(HEADER_PAIR).mapNotNull { pair ->
+        val name = pair.substringBefore(HEADER_NAME, "")
+        val value = pair.substringAfter(HEADER_NAME, missingDelimiterValue = "")
+        if (name.isEmpty() || !pair.contains(HEADER_NAME)) null else DownloadHeader(unesc(name), unesc(value))
+    }
 }
 
 private fun esc(value: String?): String = value.orEmpty()

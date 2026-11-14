@@ -190,6 +190,13 @@
     <string name="settings_block_redirects_summary">A page cannot jump to another site while you are not using it.</string>
     <string name="settings_hide_cookie_banners">Hide cookie banners</string>
     <string name="settings_hide_cookie_banners_summary">Common consent banners are hidden, and the page can scroll.</string>
+    <string name="settings_save_videos">Save videos</string>
+    <string name="settings_save_videos_summary">Offer a download when a page is playing a video.</string>
+    <string name="cd_download_video">Download video</string>
+    <string name="video_download_title">Download video</string>
+    <string name="video_download_loading">Looking for a video…</string>
+    <string name="video_protected">This video is protected and can\'t be downloaded.</string>
+    <string name="video_none">No downloadable video was found.</string>
     <string name="ai_settings_ask_before_sending">Ask before sending a page to the cloud</string>
     <string name="ai_settings_ask_before_sending_summary">Shows a prompt the first time you use AI on a site</string>
     <string name="ai_feedback_consent_title">Send ratings to Skim?</string>

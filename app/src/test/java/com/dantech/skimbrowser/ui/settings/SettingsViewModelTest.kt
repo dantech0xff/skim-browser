@@ -39,10 +39,12 @@ class SettingsViewModelTest {
 
         model.setTheme(ThemeSetting.Dark)
         model.setSearchEngine(SearchEngine.DUCKDUCKGO)
-        model.state.first { it.theme == ThemeSetting.Dark && it.searchEngine == SearchEngine.DUCKDUCKGO }
+        model.setSaveVideos(false)
+        model.state.first { it.theme == ThemeSetting.Dark && it.searchEngine == SearchEngine.DUCKDUCKGO && !it.saveVideos }
         val stored = settings.settings.first()
         assertEquals(ThemeSetting.Dark, stored.theme)
         assertEquals(SearchEngine.DUCKDUCKGO, stored.searchEngine)
+        assertFalse(stored.saveVideos)
     }
 
     @Test
