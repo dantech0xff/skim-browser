@@ -6,6 +6,7 @@ import com.dantech.skimbrowser.domain.download.VIDEO_KIND
 import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -162,6 +163,43 @@ class VideoExtractTest {
     }
 
     @Test
+    fun aYoutubeSeparatePairIsKeptAndARefusalSurfacesWhenNothingElseSaves() = runTest {
+        val page = "https://www.youtube.com/watch?v=abc"
+        val separate = VideoVariant(
+            "Talk",
+            "1080p separate audio",
+            "video/mp4",
+            50_000_000,
+            VideoSource.SeparateAv("https://rr.example/video", "https://rr.example/audio"),
+        )
+        val youtube = extractor("youtube", page) { listOf(separate) }
+        val generic = GenericVideoExtractor()
+        val hints = hints(page, "Talk", listOf("https://cdn.example/also.mp4"))
+        val collected = collectVariants(listOf(generic, youtube), hints)
+        assertEquals(
+            listOf("https://rr.example/video|https://rr.example/audio", "https://cdn.example/also.mp4"),
+            collected.variants.map { it.source.address() },
+        )
+        assertNull(collected.failure)
+        assertTrue(collected.variants.first().source is VideoSource.SeparateAv)
+
+        val refused = collectVariants(listOf(extractor("youtube", page) { throw VideoExtractException(VideoExtractFailure.DRM) }), hints(page, "Talk", emptyList()))
+        assertTrue(refused.variants.isEmpty())
+        assertEquals(VideoExtractFailure.DRM, refused.failure)
+
+        val broken = extractor("site", page) { throw IllegalStateException("boom") }
+        val stillThere = collectVariants(listOf(broken, youtube), hints(page, "Talk", emptyList()))
+        assertEquals(listOf(separate.source.address()), stillThere.variants.map { it.source.address() })
+
+        try {
+            collectVariants(listOf(extractor("youtube", page) { throw CancellationException("stop") }), hints(page, "Talk", emptyList()))
+            error("cancellation should leave collectVariants")
+        } catch (cancelled: CancellationException) {
+            assertEquals("stop", cancelled.message)
+        }
+    }
+
+    @Test
     fun aRetryKeepsTheReferrerAndDropsTheCookie() {
         val retry = DownloadRetry(
             tabId = "t",
@@ -179,6 +217,16 @@ class VideoExtractTest {
         )
         assertEquals(mapOf("Referer" to "https://www.tiktok.com/v"), retry.wireHeaders())
         assertEquals(VIDEO_PROGRESSIVE, retry.videoKind())
+    }
+
+    private fun extractor(
+        name: String,
+        page: String,
+        extract: suspend (PageVideoHints) -> List<VideoVariant>,
+    ): VideoExtractor = object : VideoExtractor {
+        override val id: String = name
+        override fun matches(pageUrl: String): Boolean = pageUrl == page
+        override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = extract(hints)
     }
 
     private fun hints(page: String, title: String?, media: List<String>) = PageVideoHints(

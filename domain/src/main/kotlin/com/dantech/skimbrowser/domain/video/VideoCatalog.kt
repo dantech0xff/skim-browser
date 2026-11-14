@@ -11,6 +11,7 @@ import com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
 import com.dantech.skimbrowser.domain.url.hostOf
+import kotlinx.coroutines.CancellationException
 
 /** What saving a variant did. A protected video is not written to the download list. */
 sealed interface VideoSaveResult {
@@ -23,14 +24,30 @@ interface VideoCommands {
     suspend fun save(tabId: String, variant: VideoVariant): VideoSaveResult
 }
 
-suspend fun collectVariants(extractors: Iterable<VideoExtractor>, hints: PageVideoHints): List<VideoVariant> {
+/** Variants a page can save, plus the refusal when every matching extractor declined. */
+data class CollectedVideos(
+    val variants: List<VideoVariant>,
+    val failure: VideoExtractFailure? = null,
+)
+
+suspend fun collectVariants(extractors: Iterable<VideoExtractor>, hints: PageVideoHints): CollectedVideos {
     val matched = extractors.filter { it.matches(hints.pageUrl) }.sortedWith(
         compareBy<VideoExtractor> { if (it.id == "generic") 1 else 0 }.thenBy { it.id },
     )
-    val found = matched.flatMap { extractor ->
-        runCatching { extractor.extract(hints) }.getOrDefault(emptyList())
+    val found = mutableListOf<VideoVariant>()
+    var failure: VideoExtractFailure? = null
+    for (extractor in matched) {
+        try {
+            found += extractor.extract(hints)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (refused: VideoExtractException) {
+            if (failure == null) failure = refused.failure
+        } catch (_: Exception) {
+        }
     }
-    return found.distinctBy { it.source.address() }
+    val variants = found.distinctBy { it.source.address() }
+    return CollectedVideos(variants, failure.takeIf { variants.isEmpty() })
 }
 
 internal fun hostIs(pageUrl: String, vararg names: String): Boolean {

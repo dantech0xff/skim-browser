@@ -21,6 +21,7 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.video.PageVideoHints
 import com.dantech.skimbrowser.domain.video.VideoCommands
+import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import com.dantech.skimbrowser.domain.video.VideoExtractor
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoVariant
@@ -44,7 +45,7 @@ data class VideoChoice(val index: Int, val title: String, val quality: String, v
 data class VideoDownloadUiState(
     val loading: Boolean = true,
     val choices: List<VideoChoice> = emptyList(),
-    val protected: Boolean = false,
+    val notice: Int? = null,
     val started: Boolean = false,
 )
 
@@ -76,12 +77,14 @@ class VideoDownloadViewModel @AssistedInject constructor(
                 userAgent = null,
                 cookieHeader = null,
             )
-            variants = collectVariants(extractors, hints)
+            val collected = collectVariants(extractors, hints)
+            variants = collected.variants
             _state.value = VideoDownloadUiState(
                 loading = false,
                 choices = variants.mapIndexed { index, variant ->
                     VideoChoice(index, variant.title, variant.qualityLabel, variant.sizeBytes)
                 },
+                notice = collected.failure?.let(::videoNotice),
             )
         }
     }
@@ -90,11 +93,24 @@ class VideoDownloadViewModel @AssistedInject constructor(
         val variant = variants.getOrNull(index) ?: return
         viewModelScope.launch {
             when (videos.save(tabId, variant)) {
-                VideoSaveResult.Protected -> _state.value = _state.value.copy(protected = true, choices = emptyList())
+                VideoSaveResult.Protected -> _state.value = _state.value.copy(
+                    notice = R.string.video_protected,
+                    choices = emptyList(),
+                )
                 VideoSaveResult.Started -> _state.value = _state.value.copy(started = true)
             }
         }
     }
+}
+
+private fun videoNotice(failure: VideoExtractFailure): Int = when (failure) {
+    VideoExtractFailure.DRM -> R.string.video_protected
+    VideoExtractFailure.AGE_RESTRICTED -> R.string.video_age_restricted
+    VideoExtractFailure.MEMBERS_ONLY -> R.string.video_members_only
+    VideoExtractFailure.PREMIUM -> R.string.video_premium
+    VideoExtractFailure.PAID -> R.string.video_paid
+    VideoExtractFailure.PRIVATE -> R.string.video_private
+    VideoExtractFailure.UNAVAILABLE -> R.string.video_unavailable
 }
 
 @Composable
@@ -118,8 +134,8 @@ fun VideoDownloadSheet(state: VideoDownloadUiState, onSave: (Int) -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
         when {
-            state.protected -> Text(
-                stringResource(R.string.video_protected),
+            state.notice != null -> Text(
+                stringResource(state.notice),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             state.loading -> Text(

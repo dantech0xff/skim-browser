@@ -19,13 +19,18 @@ class DomainBoundaryTest {
     }
 
     @Test
-    fun domainBoundaryScansTheJavaContract() {
-        val javaRoot = moduleSourceRoot("domain", "java")
-        val files = kotlinFiles(javaRoot.resolve("domain"))
+    fun theVideoContractLivesOnceInTheKotlinSources() {
+        val kotlinRoot = moduleSourceRoot("domain", "kotlin")
+        val files = kotlinFiles(kotlinRoot.resolve("domain"))
         assertTrue(
             files.joinToString { it.invariantSeparatorsPath },
             files.any { it.invariantSeparatorsPath.endsWith("domain/video/VideoExtractor.kt") },
         )
+        val javaContract = listOf(
+            File("../domain/src/main/java/com/dantech/skimbrowser/domain/video/VideoExtractor.kt"),
+            File("domain/src/main/java/com/dantech/skimbrowser/domain/video/VideoExtractor.kt"),
+        )
+        assertTrue(javaContract.none { it.isFile })
         assertTrue(violationsIn("domain").none { it.contains("VideoExtractor.kt") })
     }
 
@@ -115,7 +120,7 @@ class DomainBoundaryTest {
 
     private fun violationsIn(layer: String): List<String> {
         val roots = when (layer) {
-            "domain" -> listOf("kotlin", "java").map { moduleSourceRoot("domain", it) }
+            "domain" -> listOf(moduleSourceRoot("domain", "kotlin"))
             // :app's di/browser and di/ai are activity and BuildConfig wiring, not library sources.
             "data", "browser", "ai" -> listOf(moduleSourceRoot(layer, "java"))
             else -> listOf(sourceRoot())

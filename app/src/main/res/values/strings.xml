@@ -196,6 +196,12 @@
     <string name="video_download_title">Download video</string>
     <string name="video_download_loading">Looking for a video…</string>
     <string name="video_protected">This video is protected and can\'t be downloaded.</string>
+    <string name="video_age_restricted">This video is age-restricted and can\'t be downloaded.</string>
+    <string name="video_members_only">This video is for channel members and can\'t be downloaded.</string>
+    <string name="video_premium">This video needs a premium account and can\'t be downloaded.</string>
+    <string name="video_paid">This video is paid and can\'t be downloaded.</string>
+    <string name="video_private">This video is private and can\'t be downloaded.</string>
+    <string name="video_unavailable">This video isn\'t available to download.</string>
     <string name="video_none">No downloadable video was found.</string>
     <string name="ai_settings_ask_before_sending">Ask before sending a page to the cloud</string>
     <string name="ai_settings_ask_before_sending_summary">Shows a prompt the first time you use AI on a site</string>
