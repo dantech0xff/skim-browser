@@ -32,6 +32,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shield.ByteUnit
+import com.dantech.skimbrowser.domain.shield.CHART_DAYS
 import com.dantech.skimbrowser.domain.shield.DurationUnit
 import com.dantech.skimbrowser.domain.shield.ShieldEstimate
 import com.dantech.skimbrowser.domain.shield.scaleBytes
@@ -190,6 +191,7 @@ private fun RowScope.ValueCell(value: String) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun WeekChart(counts: List<Long>, modifier: Modifier = Modifier) {
+    val days = counts.ifEmpty { List(CHART_DAYS) { 0L } }
     val reveal by animateFloatAsState(
         targetValue = 1f,
         animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
@@ -197,7 +199,7 @@ private fun WeekChart(counts: List<Long>, modifier: Modifier = Modifier) {
     )
     val bar = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.surfaceContainerHigh
-    val description = stringResource(R.string.shield_stats_chart_description, counts.joinToString())
+    val description = stringResource(R.string.shield_stats_chart_description, days.joinToString())
     Canvas(
         modifier
             .fillMaxWidth()
@@ -205,12 +207,11 @@ private fun WeekChart(counts: List<Long>, modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp)
             .semantics { contentDescription = description },
     ) {
-        if (counts.isEmpty()) return@Canvas
-        val max = counts.maxOf { it }.coerceAtLeast(1L).toFloat()
+        val max = days.maxOf { it }.coerceAtLeast(1L).toFloat()
         val gap = 8.dp.toPx()
-        val barWidth = (size.width - gap * (counts.size - 1)) / counts.size
+        val barWidth = (size.width - gap * (days.size - 1)) / days.size
         val radius = CornerRadius(6.dp.toPx())
-        counts.forEachIndexed { index, value ->
+        days.forEachIndexed { index, value ->
             val left = index * (barWidth + gap)
             val height = size.height * (value.toFloat() / max) * reveal
             drawRoundRect(track, Offset(left, 0f), Size(barWidth, size.height), radius)
