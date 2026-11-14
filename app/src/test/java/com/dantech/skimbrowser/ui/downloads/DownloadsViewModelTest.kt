@@ -8,7 +8,9 @@ import com.dantech.skimbrowser.domain.download.DownloadDraft
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadPhase
+import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_ROW
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
@@ -53,7 +55,7 @@ class DownloadsViewModelTest {
         assertEquals(DownloadPhase.Failed, shown.phase)
 
         model.retry(shown)
-        assertEquals(retry, commands.retried.single())
+        assertEquals(retry.copy(headers = listOf(DownloadHeader(VIDEO_ROW, "4"))), commands.retried.single())
         assertEquals(1, commands.refreshes)
     }
 

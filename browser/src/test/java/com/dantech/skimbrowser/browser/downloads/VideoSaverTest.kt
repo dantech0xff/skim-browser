@@ -865,6 +865,130 @@ class VideoSaverTest {
         }
     }
 
+    @Test
+    fun aByteRangePlaylistIsFetchedOnceAndAnAudioGroupIsMuxed() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val file = "0123456789ABCDEF"
+        val media = """
+            #EXTM3U
+            #EXT-X-MAP:URI="clip.mp4",BYTERANGE="4@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:6@4
+            clip.mp4
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:6
+            clip.mp4
+        """.trimIndent()
+        val master = """
+            #EXTM3U
+            #EXT-X-MEDIA:URI="audio.m3u8",TYPE=AUDIO,GROUP-ID="7",NAME="audio",DEFAULT=YES
+            #EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=480x854,AUDIO="7"
+            video.m3u8
+        """.trimIndent()
+        val videoMedia = "#EXTM3U\n#EXTINF:1,\nvideo.mp4\n"
+        val audioMedia = "#EXTM3U\n#EXTINF:1,\naudio.mp4\n"
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("range.m3u8") -> MockResponse().setBody(media)
+                    path.contains("master.m3u8") -> MockResponse().setBody(master)
+                    path.contains("video.m3u8") -> MockResponse().setBody(videoMedia)
+                    path.contains("audio.m3u8") -> MockResponse().setBody(audioMedia)
+                    path.contains("clip.mp4") -> {
+                        val range = request.getHeader("Range").orEmpty().removePrefix("bytes=")
+                        val start = range.substringBefore('-').toInt()
+                        val end = range.substringAfter('-').toInt()
+                        MockResponse().setResponseCode(206).setBody(file.substring(start, end + 1))
+                    }
+                    path.contains("video.mp4") -> MockResponse().setBody("VIDEO")
+                    path.contains("audio.mp4") -> MockResponse().setBody("AUDIO")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val muxed = mutableListOf<String>()
+        val saver = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            mux = { video, audio, out ->
+                muxed += video.readText() + audio.readText()
+                out.writeText("MUXED")
+            },
+        )
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip", "854p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))),
+            )
+            val ranges = buildList { repeat(server.requestCount) { add(server.takeRequest()) } }
+            val clip = ranges.filter { it.path?.contains("clip.mp4") == true }
+            assertEquals(clip.toString(), 1, clip.size)
+            assertEquals("bytes=0-15", clip.single().getHeader("Range"))
+            val offered = saver.qualities(
+                "t",
+                VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/master.m3u8").toString())),
+            )
+            val row = (offered as VideoQualities.Ready).variants.single()
+            val hls = row.source as VideoSource.Hls
+            org.junit.Assert.assertTrue(hls.audioPlaylistUrl?.contains("audio.m3u8") == true)
+            assertEquals(VideoSaveResult.Started, saver.save("t", row))
+            assertEquals(listOf("VIDEOAUDIO"), muxed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aMuxedGooglevideoFileRefreshesAfter403() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("expired") -> MockResponse().setResponseCode(403)
+                    path.contains("fresh") -> MockResponse().setBody("FRESH")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val fresh = server.url("/fresh.mp4").toString()
+        val extractor = object : VideoExtractor {
+            override val id = "page"
+            override val pageUrlSufficient = true
+            override fun matches(pageUrl: String) = pageUrl.contains("example.com")
+            override suspend fun extract(hints: PageVideoHints) = listOf(
+                VideoVariant("Talk", "360p", "video/mp4", null, VideoSource.Progressive(fresh)),
+            )
+        }
+        val saver = saver(log, scope, Dispatchers.Unconfined, extractors = setOf(extractor), rangeHost = { true })
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save(
+                    "t",
+                    VideoVariant(
+                        "Talk",
+                        "360p",
+                        "video/mp4",
+                        null,
+                        VideoSource.Progressive(server.url("/expired.mp4").toString()),
+                    ),
+                ),
+            )
+            assertEquals(null, log.reason)
+        } finally {
+            server.shutdown()
+        }
+    }
+
     private fun saver(
         log: CountingLog,
         scope: CoroutineScope,

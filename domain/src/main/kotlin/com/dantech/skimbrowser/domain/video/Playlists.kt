@@ -1,12 +1,28 @@
 package com.dantech.skimbrowser.domain.video
 
-data class HlsVariant(val url: String, val bandwidth: Int?, val resolution: String?)
+data class HlsVariant(
+    val url: String,
+    val bandwidth: Int?,
+    val resolution: String?,
+    val audioGroup: String? = null,
+)
+
+data class HlsByteRange(val length: Long, val offset: Long)
+
+data class HlsSegment(val url: String, val range: HlsByteRange? = null)
+
+data class HlsAudio(val groupId: String, val name: String, val url: String, val default: Boolean)
 
 data class HlsPlaylist(
     val protected: Boolean,
     val variants: List<HlsVariant>,
-    val segments: List<String>,
+    val segments: List<HlsSegment>,
+    val map: HlsSegment? = null,
+    val audios: List<HlsAudio> = emptyList(),
 )
+
+/** One read of a media file. A null start is the whole file. Adjacent byte ranges are already joined. */
+data class MediaSpan(val url: String, val start: Long?, val length: Long?)
 
 data class DashFile(val url: String, val height: Int?, val bandwidth: Int?)
 
@@ -28,28 +44,107 @@ fun hlsProtected(playlist: String): Boolean = playlist.lineSequence().any { line
 fun dashProtected(mpd: String): Boolean = mpd.contains("ContentProtection", ignoreCase = true)
 
 fun parseHls(body: String, playlistUrl: String): HlsPlaylist {
-    if (hlsProtected(body)) return HlsPlaylist(protected = true, variants = emptyList(), segments = emptyList())
+    if (hlsProtected(body)) {
+        return HlsPlaylist(protected = true, variants = emptyList(), segments = emptyList())
+    }
     val variants = mutableListOf<HlsVariant>()
-    val segments = mutableListOf<String>()
+    val segments = mutableListOf<HlsSegment>()
+    val audios = mutableListOf<HlsAudio>()
     var bandwidth: Int? = null
     var resolution: String? = null
+    var audioGroup: String? = null
+    var pendingRange: String? = null
+    var map: HlsSegment? = null
+    val nextOffset = mutableMapOf<String, Long>()
     body.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.forEach { line ->
         when {
+            line.startsWith("#EXT-X-MEDIA:", ignoreCase = true) -> {
+                if (attr(line, "TYPE").equals("AUDIO", ignoreCase = true)) {
+                    val uri = attr(line, "URI")
+                    val group = attr(line, "GROUP-ID")
+                    if (!uri.isNullOrBlank() && !group.isNullOrBlank()) {
+                        audios += HlsAudio(
+                            groupId = group,
+                            name = attr(line, "NAME").orEmpty(),
+                            url = resolveUrl(playlistUrl, uri),
+                            default = attr(line, "DEFAULT").equals("YES", ignoreCase = true),
+                        )
+                    }
+                }
+            }
+            line.startsWith("#EXT-X-MAP:", ignoreCase = true) -> {
+                val uri = attr(line, "URI")
+                if (!uri.isNullOrBlank()) {
+                    val url = resolveUrl(playlistUrl, uri)
+                    map = HlsSegment(url, byteRange(attr(line, "BYTERANGE"), url, nextOffset))
+                }
+            }
+            line.startsWith("#EXT-X-BYTERANGE:", ignoreCase = true) -> pendingRange = line.substringAfter(':').trim()
             line.startsWith("#EXT-X-STREAM-INF", ignoreCase = true) -> {
                 bandwidth = attr(line, "BANDWIDTH")?.toIntOrNull()
                 resolution = attr(line, "RESOLUTION")
+                audioGroup = attr(line, "AUDIO")
             }
             line.startsWith("#") -> Unit
             bandwidth != null || resolution != null -> {
-                variants += HlsVariant(resolveUrl(playlistUrl, line), bandwidth, resolution)
+                variants += HlsVariant(resolveUrl(playlistUrl, line), bandwidth, resolution, audioGroup)
                 bandwidth = null
                 resolution = null
+                audioGroup = null
+                pendingRange = null
             }
-            else -> segments += resolveUrl(playlistUrl, line)
+            else -> {
+                val url = resolveUrl(playlistUrl, line)
+                segments += HlsSegment(url, byteRange(pendingRange, url, nextOffset))
+                pendingRange = null
+            }
         }
     }
-    return HlsPlaylist(protected = false, variants = variants, segments = segments)
+    return HlsPlaylist(protected = false, variants = variants, segments = segments, map = map, audios = audios)
 }
+
+/** The audio rendition for [groupId], preferring the higher rate named in the address. */
+fun preferredHlsAudio(audios: List<HlsAudio>, groupId: String?): HlsAudio? {
+    val group = audios.filter { groupId == null || it.groupId == groupId }
+    return group.maxByOrNull { audioRate(it.url) }
+}
+
+/** Map and media ranges, joined when they are contiguous pieces of one file. */
+fun mediaSpans(playlist: HlsPlaylist): List<MediaSpan> {
+    val pieces = buildList {
+        playlist.map?.let { add(it) }
+        addAll(playlist.segments)
+    }
+    if (pieces.isEmpty()) return emptyList()
+    if (pieces.any { it.range == null }) {
+        return pieces.map { piece -> MediaSpan(piece.url, piece.range?.offset, piece.range?.length) }
+    }
+    val spans = mutableListOf<MediaSpan>()
+    for (piece in pieces) {
+        val range = piece.range ?: continue
+        val last = spans.lastOrNull()
+        if (last != null && last.url == piece.url && last.start != null && last.length != null &&
+            last.start + last.length == range.offset
+        ) {
+            spans[spans.lastIndex] = last.copy(length = last.length + range.length)
+        } else {
+            spans += MediaSpan(piece.url, range.offset, range.length)
+        }
+    }
+    return spans
+}
+
+private fun byteRange(raw: String?, url: String, nextOffset: MutableMap<String, Long>): HlsByteRange? {
+    if (raw.isNullOrBlank()) return null
+    val length = raw.substringBefore('@').trim().toLongOrNull() ?: return null
+    if (length <= 0) return null
+    val offset = raw.substringAfter('@', "").trim().toLongOrNull() ?: nextOffset[url] ?: 0L
+    nextOffset[url] = offset + length
+    return HlsByteRange(length, offset)
+}
+
+private fun audioRate(url: String): Int =
+    Regex("""(\d{2,4})""").findAll(url).mapNotNull { it.groupValues[1].toIntOrNull() }.maxOrNull() ?: 0
 
 fun parseDash(mpd: String, manifestUrl: String): DashManifest {
     if (dashProtected(mpd)) return DashManifest(protected = true, videos = emptyList(), audios = emptyList())

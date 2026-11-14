@@ -37,28 +37,41 @@ class DownloadRepository(private val file: File) : DownloadLog {
     }
 
     override suspend fun noteStarted(draft: DownloadDraft): Long = edit { current ->
+        val replace = draft.replaceId
+        if (replace != null && current.any { it.id == replace }) {
+            val updated = current.map { row ->
+                if (row.id != replace) {
+                    row
+                } else {
+                    rowFrom(replace, draft)
+                }
+            }
+            return@edit replace to updated
+        }
         val id = (current.maxOfOrNull { it.id } ?: 0L) + 1
-        val row = Row(
-            id = id,
-            fileName = draft.fileName,
-            phase = DownloadPhase.Running,
-            bytesSoFar = 0,
-            bytesTotal = -1,
-            uri = null,
-            mime = null,
-            incognito = draft.incognito,
-            systemId = null,
-            tabId = draft.retry?.tabId,
-            url = draft.retry?.url,
-            userAgent = draft.retry?.userAgent,
-            contentDisposition = draft.retry?.contentDisposition,
-            requestMime = draft.retry?.mimeType,
-            userInitiated = draft.retry?.userInitiated,
-            retryIncognito = draft.retry?.incognito,
-            headers = draft.retry?.headers.orEmpty().filterNot { it.name.equals("Cookie", ignoreCase = true) },
-        )
+        val row = rowFrom(id, draft)
         id to (listOf(row) + current)
     }
+
+    private fun rowFrom(id: Long, draft: DownloadDraft) = Row(
+        id = id,
+        fileName = draft.fileName,
+        phase = DownloadPhase.Running,
+        bytesSoFar = 0,
+        bytesTotal = -1,
+        uri = null,
+        mime = null,
+        incognito = draft.incognito,
+        systemId = null,
+        tabId = draft.retry?.tabId,
+        url = draft.retry?.url,
+        userAgent = draft.retry?.userAgent,
+        contentDisposition = draft.retry?.contentDisposition,
+        requestMime = draft.retry?.mimeType,
+        userInitiated = draft.retry?.userInitiated,
+        retryIncognito = draft.retry?.incognito,
+        headers = draft.retry?.headers.orEmpty().filterNot { it.name.equals("Cookie", ignoreCase = true) },
+    )
 
     override suspend fun noteSystem(localId: Long, systemId: Long) {
         edit { current ->

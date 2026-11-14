@@ -157,7 +157,8 @@ private fun statusText(item: DownloadItem): String {
 
 @Composable
 private fun failureText(reason: String?, size: String): String {
-    if (reason.isNullOrBlank() || reason == "unknown") return stringResource(R.string.downloads_failed, size)
+    if (reason.isNullOrBlank()) return stringResource(R.string.downloads_failed, size)
+    if (reason == "unknown") return stringResource(R.string.downloads_failed_unknown)
     if (reason.startsWith("http:")) return stringResource(R.string.downloads_failed_http, reason.substringAfter("http:"))
     val message = when (reason) {
         "protected" -> R.string.downloads_failed_protected

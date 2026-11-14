@@ -38,10 +38,14 @@ fun DownloadRetry.videoQuality(): String? = headers.firstOrNull { it.name == VID
 /** The title shown for a video retry. The file address is not a title. */
 fun DownloadRetry.videoTitle(): String? = headers.firstOrNull { it.name == VIDEO_TITLE }?.value
 
+/** The download row a retry should continue, when the person asked again. */
+fun DownloadRetry.videoRow(): Long? = headers.firstOrNull { it.name == VIDEO_ROW }?.value?.toLongOrNull()
+
 const val VIDEO_KIND = "X-Skim-Kind"
 const val VIDEO_AUDIO = "X-Skim-Audio"
 const val VIDEO_QUALITY = "X-Skim-Quality"
 const val VIDEO_TITLE = "X-Skim-Title"
+const val VIDEO_ROW = "X-Skim-Row"
 const val VIDEO_PROGRESSIVE = "progressive"
 const val VIDEO_HLS = "hls"
 const val VIDEO_DASH = "dash"

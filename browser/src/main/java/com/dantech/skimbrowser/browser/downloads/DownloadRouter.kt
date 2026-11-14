@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.SkimWebView
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.videoRow
 import com.dantech.skimbrowser.domain.download.DownloadDraft
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.NoDownloadLog
@@ -296,7 +297,7 @@ class DownloadRouter(
         download: suspend (localId: Long) -> DownloadEvent?,
     ) {
         scope.launch(mainDispatcher) {
-            val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
+            val localId = log.noteStarted(DownloadDraft(name, incognito, retry, retry.videoRow()))
             tracker.followJob(localId, coroutineContext[kotlinx.coroutines.Job]!!)
             val event = try {
                 download(localId)
@@ -323,7 +324,7 @@ class DownloadRouter(
                         withRetry.mime,
                         withRetry.bytes,
                     )
-                    is DownloadEvent.DownloadFailed -> log.noteFailed(localId)
+                    is DownloadEvent.DownloadFailed -> log.noteFailed(localId, "unknown")
                 }
                 tracker.report(withRetry.startedBy(incognito))
             }
@@ -333,8 +334,8 @@ class DownloadRouter(
     private fun fail(name: String?, incognito: Boolean, retry: DownloadRetry?) {
         tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
         scope.launch(mainDispatcher) {
-            val localId = log.noteStarted(DownloadDraft(name ?: "download", incognito, retry))
-            log.noteFailed(localId)
+            val localId = log.noteStarted(DownloadDraft(name ?: "download", incognito, retry, retry?.videoRow()))
+            log.noteFailed(localId, "unknown")
         }
     }
 

@@ -29,6 +29,8 @@ data class DownloadDraft(
     val fileName: String,
     val incognito: Boolean,
     val retry: DownloadRetry?,
+    /** When set, this start continues the failed row instead of adding another. */
+    val replaceId: Long? = null,
 )
 
 /** The saved list of downloads. The browser writes it. The Downloads screen reads it. */

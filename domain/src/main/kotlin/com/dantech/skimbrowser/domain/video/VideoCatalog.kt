@@ -74,9 +74,16 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
     val pairedVideoPaths = variants.mapNotNull { variant ->
         (variant.source as? VideoSource.SeparateAv)?.videoUrl
     }.toSet()
+    val pairedHeights = variants.mapNotNull { variant ->
+        if (variant.source is VideoSource.SeparateAv) qualityHeight(variant.qualityLabel) else null
+    }.toSet()
     val kept = variants.filter { variant ->
         val source = variant.source
         if (source is VideoSource.Progressive && sameMedia(source.url, pairedVideoPaths)) return@filter false
+        if (source is VideoSource.Hls) {
+            val height = qualityHeight(variant.qualityLabel)
+            if (height != null && height in pairedHeights) return@filter false
+        }
         val directory = clipDirectory(source.mediaAddress())
         if (directory !in pairedDirectories) return@filter true
         when (source) {
@@ -193,7 +200,7 @@ fun variantFromRetry(retry: DownloadRetry): VideoVariant? {
     val headers = retry.wireHeaders()
     val audio = retry.headers.firstOrNull { it.name == VIDEO_AUDIO }?.value
     val source = when (kind) {
-        VIDEO_HLS -> VideoSource.Hls(retry.url, headers)
+        VIDEO_HLS -> VideoSource.Hls(retry.url, headers, audio)
         VIDEO_DASH -> VideoSource.Dash(retry.url, headers)
         VIDEO_SEPARATE -> VideoSource.SeparateAv(retry.url, audio ?: return null, headers)
         else -> VideoSource.Progressive(retry.url, headers)
@@ -212,8 +219,13 @@ fun retryHeaders(source: VideoSource): List<DownloadHeader> {
     }
     val wire = sourceHeaders(source).filterKeys { !it.equals("Cookie", ignoreCase = true) }
         .map { (name, value) -> DownloadHeader(name, value) }
+    val audioUrl = when (source) {
+        is VideoSource.SeparateAv -> source.audioUrl
+        is VideoSource.Hls -> source.audioPlaylistUrl
+        else -> null
+    }
     val marks = listOf(DownloadHeader(VIDEO_KIND, kind)) +
-        ((source as? VideoSource.SeparateAv)?.let { listOf(DownloadHeader(VIDEO_AUDIO, it.audioUrl)) } ?: emptyList())
+        (audioUrl?.let { listOf(DownloadHeader(VIDEO_AUDIO, it)) } ?: emptyList())
     return wire + marks
 }
 

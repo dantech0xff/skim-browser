@@ -54,6 +54,13 @@ class DownloadRepositoryTest {
 
         log.noteFailed(id)
         assertEquals(DownloadPhase.Failed, log.observe().first().single().phase)
+
+        val again = log.noteStarted(DownloadDraft("clip.mp4", incognito = false, retry = RETRY, replaceId = id))
+        assertEquals(id, again)
+        val replaced = log.observe().first().single()
+        assertEquals(DownloadPhase.Running, replaced.phase)
+        assertEquals("clip.mp4", replaced.fileName)
+        assertEquals(null, replaced.failureReason)
     }
 
     @Test

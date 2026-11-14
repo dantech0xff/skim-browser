@@ -5,7 +5,9 @@ import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.VIDEO_ROW
 import com.dantech.skimbrowser.domain.download.VIDEO_TITLE
+import com.dantech.skimbrowser.domain.download.videoRow
 import com.dantech.skimbrowser.domain.tab.TabsController
 import android.util.Log
 import com.dantech.skimbrowser.domain.video.HlsVariant
@@ -18,9 +20,12 @@ import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
 import com.dantech.skimbrowser.domain.video.collectVariants
 import com.dantech.skimbrowser.domain.video.dashProtected
+import com.dantech.skimbrowser.domain.video.MediaSpan
 import com.dantech.skimbrowser.domain.video.mediaAddress
+import com.dantech.skimbrowser.domain.video.mediaSpans
 import com.dantech.skimbrowser.domain.video.parseDash
 import com.dantech.skimbrowser.domain.video.parseHls
+import com.dantech.skimbrowser.domain.video.preferredHlsAudio
 import com.dantech.skimbrowser.domain.video.qualityHeight
 import com.dantech.skimbrowser.domain.video.retryHeaders
 import com.dantech.skimbrowser.domain.video.variantFromRetry
@@ -88,7 +93,7 @@ class VideoSaver(
 
     suspend fun saveAgain(retry: DownloadRetry): VideoSaveResult {
         val variant = variantFromRetry(retry) ?: return VideoSaveResult.Started
-        return saveVariant(retry.tabId, variant, retry.userAgent, retry.incognito)
+        return saveVariant(retry.tabId, variant, retry.userAgent, retry.incognito, retry.videoRow())
     }
 
     private suspend fun saveVariant(
@@ -96,11 +101,16 @@ class VideoSaver(
         variant: com.dantech.skimbrowser.domain.video.VideoVariant,
         userAgent: String?,
         incognito: Boolean,
+        replaceId: Long? = null,
     ): VideoSaveResult {
         val source = variant.source
         val display = videoDisplayTitle(variant.title, source.mediaAddress())
         val named = if (source is VideoSource.Hls) segmentTitle(display) else display
-        val nameMime = if (source is VideoSource.Hls) "video/mp2t" else variant.mimeType ?: "video/mp4"
+        val nameMime = when {
+            source is VideoSource.Hls && source.audioPlaylistUrl != null -> "video/mp4"
+            source is VideoSource.Hls -> "video/mp2t"
+            else -> variant.mimeType ?: "video/mp4"
+        }
         val name = DownloadNames.sanitize(named.ifBlank { "video" }, nameMime)
         val retry = DownloadRetry(
             tabId = tabId,
@@ -118,7 +128,7 @@ class VideoSaver(
             headers = retryHeaders(source) + listOf(
                 DownloadHeader(VIDEO_QUALITY, variant.qualityLabel),
                 DownloadHeader(VIDEO_TITLE, display),
-            ),
+            ) + (replaceId?.let { listOf(DownloadHeader(VIDEO_ROW, it.toString())) } ?: emptyList()),
         )
         try {
             if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
@@ -131,10 +141,10 @@ class VideoSaver(
             throw e
         } catch (e: Exception) {
             Log.w(TAG, failureCode(e))
-            failBeforeStart(name, incognito, retry, failureCode(e))
+            failBeforeStart(name, incognito, retry, failureCode(e), replaceId)
             return VideoSaveResult.Started
         }
-        val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
+        val localId = log.noteStarted(DownloadDraft(name, incognito, retry, replaceId))
         val job = scope.launch {
             finish(localId, name, incognito, retry, source, userAgent, variant.qualityLabel)
         }
@@ -153,8 +163,14 @@ class VideoSaver(
         }
     }
 
-    private suspend fun failBeforeStart(name: String, incognito: Boolean, retry: DownloadRetry, reason: String) {
-        val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
+    private suspend fun failBeforeStart(
+        name: String,
+        incognito: Boolean,
+        retry: DownloadRetry,
+        reason: String,
+        replaceId: Long? = null,
+    ) {
+        val localId = log.noteStarted(DownloadDraft(name, incognito, retry, replaceId))
         log.noteFailed(localId, reason)
         tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
     }
@@ -170,20 +186,25 @@ class VideoSaver(
     ) {
         try {
             val done = when (source) {
-                is VideoSource.Progressive -> if (rangeHost(source.url)) {
-                    saveRangedFile(source.url, source.headers, userAgent, incognito, name, localId, retry.mimeType ?: "video/mp4")
-                } else {
-                    files.download(
-                        url = source.url,
-                        userAgent = userAgent,
-                        cookies = { cookies(incognito, it) },
-                        rawName = name,
-                        declaredMime = retry.mimeType,
-                        headers = source.headers,
-                        onProgress = { soFar, total -> log.noteProgress(localId, soFar, total) },
-                    )
-                }
-                is VideoSource.Hls -> savePlaylist(source.playlistUrl, source.headers, userAgent, incognito, name, localId)
+                is VideoSource.Progressive -> saveProgressive(
+                    source.url,
+                    source.headers,
+                    userAgent,
+                    incognito,
+                    name,
+                    localId,
+                    retry,
+                    quality,
+                )
+                is VideoSource.Hls -> savePlaylist(
+                    source.playlistUrl,
+                    source.headers,
+                    userAgent,
+                    incognito,
+                    name,
+                    localId,
+                    source.audioPlaylistUrl,
+                )
                 is VideoSource.Dash -> saveDash(source.manifestUrl, source.headers, userAgent, incognito, name, localId, retry.tabId)
                 is VideoSource.SeparateAv -> saveSeparate(
                     source.videoUrl,
@@ -221,6 +242,57 @@ class VideoSaver(
         return parseDash(fetched.text, fetched.url).protected
     }
 
+    private suspend fun saveProgressive(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        name: String,
+        localId: Long,
+        retry: DownloadRetry,
+        quality: String,
+    ): DownloadEvent.DownloadCompleted {
+        try {
+            return writeProgressive(url, headers, agent, incognito, name, localId, retry.mimeType)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (httpCode(e) != 403 || !rangeHost(url)) throw e
+            Log.i(TAG, "Refreshing the video address after HTTP 403")
+            val fresh = try {
+                freshProgressive(retry.tabId, headers, agent, incognito, quality)
+            } catch (refresh: Exception) {
+                if (refresh is CancellationException) throw refresh
+                Log.w(TAG, "The video address refresh failed: ${failureCode(refresh)}")
+                throw refresh
+            }
+            Log.i(TAG, "The video address refresh succeeded")
+            return writeProgressive(fresh.url, fresh.headers, agent, incognito, name, localId, retry.mimeType)
+        }
+    }
+
+    private suspend fun writeProgressive(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        name: String,
+        localId: Long,
+        mime: String?,
+    ): DownloadEvent.DownloadCompleted = if (rangeHost(url)) {
+        saveRangedFile(url, headers, agent, incognito, name, localId, mime ?: "video/mp4")
+    } else {
+        files.download(
+            url = url,
+            userAgent = agent,
+            cookies = { cookies(incognito, it) },
+            rawName = name,
+            declaredMime = mime,
+            headers = headers,
+            onProgress = { soFar, total -> log.noteProgress(localId, soFar, total) },
+        )
+    }
+
     private suspend fun savePlaylist(
         url: String,
         headers: Map<String, String>,
@@ -228,17 +300,121 @@ class VideoSaver(
         incognito: Boolean,
         name: String,
         localId: Long,
+        audioPlaylistUrl: String?,
     ): DownloadEvent.DownloadCompleted {
-        var fetched = getText(url, headers, agent, incognito)
+        val opened = openMedia(url, headers, agent, incognito, audioPlaylistUrl)
+        if (opened.playlist.protected) throw DownloadException("The video is protected")
+        val videoSpans = mediaSpans(opened.playlist)
+        if (videoSpans.isEmpty()) throw DownloadException("The playlist has no video")
+        val dir = jobDir(localId)
+        try {
+            val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video")
+            val audioUrl = opened.audioUrl
+            if (audioUrl == null) {
+                return publish(video, name, containerMime(video, videoSpans.map { it.url }))
+            }
+            val audioOpened = openMedia(audioUrl, headers, agent, incognito, null)
+            val audioSpans = mediaSpans(audioOpened.playlist)
+            if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
+            val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio")
+            val out = File(dir, "mux.mp4")
+            mux(video, audio, out)
+            return publish(out, name, "video/mp4")
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    private data class OpenedMedia(val playlist: com.dantech.skimbrowser.domain.video.HlsPlaylist, val audioUrl: String?)
+
+    private suspend fun openMedia(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        audioPlaylistUrl: String?,
+    ): OpenedMedia {
+        val fetched = getText(url, headers, agent, incognito)
         var playlist = parseHls(fetched.text, fetched.url)
+        var audio = audioPlaylistUrl
         if (playlist.variants.isNotEmpty()) {
             val best = playlist.variants.maxBy { it.bandwidth ?: 0 }
-            fetched = getText(best.url, headers, agent, incognito)
-            playlist = parseHls(fetched.text, fetched.url)
+            if (audio == null) audio = preferredHlsAudio(playlist.audios, best.audioGroup)?.url
+            val media = getText(best.url, headers, agent, incognito)
+            playlist = parseHls(media.text, media.url)
         }
-        if (playlist.protected) throw DownloadException("The video is protected")
-        val segments = playlist.segments.ifEmpty { throw DownloadException("The playlist has no video") }
-        return saveSegments(segments, headers, agent, incognito, name, localId)
+        return OpenedMedia(playlist, audio)
+    }
+
+    private suspend fun downloadSpans(
+        spans: List<MediaSpan>,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        dir: File,
+        localId: Long,
+        label: String,
+    ): File {
+        dir.mkdirs()
+        val dest = File(dir, "$label.bin")
+        val known = spans.all { it.length != null }
+        val total = if (known) spans.sumOf { it.length ?: 0L } else -1L
+        var soFar = 0L
+        dest.outputStream().use { out ->
+            for (span in spans) {
+                soFar += appendSpan(span, headers, agent, incognito, out, soFar, total, localId)
+            }
+        }
+        return dest
+    }
+
+    private suspend fun appendSpan(
+        span: MediaSpan,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        out: OutputStream,
+        soFar: Long,
+        total: Long,
+        localId: Long,
+    ): Long {
+        val start = span.start
+        val length = span.length
+        if (start == null || length == null) {
+            if (rangeHost(span.url)) {
+                val temp = File.createTempFile("range-", ".bin")
+                return try {
+                    downloadInRanges(
+                        span.url,
+                        headers,
+                        agent,
+                        incognito,
+                        temp,
+                        soFar,
+                        { written, size -> log.noteProgress(localId, written, size) },
+                        null,
+                    )
+                    temp.inputStream().use { it.copyTo(out) }
+                    temp.length()
+                } finally {
+                    temp.delete()
+                }
+            }
+            return fetch(span.url, headers, agent, incognito) { response ->
+                val body = response.body ?: throw DownloadException("The response has no body")
+                val reported = body.contentLength().takeIf { it > 0 } ?: total
+                copyBody(body, out, soFar, reported, onProgress = { written, size -> log.noteProgress(localId, written, size) })
+            }
+        }
+        val end = start + length - 1
+        return fetch(span.url, headers + ("Range" to "bytes=$start-$end"), agent, incognito) { response ->
+            val body = response.body ?: throw DownloadException("The response has no body")
+            val partial = response.code == 206 || !response.header("Content-Range").isNullOrBlank()
+            if (!partial && start > 0L && (body.contentLength() < 0L || body.contentLength() > length)) {
+                discardBytes(body, start)
+            }
+            copyAtMost(body, out, length, soFar, total) { written, size -> log.noteProgress(localId, written, size) }
+        }
     }
 
     private suspend fun saveDash(
@@ -551,6 +727,11 @@ class VideoSaver(
         class Ready<T>(val value: T) : FetchStep<T>
     }
 
+    private fun audioRate(url: String?): Int {
+        if (url.isNullOrBlank()) return 0
+        return Regex("""(\d{2,4})""").findAll(url).mapNotNull { it.groupValues[1].toIntOrNull() }.maxOrNull() ?: 0
+    }
+
     private suspend fun hlsQualities(
         variant: VideoVariant,
         source: VideoSource.Hls,
@@ -565,14 +746,17 @@ class VideoSaver(
             return VideoQualities.Ready(listOf(variant.copy(title = title, mimeType = "video/mp2t")))
         }
         val rows = playlist.variants.map { item ->
+            val audio = preferredHlsAudio(playlist.audios, item.audioGroup)?.url
             variant.copy(
                 title = title,
                 qualityLabel = hlsQuality(item),
-                mimeType = "video/mp2t",
+                mimeType = if (audio == null) "video/mp2t" else "video/mp4",
                 sizeBytes = null,
-                source = VideoSource.Hls(item.url, source.headers),
+                source = VideoSource.Hls(item.url, source.headers, audio),
             )
-        }.sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+        }.groupBy { (it.source as VideoSource.Hls).playlistUrl }
+            .map { (_, group) -> group.maxBy { audioRate((it.source as VideoSource.Hls).audioPlaylistUrl) } }
+            .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
         return VideoQualities.Ready(rows)
     }
 
@@ -639,6 +823,34 @@ class VideoSaver(
         throw DownloadException("That quality is no longer available")
     }
 
+    private suspend fun freshProgressive(
+        tabId: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        quality: String,
+    ): VideoSource.Progressive {
+        val tab = tabs.state.value.tab(tabId)
+        val page = headers.entries.firstOrNull { it.key.equals("Referer", ignoreCase = true) }?.value
+            ?: tab?.url
+            ?: throw DownloadException("That quality is no longer available")
+        val hints = PageVideoHints(
+            pageUrl = page,
+            pageTitle = tab?.title,
+            mediaUrls = tabs.runtime(tabId).value.mediaUrls,
+            userAgent = agent,
+            cookieHeader = cookies(incognito, page),
+        )
+        val found = collectVariants(extractors, hints).variants
+        val height = qualityHeight(quality)
+        val direct = found.firstOrNull { it.qualityLabel == quality && it.source is VideoSource.Progressive }
+            ?: found.firstOrNull { variant ->
+                height != null && qualityHeight(variant.qualityLabel) == height && variant.source is VideoSource.Progressive
+            }
+        return direct?.source as? VideoSource.Progressive
+            ?: throw DownloadException("That quality is no longer available")
+    }
+
     private suspend fun separateFromDash(
         source: VideoSource.Dash,
         quality: String,
@@ -653,6 +865,39 @@ class VideoSaver(
         val video = rankedVideos(manifest.videos).firstOrNull { it.height == height } ?: return null
         val audio = preferredAudio(manifest.audios) ?: return null
         return VideoSource.SeparateAv(video.url, audio.url, source.headers)
+    }
+
+    private fun discardBytes(body: ResponseBody, count: Long) {
+        val input = body.byteStream()
+        var left = count
+        val buffer = ByteArray(COPY_BUFFER)
+        while (left > 0) {
+            val read = input.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
+            if (read < 0) break
+            left -= read
+        }
+    }
+
+    private suspend fun copyAtMost(
+        body: ResponseBody,
+        out: OutputStream,
+        limit: Long,
+        base: Long,
+        total: Long,
+        onProgress: suspend (Long, Long) -> Unit,
+    ): Long {
+        val input = body.byteStream()
+        val buffer = ByteArray(COPY_BUFFER)
+        var written = 0L
+        while (written < limit) {
+            currentCoroutineContext().ensureActive()
+            val read = input.read(buffer, 0, minOf(buffer.size.toLong(), limit - written).toInt())
+            if (read < 0) break
+            out.write(buffer, 0, read)
+            written += read
+            onProgress(base + written, total)
+        }
+        return written
     }
 
     private suspend fun copyBody(

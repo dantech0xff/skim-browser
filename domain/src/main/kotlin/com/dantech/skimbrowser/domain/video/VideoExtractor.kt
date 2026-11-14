@@ -4,7 +4,11 @@ data class PageVideoHints(val pageUrl: String, val pageTitle: String?, val media
 
 sealed interface VideoSource {
     data class Progressive(val url: String, val headers: Map<String, String> = emptyMap()) : VideoSource
-    data class Hls(val playlistUrl: String, val headers: Map<String, String> = emptyMap()) : VideoSource
+    data class Hls(
+        val playlistUrl: String,
+        val headers: Map<String, String> = emptyMap(),
+        val audioPlaylistUrl: String? = null,
+    ) : VideoSource
     data class Dash(val manifestUrl: String, val headers: Map<String, String> = emptyMap()) : VideoSource
     data class SeparateAv(val videoUrl: String, val audioUrl: String, val headers: Map<String, String> = emptyMap()) : VideoSource
 }

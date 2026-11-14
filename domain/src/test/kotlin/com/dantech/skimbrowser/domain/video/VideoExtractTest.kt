@@ -40,7 +40,7 @@ class VideoExtractTest {
         """.trimIndent()
         val parsed = parseHls(clear, "https://cdn.example/master.m3u8")
         assertFalse(parsed.protected)
-        assertEquals(listOf("https://cdn.example/seg.mp4"), parsed.segments)
+        assertEquals(listOf("https://cdn.example/seg.mp4"), parsed.segments.map { it.url })
 
         val sample = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://x\"\nseg.ts"
         assertTrue(parseHls(sample, "https://cdn.example/a.m3u8").protected)
@@ -85,6 +85,40 @@ class VideoExtractTest {
         assertEquals("https://cdn.example/720.m3u8", playlist.variants.first().url)
         assertEquals(800000, playlist.variants.first().bandwidth)
         assertEquals("640x360", playlist.variants.last().resolution)
+    }
+
+    @Test
+    fun aByteRangePlaylistIsOneContiguousReadAndAnAudioGroupIsKept() {
+        val media = """
+            #EXTM3U
+            #EXT-X-MAP:URI="CMAF_480.mp4",BYTERANGE="4@0"
+            #EXTINF:4,
+            #EXT-X-BYTERANGE:6@4
+            CMAF_480.mp4
+            #EXTINF:4,
+            #EXT-X-BYTERANGE:6
+            CMAF_480.mp4
+        """.trimIndent()
+        val parsed = parseHls(media, "https://v.redd.it/abc/CMAF_480.m3u8")
+        val spans = mediaSpans(parsed)
+        assertEquals(1, spans.size)
+        assertEquals("https://v.redd.it/abc/CMAF_480.mp4", spans.single().url)
+        assertEquals(0L, spans.single().start)
+        assertEquals(16L, spans.single().length)
+
+        val master = """
+            #EXTM3U
+            #EXT-X-MEDIA:URI="CMAF_AUDIO_64.m3u8",TYPE=AUDIO,GROUP-ID="6",NAME="audio 0",DEFAULT=YES
+            #EXT-X-MEDIA:URI="CMAF_AUDIO_128.m3u8",TYPE=AUDIO,GROUP-ID="7",NAME="audio 0",DEFAULT=YES
+            #EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=480x854,AUDIO="7"
+            CMAF_480.m3u8
+        """.trimIndent()
+        val hls = parseHls(master, "https://v.redd.it/abc/HLSPlaylist.m3u8")
+        assertEquals("7", hls.variants.single().audioGroup)
+        assertEquals(
+            "https://v.redd.it/abc/CMAF_AUDIO_128.m3u8",
+            preferredHlsAudio(hls.audios, "7")?.url,
+        )
     }
 
     @Test
@@ -276,6 +310,7 @@ class VideoExtractTest {
             VideoVariant("cat", "HLS", null, null, VideoSource.Hls("https://v.redd.it/abc/HLSPlaylist.m3u8")),
             VideoVariant("cat", "720p", "video/mp4", null, VideoSource.Progressive("https://v.redd.it/abc/DASH_720.mp4")),
             VideoVariant("Talk", "360p", "video/mp4", null, VideoSource.Progressive("https://rr.googlevideo.com/videoplayback?id=1")),
+            VideoVariant("cat", "1280p", "video/mp2t", null, VideoSource.Hls("https://v.redd.it/abc/CMAF_720.m3u8")),
             VideoVariant("other", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/other/master.m3u8")),
             VideoVariant("other", "720p", "video/mp4", null, VideoSource.Progressive("https://cdn.example/other/clip.mp4")),
         )
@@ -284,6 +319,7 @@ class VideoExtractTest {
         assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/other/master.m3u8" })
         assertTrue(listed.any { (it.source as? VideoSource.Progressive)?.url == "https://cdn.example/other/clip.mp4" })
         assertTrue(listed.none { (it.source as? VideoSource.Hls)?.playlistUrl?.contains("v.redd.it") == true })
+        assertTrue(listed.none { (it.source as? VideoSource.Hls)?.playlistUrl?.contains("CMAF_720") == true })
         assertTrue(listed.none { (it.source as? VideoSource.Progressive)?.url?.contains("DASH_") == true })
     }
 
