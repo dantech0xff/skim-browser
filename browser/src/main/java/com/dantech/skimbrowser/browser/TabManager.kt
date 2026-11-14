@@ -22,7 +22,11 @@ import com.dantech.skimbrowser.browser.page.highlightArgsJson
 import com.dantech.skimbrowser.browser.page.parsePageContent
 import com.dantech.skimbrowser.browser.page.parseTranslationNodes
 import com.dantech.skimbrowser.browser.page.translationCallJson
+import com.dantech.skimbrowser.domain.interrupt.BlockedInterrupt
+import com.dantech.skimbrowser.domain.interrupt.InterruptKind
+import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.phishing.SafetyWarning
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -58,6 +62,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -107,7 +112,7 @@ class TabManager(
     private val restoreTimeoutMs: Long = RESTORE_TIMEOUT_MS,
     private val safety: SafetyGate = SafetyGate.Off,
     private val navigations: TabNavigations = TabNavigations(),
-) : TabsController, TabRestore {
+) : TabsController, TabRestore, InterruptNotices {
 
     @Inject constructor(
         tabRepo: TabRepository,
@@ -166,6 +171,13 @@ class TabManager(
 
     /** Long-presses on links and images, with the tab they happened in (05d). */
     val hitTargets: SharedFlow<Pair<String, HitTarget>> = _hitTargets.asSharedFlow()
+
+    private val _blocked = MutableSharedFlow<BlockedInterrupt>(
+        extraBufferCapacity = EVENT_BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    override val blocked: Flow<BlockedInterrupt> = _blocked.asSharedFlow()
 
     /** Where the WebView layer reports what happens in the tabs. */
     val events: TabEventSink = Events()
@@ -366,6 +378,22 @@ class TabManager(
             pendingReloads.remove(tabId)
             pendingLoads[tabId] = actual
         }
+    }
+
+    @MainThread
+    override fun openHeldPopup(tabId: String, holdId: Long) {
+        engine.value?.openHeldPopup(tabId, holdId)
+    }
+
+    @MainThread
+    override fun dropHeldPopup(tabId: String, holdId: Long) {
+        engine.value?.dropHeldPopup(tabId, holdId)
+    }
+
+    /** An http(s) URL loads in the tab. Anything else is an app link the person just allowed. */
+    @MainThread
+    override fun allowNavigation(tabId: String, url: String) {
+        if (isWebUrl(url)) load(tabId, url) else engine.value?.openPermitted(tabId, url)
     }
 
     /** Opens the http page remembered for [tabId], without upgrading it again. */
@@ -1288,6 +1316,16 @@ class TabManager(
             // Only a popup of this process may close itself; any other page calling window.close() stays.
             if (openTab(popupTabId)?.openerTabId == null) return
             finalizeClose(close(listOf(popupTabId)))
+        }
+
+        override fun onPopupBlocked(tabId: String, holdId: Long) {
+            val tab = openTab(tabId) ?: return
+            _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.POPUP, tab.url?.let(::hostOf), null, holdId))
+        }
+
+        override fun onRedirectBlocked(tabId: String, url: String) {
+            val tab = openTab(tabId) ?: return
+            _blocked.tryEmit(BlockedInterrupt(tabId, InterruptKind.TOP_FRAME, tab.url?.let(::hostOf), url))
         }
 
         override fun onStateSaved(tabId: String, state: Bundle) {

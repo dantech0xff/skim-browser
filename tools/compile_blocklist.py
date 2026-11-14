@@ -12,8 +12,10 @@ Refresh, from the repo root, with the network:
     python3 tools/compile_blocklist.py
 
 That downloads the pinned commit below and writes both files. Pass
-`--cosmetic-only` to leave the host file untouched, or `--self-test` to check
-the cosmetic parser without the network. Pass another full sha to move the pin.
+`--cosmetic-only` to leave the host file untouched, `--cookie-only` to write
+the cookie-banner file from the EasyList Cookie general hide list, or
+`--self-test` to check the cosmetic parser without the network. Pass another
+full sha to move the pin.
 There is no in-app download: a newer list ships in a newer APK, so the app
 does not contact EasyList's servers at runtime.
 
@@ -33,6 +35,8 @@ REPO = "https://api.github.com/repos/easylist/easylist"
 RAW = "https://raw.githubusercontent.com/easylist/easylist"
 OUT = Path("browser/src/main/assets/shield/blocklist.txt")
 COSMETIC_OUT = Path("browser/src/main/assets/shield/cosmetic.txt")
+COOKIE_OUT = Path("browser/src/main/assets/shield/cookie.txt")
+COOKIE_CAP = 1800
 CACHE = Path("/tmp/easylist-pin")
 
 # Options Skim can honor by blocking the whole host. Anything else (a site
@@ -329,9 +333,101 @@ example.com#?#div:has(> .ad)
     print("cosmetic self-test ok")
 
 
+COOKIE_NEEDLE = re.compile(
+    r"onetrust|cookiebot|cybot|didomi|usercentrics|quantcast|osano|complianz|cmplz|"
+    r"cookie-law|cookieconsent|cookie-consent|cookie-banner|cookie-notice|cookie-popup|"
+    r"cc-window|cc-banner|cc-revoke|sp_message|qc-cmp|cky-|cookieyes|iubenda|termly|"
+    r"tarteaucitron|trustarc|truste|sourcepoint|fundingchoices|evidon|sirdata|ppms_cm|"
+    r"gdpr-banner|gdpr-cookie|consent-banner|consent-modal|eu-cookie|hs-eu-cookie|"
+    r"cli-modal|cli-bar|cli-popup|wt-cli",
+    re.IGNORECASE,
+)
+COOKIE_CLASS = re.compile(r"cookie|consent|gdpr", re.IGNORECASE)
+# Roots the general list names only in part, or not at all. Hiding the root is what
+# takes the banner down, and the scroll unlock looks for the same selectors.
+COOKIE_ROOTS = (
+    "#onetrust-consent-sdk",
+    "#onetrust-banner-sdk",
+    "#CybotCookiebotDialog",
+    "#CybotCookiebotDialogBodyUnderlay",
+    "#didomi-host",
+    "#usercentrics-root",
+    "#sp_message_container",
+    "#qc-cmp2-container",
+    "#tarteaucitronRoot",
+    ".osano-cm-window",
+    ".fc-consent-root",
+    ".cc-window",
+    "#cookie-law-info-bar",
+    "#hs-eu-cookie-confirmation",
+    ".cky-consent-container",
+    "#cmplz-cookiebanner-container",
+)
+
+
+def cookie_rank(selector: str) -> tuple:
+    if selector in COOKIE_ROOTS:
+        return (0, len(selector), selector)
+    if COOKIE_NEEDLE.search(selector):
+        return (1, len(selector), selector)
+    if selector.startswith(".") and COOKIE_CLASS.search(selector):
+        return (2, len(selector), selector)
+    return (3, len(selector), selector)
+
+
+def keep_cookie(rows: list[str]) -> list[str]:
+    generic = [row for row in rows if row.startswith("G\t")]
+    chosen: list[str] = []
+    seen: set[str] = set()
+
+    def add(selector: str) -> None:
+        if selector in seen or not selector_ok(selector):
+            return
+        if len(chosen) >= COOKIE_CAP:
+            return
+        seen.add(selector)
+        chosen.append(f"G\t{selector}")
+
+    for selector in COOKIE_ROOTS:
+        add(selector)
+    ranked = sorted((row.split("\t", 1)[1] for row in generic), key=cookie_rank)
+    for selector in ranked:
+        if cookie_rank(selector)[0] == 3 and not (
+            selector.startswith("#") and COOKIE_CLASS.search(selector) and " " not in selector and len(selector) <= 40
+        ):
+            continue
+        if cookie_rank(selector)[0] == 2 and (" " in selector or ">" in selector or len(selector) > 60):
+            continue
+        add(selector)
+    return chosen
+
+
+def cookie_header(sha: str, when: str) -> list[str]:
+    return [
+        "# Skim cookie-banner hides",
+        "# Sources: EasyList Cookie general hide, plus the banner roots named below",
+        "# License: GPL-3.0-or-later, chosen from the dual license at",
+        "# https://easylist.to/pages/licence.html",
+        "# Attribution: The EasyList authors (https://easylist.to/)",
+        f"# Upstream: easylist/easylist {sha} {when} easylist_cookie/easylist_cookie_general_hide.txt",
+        "# Kinds: G generic hide. Procedural rules are not here.",
+        f"# Cap: {COOKIE_CAP} selectors, banner roots and cookie or consent names first.",
+    ]
+
+
+def write_cookie(sha: str, when: str) -> None:
+    general = get(f"{RAW}/{sha}/easylist_cookie/easylist_cookie_general_hide.txt").decode("utf-8", "replace")
+    body = keep_cookie(compile_cosmetic([general]))
+    COOKIE_OUT.parent.mkdir(parents=True, exist_ok=True)
+    COOKIE_OUT.write_text("\n".join(cookie_header(sha, when) + body) + "\n", encoding="utf-8")
+    print(f"wrote {COOKIE_OUT} ({COOKIE_OUT.stat().st_size} bytes, {len(body)} rules) from {sha}")
+
+
 def main() -> None:
-    args = [arg for arg in sys.argv[1:] if arg != "--cosmetic-only"]
+    flags = {"--cosmetic-only", "--cookie-only"}
+    args = [arg for arg in sys.argv[1:] if arg not in flags]
     cosmetic_only = "--cosmetic-only" in sys.argv[1:]
+    cookie_only = "--cookie-only" in sys.argv[1:]
     if args[:1] == ["--self-test"]:
         self_test()
         return
@@ -340,6 +436,9 @@ def main() -> None:
         raise SystemExit("pass the full 40-character commit sha")
     commit = json.loads(get(f"{REPO}/commits/{sha}"))
     when = commit["commit"]["committer"]["date"]
+    if cookie_only:
+        write_cookie(sha, when)
+        return
     if not cosmetic_only:
         paths = list_files(sha)
         texts = [get(f"{RAW}/{sha}/{path}").decode("utf-8", "replace") for path in paths]

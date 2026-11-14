@@ -46,6 +46,15 @@ sealed interface SnackbarAction {
 
     /** View: opens Bookmarks at the folder an import created (03). */
     data class ViewImported(val folderId: Long) : SnackbarAction
+
+    data class OpenBlockedPopup(val tabId: String, val holdId: Long) : SnackbarAction
+
+    /** Allow: loads a redirect, or hands an app link over, that was blocked. */
+    data class AllowBlockedNavigation(val tabId: String, val url: String) : SnackbarAction
+
+    data class AlwaysAllowPopups(val host: String, val tabId: String, val holdId: Long) : SnackbarAction
+
+    data class AlwaysAllowRedirects(val host: String, val tabId: String, val url: String) : SnackbarAction
 }
 
 /** The label of the action button. */
@@ -57,6 +66,10 @@ internal fun SnackbarAction.labelRes(): Int = when (this) {
     is SnackbarAction.OpenDownload -> R.string.action_open
     is SnackbarAction.RetryDownload -> R.string.action_retry
     is SnackbarAction.ViewImported -> R.string.action_view
+    is SnackbarAction.OpenBlockedPopup -> R.string.action_open
+    is SnackbarAction.AllowBlockedNavigation -> R.string.action_allow
+    is SnackbarAction.AlwaysAllowPopups -> R.string.action_always_allow_site
+    is SnackbarAction.AlwaysAllowRedirects -> R.string.action_always_allow_site
 }
 
 /** Where the snackbar sits, above the navigation bar inset. */
@@ -88,6 +101,7 @@ class SnackbarController @Inject constructor(private val undo: UndoRegistry) {
         val text: UiText,
         val action: SnackbarAction?,
         val isError: Boolean,
+        val secondary: SnackbarAction? = null,
     )
 
     private val lastId = AtomicLong()
@@ -101,8 +115,13 @@ class SnackbarController @Inject constructor(private val undo: UndoRegistry) {
     val current: StateFlow<Message?> = state.asStateFlow()
 
     /** Shows [text], replacing (and closing) the message on screen. Error messages are announced at once. */
-    fun show(text: UiText, action: SnackbarAction? = null, isError: Boolean = false) {
-        val message = Message(lastId.incrementAndGet(), text, action, isError)
+    fun show(
+        text: UiText,
+        action: SnackbarAction? = null,
+        isError: Boolean = false,
+        secondary: SnackbarAction? = null,
+    ) {
+        val message = Message(lastId.incrementAndGet(), text, action, isError, secondary)
         if (action is SnackbarAction.Undo) {
             undo.kindOf(action.token)?.let { undoKinds[message.id] = it }
         }

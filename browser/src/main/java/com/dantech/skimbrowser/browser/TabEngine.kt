@@ -56,4 +56,11 @@ interface TabEngine {
      * is destroyed right after; the profile is set before anything else touches the WebView.
      */
     fun withTemporaryWebView(profile: String?, block: (WebView) -> Unit)
+
+    fun openHeldPopup(tabId: String, holdId: Long): Boolean = false
+
+    fun dropHeldPopup(tabId: String, holdId: Long) = Unit
+
+    /** Loads [url], or hands an app link to another app, after the person allowed a blocked navigation. */
+    fun openPermitted(tabId: String, url: String) = Unit
 }

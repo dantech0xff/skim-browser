@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
@@ -16,7 +17,15 @@ import android.webkit.WebViewClient
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.certificate.certificateFault
+import com.dantech.skimbrowser.domain.interrupt.InterruptKind
+import com.dantech.skimbrowser.domain.interrupt.InterruptPolicy
+import com.dantech.skimbrowser.domain.interrupt.InterruptRequest
+import com.dantech.skimbrowser.domain.interrupt.InterruptVerdict
+import com.dantech.skimbrowser.domain.interrupt.decideInterrupt
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.sameNavigation
 import androidx.annotation.MainThread
+import androidx.core.net.toUri
 import androidx.webkit.SafeBrowsingResponseCompat
 import androidx.webkit.ScriptHandler
 import androidx.webkit.WebResourceErrorCompat
@@ -25,8 +34,6 @@ import androidx.webkit.WebViewCompat
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
-import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.domain.url.sameNavigation
 import java.io.ByteArrayInputStream
 import java.util.LinkedHashSet
 import java.util.concurrent.atomic.AtomicBoolean
@@ -61,6 +68,9 @@ class SkimWebViewClient(
     private val documentStartSupported: Boolean = false,
     private val safety: SafetyGate = SafetyGate.Off,
     private val navigations: TabNavigations = TabNavigations(),
+    private val policy: () -> InterruptPolicy = { InterruptPolicy() },
+    /** Monotonic clock for how long this document has gone without a touch. */
+    private val now: () -> Long = SystemClock::elapsedRealtime,
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
 ) : WebViewClientCompat() {
@@ -94,12 +104,36 @@ class SkimWebViewClient(
     private val loadingCollapsed = LinkedHashSet<String>()
     private val collapsed = LinkedHashSet<String>()
     private var hideScript: ScriptHandler? = null
+    private var cookieScript: ScriptHandler? = null
+    /** True after this document received a cookie stylesheet, so turning hiding off can remove it. */
+    private var cookieStyleInjected = false
+    private var documentStartedAt = 0L
+    private var lastInteractionAt = NO_INTERACTION
 
     /** The WebView is being destroyed: nothing it reports from now on reaches the tab. */
     fun detach() {
         detached = true
         removeHideScript()
+        removeCookieScript()
         safety.cancelSafeBrowsing(tabId)
+    }
+
+    /** A finger went down on this page. The odd-redirect check treats that as the person being here. */
+    fun noteInteraction() {
+        lastInteractionAt = now()
+    }
+
+    /**
+     * Loads [url] because the person allowed a redirect or an app link that had been blocked.
+     * The gesture is treated as present, so the checks that require one let it through.
+     */
+    fun openPermitted(view: WebView, url: String) {
+        if (detached) return
+        when (val navigation = externalNavigation(url.toUri(), hasGesture = true, incognito, view.context.packageName)) {
+            ExternalNav.InWebView -> view.loadUrl(url)
+            ExternalNav.Blocked -> Unit
+            is ExternalNav.Launch -> launch(navigation)
+        }
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
@@ -134,6 +168,8 @@ class SkimWebViewClient(
         }
         // A nested start is the page goBack just restored. Keep dropping the flagged visit.
         if (pageStartDepth == 1) stoppedForWarning = false
+        documentStartedAt = now()
+        lastInteractionAt = NO_INTERACTION
         val early = synchronized(documentGate) {
             val sameDocument = url != null && url == loadingUrl
             val carried = if (sameDocument) loadingBlocked.get() else 0
@@ -153,7 +189,9 @@ class SkimWebViewClient(
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
         if (early.first > 0) events.onShieldCount(tabId, early.first)
+        cookieStyleInjected = false
         injectHide(view, url)
+        injectCookie(view, url)
         early.second?.let { inject(view, CosmeticScript.collapse(it)) }
     }
 
@@ -196,6 +234,7 @@ class SkimWebViewClient(
         reportNavigation(view)
         (view as? SkimWebView)?.applyContentScrollPadding()
         injectHide(view, url)
+        injectCookie(view, url)
     }
 
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
@@ -267,6 +306,14 @@ class SkimWebViewClient(
             if (hit != null) {
                 abandonLoad()
                 events.onSafetyWarning(tabId, hit)
+                return true
+            }
+            // isRedirect is a server hop. Those stay on the navigation tracker and are not odd redirects.
+            if (!request.isRedirect &&
+                decideInterrupt(interruptRequest(url, request.hasGesture()), policy()) == InterruptVerdict.BLOCK
+            ) {
+                abandonLoad()
+                events.onRedirectBlocked(tabId, url)
                 return true
             }
         }
@@ -474,10 +521,37 @@ class SkimWebViewClient(
         if (!documentStartSupported || detached) return
         val css = shield.cosmeticCss(url, incognito)
         if (css == null) {
-            applyWhenReady(view, url, arm = true)
-            return
+            shield.whenCosmeticReady {
+                val apply = Runnable {
+                    if (detached || !stillTheArmedPage(url)) return@Runnable
+                    installDocumentStart(view, url, shield.cosmeticCss(url, incognito))
+                }
+                if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+            }
+        } else {
+            installDocumentStart(view, url, css)
         }
-        installDocumentStart(view, url, css)
+        val cookie = shield.cookieCss(url, incognito)
+        if (cookie == null) {
+            shield.whenCookieReady {
+                val apply = Runnable {
+                    if (detached || !stillTheArmedPage(url)) return@Runnable
+                    installCookieDocumentStart(view, url, shield.cookieCss(url, incognito))
+                }
+                if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+            }
+        } else {
+            installCookieDocumentStart(view, url, cookie)
+        }
+    }
+
+    /** Applies the current cookie choice to the document this client is showing. */
+    fun refreshCookies(view: WebView) {
+        if (detached) return
+        val url = synchronized(documentGate) { documentUrl ?: loadingUrl } ?: return
+        injectCookie(view, url)
+        val css = shield.cookieCss(url, incognito)
+        if (css != null) installCookieDocumentStart(view, url, css)
     }
 
     private fun removeHideScript() {
@@ -501,6 +575,32 @@ class SkimWebViewClient(
         inject(view, CosmeticScript.hide(host, css))
     }
 
+    private fun injectCookie(view: WebView, url: String, wait: Boolean = true) {
+        val css = shield.cookieCss(url, incognito)
+        if (css == null) {
+            if (wait) {
+                shield.whenCookieReady {
+                    val apply = Runnable {
+                        if (!detached) injectCookie(view, url, wait = false)
+                    }
+                    if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
+                }
+            }
+            return
+        }
+        val host = hostOf(url) ?: return
+        if (css.isEmpty()) {
+            removeCookieScript()
+            if (cookieStyleInjected) {
+                cookieStyleInjected = false
+                inject(view, CosmeticScript.cookie(host, ""))
+            }
+            return
+        }
+        cookieStyleInjected = true
+        inject(view, CosmeticScript.cookie(host, css))
+    }
+
     /**
      * The rules are still loading. [arm] installs the document-start sheet for [url] itself.
      * The sheet for the page on screen is separate, so a blank document cannot clear [url].
@@ -511,10 +611,14 @@ class SkimWebViewClient(
                 if (detached) return@Runnable
                 if (arm && stillTheArmedPage(url)) {
                     installDocumentStart(view, url, shield.cosmeticCss(url, incognito))
+                    installCookieDocumentStart(view, url, shield.cookieCss(url, incognito))
                 }
                 val showing = documentUrl
                 val injectUrl = if (showing != null && hostOf(showing) != null) showing else url
-                if (hostOf(injectUrl) != null) injectHide(view, injectUrl, wait = false)
+                if (hostOf(injectUrl) != null) {
+                    injectHide(view, injectUrl, wait = false)
+                    injectCookie(view, injectUrl, wait = false)
+                }
             }
             if (Looper.myLooper() == Looper.getMainLooper()) apply.run() else mainThread.post(apply)
         }
@@ -541,6 +645,42 @@ class SkimWebViewClient(
         } catch (e: RuntimeException) {
             Log.w(TAG, "Cosmetic rules were not installed at document start", e)
         }
+    }
+
+    private fun installCookieDocumentStart(view: WebView, url: String, css: String?) {
+        if (!documentStartSupported || detached || css == null) return
+        val host = hostOf(url) ?: return
+        removeCookieScript()
+        if (css.isEmpty()) return
+        cookieStyleInjected = true
+        try {
+            cookieScript = WebViewCompat.addDocumentStartJavaScript(view, CosmeticScript.cookie(host, css), ALL_ORIGINS)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cookie banner rules were not installed at document start", e)
+        }
+    }
+
+    private fun removeCookieScript() {
+        val script = cookieScript ?: return
+        cookieScript = null
+        try {
+            script.remove()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cookie document-start script was not removed", e)
+        }
+    }
+
+    private fun interruptRequest(target: String, hasGesture: Boolean): InterruptRequest {
+        val source = synchronized(documentGate) { documentUrl }
+        val since = if (lastInteractionAt == NO_INTERACTION) null else (now() - lastInteractionAt).coerceAtLeast(0)
+        return InterruptRequest(
+            kind = InterruptKind.TOP_FRAME,
+            sourceUrl = source,
+            targetUrl = target,
+            hasGesture = hasGesture,
+            isMainFrame = true,
+            millisSinceInteraction = since,
+        )
     }
 
     /**
@@ -598,6 +738,7 @@ class SkimWebViewClient(
     private companion object {
         const val TAG = "SkimWebViewClient"
         private val ALL_ORIGINS = setOf("*")
+        const val NO_INTERACTION = -1L
 
         /** Discards forward history. The callback then steps back off the copy this adds. */
         const val DROP_FORWARD_HISTORY =

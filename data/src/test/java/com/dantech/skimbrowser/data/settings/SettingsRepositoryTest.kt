@@ -109,6 +109,34 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun popupRedirectAndCookieChoicesDefaultOnAndCanBeStored() = runTest {
+        val store = SettingsRepository(newStore())
+        val first = store.settings.first()
+        assertTrue(first.blockPopups)
+        assertTrue(first.blockOddRedirects)
+        assertTrue(first.hideCookieBanners)
+        assertTrue(store.popupAllowHosts.first().isEmpty())
+        assertTrue(store.redirectAllowHosts.first().isEmpty())
+
+        store.setBlockPopups(false)
+        store.setBlockOddRedirects(false)
+        store.setHideCookieBanners(false)
+        store.setPopupAllowed("www.Shop.example", allowed = true)
+        store.setRedirectAllowed("news.example", allowed = true)
+        val saved = store.settings.first()
+        assertFalse(saved.blockPopups)
+        assertFalse(saved.blockOddRedirects)
+        assertFalse(saved.hideCookieBanners)
+        assertEquals(setOf("shop.example"), store.popupAllowHosts.first())
+        assertEquals(setOf("news.example"), store.redirectAllowHosts.first())
+
+        store.setPopupAllowed("shop.example", allowed = false)
+        store.setRedirectAllowed("  ", allowed = true)
+        assertTrue(store.popupAllowHosts.first().isEmpty())
+        assertEquals(setOf("news.example"), store.redirectAllowHosts.first())
+    }
+
+    @Test
     fun unknownNamesAndWrongTypesReadAsDefaults() = runTest {
         val store = newStore()
         store.edit {

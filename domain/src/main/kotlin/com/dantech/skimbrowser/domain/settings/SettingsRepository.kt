@@ -43,6 +43,22 @@ interface SettingsRepository {
      */
     suspend fun replacePortable(settings: SkimSettings, shieldDisabledHosts: Set<String>)
 
+    suspend fun setBlockPopups(enabled: Boolean)
+
+    suspend fun setBlockOddRedirects(enabled: Boolean)
+
+    suspend fun setHideCookieBanners(enabled: Boolean)
+
+    val popupAllowHosts: Flow<Set<String>>
+
+    /** Sites that may redirect, or open an app, without a gesture. */
+    val redirectAllowHosts: Flow<Set<String>>
+
+    suspend fun setPopupAllowed(host: String, allowed: Boolean)
+
+    /** [allowed] true lets [host] redirect, and open an app, on its own. */
+    suspend fun setRedirectAllowed(host: String, allowed: Boolean)
+
     /** Hosts where ad and tracker blocking is off. Empty until the person turns a site off. */
     val shieldDisabledHosts: Flow<Set<String>>
 

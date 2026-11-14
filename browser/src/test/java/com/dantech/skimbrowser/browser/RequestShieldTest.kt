@@ -4,6 +4,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.fake.FakeSettingsRepository
 import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.shield.HostBlocklist
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,6 +89,67 @@ class RequestShieldTest {
 
         assertEquals(null, shield.cosmeticCss("https://example.com/", incognito = false))
         assertFalse(parsed)
+    }
+
+    @Test(timeout = 5_000)
+    fun adHidingDoesNotWaitForTheCookieList() {
+        var cookieParsed = false
+        val shield = RequestShield.loading(
+            loadCosmetic = { CosmeticFilters.load("G\t.adsbox\n".reader().buffered()) },
+            loadCookie = {
+                cookieParsed = true
+                CosmeticFilters.EMPTY
+            },
+            settings = FakeSettingsRepository(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+        val ready = CountDownLatch(1)
+        shield.whenCosmeticReady { ready.countDown() }
+
+        assertTrue(ready.await(2, TimeUnit.SECONDS))
+        assertTrue(shield.cosmeticCss(PAGE, incognito = false)!!.contains(".adsbox"))
+        assertFalse(cookieParsed)
+        assertEquals(null, shield.cookieCss(PAGE, incognito = false))
+    }
+
+    @Test(timeout = 5_000)
+    fun turningCookieBannersOffClearsTheStylesheet() = runBlocking {
+        val settings = FakeSettingsRepository()
+        val shield = RequestShield.loading(
+            loadCosmetic = { CosmeticFilters.EMPTY },
+            loadCookie = { CosmeticFilters.load("G\t#onetrust-consent-sdk\n".reader().buffered()) },
+            settings = settings,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+        shield.warmCosmetic()
+        assertTrue(shield.cookieCss(PAGE, incognito = false)!!.contains("onetrust"))
+        var changes = 0
+        shield.whenCookieChoiceChanges { changes += 1 }
+
+        settings.setHideCookieBanners(false)
+
+        assertEquals("", shield.cookieCss(PAGE, incognito = false))
+        assertEquals(1, changes)
+    }
+
+    @Test(timeout = 5_000)
+    fun aRemovedCookieListenerIsNotCalled() = runBlocking {
+        val settings = FakeSettingsRepository()
+        val shield = RequestShield.loading(
+            loadCosmetic = { CosmeticFilters.EMPTY },
+            settings = settings,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        )
+        var changes = 0
+        val stop = shield.whenCookieChoiceChanges { changes += 1 }
+        var kept = 0
+        shield.whenCookieChoiceChanges { kept += 1 }
+
+        stop()
+        settings.setHideCookieBanners(false)
+
+        assertEquals(0, changes)
+        assertEquals(1, kept)
     }
 
     private companion object {

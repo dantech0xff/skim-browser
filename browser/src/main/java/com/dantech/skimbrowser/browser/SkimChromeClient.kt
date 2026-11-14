@@ -23,7 +23,7 @@ import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
  *
  * A file input is always answered exactly once, also when the picker is cancelled, a second input
  * replaces it, or the WebView goes away; an unanswered input would block every later one on the
- * page. A window opens only after a user gesture, as a new tab whose WebView the pool makes.
+ * page.
  *
  * A page's `alert`, `confirm`, `prompt` and leave-page dialogs only show for the tab on screen
  * ([isShown]), so a tab in the background cannot put a dialog over another site, and at most
@@ -53,9 +53,13 @@ class SkimChromeClient(
     /** `FileChooserParams.parseResult`, the platform's reading of a picker result. */
     private val parseFileChooserResult: (resultCode: Int, data: Intent?) -> Array<Uri>? =
         WebChromeClient.FileChooserParams::parseResult,
+    private val blockUngesturedPopup: (sourceUrl: String?) -> Boolean = { true },
 ) : WebChromeClient() {
 
     private var pendingFiles: ValueCallback<Array<Uri>>? = null
+    private var heldWindow: Message? = null
+    private var heldId = 0L
+    private var nextHoldId = 0L
     private var detached = false
     private var dialogDocument = NO_DOCUMENT
     private var dialogsShown = 0
@@ -67,7 +71,28 @@ class SkimChromeClient(
     fun detach() {
         detached = true
         answerFiles(pendingFiles, null)
+        releaseHeld()
         sitePermissions.cancelTab(tabId)
+    }
+
+    /**
+     * Opens the hold [id] names in a new tab. A newer hold on this tab is left alone.
+     * The WebView is created here, and the held message is sent to it.
+     */
+    fun openHeldWindow(id: Long): Boolean {
+        if (id != heldId) return false
+        val message = heldWindow ?: return false
+        heldWindow = null
+        heldId = 0L
+        if (deliverWindow(message)) return true
+        release(message)
+        return false
+    }
+
+    /** Drops the hold [id] names so the pending popup is released with no WebView. A newer hold is left alone. */
+    fun cancelHeldWindow(id: Long) {
+        if (id != heldId) return
+        releaseHeld()
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
@@ -123,8 +148,38 @@ class SkimChromeClient(
     }
 
     override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
-        // Pages may open windows only when the user asked for one: no pop-ups on their own.
-        if (detached || !isUserGesture) return false
+        if (detached) return false
+        // Chromium keeps one pending popup. Sending an older result would clear the new one,
+        // so the older message is dropped here and only the latest is sent.
+        if (!isUserGesture && blockUngesturedPopup(view.url)) {
+            dropStaleHold()
+            nextHoldId += 1
+            heldId = nextHoldId
+            heldWindow = resultMsg
+            events.onPopupBlocked(tabId, heldId)
+            return true
+        }
+        return deliverWindow(resultMsg)
+    }
+
+    private fun dropStaleHold() {
+        heldWindow = null
+        heldId = 0L
+    }
+
+    private fun releaseHeld() {
+        val message = heldWindow ?: return
+        heldWindow = null
+        heldId = 0L
+        release(message)
+    }
+
+    private fun release(message: Message) {
+        (message.obj as? WebView.WebViewTransport)?.webView = null
+        send(message)
+    }
+
+    private fun deliverWindow(resultMsg: Message): Boolean {
         val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
         val popupTabId = events.onPopupRequested(tabId) ?: return false
         val popup = obtainForPopup(popupTabId)
@@ -134,8 +189,16 @@ class SkimChromeClient(
             return false
         }
         transport.webView = popup
-        resultMsg.sendToTarget()
+        send(resultMsg)
         return true
+    }
+
+    private fun send(message: Message) {
+        try {
+            message.sendToTarget()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "The held window could not be answered", e)
+        }
     }
 
     override fun onCloseWindow(window: WebView) {

@@ -7,6 +7,7 @@ import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -18,8 +19,11 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.dantech.skimbrowser.browser.downloads.DownloadRouter
 import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
+import android.view.MotionEvent
+import com.dantech.skimbrowser.domain.interrupt.InterruptPolicy
 import com.dantech.skimbrowser.domain.page.PageTextZoom
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import kotlinx.coroutines.CancellableContinuation
@@ -89,6 +93,7 @@ class WebViewPool(
     private val timers: WebViewTimers = WebViewTimers.process,
     /** Draws a WebView's thumbnail, or null while it has nothing to show. */
     private val drawThumbnail: (View) -> Bitmap? = ::captureThumbnail,
+    private val interrupts: () -> InterruptPolicy = { InterruptPolicy() },
 ) : TabEngine {
 
     /**
@@ -145,8 +150,19 @@ class WebViewPool(
         }
     }
 
+    private val stopCookieChoice: () -> Unit
+
     init {
         activity.registerComponentCallbacks(fontScaleCallbacks)
+        stopCookieChoice = shield.whenCookieChoiceChanges {
+            val refresh = Runnable {
+                if (destroyed) return@Runnable
+                live.values.toList().forEach { entry ->
+                    if (!entry.destroyed) entry.client.refreshCookies(entry.view)
+                }
+            }
+            if (Looper.myLooper() == Looper.getMainLooper()) refresh.run() else activity.runOnUiThread(refresh)
+        }
     }
 
     private class Entry(
@@ -318,6 +334,7 @@ class WebViewPool(
      */
     fun destroyAll() {
         if (destroyed) return
+        stopCookieChoice()
         activity.unregisterComponentCallbacks(fontScaleCallbacks)
         if (!savedSinceStop) saveAll()
         if (started) {
@@ -458,6 +475,20 @@ class WebViewPool(
         }
     }
 
+    override fun openHeldPopup(tabId: String, holdId: Long): Boolean {
+        val entry = live[tabId]?.takeUnless { it.destroyed } ?: return false
+        return entry.chrome.openHeldWindow(holdId)
+    }
+
+    override fun dropHeldPopup(tabId: String, holdId: Long) {
+        live[tabId]?.takeUnless { it.destroyed }?.chrome?.cancelHeldWindow(holdId)
+    }
+
+    override fun openPermitted(tabId: String, url: String) {
+        val entry = live[tabId]?.takeUnless { it.destroyed } ?: return
+        entry.client.openPermitted(entry.view, url)
+    }
+
     override fun withTemporaryWebView(profile: String?, block: (WebView) -> Unit) {
         if (destroyed) {
             Log.w(TAG, "No Activity for a temporary WebView")
@@ -555,6 +586,9 @@ class WebViewPool(
             javaScriptEnabled = true
             domStorageEnabled = true
             setSupportMultipleWindows(true)
+            // Without this, WebView answers an ungestured window.open with null and never
+            // calls onCreateWindow. The result is held until the person opens or dismisses it.
+            javaScriptCanOpenWindowsAutomatically = true
             builtInZoomControls = true
             displayZoomControls = false
             allowFileAccess = false
@@ -583,8 +617,13 @@ class WebViewPool(
             documentStartSupported = documentStart,
             safety = safety,
             navigations = navigations,
+            policy = interrupts,
         ) { gone, action, didCrash ->
             onRendererGone(tab.id, gone, action, didCrash)
+        }
+        view.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) client.noteInteraction()
+            false
         }
         view.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             // A download is not a page, and its URL may be the one after a redirect.
@@ -601,6 +640,10 @@ class WebViewPool(
             obtainForPopup = ::obtainForPopup,
             isShown = { isShown(tab.id, view) },
             documentId = { tabs.runtime(tab.id).value.loadNonce },
+            blockUngesturedPopup = { source ->
+                val choice = interrupts()
+                choice.blockPopups && source?.let(::hostOf) !in choice.popupAllowHosts
+            },
         )
         view.webViewClient = client
         view.webChromeClient = chrome

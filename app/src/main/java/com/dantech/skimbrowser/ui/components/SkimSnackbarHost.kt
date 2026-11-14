@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -24,8 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +53,7 @@ import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 
 /**
  * Shows the message of [controller]: inverseSurface, radius 4, at least 48 high, the action in
@@ -64,6 +68,7 @@ import kotlinx.coroutines.Dispatchers
  *
  * @param onAction carries out every action except [SnackbarAction.Undo], which the controller
  *   runs: switch to a tab, open Edit bookmark, open a download, open the imported folder.
+ * @param onClosed runs when a message goes away without its action. A held popup uses it to cancel.
  */
 @Composable
 fun SkimSnackbarHost(
@@ -71,34 +76,60 @@ fun SkimSnackbarHost(
     placement: SnackbarPlacement,
     onAction: (SnackbarAction) -> Unit,
     modifier: Modifier = Modifier,
+    onClosed: (SnackbarAction?) -> Unit = {},
 ) {
     val hostState = remember { SnackbarHostState() }
     val message by controller.current.collectAsStateWithLifecycle()
     val currentOnAction by rememberUpdatedState(onAction)
-    message?.let { shown ->
-        val text = shown.text.asString()
-        val actionLabel = shown.action?.let { stringResource(it.labelRes()) }
-        LaunchedEffect(shown.id) {
-            val result = hostState.showSnackbar(SkimSnackbarVisuals(text, actionLabel, shown.isError))
+    val currentOnClosed by rememberUpdatedState(onClosed)
+    val shown = message
+    Box(modifier) {
+    if (shown != null && shown.secondary != null) {
+        TwoActionNotice(
+            message = shown,
+            onAction = currentOnAction,
+            onClosed = currentOnClosed,
+            controller = controller,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(start = 16.dp, end = 16.dp, bottom = placement.bottomOffset),
+        )
+    }
+    shown?.takeIf { it.secondary == null }?.let { single ->
+        val text = single.text.asString()
+        val actionLabel = single.action?.let { stringResource(it.labelRes()) }
+        val settled = remember(single.id) { object { var done = false } }
+        LaunchedEffect(single.id) {
+            val result = hostState.showSnackbar(SkimSnackbarVisuals(text, actionLabel, single.isError))
+            settled.done = true
             if (result == SnackbarResult.ActionPerformed) {
                 try {
-                    shown.action?.takeUnless { it is SnackbarAction.Undo }?.let(currentOnAction)
+                    single.action?.takeUnless { it is SnackbarAction.Undo }?.let(currentOnAction)
                 } finally {
-                    controller.onActionClicked(shown.id)
+                    controller.onActionClicked(single.id)
                 }
             } else {
-                controller.onDismissed(shown.id)
+                controller.onDismissed(single.id)
+                currentOnClosed(single.action)
             }
         }
-        // Leaving the composition cancels showSnackbar without a result: report it as a close.
-        // When the message was replaced or already handled, the controller ignores the stale id.
-        DisposableEffect(shown.id) {
-            onDispose { controller.onDismissed(shown.id) }
+        // Leaving the composition cancels showSnackbar without a result. A held popup still has to
+        // be dropped. When the message was replaced or already handled, the controller ignores the stale id.
+        DisposableEffect(single.id) {
+            onDispose {
+                controller.onDismissed(single.id)
+                if (!settled.done) {
+                    settled.done = true
+                    currentOnClosed(single.action)
+                }
+            }
         }
     }
     SnackbarHost(
         hostState = hostState,
-        modifier = modifier
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(start = 16.dp, end = 16.dp, bottom = placement.bottomOffset),
     ) { data ->
@@ -108,6 +139,54 @@ fun SkimSnackbarHost(
             isError = (data.visuals as? SkimSnackbarVisuals)?.isError == true,
             onAction = data::performAction,
         )
+    }
+    }
+}
+
+@Composable
+private fun TwoActionNotice(
+    message: SnackbarController.Message,
+    onAction: (SnackbarAction) -> Unit,
+    onClosed: (SnackbarAction?) -> Unit,
+    controller: SnackbarController,
+    modifier: Modifier = Modifier,
+) {
+    var acted by remember(message.id) { mutableStateOf(false) }
+    val text = message.text.asString()
+    val primaryAction = message.action
+    val secondaryAction = message.secondary
+    LaunchedEffect(message.id) {
+        delay(10_000)
+        if (!acted) controller.onDismissed(message.id)
+    }
+    DisposableEffect(message.id) {
+        onDispose {
+            if (!acted) {
+                controller.onDismissed(message.id)
+                onClosed(message.action)
+            }
+        }
+    }
+    Snackbar(modifier = modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (primaryAction != null) {
+                    SnackbarActionButton(stringResource(primaryAction.labelRes())) {
+                        acted = true
+                        onAction(primaryAction)
+                        controller.onActionClicked(message.id)
+                    }
+                }
+                if (secondaryAction != null) {
+                    SnackbarActionButton(stringResource(secondaryAction.labelRes())) {
+                        acted = true
+                        onAction(secondaryAction)
+                        controller.onActionClicked(message.id)
+                    }
+                }
+            }
+        }
     }
 }
 

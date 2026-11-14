@@ -58,6 +58,14 @@ interface TabEventSink {
     /** The page of a popup tab called `window.close()`. */
     fun onPopupClosed(popupTabId: String)
 
+    /**
+     * The page tried to open a window without a user gesture, and popup blocking is on for this
+     * site. The result is held. Open sends it to a new tab. Dismiss sends it with no WebView.
+     */
+    fun onPopupBlocked(tabId: String, holdId: Long)
+
+    fun onRedirectBlocked(tabId: String, url: String)
+
     /** The WebView state of the tab was saved, before eviction, on stop or before a close. */
     fun onStateSaved(tabId: String, state: Bundle)
 

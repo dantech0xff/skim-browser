@@ -257,6 +257,34 @@ class SkimWebViewClientTest {
     }
 
     @Test
+    fun anIdleCrossSiteJumpIsBlockedAndAClickIsNot() {
+        client.onPageStarted(view, PAGE, null)
+
+        assertTrue(client.shouldOverrideUrlLoading(view, request("https://ads.example/offer", mainFrame = true, gesture = false)))
+        assertTrue(events.events.contains(Event.RedirectBlocked(TAB, "https://ads.example/offer")))
+        assertTrue(host.started.isEmpty())
+
+        assertFalse(client.shouldOverrideUrlLoading(view, request("https://daylightjournal.com/next", mainFrame = true, gesture = false)))
+        assertFalse(client.shouldOverrideUrlLoading(view, request("https://ads.example/clicked", mainFrame = true, gesture = true)))
+
+        client.noteInteraction()
+        assertFalse(client.shouldOverrideUrlLoading(view, request("https://pay.example/checkout", mainFrame = true, gesture = false)))
+    }
+
+    @Test
+    fun aServerRedirectIsNotAnOddRedirect() {
+        client.onPageStarted(view, PAGE, null)
+
+        assertFalse(
+            client.shouldOverrideUrlLoading(
+                view,
+                request("https://ads.example/offer", mainFrame = true, gesture = false, redirect = true),
+            ),
+        )
+        assertTrue(events.events.none { it is Event.RedirectBlocked })
+    }
+
+    @Test
     fun anotherAppOpensOnlyAfterAGesture() {
         assertTrue(client.shouldOverrideUrlLoading(view, request("tel:+6561234567", mainFrame = true, gesture = false)))
         assertTrue("blocked without a gesture", host.started.isEmpty())
@@ -620,8 +648,12 @@ class SkimWebViewClientTest {
         return SslError(primary, certificate, url)
     }
 
-    private fun request(url: String, mainFrame: Boolean, gesture: Boolean = true): WebResourceRequest =
-        TestWebResourceRequest(url, mainFrame, gesture)
+    private fun request(
+        url: String,
+        mainFrame: Boolean,
+        gesture: Boolean = true,
+        redirect: Boolean = false,
+    ): WebResourceRequest = TestWebResourceRequest(url, mainFrame, gesture, redirect)
 
     private fun client(
         shield: ShieldChoices,

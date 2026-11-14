@@ -7,6 +7,7 @@ import com.dantech.skimbrowser.browser.BrowserHost
 import com.dantech.skimbrowser.browser.FullscreenController
 import com.dantech.skimbrowser.browser.BrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
+import com.dantech.skimbrowser.browser.InterruptGate
 import com.dantech.skimbrowser.browser.TabEngineSource
 import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabStateStore
@@ -119,6 +120,7 @@ object ActivityBrowserModule {
         shield: RequestShield,
         safety: ProcessSafetyGate,
         navigations: TabNavigations,
+        gate: InterruptGate,
     ): WebViewPool = WebViewPool(
         activity = activity,
         tabs = tabs,
@@ -134,6 +136,7 @@ object ActivityBrowserModule {
         shield = shield,
         safety = safety,
         navigations = navigations,
+        interrupts = gate::policy,
     )
 
     @Provides

@@ -33,6 +33,11 @@ fun interpret(
         is SnackbarAction.OpenDownload -> openDownload(action, openExternal)
         is SnackbarAction.RetryDownload -> retryDownload(action.retry)
         is SnackbarAction.ViewImported -> navigator.openBookmarks(action.folderId)
+        is SnackbarAction.OpenBlockedPopup,
+        is SnackbarAction.AllowBlockedNavigation,
+        is SnackbarAction.AlwaysAllowPopups,
+        is SnackbarAction.AlwaysAllowRedirects,
+        -> Unit
     }
 }
 

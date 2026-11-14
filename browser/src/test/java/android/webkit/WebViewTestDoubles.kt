@@ -25,12 +25,13 @@ class TestWebResourceRequest(
     private val url: String,
     private val mainFrame: Boolean,
     private val gesture: Boolean = true,
+    private val redirect: Boolean = false,
 ) : WebResourceRequest {
     override fun getUrl(): android.net.Uri = android.net.Uri.parse(url)
 
     override fun isForMainFrame(): Boolean = mainFrame
 
-    override fun isRedirect(): Boolean = false
+    override fun isRedirect(): Boolean = redirect
 
     override fun hasGesture(): Boolean = gesture
 

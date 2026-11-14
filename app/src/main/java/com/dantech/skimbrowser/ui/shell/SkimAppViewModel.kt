@@ -10,6 +10,8 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
+import com.dantech.skimbrowser.domain.interrupt.BlockedInterrupt
+import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
 import com.dantech.skimbrowser.domain.tab.TabRestore
 import com.dantech.skimbrowser.domain.tab.TabsController
@@ -26,6 +28,7 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +75,30 @@ class SkimAppViewModel @Inject constructor(
     /** Runs the Undo of a snackbar action. */
     val undo: UndoRegistry,
     navigatorFactory: SkimNavigator.Factory,
+    private val notices: InterruptNotices = InterruptNotices.None,
 ) : ViewModel() {
+
+    val blocked: Flow<BlockedInterrupt> = notices.blocked
+
+    fun openHeldPopup(tabId: String, holdId: Long) = notices.openHeldPopup(tabId, holdId)
+
+    fun dropHeldPopup(tabId: String, holdId: Long) = notices.dropHeldPopup(tabId, holdId)
+
+    fun allowBlockedNavigation(tabId: String, url: String) = notices.allowNavigation(tabId, url)
+
+    fun alwaysAllowPopups(host: String, tabId: String, holdId: Long) {
+        viewModelScope.launch {
+            settings.setPopupAllowed(host, true)
+            notices.openHeldPopup(tabId, holdId)
+        }
+    }
+
+    fun alwaysAllowRedirects(host: String, tabId: String, url: String) {
+        viewModelScope.launch {
+            settings.setRedirectAllowed(host, true)
+            notices.allowNavigation(tabId, url)
+        }
+    }
 
     private val savedBackStack: NavBackStack<NavKey> by savedState.saved(
         serializer = NavBackStackSerializer(PolymorphicSerializer(NavKey::class)),

@@ -4,9 +4,9 @@ Dan set these rules for this version of Skim. When another document disagrees, t
 
 ## An AI browser with no ads
 
-Skim is an AI-powered web browser for Android. The app shows no ads of its own. Pages drop requests whose hosts are on the compiled EasyList and EasyPrivacy snapshot, and leftover ad frames and empty slots are hidden with the cosmetic rules from that same snapshot. The interface uses Material 3 Expressive.
+Skim is an AI-powered web browser for Android. The app shows no ads of its own. Pages drop requests whose hosts are on the compiled EasyList and EasyPrivacy snapshot, and leftover ad frames and empty slots are hidden with the cosmetic rules from that same snapshot. A window a page opens on its own stays closed, and a top-frame jump to another site while the page is idle is stopped, until the person allows it. Common cookie banners from the EasyList Cookie snapshot are hidden, and a page they locked can scroll. The interface uses Material 3 Expressive.
 
-The snapshot is built by `tools/compile_blocklist.py` from a pinned upstream commit. Hosts ship as hashes. Cosmetic `##` and `#@#` rules ship as a stylesheet the page installs when blocking is on for that site. EasyList and EasyPrivacy are dual-licensed; Skim uses the GPL-3.0-or-later option and attributes The EasyList authors (https://easylist.to/). The app does not download a newer list, so a refresh is a new APK and the install does not contact EasyList. Procedural and scriptlet rules are not applied. The AI proxy stays the contract in `docs/deployment-guide.md`.
+The snapshot is built by `tools/compile_blocklist.py` from a pinned upstream commit. Hosts ship as hashes. Cosmetic `##` and `#@#` rules ship as a stylesheet the page installs when blocking is on for that site. `shield/cookie.txt` is the EasyList Cookie general hide list from that same pin, capped at 1,800 selectors, and it is installed only while cookie banners are hidden. EasyList and EasyPrivacy are dual-licensed; Skim uses the GPL-3.0-or-later option and attributes The EasyList authors (https://easylist.to/). The app does not download a newer list, so a refresh is a new APK and the install does not contact EasyList. Procedural and scriptlet rules are not applied. The AI proxy stays the contract in `docs/deployment-guide.md`.
 
 ## Android only
 

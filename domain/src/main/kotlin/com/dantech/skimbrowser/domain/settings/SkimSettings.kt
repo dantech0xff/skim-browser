@@ -31,6 +31,11 @@ data class SkimSettings(
      * On until the person turns it off. The choice is kept on the phone.
      */
     val scamWarnings: Boolean = true,
+    val blockPopups: Boolean = true,
+    /** A page cannot jump to another site while it has not been touched, or while it sits idle. */
+    val blockOddRedirects: Boolean = true,
+    /** Common cookie consent banners are hidden, and a page they locked can scroll. */
+    val hideCookieBanners: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_READER_TEXT_SCALE = 100

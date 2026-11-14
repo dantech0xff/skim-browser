@@ -147,6 +147,20 @@ class CosmeticFiltersTest {
     }
 
     @Test
+    fun theCookieScriptHidesBannersAndRestoresScrollOnThatHostOnly() {
+        val script = CosmeticScript.cookie("www.Example.com", "#cookie-banner{display:none !important}\n")
+
+        assertTrue(script.contains("skim-cookie"))
+        assertTrue(script.contains("\"example.com\""))
+        assertTrue(script.contains("overflow"))
+        assertTrue(script.contains("position"))
+        assertTrue(script.contains("#onetrust-consent-sdk"))
+        assertFalse(script.contains("[id*="))
+        assertTrue(script.contains("\\n"))
+        assertFalse(script.contains("\n"))
+    }
+
+    @Test
     fun aQuoteInTheStylesheetStaysInsideTheScriptString() {
         val script = CosmeticScript.collapse("a[href=\"x\"]{display:none !important}")
 

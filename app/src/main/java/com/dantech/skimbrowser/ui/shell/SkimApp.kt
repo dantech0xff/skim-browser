@@ -13,13 +13,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.browsing.WindowPrivacy
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.interrupt.InterruptKind
 import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
 import com.dantech.skimbrowser.ui.navigation.snackbarPlacement
+import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
+import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.isDark
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -89,6 +93,25 @@ fun SkimApp(
     SystemBarsEffect(state.theme.isDark(isSystemInDarkTheme(), incognitoSurface))
     // A download that ends is told on whatever screen is up, with the one snackbar host below.
     DownloadSnackbarEffect(downloadNotices, viewModel.snackbar, secure)
+    LaunchedEffect(viewModel) {
+        viewModel.blocked.collect { event ->
+            when (event.kind) {
+                InterruptKind.POPUP -> viewModel.snackbar.show(
+                    UiText.Res(R.string.snackbar_popup_blocked),
+                    SnackbarAction.OpenBlockedPopup(event.tabId, event.holdId),
+                    secondary = event.host?.let { SnackbarAction.AlwaysAllowPopups(it, event.tabId, event.holdId) },
+                )
+                InterruptKind.TOP_FRAME -> {
+                    val url = event.url ?: return@collect
+                    viewModel.snackbar.show(
+                        UiText.Res(R.string.snackbar_redirect_blocked),
+                        SnackbarAction.AllowBlockedNavigation(event.tabId, url),
+                        secondary = event.host?.let { SnackbarAction.AlwaysAllowRedirects(it, event.tabId, url) },
+                    )
+                }
+            }
+        }
+    }
     LaunchedEffect(viewModel, pendingLinks) {
         // The channel belongs to the Activity, so each link is received here exactly once.
         for (url in pendingLinks) viewModel.openExternalLink(url)
@@ -101,7 +124,18 @@ fun SkimApp(
                 SkimSnackbarHost(
                     controller = viewModel.snackbar,
                     placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
-                    onAction = { action -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload) },
+                    onAction = { action ->
+                        when (action) {
+                            is SnackbarAction.OpenBlockedPopup -> viewModel.openHeldPopup(action.tabId, action.holdId)
+                            is SnackbarAction.AllowBlockedNavigation -> viewModel.allowBlockedNavigation(action.tabId, action.url)
+                            is SnackbarAction.AlwaysAllowPopups -> viewModel.alwaysAllowPopups(action.host, action.tabId, action.holdId)
+                            is SnackbarAction.AlwaysAllowRedirects -> viewModel.alwaysAllowRedirects(action.host, action.tabId, action.url)
+                            else -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload)
+                        }
+                    },
+                    onClosed = { action ->
+                        if (action is SnackbarAction.OpenBlockedPopup) viewModel.dropHeldPopup(action.tabId, action.holdId)
+                    },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }

@@ -36,9 +36,11 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
 
     override val settings: Flow<SkimSettings> = preferences().map { it.toSettings() }.distinctUntilChanged()
 
-    override val shieldDisabledHosts: Flow<Set<String>> = preferences().map { prefs ->
-        prefs[Keys.SHIELD_DISABLED].orEmpty().map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
-    }.distinctUntilChanged()
+    override val shieldDisabledHosts: Flow<Set<String>> = hostSet(Keys.SHIELD_DISABLED)
+
+    override val popupAllowHosts: Flow<Set<String>> = hostSet(Keys.POPUP_ALLOW)
+
+    override val redirectAllowHosts: Flow<Set<String>> = hostSet(Keys.REDIRECT_ALLOW)
 
     override suspend fun setSearchEngine(e: SearchEngine) {
         dataStore.edit { it[Keys.SEARCH_ENGINE] = e.name }
@@ -117,17 +119,42 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             prefs[Keys.READER_FONT] = settings.readerFont.name
             prefs[Keys.ONBOARDING_COMPLETED] = settings.onboardingCompleted
             prefs[Keys.SCAM_WARNINGS] = settings.scamWarnings
+            prefs[Keys.BLOCK_POPUPS] = settings.blockPopups
+            prefs[Keys.BLOCK_ODD_REDIRECTS] = settings.blockOddRedirects
+            prefs[Keys.HIDE_COOKIE_BANNERS] = settings.hideCookieBanners
             prefs[Keys.SHIELD_DISABLED] = shieldDisabledHosts.map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
         }
     }
 
-    override suspend fun setShieldDisabled(host: String, disabled: Boolean) {
-        val key = normalizeHost(host)
-        if (key.isEmpty()) return
+    override suspend fun setBlockPopups(enabled: Boolean) {
+        dataStore.edit { it[Keys.BLOCK_POPUPS] = enabled }
+    }
+
+    override suspend fun setBlockOddRedirects(enabled: Boolean) {
+        dataStore.edit { it[Keys.BLOCK_ODD_REDIRECTS] = enabled }
+    }
+
+    override suspend fun setHideCookieBanners(enabled: Boolean) {
+        dataStore.edit { it[Keys.HIDE_COOKIE_BANNERS] = enabled }
+    }
+
+    override suspend fun setPopupAllowed(host: String, allowed: Boolean) = editHostSet(Keys.POPUP_ALLOW, host, allowed)
+
+    override suspend fun setRedirectAllowed(host: String, allowed: Boolean) = editHostSet(Keys.REDIRECT_ALLOW, host, allowed)
+
+    override suspend fun setShieldDisabled(host: String, disabled: Boolean) = editHostSet(Keys.SHIELD_DISABLED, host, disabled)
+
+    private fun hostSet(key: Preferences.Key<Set<String>>): Flow<Set<String>> = preferences().map { prefs ->
+        prefs[key].orEmpty().map(::normalizeHost).filter { it.isNotEmpty() }.toSet()
+    }.distinctUntilChanged()
+
+    private suspend fun editHostSet(key: Preferences.Key<Set<String>>, host: String, include: Boolean) {
+        val site = normalizeHost(host)
+        if (site.isEmpty()) return
         dataStore.edit { prefs ->
-            val now = prefs[Keys.SHIELD_DISABLED].orEmpty().toMutableSet()
-            if (disabled) now += key else now -= key
-            prefs[Keys.SHIELD_DISABLED] = now
+            val now = prefs[key].orEmpty().toMutableSet()
+            if (include) now += site else now -= site
+            prefs[key] = now
         }
     }
 
@@ -167,6 +194,9 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
             onboardingCompleted = read(Keys.ONBOARDING_COMPLETED) ?: defaults.onboardingCompleted,
             lastTabId = read(Keys.LAST_TAB_ID)?.takeIf { it.isNotBlank() },
             scamWarnings = read(Keys.SCAM_WARNINGS) ?: defaults.scamWarnings,
+            blockPopups = read(Keys.BLOCK_POPUPS) ?: defaults.blockPopups,
+            blockOddRedirects = read(Keys.BLOCK_ODD_REDIRECTS) ?: defaults.blockOddRedirects,
+            hideCookieBanners = read(Keys.HIDE_COOKIE_BANNERS) ?: defaults.hideCookieBanners,
         )
     }
 
@@ -185,6 +215,11 @@ class SettingsRepository @Inject constructor(private val dataStore: DataStore<Pr
         val SCAM_WARNINGS = booleanPreferencesKey("scam_warnings")
         val INSTALL_ID = stringPreferencesKey("install_id")
         val SHIELD_DISABLED = stringSetPreferencesKey("shield_disabled_hosts")
+        val BLOCK_POPUPS = booleanPreferencesKey("block_popups")
+        val BLOCK_ODD_REDIRECTS = booleanPreferencesKey("block_odd_redirects")
+        val HIDE_COOKIE_BANNERS = booleanPreferencesKey("hide_cookie_banners")
+        val POPUP_ALLOW = stringSetPreferencesKey("popup_allow_hosts")
+        val REDIRECT_ALLOW = stringSetPreferencesKey("redirect_allow_hosts")
     }
 
     companion object {
