@@ -150,6 +150,24 @@ class TabManagerPageTest {
     }
 
     @Test
+    fun aRespeltPageStillKeepsTheFile() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        f.events.onMediaUrl(id, "https://www.news.example/story/", "https://cdn.example/clip.mp4")
+        val playing = """
+            {"page":"https://WWW.news.example/story#part","urls":[
+              {"src":"https://cdn.example/played.mp4","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(
+            listOf("https://cdn.example/played.mp4", "https://cdn.example/clip.mp4"),
+            f.manager.runtime(id).value.mediaUrls,
+        )
+    }
+
+    @Test
     fun fortySniffedFilesDoNotEvictThePageJson() = runTest {
         val f = attached()
         val id = f.manager.newTab(incognito = false, url = "https://www.tiktok.com/@a/video/1")

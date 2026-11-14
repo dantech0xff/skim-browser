@@ -36,6 +36,7 @@ import com.dantech.skimbrowser.domain.video.rememberMediaUrl
 import com.dantech.skimbrowser.domain.video.rememberPageDocument
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
+import com.dantech.skimbrowser.domain.url.pageIdentity
 import com.dantech.skimbrowser.domain.url.sameNavigation
 import com.dantech.skimbrowser.domain.url.withoutFragment
 import com.dantech.skimbrowser.di.AppScope
@@ -1377,7 +1378,7 @@ class TabManager(
             val open = openTab(tabId) ?: return
             val page = runtimeOf(tabId).committedUrl ?: open.url ?: return
             val reported = playingPage(report) ?: return
-            if (bridgeUrl(reported) == null || !sameNavigation(page, reported)) return
+            if (bridgeUrl(reported) == null || pageIdentity(page) != pageIdentity(reported)) return
             mediaFromPlayingBridge(report).forEach { onMediaUrl(tabId, page, it) }
         }
 
@@ -1385,7 +1386,7 @@ class TabManager(
             val open = openTab(tabId) ?: return
             val runtime = runtimeOf(tabId)
             val page = runtime.committedUrl ?: open.url
-            if (page != null && !sameNavigation(page, pageUrl)) return
+            if (page != null && pageIdentity(page) != pageIdentity(pageUrl)) return
             if (mediaUrl.startsWith(PAGE_DOCUMENT)) {
                 val documents = rememberPageDocument(runtime.pageDocuments, mediaUrl)
                 if (documents == runtime.pageDocuments) return
