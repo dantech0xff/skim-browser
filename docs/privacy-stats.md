@@ -32,7 +32,7 @@ Fetch and XHR URLs usually have no suffix, so they use the other average rather 
 timeSavedMillis = bytes / 125_000 * 1000 + (bytes % 125_000) * 1000 / 125_000 + requests * 50
 ```
 
-125_000 bytes per second is 1 Mbps. 50 milliseconds is one round trip per blocked request. Popups, redirects, and cosmetic rules add neither term. The screen labels both data and time as estimates.
+125_000 bytes per second is 1 Mbps (`ONE_MEGABIT_BYTES_PER_SECOND`). 50 milliseconds is one round trip per blocked request (`ROUND_TRIP_MILLIS`). Popups, redirects, and cosmetic rules add neither term. The screen labels both data and time as estimates.
 
 The constants and the integer arithmetic live in `domain/src/main/kotlin/com/dantech/skimbrowser/domain/shield/ShieldEstimate.kt`.
 

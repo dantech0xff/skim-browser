@@ -23,20 +23,6 @@ import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Counts blocking events in memory and writes them in one batch.
- *
- * A blocked request, popup, redirect, or cosmetic rule updates [ShieldStatBuffer] and returns.
- * The disk write waits [FLUSH_DELAY_MS], or runs on the next loop once the buffer holds
- * [ShieldStatBuffer.FLUSH_AT] events. One coroutine owns that write.
- *
- * Private tabs pass incognito. Their requests, popups, redirects, and cosmetic rules still count.
- * Their sites are not stored. The compiled host list keeps no record of which source list a host
- * came from, so ads and trackers are one request count.
- *
- * [reset] drops the buffer before it clears the store, and a flush that already read the buffer
- * does not write those counts after the reset.
- */
 @Singleton
 class ShieldStatRecorder internal constructor(
     private val store: ShieldStatsStore,

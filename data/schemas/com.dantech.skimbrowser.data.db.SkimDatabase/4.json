@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "429b1b68cdb28efdde08f7ae61c33f2c",
+    "identityHash": "434fff65fa2c924afc0045fdf0566c76",
     "entities": [
       {
         "tableName": "tabs",
@@ -780,11 +780,11 @@
       },
       {
         "tableName": "shield_days",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`epochDay` INTEGER NOT NULL, `requests` INTEGER NOT NULL, `popups` INTEGER NOT NULL, `redirects` INTEGER NOT NULL, `cosmetic` INTEGER NOT NULL, `bytes` INTEGER NOT NULL, PRIMARY KEY(`epochDay`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localEpochDay` INTEGER NOT NULL, `requests` INTEGER NOT NULL, `popups` INTEGER NOT NULL, `redirects` INTEGER NOT NULL, `cosmetic` INTEGER NOT NULL, `bytes` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`))",
         "fields": [
           {
-            "fieldPath": "epochDay",
-            "columnName": "epochDay",
+            "fieldPath": "localEpochDay",
+            "columnName": "localEpochDay",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -822,17 +822,17 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "epochDay"
+            "localEpochDay"
           ]
         }
       },
       {
         "tableName": "shield_hosts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`epochDay` INTEGER NOT NULL, `host` TEXT NOT NULL, `count` INTEGER NOT NULL, PRIMARY KEY(`epochDay`, `host`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localEpochDay` INTEGER NOT NULL, `host` TEXT NOT NULL, `count` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`, `host`))",
         "fields": [
           {
-            "fieldPath": "epochDay",
-            "columnName": "epochDay",
+            "fieldPath": "localEpochDay",
+            "columnName": "localEpochDay",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -852,7 +852,7 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "epochDay",
+            "localEpochDay",
             "host"
           ]
         }
@@ -860,7 +860,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '429b1b68cdb28efdde08f7ae61c33f2c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '434fff65fa2c924afc0045fdf0566c76')"
     ]
   }
 }

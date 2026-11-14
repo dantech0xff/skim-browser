@@ -344,7 +344,7 @@ class HomeViewModelTest {
     private fun dayStats() = object : ShieldStats {
         override fun observe(todayEpochDay: Long): kotlinx.coroutines.flow.Flow<ShieldSnapshot> = flowOf(
             shieldSnapshot(
-                listOf(ShieldDay(epochDay = todayEpochDay, requests = todayEpochDay - epochDay(NOW) + 10)),
+                listOf(ShieldDay(localEpochDay = todayEpochDay, requests = todayEpochDay - epochDay(NOW) + 10)),
                 emptyList(),
                 todayEpochDay,
             ),

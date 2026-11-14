@@ -80,7 +80,7 @@ class ShieldStatsViewModelTest {
     private class DayStats : ShieldStats {
         override fun observe(todayEpochDay: Long): Flow<ShieldSnapshot> = flowOf(
             shieldSnapshot(
-                listOf(ShieldDay(epochDay = todayEpochDay, requests = todayEpochDay + 10)),
+                listOf(ShieldDay(localEpochDay = todayEpochDay, requests = todayEpochDay + 10)),
                 emptyList(),
                 todayEpochDay,
             ),

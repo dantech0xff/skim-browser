@@ -43,17 +43,12 @@ import com.dantech.skimbrowser.ui.components.SkimAlertDialog
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import java.text.NumberFormat
 
-/** Blocking stats, reached from Settings. */
 @Composable
 fun ShieldStatsRoute(navigator: SkimNavigator, model: ShieldStatsViewModel = hiltViewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
     ShieldStatsScreen(state, onBack = navigator::back, onReset = model::reset)
 }
 
-/**
- * Ads and trackers blocked, with the estimated data and time those requests did not cost.
- * The figures are labeled as estimates. Reset asks before it clears them.
- */
 @Composable
 fun ShieldStatsScreen(
     state: ShieldStatsUiState,

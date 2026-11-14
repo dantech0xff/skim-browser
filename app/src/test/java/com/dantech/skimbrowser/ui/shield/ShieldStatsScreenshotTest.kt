@@ -65,9 +65,9 @@ class ShieldStatsScreenshotTest {
 
     private fun sample() = shieldSnapshot(
         days = listOf(
-            ShieldDay(epochDay = 10, requests = 12, popups = 1, redirects = 0, cosmetic = 4, bytes = 200_000),
-            ShieldDay(epochDay = 9, requests = 3, popups = 0, redirects = 1, cosmetic = 2, bytes = 40_000),
-            ShieldDay(epochDay = 8, requests = 8, popups = 0, redirects = 0, cosmetic = 1, bytes = 90_000),
+            ShieldDay(localEpochDay = 10, requests = 12, popups = 1, redirects = 0, cosmetic = 4, bytes = 200_000),
+            ShieldDay(localEpochDay = 9, requests = 3, popups = 0, redirects = 1, cosmetic = 2, bytes = 40_000),
+            ShieldDay(localEpochDay = 8, requests = 8, popups = 0, redirects = 0, cosmetic = 1, bytes = 90_000),
         ),
         topHosts = listOf(
             BlockedHost("doubleclick.net", 8),

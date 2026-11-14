@@ -16,7 +16,6 @@ import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
-/** Daily blocking totals in `skim.db`. Nothing here leaves the device. */
 @Singleton
 class ShieldStatsRepository(private val dao: ShieldStatsDao) : ShieldStatsStore {
 
@@ -38,7 +37,7 @@ class ShieldStatsRepository(private val dao: ShieldStatsDao) : ShieldStatsStore 
         dao.add(
             days.map { it.toEntity() },
             days.flatMap { day ->
-                day.hosts.map { (host, count) -> ShieldHostEntity(day.epochDay, host, count) }
+                day.hosts.map { (host, count) -> ShieldHostEntity(day.localEpochDay, host, count) }
             },
         )
     }
@@ -48,6 +47,6 @@ class ShieldStatsRepository(private val dao: ShieldStatsDao) : ShieldStatsStore 
     }
 }
 
-private fun ShieldDayEntity.toDay() = ShieldDay(epochDay, requests, popups, redirects, cosmetic, bytes)
+private fun ShieldDayEntity.toDay() = ShieldDay(localEpochDay, requests, popups, redirects, cosmetic, bytes)
 
-private fun ShieldDelta.toEntity() = ShieldDayEntity(epochDay, requests, popups, redirects, cosmetic, bytes)
+private fun ShieldDelta.toEntity() = ShieldDayEntity(localEpochDay, requests, popups, redirects, cosmetic, bytes)

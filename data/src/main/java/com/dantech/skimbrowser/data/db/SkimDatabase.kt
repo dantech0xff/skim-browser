@@ -103,13 +103,13 @@ fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<Ski
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
-            "CREATE TABLE IF NOT EXISTS `shield_days` (`epochDay` INTEGER NOT NULL, `requests` INTEGER NOT NULL, " +
+            "CREATE TABLE IF NOT EXISTS `shield_days` (`localEpochDay` INTEGER NOT NULL, `requests` INTEGER NOT NULL, " +
                 "`popups` INTEGER NOT NULL, `redirects` INTEGER NOT NULL, `cosmetic` INTEGER NOT NULL, " +
-                "`bytes` INTEGER NOT NULL, PRIMARY KEY(`epochDay`))",
+                "`bytes` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`))",
         )
         db.execSQL(
-            "CREATE TABLE IF NOT EXISTS `shield_hosts` (`epochDay` INTEGER NOT NULL, `host` TEXT NOT NULL, " +
-                "`count` INTEGER NOT NULL, PRIMARY KEY(`epochDay`, `host`))",
+            "CREATE TABLE IF NOT EXISTS `shield_hosts` (`localEpochDay` INTEGER NOT NULL, `host` TEXT NOT NULL, " +
+                "`count` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`, `host`))",
         )
     }
 }

@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** One column of the stats table. Every field is a value the screen can read without copying. */
 @Immutable
 data class ShieldPeriodUi(
     val requests: Long = 0,
@@ -35,7 +34,6 @@ data class ShieldPeriodUi(
     val bytes: Long = 0,
 )
 
-/** One site on the top-sites list. */
 @Immutable
 data class ShieldHostUi(val host: String, val count: Long)
 
@@ -62,10 +60,6 @@ internal fun ShieldSnapshot.toUi(): ShieldStatsUiState = ShieldStatsUiState(
 
 private fun ShieldTotals.toUi() = ShieldPeriodUi(requests, popups, redirects, cosmetic, bytes)
 
-/**
- * Blocking stats. The screen reads [ShieldStats] and does not decide what a private tab records.
- * Reset runs on [appScope], so leaving the screen does not cancel it.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ShieldStatsViewModel @Inject constructor(

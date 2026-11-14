@@ -8,10 +8,10 @@ class ShieldSnapshotTest {
     @Test
     fun todayWeekAndAllTimeUseTheLocalDay() {
         val days = listOf(
-            day(epochDay = 10, requests = 2, bytes = 1_000),
-            day(epochDay = 9, requests = 3, popups = 1),
-            day(epochDay = 4, requests = 7, redirects = 2),
-            day(epochDay = 3, requests = 11, cosmetic = 5),
+            day(localEpochDay = 10, requests = 2, bytes = 1_000),
+            day(localEpochDay = 9, requests = 3, popups = 1),
+            day(localEpochDay = 4, requests = 7, redirects = 2),
+            day(localEpochDay = 3, requests = 11, cosmetic = 5),
         )
         val snapshot = shieldSnapshot(days, topHosts = emptyList(), todayEpochDay = 10)
         assertEquals(2L, snapshot.today.requests)
@@ -34,11 +34,11 @@ class ShieldSnapshotTest {
     }
 
     private fun day(
-        epochDay: Long,
+        localEpochDay: Long,
         requests: Long = 0,
         popups: Long = 0,
         redirects: Long = 0,
         cosmetic: Long = 0,
         bytes: Long = 0,
-    ) = ShieldDay(epochDay, requests, popups, redirects, cosmetic, bytes)
+    ) = ShieldDay(localEpochDay, requests, popups, redirects, cosmetic, bytes)
 }

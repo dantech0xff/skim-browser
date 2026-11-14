@@ -61,11 +61,7 @@ class CosmeticFilters private constructor(
 
         const val MAX_COLLAPSE_HOSTS = 40
 
-        /**
-         * How many hide rules [css] installs. Skim writes one `{display:none !important}` per rule.
-         * A collapsed host is one rule, even though that rule lists several selectors.
-         */
-        fun ruleCount(css: String): Int {
+        fun displayNoneCount(css: String): Int {
             if (css.isEmpty()) return 0
             var count = 0
             var from = 0

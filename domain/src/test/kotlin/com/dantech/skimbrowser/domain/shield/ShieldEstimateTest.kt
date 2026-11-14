@@ -29,8 +29,8 @@ class ShieldEstimateTest {
     fun timeSavedIsBandwidthPlusOneRoundTripPerRequest() {
         val bytes = 16_384_000L
         val requests = 1_000L
-        val fromBandwidth = bytes / ShieldEstimate.BANDWIDTH_BYTES_PER_SECOND * 1_000 +
-            bytes % ShieldEstimate.BANDWIDTH_BYTES_PER_SECOND * 1_000 / ShieldEstimate.BANDWIDTH_BYTES_PER_SECOND
+        val fromBandwidth = bytes / ShieldEstimate.ONE_MEGABIT_BYTES_PER_SECOND * 1_000 +
+            bytes % ShieldEstimate.ONE_MEGABIT_BYTES_PER_SECOND * 1_000 / ShieldEstimate.ONE_MEGABIT_BYTES_PER_SECOND
         val expected = fromBandwidth + requests * ShieldEstimate.ROUND_TRIP_MILLIS
         assertEquals(181_072L, expected)
         assertEquals(expected, ShieldEstimate.timeSavedMillis(bytes, requests))
@@ -56,8 +56,8 @@ class ShieldEstimateTest {
 
     @Test
     fun cosmeticRuleCountFollowsTheHideMarker() {
-        assertEquals(0, CosmeticFilters.ruleCount(""))
-        assertEquals(2, CosmeticFilters.ruleCount(".a{display:none !important}\n.b{display:none !important}\n"))
-        assertEquals(1, CosmeticFilters.ruleCount("iframe[src*=\"//ads.example/\"],img[src*=\"//ads.example/\"]{display:none !important}\n"))
+        assertEquals(0, CosmeticFilters.displayNoneCount(""))
+        assertEquals(2, CosmeticFilters.displayNoneCount(".a{display:none !important}\n.b{display:none !important}\n"))
+        assertEquals(1, CosmeticFilters.displayNoneCount("iframe[src*=\"//ads.example/\"],img[src*=\"//ads.example/\"]{display:none !important}\n"))
     }
 }

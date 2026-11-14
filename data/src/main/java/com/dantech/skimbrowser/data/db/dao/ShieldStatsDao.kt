@@ -8,7 +8,6 @@ import com.dantech.skimbrowser.data.db.entity.ShieldDayEntity
 import com.dantech.skimbrowser.data.db.entity.ShieldHostEntity
 import kotlinx.coroutines.flow.Flow
 
-/** A site and how many requests it lost, summed across days. */
 data class ShieldHostTotal(val host: String, val count: Long)
 
 @Dao
@@ -23,11 +22,11 @@ abstract class ShieldStatsDao {
     )
     abstract fun observeTopHosts(limit: Int): Flow<List<ShieldHostTotal>>
 
-    @Query("SELECT * FROM shield_days WHERE epochDay = :epochDay")
-    abstract suspend fun day(epochDay: Long): ShieldDayEntity?
+    @Query("SELECT * FROM shield_days WHERE localEpochDay = :localEpochDay")
+    abstract suspend fun day(localEpochDay: Long): ShieldDayEntity?
 
-    @Query("SELECT count FROM shield_hosts WHERE epochDay = :epochDay AND host = :host")
-    abstract suspend fun hostCount(epochDay: Long, host: String): Long?
+    @Query("SELECT count FROM shield_hosts WHERE localEpochDay = :localEpochDay AND host = :host")
+    abstract suspend fun hostCount(localEpochDay: Long, host: String): Long?
 
     @Insert
     abstract suspend fun insertDay(day: ShieldDayEntity)
@@ -37,12 +36,12 @@ abstract class ShieldStatsDao {
 
     @Query(
         "UPDATE shield_days SET requests = :requests, popups = :popups, redirects = :redirects, " +
-            "cosmetic = :cosmetic, bytes = :bytes WHERE epochDay = :epochDay",
+            "cosmetic = :cosmetic, bytes = :bytes WHERE localEpochDay = :localEpochDay",
     )
-    abstract suspend fun updateDay(epochDay: Long, requests: Long, popups: Long, redirects: Long, cosmetic: Long, bytes: Long)
+    abstract suspend fun updateDay(localEpochDay: Long, requests: Long, popups: Long, redirects: Long, cosmetic: Long, bytes: Long)
 
-    @Query("UPDATE shield_hosts SET count = :count WHERE epochDay = :epochDay AND host = :host")
-    abstract suspend fun updateHost(epochDay: Long, host: String, count: Long)
+    @Query("UPDATE shield_hosts SET count = :count WHERE localEpochDay = :localEpochDay AND host = :host")
+    abstract suspend fun updateHost(localEpochDay: Long, host: String, count: Long)
 
     @Query("DELETE FROM shield_days")
     abstract suspend fun deleteDays()
@@ -57,12 +56,12 @@ abstract class ShieldStatsDao {
     @Transaction
     open suspend fun add(days: List<ShieldDayEntity>, hosts: List<ShieldHostEntity>) {
         for (day in days) {
-            val existing = day(day.epochDay)
+            val existing = day(day.localEpochDay)
             if (existing == null) {
                 insertDay(day)
             } else {
                 updateDay(
-                    day.epochDay,
+                    day.localEpochDay,
                     existing.requests + day.requests,
                     existing.popups + day.popups,
                     existing.redirects + day.redirects,
@@ -72,8 +71,8 @@ abstract class ShieldStatsDao {
             }
         }
         for (host in hosts) {
-            val existing = hostCount(host.epochDay, host.host)
-            if (existing == null) insertHost(host) else updateHost(host.epochDay, host.host, existing + host.count)
+            val existing = hostCount(host.localEpochDay, host.host)
+            if (existing == null) insertHost(host) else updateHost(host.localEpochDay, host.host, existing + host.count)
         }
     }
 

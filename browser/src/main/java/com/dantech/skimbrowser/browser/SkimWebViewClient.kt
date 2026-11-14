@@ -73,7 +73,6 @@ class SkimWebViewClient(
     private val policy: () -> InterruptPolicy = { InterruptPolicy() },
     /** Monotonic clock for how long this document has gone without a touch. */
     private val now: () -> Long = SystemClock::elapsedRealtime,
-    /** Counts blocked requests and cosmetic rules. [ShieldStatSink.Ignore] records nothing. */
     private val stats: ShieldStatSink = ShieldStatSink.Ignore,
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
@@ -101,8 +100,7 @@ class SkimWebViewClient(
     private val blockedCount = AtomicInteger()
     private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
-    /** The document generation whose hide rules were already counted. */
-    private var cosmeticGeneration = -1
+    private var hideRulesCountedForGeneration = -1
     private val countPosted = AtomicBoolean(false)
     private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
@@ -743,13 +741,12 @@ class SkimWebViewClient(
         }
     }
 
-    /** Counts the hide rules for this document once. A later inject of the same page does not add them again. */
     private fun noteCosmeticRules(css: String) {
-        val rules = CosmeticFilters.ruleCount(css)
+        val rules = CosmeticFilters.displayNoneCount(css)
         if (rules == 0) return
         val generation = documentGeneration.get()
-        if (cosmeticGeneration == generation) return
-        cosmeticGeneration = generation
+        if (hideRulesCountedForGeneration == generation) return
+        hideRulesCountedForGeneration = generation
         stats.onCosmeticRules(rules, incognito)
     }
 

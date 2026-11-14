@@ -28,7 +28,7 @@ class ShieldStatsRepositoryTest {
         repository.add(
             listOf(
                 ShieldDelta(
-                    epochDay = 5,
+                    localEpochDay = 5,
                     requests = 2,
                     popups = 1,
                     cosmetic = 3,
@@ -40,7 +40,7 @@ class ShieldStatsRepositoryTest {
         repository.add(
             listOf(
                 ShieldDelta(
-                    epochDay = 5,
+                    localEpochDay = 5,
                     requests = 1,
                     redirects = 1,
                     bytes = 50,
