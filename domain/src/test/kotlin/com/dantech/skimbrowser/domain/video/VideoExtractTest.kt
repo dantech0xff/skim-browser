@@ -3,6 +3,7 @@ package com.dantech.skimbrowser.domain.video
 import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.download.VIDEO_KIND
+import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
 import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
@@ -217,6 +218,27 @@ class VideoExtractTest {
         )
         assertEquals(mapOf("Referer" to "https://www.tiktok.com/v"), retry.wireHeaders())
         assertEquals(VIDEO_PROGRESSIVE, retry.videoKind())
+        val again = variantFromRetry(
+            DownloadRetry(
+                tabId = "t",
+                url = "https://cdn.example/v.mp4",
+                userAgent = "agent",
+                contentDisposition = null,
+                mimeType = "video/mp4",
+                userInitiated = true,
+                incognito = false,
+                headers = listOf(
+                    DownloadHeader("Referer", "https://www.youtube.com/watch?v=abc"),
+                    DownloadHeader(VIDEO_KIND, com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE),
+                    DownloadHeader(com.dantech.skimbrowser.domain.download.VIDEO_AUDIO, "https://cdn.example/a.m4a"),
+                    DownloadHeader(VIDEO_QUALITY, "360p"),
+                ),
+            ),
+        )
+        assertEquals("360p", again?.qualityLabel)
+        val separate = again?.source as VideoSource.SeparateAv
+        assertEquals("https://cdn.example/a.m4a", separate.audioUrl)
+        assertEquals(null, separate.headers[VIDEO_QUALITY])
     }
 
     private fun extractor(

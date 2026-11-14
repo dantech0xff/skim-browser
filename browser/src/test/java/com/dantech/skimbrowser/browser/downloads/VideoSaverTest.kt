@@ -6,6 +6,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeBrowserProfiles
 import com.dantech.skimbrowser.browser.IncognitoSession
 import com.dantech.skimbrowser.browser.di.cookieHeader
+import com.dantech.skimbrowser.domain.download.DownloadHeader
+import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_AUDIO
+import com.dantech.skimbrowser.domain.download.VIDEO_KIND
+import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE
 import com.dantech.skimbrowser.domain.tab.CloseToken
 import com.dantech.skimbrowser.domain.download.DownloadDraft
 import com.dantech.skimbrowser.domain.download.DownloadItem
@@ -406,6 +412,72 @@ class VideoSaverTest {
                 ),
             )
             assertEquals(listOf("LOW-VIDEOLOW-AUDIO"), muxed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aStoredRetryRefreshesTheSameQualityAndADashManifest() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val lowVideo = server.url("/360v.mp4").toString()
+        val lowAudio = server.url("/360a.mp4").toString()
+        val manifest = """
+            <MPD>
+              <AdaptationSet contentType="video">
+                <Representation height="720"><BaseURL>${server.url("/720v.mp4")}</BaseURL></Representation>
+                <Representation height="360"><BaseURL>$lowVideo</BaseURL></Representation>
+              </AdaptationSet>
+              <AdaptationSet contentType="audio">
+                <Representation><BaseURL>$lowAudio</BaseURL></Representation>
+              </AdaptationSet>
+            </MPD>
+        """.trimIndent()
+        server.enqueue(MockResponse().setBody("OLD-VIDEO"))
+        server.enqueue(MockResponse().setResponseCode(403))
+        server.enqueue(MockResponse().setBody(manifest))
+        server.enqueue(MockResponse().setBody("DASH-VIDEO"))
+        server.enqueue(MockResponse().setBody("DASH-AUDIO"))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val extractor = object : VideoExtractor {
+            override val id = "page"
+            override val pageUrlSufficient = true
+            override fun matches(pageUrl: String) = pageUrl.contains("example.com")
+            override suspend fun extract(hints: PageVideoHints) = listOf(
+                VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/a.mpd").toString())),
+            )
+        }
+        val muxed = mutableListOf<String>()
+        val saver = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            mux = { video, audio, out ->
+                muxed += video.readText() + audio.readText()
+                out.writeText("MUXED")
+            },
+            extractors = setOf(extractor),
+        )
+        val retry = DownloadRetry(
+            tabId = "t",
+            url = server.url("/v1.mp4").toString(),
+            userAgent = "agent",
+            contentDisposition = null,
+            mimeType = "video/mp4",
+            userInitiated = true,
+            incognito = false,
+            headers = listOf(
+                DownloadHeader("Referer", "https://example.com/watch"),
+                DownloadHeader(VIDEO_KIND, VIDEO_SEPARATE),
+                DownloadHeader(VIDEO_AUDIO, server.url("/a1.mp4").toString()),
+                DownloadHeader(VIDEO_QUALITY, "360p"),
+            ),
+        )
+        try {
+            assertEquals(VideoSaveResult.Started, saver.saveAgain(retry))
+            assertEquals(listOf("DASH-VIDEODASH-AUDIO"), muxed)
         } finally {
             server.shutdown()
         }

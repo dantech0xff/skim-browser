@@ -1,8 +1,10 @@
 package com.dantech.skimbrowser.browser.downloads
 
 import com.dantech.skimbrowser.domain.download.DownloadDraft
+import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
 import com.dantech.skimbrowser.domain.tab.TabsController
 import android.util.Log
 import com.dantech.skimbrowser.domain.video.HlsVariant
@@ -110,7 +112,7 @@ class VideoSaver(
             mimeType = nameMime,
             userInitiated = true,
             incognito = incognito,
-            headers = retryHeaders(source),
+            headers = retryHeaders(source) + listOf(DownloadHeader(VIDEO_QUALITY, variant.qualityLabel)),
         )
         try {
             if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
@@ -590,10 +592,36 @@ class VideoSaver(
             userAgent = agent,
             cookieHeader = cookies(incognito, page),
         )
-        val match = collectVariants(extractors, hints).variants.firstOrNull { variant ->
+        val found = collectVariants(extractors, hints).variants
+        val direct = found.firstOrNull { variant ->
             variant.qualityLabel == quality && variant.source is VideoSource.SeparateAv
-        } ?: throw DownloadException("That quality is no longer available")
-        return match.source as VideoSource.SeparateAv
+        }
+        if (direct != null) return direct.source as VideoSource.SeparateAv
+        val dash = found.firstOrNull { it.source is VideoSource.Dash }?.source as? VideoSource.Dash
+        if (dash != null) {
+            separateFromDash(dash, quality, agent, incognito)?.let { return it }
+        }
+        throw DownloadException("That quality is no longer available")
+    }
+
+    private suspend fun separateFromDash(
+        source: VideoSource.Dash,
+        quality: String,
+        agent: String?,
+        incognito: Boolean,
+    ): VideoSource.SeparateAv? {
+        val fetched = getText(source.manifestUrl, source.headers, agent, incognito)
+        if (dashProtected(fetched.text)) return null
+        val manifest = parseDash(fetched.text, fetched.url)
+        if (manifest.protected) return null
+        val height = quality.removeSuffix("p").toIntOrNull()
+        val video = if (height != null) {
+            manifest.videos.firstOrNull { it.height == height }
+        } else {
+            manifest.videos.maxByOrNull { it.height ?: 0 }
+        } ?: return null
+        val audio = manifest.audios.firstOrNull() ?: return null
+        return VideoSource.SeparateAv(video.url, audio.url, source.headers)
     }
 
     private suspend fun copyBody(

@@ -6,6 +6,8 @@ import com.dantech.skimbrowser.domain.download.VIDEO_AUDIO
 import com.dantech.skimbrowser.domain.download.VIDEO_DASH
 import com.dantech.skimbrowser.domain.download.VIDEO_HLS
 import com.dantech.skimbrowser.domain.download.VIDEO_KIND
+import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.videoQuality
 import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE
 import com.dantech.skimbrowser.domain.download.videoKind
@@ -101,7 +103,8 @@ fun variantFromRetry(retry: DownloadRetry): VideoVariant? {
         VIDEO_SEPARATE -> VideoSource.SeparateAv(retry.url, audio ?: return null, headers)
         else -> VideoSource.Progressive(retry.url, headers)
     }
-    return VideoVariant(retry.url.substringAfterLast('/').substringBefore('?'), "Video", retry.mimeType, null, source)
+    val quality = retry.videoQuality()?.takeIf { it.isNotBlank() } ?: "Video"
+    return VideoVariant(retry.url.substringAfterLast('/').substringBefore('?'), quality, retry.mimeType, null, source)
 }
 
 fun retryHeaders(source: VideoSource): List<DownloadHeader> {

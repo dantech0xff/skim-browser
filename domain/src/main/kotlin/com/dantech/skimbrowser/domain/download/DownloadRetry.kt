@@ -32,8 +32,12 @@ fun DownloadRetry.wireHeaders(): Map<String, String> = headers.mapNotNull { head
 /** The video kind stored on a retry, or null when the row is an ordinary file download. */
 fun DownloadRetry.videoKind(): String? = headers.firstOrNull { it.name == VIDEO_KIND }?.value
 
+/** The quality label stored on a video retry, such as `720p`. */
+fun DownloadRetry.videoQuality(): String? = headers.firstOrNull { it.name == VIDEO_QUALITY }?.value
+
 const val VIDEO_KIND = "X-Skim-Kind"
 const val VIDEO_AUDIO = "X-Skim-Audio"
+const val VIDEO_QUALITY = "X-Skim-Quality"
 const val VIDEO_PROGRESSIVE = "progressive"
 const val VIDEO_HLS = "hls"
 const val VIDEO_DASH = "dash"
