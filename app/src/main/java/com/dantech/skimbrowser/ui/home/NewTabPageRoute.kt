@@ -21,6 +21,7 @@ import com.dantech.skimbrowser.system.VoiceInput
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.incognito.IncognitoNewTabScreen
 import com.dantech.skimbrowser.ui.navigation.ShortcutDialogKey
+import com.dantech.skimbrowser.ui.navigation.ShieldStatsKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
 import com.dantech.skimbrowser.ui.search.SearchOverlay
 import com.dantech.skimbrowser.ui.search.searchViewModel
@@ -111,6 +112,7 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
             onRemoveShortcut = { shortcut -> home.removeShortcut(shortcut.id) },
             onOpenChat = { chatId -> navigator.openSavedChat(chatId) },
             onSeeAllChats = { navigator.openSkimHistory() },
+            onOpenStats = { navigator.push(ShieldStatsKey) },
         )
         HomeScreen(state, actions, toolbar)
     }

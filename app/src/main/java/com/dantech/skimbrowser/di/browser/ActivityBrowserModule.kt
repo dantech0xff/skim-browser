@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.browser.TabEventSink
 import com.dantech.skimbrowser.browser.TabStateStore
 import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.browser.RequestShield
+import com.dantech.skimbrowser.browser.ShieldStatRecorder
 import com.dantech.skimbrowser.browser.ProcessSafetyGate
 import com.dantech.skimbrowser.browser.TabNavigations
 import com.dantech.skimbrowser.browser.WebViewPool
@@ -121,6 +122,7 @@ object ActivityBrowserModule {
         safety: ProcessSafetyGate,
         navigations: TabNavigations,
         gate: InterruptGate,
+        stats: ShieldStatRecorder,
     ): WebViewPool = WebViewPool(
         activity = activity,
         tabs = tabs,
@@ -137,6 +139,7 @@ object ActivityBrowserModule {
         safety = safety,
         navigations = navigations,
         interrupts = gate::policy,
+        stats = stats,
     )
 
     @Provides

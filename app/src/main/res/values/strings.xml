@@ -535,4 +535,46 @@
     <string name="settings_ai_privacy_summary_no_ask">Reads sites when you ask</string>
     <string name="snackbar_download_failed">Couldn\'t download %s</string>
     <string name="snackbar_share_failed">Couldn\'t share this image</string>
+
+    <string name="settings_shield_stats">Blocking stats</string>
+    <string name="settings_shield_stats_summary">Ads and trackers blocked on this device.</string>
+    <string name="shield_stats_title">Blocking stats</string>
+    <string name="shield_stats_intro">Counts stay on this device. Data saved, time saved, and cosmetic elements are estimates. Private tabs add to the counts, and their sites are not listed.</string>
+    <string name="shield_stats_today">Today</string>
+    <string name="shield_stats_week">7 days</string>
+    <string name="shield_stats_all_time">All time</string>
+    <string name="shield_stats_requests">Ads and trackers</string>
+    <string name="shield_stats_popups">Popups</string>
+    <string name="shield_stats_redirects">Redirects</string>
+    <string name="shield_stats_cosmetic">Cosmetic elements</string>
+    <string name="shield_stats_data">Data saved, estimate</string>
+    <string name="shield_stats_time">Time saved, estimate</string>
+    <string name="shield_stats_bytes">%1$s B</string>
+    <string name="shield_stats_kilobytes">%1$s KB</string>
+    <string name="shield_stats_megabytes">%1$s MB</string>
+    <string name="shield_stats_gigabytes">%1$s GB</string>
+    <string name="shield_stats_time_under_a_second">Under a second</string>
+    <plurals name="shield_stats_seconds">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
+    <plurals name="shield_stats_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="shield_stats_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <string name="shield_stats_chart_title">Last 7 days</string>
+    <string name="shield_stats_chart_description">Ads and trackers blocked on each of the last 7 days: %1$s</string>
+    <string name="shield_stats_top_sites">Top sites</string>
+    <string name="shield_stats_no_sites">No sites yet</string>
+    <string name="shield_stats_reset">Reset stats</string>
+    <string name="shield_stats_reset_title">Reset blocking stats?</string>
+    <string name="shield_stats_reset_body">This clears the counts, the estimates, and the site list on this device.</string>
+    <plurals name="home_blocked_today">
+        <item quantity="one">%1$s ad or tracker blocked today</item>
+        <item quantity="other">%1$s ads and trackers blocked today</item>
+    </plurals>
 </resources>

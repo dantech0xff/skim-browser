@@ -62,6 +62,10 @@ data class TabsKey(val incognito: Boolean, val focusTabId: String? = null) : Ski
 @Serializable
 data object SettingsKey : SkimKey
 
+/** Blocking stats. Not on a board. */
+@Serializable
+data object ShieldStatsKey : SkimKey
+
 @Serializable
 data object BackupKey : SkimKey
 

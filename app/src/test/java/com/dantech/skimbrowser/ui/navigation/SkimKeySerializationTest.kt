@@ -112,6 +112,7 @@ class SkimKeySerializationTest {
             ReaderKey("tab-1"),
             TabsKey(incognito = true, focusTabId = "tab-2"),
             SettingsKey,
+            ShieldStatsKey,
             BackupKey,
             AiPrivacyKey,
             HistoryKey,

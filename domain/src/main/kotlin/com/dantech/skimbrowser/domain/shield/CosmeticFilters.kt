@@ -61,6 +61,20 @@ class CosmeticFilters private constructor(
 
         const val MAX_COLLAPSE_HOSTS = 40
 
+        fun displayNoneCount(css: String): Int {
+            if (css.isEmpty()) return 0
+            var count = 0
+            var from = 0
+            while (true) {
+                val at = css.indexOf(RULE, from)
+                if (at < 0) return count
+                count++
+                from = at + RULE.length
+            }
+        }
+
+        private const val RULE = "{display:none"
+
         /**
          * Reads the compiled asset. A line is `G`, `E`, `H` or `X`, then tab-separated fields.
          * `G` and `H` may end with `!domain` for a host the rule skips. `#` lines are the header.

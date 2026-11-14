@@ -13,6 +13,10 @@ import com.dantech.skimbrowser.domain.chat.ChatRepository
 import com.dantech.skimbrowser.domain.chat.SavedChat
 import com.dantech.skimbrowser.domain.fake.FakeChatRepository
 import com.dantech.skimbrowser.domain.fake.FakeShortcutRepository
+import com.dantech.skimbrowser.domain.shield.ShieldDay
+import com.dantech.skimbrowser.domain.shield.ShieldSnapshot
+import com.dantech.skimbrowser.domain.shield.ShieldStats
+import com.dantech.skimbrowser.domain.shield.shieldSnapshot
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
@@ -22,16 +26,22 @@ import com.dantech.skimbrowser.ui.text.UiText
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -299,6 +309,50 @@ class HomeViewModelTest {
         assertEquals(1, home.shortcuts.observe().first().size)
     }
 
+    @Test
+    fun blockedTodayFollowsTheLocalDay() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val home = home()
+        var now = NOW
+        val model = HomeViewModel(
+            tabs = home.tabs.manager,
+            shortcuts = home.shortcuts,
+            chats = home.chats,
+            snackbar = home.snackbar,
+            undo = home.undo,
+            voiceAvailable = true,
+            clock = { now },
+            zone = { ZoneOffset.UTC },
+            stats = dayStats(),
+        )
+        val first = launch { model.state.collect {} }
+        runCurrent()
+        assertEquals(10L, model.state.value.blockedToday)
+        first.cancel()
+        advanceTimeBy(6_000)
+        now = NOW + DAY
+        val second = launch { model.state.collect {} }
+        runCurrent()
+        assertEquals(11L, model.state.value.blockedToday)
+        now = NOW + DAY + DAY
+        advanceTimeBy(60_000)
+        runCurrent()
+        assertEquals(12L, model.state.value.blockedToday)
+        second.cancel()
+    }
+
+    private fun dayStats() = object : ShieldStats {
+        override fun observe(todayEpochDay: Long): kotlinx.coroutines.flow.Flow<ShieldSnapshot> = flowOf(
+            shieldSnapshot(
+                listOf(ShieldDay(localEpochDay = todayEpochDay, requests = todayEpochDay - epochDay(NOW) + 10)),
+                emptyList(),
+                todayEpochDay,
+            ),
+        )
+
+        override suspend fun reset() = Unit
+    }
+
     // Helpers
 
     private class Home(
@@ -360,5 +414,7 @@ class HomeViewModelTest {
         const val MINUTE = 60_000L
         const val HOUR = 60 * MINUTE
         const val DAY = 24 * HOUR
+
+        fun epochDay(millis: Long): Long = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toEpochDay()
     }
 }

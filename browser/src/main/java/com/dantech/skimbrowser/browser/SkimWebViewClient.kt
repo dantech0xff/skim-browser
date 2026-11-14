@@ -35,6 +35,7 @@ import com.dantech.skimbrowser.domain.shield.CosmeticFilters
 import com.dantech.skimbrowser.domain.video.mediaStream
 import com.dantech.skimbrowser.domain.shield.CosmeticScript
 import com.dantech.skimbrowser.domain.shield.ShieldChoices
+import com.dantech.skimbrowser.domain.shield.ShieldStatSink
 import java.io.ByteArrayInputStream
 import java.util.LinkedHashSet
 import java.util.concurrent.atomic.AtomicBoolean
@@ -72,6 +73,7 @@ class SkimWebViewClient(
     private val policy: () -> InterruptPolicy = { InterruptPolicy() },
     /** Monotonic clock for how long this document has gone without a touch. */
     private val now: () -> Long = SystemClock::elapsedRealtime,
+    private val stats: ShieldStatSink = ShieldStatSink.Ignore,
     /** Destroys [view], whose renderer is gone: it can never be used again. */
     private val onRendererGone: (view: WebView, action: RendererGoneAction, didCrash: Boolean) -> Unit,
 ) : WebViewClientCompat() {
@@ -98,6 +100,7 @@ class SkimWebViewClient(
     private val blockedCount = AtomicInteger()
     private val loadingBlocked = AtomicInteger()
     private val documentGeneration = AtomicInteger()
+    private var hideRulesCountedForGeneration = -1
     private val countPosted = AtomicBoolean(false)
     private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
@@ -501,6 +504,7 @@ class SkimWebViewClient(
     }
 
     private fun noteBlocked(view: WebView, requestUrl: String) {
+        stats.onRequestBlocked(requestUrl, incognito)
         val host = hostOf(requestUrl)
         val pending = synchronized(documentGate) {
             if (host != null) rememberCollapsed(host)
@@ -581,6 +585,7 @@ class SkimWebViewClient(
         }
         val host = hostOf(url) ?: return
         if (css.isEmpty()) return
+        noteCosmeticRules(css)
         inject(view, CosmeticScript.hide(host, css))
     }
 
@@ -730,7 +735,19 @@ class SkimWebViewClient(
     /** [host] is recorded for the in-flight document or the one on screen. Callers hold [documentGate]. */
     private fun rememberCollapsed(host: String) {
         val target = if (loadingUrl != null) loadingCollapsed else collapsed
-        if (target.size < CosmeticFilters.MAX_COLLAPSE_HOSTS || host in target) target.add(host)
+        val room = target.size < CosmeticFilters.MAX_COLLAPSE_HOSTS
+        if (room || host in target) {
+            if (target.add(host) && room) stats.onCosmeticRules(1, incognito)
+        }
+    }
+
+    private fun noteCosmeticRules(css: String) {
+        val rules = CosmeticFilters.displayNoneCount(css)
+        if (rules == 0) return
+        val generation = documentGeneration.get()
+        if (hideRulesCountedForGeneration == generation) return
+        hideRulesCountedForGeneration = generation
+        stats.onCosmeticRules(rules, incognito)
     }
 
     private fun scheduleCollapse(view: WebView) {

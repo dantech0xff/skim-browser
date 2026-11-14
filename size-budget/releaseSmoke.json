@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk",
   "variant": "playReleaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4242997,
+  "fileSizeBytes": 4270381,
   "downloadSizeBytes": 3751332,
   "maxGrowthBytes": 8192,
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "The previous play baseline was 4223465. This assemble is 4242997, 19532 above that. classes.dex grew by 2492 uncompressed bytes and 1251 compressed bytes. The APK file grew by 16384 because zip alignment moved to the next 16 KB boundary. No library was added. The YouTube extractor is not in this APK. The full file from the same tree is 4863608, 880 above 4862728 and inside the allowance, so the full baseline stays. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Blocking stats measured 4270381 bytes, 27384 above 4242997. No library was added. The bytes are the stats screen, the two Room tables, and the in-memory batch. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 4890992. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

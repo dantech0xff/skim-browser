@@ -32,6 +32,7 @@ import com.dantech.skimbrowser.domain.video.qualityHeight
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.flowOf
@@ -686,14 +687,18 @@ class VideoSaverTest {
         server.enqueue(MockResponse().setBody("12345678"))
         server.enqueue(MockResponse().setResponseCode(403))
         val log = CountingLog()
-        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val parent = SupervisorJob()
+        val scope = CoroutineScope(parent + Dispatchers.Unconfined)
         val saver = saver(log, scope, Dispatchers.Unconfined)
         try {
             assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))))
+            parent.children.toList().forEach { it.join() }
             org.junit.Assert.assertTrue(log.progress.toString(), log.progress.any { it.second == 8L && it.first > 0L })
             assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/missing.m3u8").toString()))))
+            parent.children.toList().forEach { it.join() }
             assertEquals("http:403", log.reason)
         } finally {
+            parent.cancel()
             server.shutdown()
         }
     }

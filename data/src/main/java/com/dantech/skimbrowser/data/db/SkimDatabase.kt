@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.dantech.skimbrowser.data.db.dao.BookmarkDao
 import com.dantech.skimbrowser.data.db.dao.SavedArticleDao
 import com.dantech.skimbrowser.data.db.dao.HistoryDao
+import com.dantech.skimbrowser.data.db.dao.ShieldStatsDao
 import com.dantech.skimbrowser.data.db.dao.ShortcutDao
 import com.dantech.skimbrowser.data.db.dao.SitePermissionDao
 import com.dantech.skimbrowser.data.db.dao.SkimChatDao
@@ -19,6 +20,8 @@ import com.dantech.skimbrowser.data.db.entity.BookmarkFolderEntity
 import com.dantech.skimbrowser.data.db.entity.FolderKind
 import com.dantech.skimbrowser.data.db.entity.HistoryEntryEntity
 import com.dantech.skimbrowser.data.db.entity.SavedArticleEntity
+import com.dantech.skimbrowser.data.db.entity.ShieldDayEntity
+import com.dantech.skimbrowser.data.db.entity.ShieldHostEntity
 import com.dantech.skimbrowser.data.db.entity.ShortcutEntity
 import com.dantech.skimbrowser.data.db.entity.SitePermissionEntity
 import com.dantech.skimbrowser.data.db.entity.SkimChatEntity
@@ -45,8 +48,10 @@ import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
         SkimMessageEntity::class,
         SitePermissionEntity::class,
         SavedArticleEntity::class,
+        ShieldDayEntity::class,
+        ShieldHostEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class SkimDatabase : RoomDatabase() {
@@ -64,6 +69,8 @@ abstract class SkimDatabase : RoomDatabase() {
     abstract fun sitePermissionDao(): SitePermissionDao
 
     abstract fun savedArticleDao(): SavedArticleDao
+
+    abstract fun shieldStatsDao(): ShieldStatsDao
 
     /**
      * Copies everything in the write-ahead log into the database file and truncates the log to
@@ -91,7 +98,21 @@ abstract class SkimDatabase : RoomDatabase() {
 
 /** Adds the callbacks every Skim database needs, on disk or in memory. */
 fun RoomDatabase.Builder<SkimDatabase>.withSkimSetup(): RoomDatabase.Builder<SkimDatabase> =
-    addMigrations(MIGRATION_1_2, MIGRATION_2_3).addCallback(SkimDatabaseCallback)
+    addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).addCallback(SkimDatabaseCallback)
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `shield_days` (`localEpochDay` INTEGER NOT NULL, `requests` INTEGER NOT NULL, " +
+                "`popups` INTEGER NOT NULL, `redirects` INTEGER NOT NULL, `cosmetic` INTEGER NOT NULL, " +
+                "`bytes` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `shield_hosts` (`localEpochDay` INTEGER NOT NULL, `host` TEXT NOT NULL, " +
+                "`count` INTEGER NOT NULL, PRIMARY KEY(`localEpochDay`, `host`))",
+        )
+    }
+}
 
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {

@@ -6,7 +6,7 @@ Modules are declared in `settings.gradle.kts`.
 |---|---|
 | `:domain` | `domain/src/main/kotlin/com/dantech/skimbrowser/domain/`. Pure Kotlin. Models, repository interfaces, use cases. |
 | `:data` | `data/src/main/java/com/dantech/skimbrowser/data/`. Room, DataStore, repositories, bookmark import. `@Binds` in `data/src/main/java/com/dantech/skimbrowser/data/di/`. |
-| `:browser` | `browser/src/main/java/com/dantech/skimbrowser/browser/`. Tab engine, WebView pool, downloads, page scripts. `@Binds` in `browser/src/main/java/com/dantech/skimbrowser/browser/di/`. Depends on `:domain` and `:data`. |
+| `:browser` | `browser/src/main/java/com/dantech/skimbrowser/browser/`. Tab engine, WebView pool, downloads, page scripts. `@Binds` in `browser/src/main/java/com/dantech/skimbrowser/browser/di/`. Depends on `:domain` and `:data`. `ShieldStatRecorder` batches blocking counts and writes them through `ShieldStatsStore`. |
 | `:ai` | `ai/src/main/java/com/dantech/skimbrowser/ai/`. Claude adapter, chat sessions, tab grouping. `@Binds` in `ai/src/main/java/com/dantech/skimbrowser/ai/di/`. Depends on `:domain` and `:browser`. |
 | `:app` | `SkimApplication` and `MainActivity`. Screens in `app/src/main/java/com/dantech/skimbrowser/ui/`. Process resources, use cases, and `ClaudeClientFactory` (it reads `BuildConfig`) in `app/src/main/java/com/dantech/skimbrowser/di/`. Flavors `play` and `full` are the `distribution` dimension. `play` is the default. |
 | `:extractor-youtube` | `extractor-youtube/src/main/java/com/dantech/skimbrowser/extractor/youtube/`. YouTube `VideoExtractor`. `@IntoSet` in `di/YoutubeExtractorModule.kt`. The app depends on this module only with `fullImplementation`. |
