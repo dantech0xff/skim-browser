@@ -2,7 +2,6 @@ package com.dantech.skimbrowser.domain.video
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -36,10 +35,10 @@ class VideoExtractorContractTest {
     }
 
     @Test
-    fun aRefusalCarriesTheMessageACallerCanShow() {
-        val failure = VideoExtractException("This video is age-restricted. Skim does not download it.")
+    fun aRefusalNamesTheReasonTheUiCanMap() {
+        val failure = VideoExtractException(VideoExtractFailure.AGE_RESTRICTED)
 
-        assertEquals("This video is age-restricted. Skim does not download it.", failure.message)
-        assertFalse(failure.message!!.isBlank())
+        assertEquals(VideoExtractFailure.AGE_RESTRICTED, failure.failure)
+        assertEquals(VideoExtractFailure.AGE_RESTRICTED.name, failure.message)
     }
 }

@@ -4,8 +4,10 @@ package com.dantech.skimbrowser.extractor.youtube
 
 import com.dantech.skimbrowser.domain.video.PageVideoHints
 import com.dantech.skimbrowser.domain.video.VideoExtractException
+import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
+import java.net.URI
 import org.schabi.newpipe.extractor.services.youtube.ItagItem
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.Stream
@@ -17,28 +19,39 @@ internal object YoutubeVariants {
         "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
 
     fun fromInfo(info: StreamInfo, hints: PageVideoHints): List<VideoVariant> {
-        if (info.ageLimit >= 18) throw VideoExtractException(YoutubeFailures.AGE)
-        val headers = mediaHeaders(hints)
+        if (info.ageLimit >= 18) throw VideoExtractException(VideoExtractFailure.AGE_RESTRICTED)
         val title = info.name?.takeIf { it.isNotBlank() } ?: hints.pageTitle?.takeIf { it.isNotBlank() } ?: "Video"
-        val drafts = fileDrafts(info, headers)
+        val drafts = fileDrafts(info, hints)
         val labeled = disambiguate(drafts)
         if (labeled.isNotEmpty()) return labeled.map { it.toVariant(title) }
         val hls = info.hlsUrl.orEmpty()
         if (hls.startsWith("http://") || hls.startsWith("https://")) {
             return listOf(
-                VideoVariant(title, "HLS", "application/vnd.apple.mpegurl", null, VideoSource.Hls(hls, headers)),
+                VideoVariant(
+                    title,
+                    "HLS",
+                    "application/vnd.apple.mpegurl",
+                    null,
+                    VideoSource.Hls(hls, headersFor(hints, listOf(hls))),
+                ),
             )
         }
         val dash = info.dashMpdUrl.orEmpty()
         if (dash.startsWith("http://") || dash.startsWith("https://")) {
             return listOf(
-                VideoVariant(title, "DASH", "application/dash+xml", null, VideoSource.Dash(dash, headers)),
+                VideoVariant(
+                    title,
+                    "DASH",
+                    "application/dash+xml",
+                    null,
+                    VideoSource.Dash(dash, headersFor(hints, listOf(dash))),
+                ),
             )
         }
-        throw VideoExtractException(YoutubeFailures.NONE)
+        throw VideoExtractException(VideoExtractFailure.UNAVAILABLE)
     }
 
-    private fun fileDrafts(info: StreamInfo, headers: Map<String, String>): List<Draft> {
+    private fun fileDrafts(info: StreamInfo, hints: PageVideoHints): List<Draft> {
         val progressive = info.videoStreams.orEmpty().mapNotNull { stream ->
             if (stream.isVideoOnly) return@mapNotNull null
             val url = directUrl(stream) ?: return@mapNotNull null
@@ -48,7 +61,7 @@ internal object YoutubeVariants {
                 mime = stream.format?.mimeType,
                 size = sizeOf(stream.itagItem),
                 separate = false,
-                source = VideoSource.Progressive(url, headers),
+                source = VideoSource.Progressive(url, headersFor(hints, listOf(url))),
             )
         }
         val separate = info.videoOnlyStreams.orEmpty().mapNotNull { stream ->
@@ -62,19 +75,16 @@ internal object YoutubeVariants {
                 mime = stream.format?.mimeType,
                 size = sumSizes(sizeOf(stream.itagItem), sizeOf(audio.itagItem)),
                 separate = true,
-                source = VideoSource.SeparateAv(videoUrl, audioUrl, headers),
+                source = VideoSource.SeparateAv(videoUrl, audioUrl, headersFor(hints, listOf(videoUrl, audioUrl))),
             )
         }
         return (progressive + separate).sortedWith(compareByDescending<Draft> { it.height }.thenBy { it.separate })
     }
 
     private fun pickAudio(video: VideoStream, audio: List<AudioStream>): AudioStream? {
-        val usable = audio.filter { directUrl(it) != null }
-        if (usable.isEmpty()) return null
         val family = familyOf(video.format?.mimeType)
-        val same = usable.filter { familyOf(it.format?.mimeType) == family }
-        val pool = if (same.isNotEmpty()) same else usable
-        return pool.maxBy { it.averageBitrate }
+        val same = audio.filter { directUrl(it) != null && familyOf(it.format?.mimeType) == family }
+        return same.maxByOrNull { it.averageBitrate }
     }
 
     private fun directUrl(stream: Stream): String? {
@@ -108,16 +118,19 @@ internal object YoutubeVariants {
         return length.takeIf { it > 0 }
     }
 
-    private fun sumSizes(video: Long?, audio: Long?): Long? = when {
-        video != null && audio != null -> video + audio
-        else -> video ?: audio
-    }
+    private fun sumSizes(video: Long?, audio: Long?): Long? =
+        if (video != null && audio != null) video + audio else null
 
     private fun disambiguate(drafts: List<Draft>): List<Draft> {
-        val counts = drafts.groupingBy { it.label }.eachCount()
-        return drafts.map { draft ->
-            if ((counts[draft.label] ?: 0) <= 1) draft
-            else draft.copy(label = "${draft.label} ${containerTag(draft.mime)}")
+        fun uniquify(items: List<Draft>, suffix: (Draft) -> String): List<Draft> {
+            val counts = items.groupingBy { it.label }.eachCount()
+            return items.map { draft ->
+                if ((counts[draft.label] ?: 0) <= 1) draft
+                else draft.copy(label = "${draft.label} ${suffix(draft)}")
+            }
+        }
+        return uniquify(uniquify(drafts) { containerTag(it.mime) }) {
+            if (it.separate) "separate audio" else "muxed"
         }
     }
 
@@ -129,12 +142,24 @@ internal object YoutubeVariants {
         else -> mime.substringAfter('/')
     }
 
-    fun mediaHeaders(hints: PageVideoHints): Map<String, String> {
+    fun headersFor(hints: PageVideoHints, mediaUrls: List<String>): Map<String, String> {
         val headers = LinkedHashMap<String, String>()
         headers["User-Agent"] = hints.userAgent?.takeIf { it.isNotBlank() } ?: FALLBACK_USER_AGENT
-        hints.cookieHeader?.takeIf { it.isNotBlank() }?.let { headers["Cookie"] = it }
         headers["Referer"] = hints.pageUrl
+        val cookie = hints.cookieHeader?.takeIf { it.isNotBlank() }
+        if (cookie != null && mediaUrls.all { cookieAllowed(hints.pageUrl, it) }) {
+            headers["Cookie"] = cookie
+        }
         return headers
+    }
+
+    /** Page cookies stay on https URLs for that page's host. Other hosts never receive them. */
+    internal fun cookieAllowed(pageUrl: String, mediaUrl: String): Boolean {
+        val media = runCatching { URI(mediaUrl) }.getOrNull() ?: return false
+        if (!media.scheme.equals("https", ignoreCase = true)) return false
+        val mediaHost = media.host?.lowercase()?.removePrefix("www.") ?: return false
+        val pageHost = runCatching { URI(pageUrl).host }.getOrNull()?.lowercase()?.removePrefix("www.") ?: return false
+        return mediaHost == pageHost || mediaHost.endsWith(".$pageHost")
     }
 
     private data class Draft(

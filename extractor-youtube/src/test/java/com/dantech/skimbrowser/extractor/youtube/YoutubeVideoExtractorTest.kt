@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.extractor.youtube
 
 import com.dantech.skimbrowser.domain.video.PageVideoHints
 import com.dantech.skimbrowser.domain.video.VideoExtractException
+import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
 import kotlinx.coroutines.runBlocking
@@ -48,14 +49,14 @@ class YoutubeVideoExtractorTest {
     fun aCatalogRefusalReachesTheCaller() = runBlocking {
         val extractor = YoutubeVideoExtractor(object : YoutubeCatalog {
             override suspend fun load(hints: PageVideoHints): List<VideoVariant> {
-                throw VideoExtractException(YoutubeFailures.MEMBERS)
+                throw VideoExtractException(VideoExtractFailure.MEMBERS_ONLY)
             }
         })
 
         val failure = runCatching { extractor.extract(hints("https://www.youtube.com/shorts/abc")) }.exceptionOrNull()
 
         assertTrue(failure is VideoExtractException)
-        assertEquals(YoutubeFailures.MEMBERS, failure?.message)
+        assertEquals(VideoExtractFailure.MEMBERS_ONLY, (failure as VideoExtractException).failure)
     }
 
     private fun hints(pageUrl: String) = PageVideoHints(pageUrl, null, emptyList(), null, null)

@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.extractor.youtube
 
 import com.dantech.skimbrowser.domain.video.VideoExtractException
+import com.dantech.skimbrowser.domain.video.VideoExtractFailure
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.schabi.newpipe.extractor.exceptions.AgeRestrictedContentException
@@ -13,20 +14,20 @@ class YoutubeFailuresTest {
     @Test
     fun ageMembersAndDrmFailuresNameTheReason() {
         assertEquals(
-            YoutubeFailures.AGE,
-            YoutubeFailures.explain(AgeRestrictedContentException("anonymous")).message,
+            VideoExtractFailure.AGE_RESTRICTED,
+            YoutubeFailures.explain(AgeRestrictedContentException("anonymous")).failure,
         )
         assertEquals(
-            YoutubeFailures.MEMBERS,
-            YoutubeFailures.explain(PaidContentException("This video is only available for members of the channel")).message,
+            VideoExtractFailure.MEMBERS_ONLY,
+            YoutubeFailures.explain(PaidContentException("This video is only available for members of the channel")).failure,
         )
         assertEquals(
-            YoutubeFailures.DRM,
-            YoutubeFailures.explain(ContentNotAvailableException("playback uses DRM")).message,
+            VideoExtractFailure.DRM,
+            YoutubeFailures.explain(ContentNotAvailableException("playback uses DRM")).failure,
         )
         assertEquals(
-            YoutubeFailures.PREMIUM,
-            YoutubeFailures.explain(YoutubeMusicPremiumContentException()).message,
+            VideoExtractFailure.PREMIUM,
+            YoutubeFailures.explain(YoutubeMusicPremiumContentException()).failure,
         )
     }
 
