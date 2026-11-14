@@ -961,6 +961,10 @@ class VideoSaverTest {
             #EXT-X-BYTERANGE:8@8
             big.mp4
         """.trimIndent()
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined, maxBytes = 8)
+        var videoBytes = 0
         server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
             override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
                 val path = request.path.orEmpty()
@@ -968,7 +972,55 @@ class VideoSaverTest {
                     path.contains("locked-master") -> MockResponse().setBody(master)
                     path.contains("locked.m3u8") -> MockResponse().setBody(locked)
                     path.contains("video.m3u8") -> MockResponse().setBody("#EXTM3U\n#EXTINF:1,\nvideo.mp4\n")
-                    path.contains("video.mp4") -> MockResponse().setBody("VIDEO")
+                    path.contains("video.mp4") -> {
+                        videoBytes += 1
+                        MockResponse().setBody("VIDEO")
+                    }
+                    path.contains("range.m3u8") -> MockResponse().setBody(ranged)
+                    path.contains("big.mp4") -> MockResponse().setResponseCode(206).setBody("0123456789ABCDEF")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        try {
+            assertEquals(
+                VideoSaveResult.Protected,
+                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/locked-master.m3u8").toString()))),
+            )
+            assertEquals(0, log.started)
+            assertEquals(0, videoBytes)
+            val paired = VideoSource.Hls(
+                server.url("/video.m3u8").toString(),
+                audioPlaylistUrl = server.url("/locked.m3u8").toString(),
+            )
+            assertEquals(VideoSaveResult.Protected, saver.save("t", VideoVariant("clip", "360p", null, null, paired)))
+            assertEquals(0, log.started)
+            assertEquals(0, videoBytes)
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))),
+            )
+            assertEquals("limit", log.reason)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aByteRangeCopyLeavesTheFreeSpaceReserve() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val ranged = """
+            #EXTM3U
+            #EXT-X-MAP:URI="big.mp4",BYTERANGE="8@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:8@8
+            big.mp4
+        """.trimIndent()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
                     path.contains("range.m3u8") -> MockResponse().setBody(ranged)
                     path.contains("big.mp4") -> MockResponse().setResponseCode(206).setBody("0123456789ABCDEF")
                     else -> MockResponse().setResponseCode(404)
@@ -977,19 +1029,15 @@ class VideoSaverTest {
         }
         val log = CountingLog()
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val saver = saver(log, scope, Dispatchers.Unconfined, maxBytes = 8)
+        val variant = VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
+        val room = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 8 })
+        val tight = saver(log, scope, Dispatchers.Unconfined, freeBytes = { InProcessDownloader.MIN_FREE_BYTES - 1 })
         try {
-            assertEquals(
-                VideoSaveResult.Started,
-                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/locked-master.m3u8").toString()))),
-            )
-            assertEquals("protected", log.reason)
+            assertEquals(VideoSaveResult.Started, room.save("t", variant))
+            assertEquals(null, log.reason)
             log.reason = null
-            assertEquals(
-                VideoSaveResult.Started,
-                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))),
-            )
-            assertEquals("limit", log.reason)
+            assertEquals(VideoSaveResult.Started, tight.save("t", variant))
+            assertEquals("space", log.reason)
         } finally {
             server.shutdown()
         }
@@ -1050,6 +1098,7 @@ class VideoSaverTest {
         rangeChunkBytes: Long = 10L * 1024 * 1024,
         rangeHost: (String) -> Boolean = ::isRangeHost,
         maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
+        freeBytes: () -> Long = { Long.MAX_VALUE },
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -1067,7 +1116,7 @@ class VideoSaverTest {
             scope = scope,
             io = io,
             mux = mux,
-            freeBytes = { Long.MAX_VALUE },
+            freeBytes = freeBytes,
             maxPlaylistChars = maxPlaylistChars,
             extractors = extractors,
             rangeChunkBytes = rangeChunkBytes,

@@ -131,7 +131,7 @@ class VideoSaver(
             ) + (replaceId?.let { listOf(DownloadHeader(VIDEO_ROW, it.toString())) } ?: emptyList()),
         )
         try {
-            if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
+            if (source is VideoSource.Hls && hlsProtected(source, userAgent, incognito)) {
                 return VideoSaveResult.Protected
             }
             if (source is VideoSource.Dash && manifestProtected(source.manifestUrl, source.headers, userAgent, incognito)) {
@@ -228,13 +228,22 @@ class VideoSaver(
         }
     }
 
+    private suspend fun hlsProtected(source: VideoSource.Hls, agent: String?, incognito: Boolean): Boolean {
+        if (playlistProtected(source.playlistUrl, source.headers, agent, incognito)) return true
+        val audio = source.audioPlaylistUrl ?: return false
+        return playlistProtected(audio, source.headers, agent, incognito)
+    }
+
     private suspend fun playlistProtected(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): Boolean {
         val fetched = getText(url, headers, agent, incognito)
         val playlist = parseHls(fetched.text, fetched.url)
         if (playlist.protected) return true
         val best = playlist.variants.maxByOrNull { it.bandwidth ?: 0 } ?: return false
         val media = getText(best.url, headers, agent, incognito)
-        return parseHls(media.text, media.url).protected
+        if (parseHls(media.text, media.url).protected) return true
+        val audio = preferredHlsAudio(playlist.audios, best.audioGroup) ?: return false
+        val audioBody = getText(audio.url, headers, agent, incognito)
+        return parseHls(audioBody.text, audioBody.url).protected
     }
 
     private suspend fun manifestProtected(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): Boolean {
@@ -304,18 +313,19 @@ class VideoSaver(
     ): DownloadEvent.DownloadCompleted {
         val opened = openMedia(url, headers, agent, incognito, audioPlaylistUrl)
         if (opened.playlist.protected) throw DownloadException("The video is protected")
+        val audioOpened = opened.audioUrl?.let { audioUrl ->
+            openMedia(audioUrl, headers, agent, incognito, null)
+        }
+        if (audioOpened?.playlist?.protected == true) throw DownloadException("The video is protected")
         val videoSpans = mediaSpans(opened.playlist)
         if (videoSpans.isEmpty()) throw DownloadException("The playlist has no video")
         val dir = jobDir(localId)
         val budget = ByteBudget(maxBytes)
         try {
             val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video", budget)
-            val audioUrl = opened.audioUrl
-            if (audioUrl == null) {
+            if (audioOpened == null) {
                 return publish(video, name, containerMime(video, videoSpans.map { it.url }))
             }
-            val audioOpened = openMedia(audioUrl, headers, agent, incognito, null)
-            if (audioOpened.playlist.protected) throw DownloadException("The video is protected")
             val audioSpans = mediaSpans(audioOpened.playlist)
             if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
             val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio", budget)
@@ -566,7 +576,7 @@ class VideoSaver(
         dir.mkdirs()
         val dest = File.createTempFile("part-", ".bin", dir)
         try {
-            requireRoom(already)
+            requireRoom()
             if (rangeHost(url)) {
                 downloadInRanges(url, headers, agent, incognito, dest, already, onProgress, budget)
             } else {
@@ -605,7 +615,7 @@ class VideoSaver(
         onProgress: suspend (Long, Long) -> Unit,
         budget: ByteBudget?,
     ) {
-        requireRoom(already)
+        requireRoom()
         var start = 0L
         var total = -1L
         var reserved = false
@@ -714,9 +724,10 @@ class VideoSaver(
         throw DownloadException("Too many redirects")
     }
 
-    private fun requireRoom(incoming: Long) {
+    /** [freeBytes] already shrinks as bytes land on disk, so the reserve is not added to the running total. */
+    private fun requireRoom() {
         val free = freeBytes()
-        if (free != Long.MAX_VALUE && free < InProcessDownloader.MIN_FREE_BYTES + incoming) {
+        if (free != Long.MAX_VALUE && free < InProcessDownloader.MIN_FREE_BYTES) {
             throw DownloadException("Too little free space")
         }
     }
@@ -891,7 +902,7 @@ class VideoSaver(
         budget: ByteBudget,
         onProgress: suspend (Long, Long) -> Unit,
     ): Long {
-        requireRoom(base)
+        requireRoom()
         val input = body.byteStream()
         val buffer = ByteArray(COPY_BUFFER)
         var written = 0L
@@ -901,7 +912,7 @@ class VideoSaver(
             if (read < 0) break
             budget.add(read.toLong())
             if (written == 0L || written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) {
-                requireRoom(base + written + read)
+                requireRoom()
             }
             out.write(buffer, 0, read)
             written += read
@@ -918,7 +929,7 @@ class VideoSaver(
         onProgress: suspend (Long, Long) -> Unit,
         charge: ByteBudget? = null,
     ): Long {
-        requireRoom(base)
+        requireRoom()
         val input = body.byteStream()
         val buffer = ByteArray(COPY_BUFFER)
         var written = 0L
@@ -931,7 +942,7 @@ class VideoSaver(
             if (charge != null) charge.add(read.toLong())
             else if (base + written > maxBytes) throw DownloadException("The file is larger than the limit")
             if (written == read.toLong() || written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) {
-                requireRoom(base + written)
+                requireRoom()
             }
             out.write(buffer, 0, read)
             if (written - reported >= REPORT_BYTES) {
