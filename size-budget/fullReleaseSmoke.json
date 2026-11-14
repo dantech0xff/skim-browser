@@ -5,5 +5,5 @@
   "fileSizeBytes": 4890992,
   "downloadSizeBytes": 4381242,
   "maxGrowthBytes": 8192,
-  "notes": "Blocking stats on the same tree as the play file measured 4890992 bytes, 28264 above 4862728. No library was added. The YouTube extractor stays in this flavor only. downloadSizeBytes was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Blocking stats on the same tree as the play file measured 4890992 bytes, 28264 above 4862728. No library was added. The YouTube extractor stays in this flavor only. The news wall is rebased on top of this baseline and its combined size is measured again. downloadSizeBytes was not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

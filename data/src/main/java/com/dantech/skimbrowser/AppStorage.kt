@@ -22,6 +22,8 @@ data class AppStorage(
     val incognitoSharedDir: (Context) -> File = { File(it.cacheDir, "shared/incognito") },
     /** Downloads Skim started. A private file, not a table: the list is short and the APK stays small. */
     val downloadsFile: (Context) -> File = { File(it.filesDir, "downloads-log") },
+    /** News choices and cached stories. Kept apart from settings and the database. */
+    val newsDir: (Context) -> File = { File(it.filesDir, "news") },
 ) {
     companion object {
         fun temp(dir: File) = AppStorage(
@@ -31,6 +33,7 @@ data class AppStorage(
             thumbnailDir = { File(dir, "thumbs") },
             incognitoSharedDir = { File(dir, "shared/incognito") },
             downloadsFile = { File(dir, "downloads-log") },
+            newsDir = { File(dir, "news") },
         )
     }
 }

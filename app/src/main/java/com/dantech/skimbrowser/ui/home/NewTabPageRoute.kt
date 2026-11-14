@@ -17,7 +17,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.adjacentTab
 import com.dantech.skimbrowser.ui.browsing.TabStripSwipe
+import com.dantech.skimbrowser.system.ShareSheet
 import com.dantech.skimbrowser.system.VoiceInput
+import com.dantech.skimbrowser.ui.news.NewsActions
+import com.dantech.skimbrowser.ui.news.NewsWallViewModel
+import com.dantech.skimbrowser.ui.news.newsWall
 import com.dantech.skimbrowser.ui.components.BrowserToolbar
 import com.dantech.skimbrowser.ui.incognito.IncognitoNewTabScreen
 import com.dantech.skimbrowser.ui.navigation.ShortcutDialogKey
@@ -101,7 +105,9 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
         )
     } else {
         val home = hiltViewModel<HomeViewModel>(key = HOME_VIEW_MODEL_KEY)
+        val news = hiltViewModel<NewsWallViewModel>(key = NEWS_VIEW_MODEL_KEY)
         val state by home.state.collectAsStateWithLifecycle()
+        val newsState by news.state.collectAsStateWithLifecycle()
         val actions = HomeActions(
             onSearch = { openSearch("") },
             onVoice = startVoice,
@@ -114,7 +120,31 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
             onSeeAllChats = { navigator.openSkimHistory() },
             onOpenStats = { navigator.push(ShieldStatsKey) },
         )
-        HomeScreen(state, actions, toolbar)
+        val newsActions = NewsActions(
+            onTopic = news::selectTopic,
+            onOpen = { card ->
+                val current = tabs.state.value.tab(tab.id)
+                if (current != null && !current.incognito && current.url == null) tabs.load(tab.id, card.link)
+            },
+            onOpenInNewTab = { card -> navigator.openNewTab(incognito = false, url = card.link) },
+            onShare = { card -> ShareSheet.sharePage(context, card.title, card.link) },
+            onHideSource = { card -> news.hideSource(card.sourceId) },
+            onToggleSource = news::setSourceShown,
+            onAddFeed = news::addFeed,
+            onDismissFeedError = news::dismissFeedError,
+        )
+        HomeScreen(
+            state,
+            actions,
+            toolbar,
+            foldItems = {
+                // Slot for new-tab extras. News goes first. Append another feature in this block.
+                if (newsState.visible) newsWall(newsState, newsActions)
+            },
+            foldRefreshing = newsState.refreshing,
+            onFoldRefresh = { news.refresh(force = true) },
+            foldPullEnabled = newsState.visible,
+        )
     }
 
     if (searching) {
@@ -147,3 +177,6 @@ private const val TAG = "NewTabPageRoute"
 
 /** The key of Home's view model in the browser destination's store. */
 private const val HOME_VIEW_MODEL_KEY = "home"
+
+/** The key of the news wall's view model in the browser destination's store. */
+private const val NEWS_VIEW_MODEL_KEY = "news"

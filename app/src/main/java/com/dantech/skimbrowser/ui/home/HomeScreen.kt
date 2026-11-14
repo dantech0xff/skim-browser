@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,11 +24,14 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -109,75 +113,51 @@ fun HomeScreen(
     actions: HomeActions,
     toolbar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Items after the shortcuts and chats, in the same scroll. Null keeps the original column,
+     * which the Home goldens draw. Callers append a feature here without rearranging the page above.
+     */
+    foldItems: (LazyListScope.() -> Unit)? = null,
+    foldRefreshing: Boolean = false,
+    onFoldRefresh: () -> Unit = {},
+    foldPullEnabled: Boolean = false,
 ) {
     val navigationBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottom = ToolbarMetrics.Height + ToolbarMetrics.BottomOffset + navigationBar
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    PaddingValues(
-                        start = ScreenMargin,
-                        top = TopPadding,
-                        end = ScreenMargin,
-                        bottom = ToolbarMetrics.Height + ToolbarMetrics.BottomOffset + navigationBar,
-                    ),
-                ),
-        ) {
+        if (foldItems == null) {
             Column(
-                Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(LogoGap),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .verticalScroll(rememberScrollState())
+                    .padding(PaddingValues(start = ScreenMargin, top = TopPadding, end = ScreenMargin, bottom = bottom)),
             ) {
-                SunnyMark(size = 64.dp, iconSize = 32.dp, contentDescription = stringResource(R.string.app_name))
-                SearchBarField(
-                    incognito = false,
-                    onClick = actions.onSearch,
-                    onVoice = if (state.voiceAvailable) actions.onVoice else null,
-                )
-                if (state.blockedToday > 0) {
-                    val count = state.blockedToday.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-                    Text(
-                        text = pluralStringResource(
-                            R.plurals.home_blocked_today,
-                            count,
-                            NumberFormat.getIntegerInstance().format(state.blockedToday),
-                        ),
-                        modifier = Modifier
-                            .defaultMinSize(minHeight = 48.dp)
-                            .clickable(role = Role.Button, onClick = actions.onOpenStats),
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
+                HomeLead(state, actions)
+            }
+        } else {
+            val list: @Composable () -> Unit = {
+                LazyColumn(
+                    Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+                    contentPadding = PaddingValues(start = ScreenMargin, top = TopPadding, end = ScreenMargin, bottom = bottom),
+                ) {
+                    item(key = "home") { Column { HomeLead(state, actions) } }
+                    // Slot: news, and anything else a caller appends, share this scroll.
+                    foldItems()
                 }
             }
-            if (state.showsHero) {
-                Spacer(Modifier.height(SectionGap))
-                val prompt = pluralStringResource(R.plurals.home_summarize_tabs, state.eligibleTabCount, state.eligibleTabCount)
-                AiHeroCard(
-                    title = prompt,
-                    body = stringResource(R.string.home_summarize_tabs_body),
-                    onClick = { actions.onSummarizeTabs(prompt) },
-                )
-            }
-            Spacer(Modifier.height(SectionGap))
-            SectionTitle(stringResource(R.string.home_shortcuts))
-            Spacer(Modifier.height(12.dp))
-            ShortcutGrid(
-                shortcuts = state.shortcuts,
-                onOpen = actions.onOpenShortcut,
-                onEdit = actions.onEditShortcut,
-                onRemove = actions.onRemoveShortcut,
-                onAdd = actions.onAddShortcut,
-            )
-            if (state.showsContinue) {
-                // See all keeps a 48 dp touch target around its 40 dp shape, so its row starts 4 dp
-                // higher and ends 4 dp lower than drawn and the cards stay where 04 draws them.
-                Spacer(Modifier.height(SectionGap - ButtonTargetInset))
-                ContinueWithSkim(state.continueChats, actions.onOpenChat, actions.onSeeAllChats)
+            if (foldPullEnabled) {
+                PullToRefreshBox(
+                    isRefreshing = foldRefreshing,
+                    onRefresh = onFoldRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    list()
+                }
+            } else {
+                list()
             }
         }
         Box(
@@ -188,6 +168,63 @@ fun HomeScreen(
         ) {
             toolbar()
         }
+    }
+}
+
+@Composable
+private fun ColumnScope.HomeLead(state: HomeUiState, actions: HomeActions) {
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(LogoGap),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        SunnyMark(size = 64.dp, iconSize = 32.dp, contentDescription = stringResource(R.string.app_name))
+        SearchBarField(
+            incognito = false,
+            onClick = actions.onSearch,
+            onVoice = if (state.voiceAvailable) actions.onVoice else null,
+        )
+        if (state.blockedToday > 0) {
+            val count = state.blockedToday.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            Text(
+                text = pluralStringResource(
+                    R.plurals.home_blocked_today,
+                    count,
+                    NumberFormat.getIntegerInstance().format(state.blockedToday),
+                ),
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .clickable(role = Role.Button, onClick = actions.onOpenStats),
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+    }
+    if (state.showsHero) {
+        Spacer(Modifier.height(SectionGap))
+        val prompt = pluralStringResource(R.plurals.home_summarize_tabs, state.eligibleTabCount, state.eligibleTabCount)
+        AiHeroCard(
+            title = prompt,
+            body = stringResource(R.string.home_summarize_tabs_body),
+            onClick = { actions.onSummarizeTabs(prompt) },
+        )
+    }
+    Spacer(Modifier.height(SectionGap))
+    SectionTitle(stringResource(R.string.home_shortcuts))
+    Spacer(Modifier.height(12.dp))
+    ShortcutGrid(
+        shortcuts = state.shortcuts,
+        onOpen = actions.onOpenShortcut,
+        onEdit = actions.onEditShortcut,
+        onRemove = actions.onRemoveShortcut,
+        onAdd = actions.onAddShortcut,
+    )
+    if (state.showsContinue) {
+        // See all keeps a 48 dp touch target around its 40 dp shape, so its row starts 4 dp
+        // higher and ends 4 dp lower than drawn and the cards stay where 04 draws them.
+        Spacer(Modifier.height(SectionGap - ButtonTargetInset))
+        ContinueWithSkim(state.continueChats, actions.onOpenChat, actions.onSeeAllChats)
     }
 }
 

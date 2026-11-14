@@ -8,5 +8,5 @@
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "Blocking stats measured 4270381 bytes, 27384 above 4242997. No library was added. The bytes are the stats screen, the two Room tables, and the in-memory batch. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 4890992. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Blocking stats measured 4270381 bytes, 27384 above 4242997. No library was added. The bytes are the stats screen, the two Room tables, and the in-memory batch. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 4890992. The news wall is rebased on top of this baseline and its combined size is measured again. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

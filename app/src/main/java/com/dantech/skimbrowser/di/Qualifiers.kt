@@ -30,6 +30,11 @@ annotation class MainImmediate
 @Retention(AnnotationRetention.BINARY)
 annotation class VoiceAvailable
 
+/** The device language tag the news wall uses to pick its default feeds. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class NewsLanguage
+
 /** Whether Skim is the default browser right now. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
