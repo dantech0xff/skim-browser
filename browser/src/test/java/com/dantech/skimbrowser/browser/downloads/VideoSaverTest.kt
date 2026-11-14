@@ -86,6 +86,43 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aRedirectedPlaylistResolvesFilesFromTheFinalAddress() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000\nmedia.m3u8\n"
+        val media = "#EXTM3U\n#EXTINF:1,\nseg.ts\n"
+        repeat(2) {
+            server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/cdn/master.m3u8"))
+            server.enqueue(MockResponse().setBody(master))
+            server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/cdn/files/media.m3u8"))
+            server.enqueue(MockResponse().setBody(media))
+        }
+        server.enqueue(MockResponse().setBody("segment"))
+        val dash = "<MPD><AdaptationSet contentType=\"video\"><Representation height=\"480\"><BaseURL>clip.mp4</BaseURL></Representation></AdaptationSet></MPD>"
+        repeat(2) {
+            server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", "/cdn/manifest.mpd"))
+            server.enqueue(MockResponse().setBody(dash))
+        }
+        server.enqueue(MockResponse().setBody("dash-bytes"))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/old/master.m3u8").toString()))))
+            assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip", "DASH", null, null, VideoSource.Dash(server.url("/old/a.mpd").toString()))))
+            val paths = buildList {
+                repeat(server.requestCount) { add(server.takeRequest().path) }
+            }
+            org.junit.Assert.assertTrue(paths.toString(), paths.contains("/cdn/files/seg.ts"))
+            org.junit.Assert.assertTrue(paths.toString(), paths.contains("/cdn/clip.mp4"))
+            org.junit.Assert.assertFalse(paths.any { it.orEmpty().startsWith("/old/") && it != "/old/master.m3u8" && it != "/old/a.mpd" })
+            assertEquals(2, log.started)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aFailedSegmentRemovesTheFilesItAlreadyWrote() = runBlocking {
         val server = MockWebServer()
         server.start()

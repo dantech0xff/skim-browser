@@ -150,15 +150,18 @@ class VideoSaver(
     }
 
     private suspend fun playlistProtected(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): Boolean {
-        val body = getText(url, headers, agent, incognito)
-        val playlist = parseHls(body, url)
+        val fetched = getText(url, headers, agent, incognito)
+        val playlist = parseHls(fetched.text, fetched.url)
         if (playlist.protected) return true
         val best = playlist.variants.maxByOrNull { it.bandwidth ?: 0 } ?: return false
-        return parseHls(getText(best.url, headers, agent, incognito), best.url).protected
+        val media = getText(best.url, headers, agent, incognito)
+        return parseHls(media.text, media.url).protected
     }
 
-    private suspend fun manifestProtected(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): Boolean =
-        parseDash(getText(url, headers, agent, incognito), url).protected
+    private suspend fun manifestProtected(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): Boolean {
+        val fetched = getText(url, headers, agent, incognito)
+        return parseDash(fetched.text, fetched.url).protected
+    }
 
     private suspend fun savePlaylist(
         url: String,
@@ -168,10 +171,12 @@ class VideoSaver(
         name: String,
         localId: Long,
     ): DownloadEvent.DownloadCompleted {
-        var playlist = parseHls(getText(url, headers, agent, incognito), url)
+        var fetched = getText(url, headers, agent, incognito)
+        var playlist = parseHls(fetched.text, fetched.url)
         if (playlist.variants.isNotEmpty()) {
             val best = playlist.variants.maxBy { it.bandwidth ?: 0 }
-            playlist = parseHls(getText(best.url, headers, agent, incognito), best.url)
+            fetched = getText(best.url, headers, agent, incognito)
+            playlist = parseHls(fetched.text, fetched.url)
         }
         if (playlist.protected) throw DownloadException("The video is protected")
         val segments = playlist.segments.ifEmpty { throw DownloadException("The playlist has no video") }
@@ -186,7 +191,8 @@ class VideoSaver(
         name: String,
         localId: Long,
     ): DownloadEvent.DownloadCompleted {
-        val manifest = parseDash(getText(url, headers, agent, incognito), url)
+        val fetched = getText(url, headers, agent, incognito)
+        val manifest = parseDash(fetched.text, fetched.url)
         if (manifest.protected) throw DownloadException("The video is protected")
         val video = manifest.videos.maxByOrNull { it.height ?: 0 } ?: throw DownloadException("The manifest has no video")
         val audio = manifest.audios.firstOrNull()
@@ -287,11 +293,11 @@ class VideoSaver(
         }
     }
 
-    private suspend fun getText(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): String =
+    private suspend fun getText(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): TextBody =
         fetch(url, headers, agent, incognito) { response ->
             val text = response.body?.string().orEmpty()
             if (text.length > MAX_PLAYLIST_CHARS) throw DownloadException("The playlist is larger than the limit")
-            text
+            TextBody(text, response.request.url.toString())
         }
 
     private suspend fun <T> fetch(
@@ -340,6 +346,8 @@ class VideoSaver(
 
     private suspend fun publish(file: File, name: String, mime: String): DownloadEvent.DownloadCompleted =
         store.save(DownloadNames.sanitize(name, mime), mime) { out -> file.inputStream().use { it.copyTo(out) } }
+
+    private data class TextBody(val text: String, val url: String)
 
     private sealed interface FetchStep<out T> {
         class Redirect(val to: HttpUrl) : FetchStep<Nothing>
