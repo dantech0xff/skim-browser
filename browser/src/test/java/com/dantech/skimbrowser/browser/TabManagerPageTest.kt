@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.domain.video.MAX_BRIDGE_URL_LENGTH
+import com.dantech.skimbrowser.domain.video.MAX_REMEMBERED_MEDIA
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.domain.tab.PageEvent
 
@@ -80,7 +81,11 @@ class TabManagerPageTest {
         var notifiesOnPlaying = false
         f.engine.evaluator = { _, script ->
             if ("__skimPlayed" in script) {
-                notifiesOnPlaying = "addEventListener('playing'" in script && "SkimVideo.postMessage" in script
+                notifiesOnPlaying = "addEventListener('playing'" in script &&
+                    "SkimVideo.postMessage" in script &&
+                    "state.doc !== document" in script &&
+                    "played.unshift(item)" in script &&
+                    script.indexOf("isThumb(") < script.indexOf("played.unshift(item)")
             }
             """{"urls":[],"docs":[]}"""
         }
@@ -125,6 +130,22 @@ class TabManagerPageTest {
         """.trimIndent()
         f.events.onVideoPlaying(id, playing)
         assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
+    fun aFullMediaListKeepsTheNewestClipAndDropsTheOldest() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        val page = "https://news.example/story"
+        f.engine.openPage(id, page, "Story")
+        repeat(MAX_REMEMBERED_MEDIA) { index ->
+            f.events.onMediaUrl(id, page, "https://cdn.example/feed-$index.mp4")
+        }
+        f.events.onMediaUrl(id, page, "https://cdn.example/the-one.mp4")
+        val urls = f.manager.runtime(id).value.mediaUrls
+        assertEquals("https://cdn.example/the-one.mp4", urls.first())
+        assertEquals(MAX_REMEMBERED_MEDIA, urls.size)
+        assertFalse(urls.contains("https://cdn.example/feed-0.mp4"))
     }
 
     @Test

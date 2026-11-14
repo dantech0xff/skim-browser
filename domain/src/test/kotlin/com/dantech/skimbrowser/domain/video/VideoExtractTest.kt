@@ -506,6 +506,44 @@ class VideoExtractTest {
     }
 
     @Test
+    fun aPlayedListDropsThumbnailsBeforeTheCapAndKeepsTheNewestClip() {
+        val preview = PlayedClip("https://cdn.example/thumb.mp4", 1.0, 120, 80)
+        val poster = PlayedClip("https://cdn.example/thumbs/poster.mp4", 30.0, 1280, 720)
+        assertNull(rememberPlayed(emptyList(), preview))
+        assertNull(rememberPlayed(emptyList(), poster))
+
+        var played = emptyList<PlayedClip>()
+        repeat(MAX_REMEMBERED_MEDIA) { index ->
+            val clip = PlayedClip("https://cdn.example/feed-$index.mp4", 40.0, 640, 360)
+            played = rememberPlayed(played, clip) ?: played
+        }
+        assertEquals(MAX_REMEMBERED_MEDIA, played.size)
+        assertEquals("https://cdn.example/feed-31.mp4", played.first().src)
+        assertNull(rememberPlayed(played, preview))
+        assertEquals(MAX_REMEMBERED_MEDIA, played.size)
+
+        val latest = PlayedClip("https://cdn.example/the-one.mp4", 90.0, 1280, 720)
+        val next = rememberPlayed(played, latest)
+        assertEquals("https://cdn.example/the-one.mp4", next?.first()?.src)
+        assertEquals(MAX_REMEMBERED_MEDIA, next?.size)
+        assertEquals("https://cdn.example/feed-1.mp4", next?.last()?.src)
+        assertEquals(null, next?.find { it.src == "https://cdn.example/feed-0.mp4" })
+
+        val again = rememberPlayed(next!!, latest)
+        assertEquals(latest.src, again?.first()?.src)
+        assertEquals(1, again?.count { it.src == latest.src })
+
+        assertEquals(listOf(latest.src), rememberPlayed(emptyList(), latest)?.map { it.src })
+        val remembered = (0 until 34).fold(emptyList<String>()) { urls, index ->
+            rememberMediaUrl(urls, "https://cdn.example/n-$index.mp4")
+        }
+        assertEquals("https://cdn.example/n-33.mp4", remembered.first())
+        assertEquals(MAX_REMEMBERED_MEDIA, remembered.size)
+        assertFalse(remembered.contains("https://cdn.example/n-0.mp4"))
+        assertFalse(remembered.contains("https://cdn.example/n-1.mp4"))
+    }
+
+    @Test
     fun aPlayingMessageKeepsOnlyAShortWebAddress() {
         val report = """
             {"page":"https://news.example/story","urls":[

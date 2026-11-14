@@ -107,9 +107,8 @@ class SkimWebViewClient(
     private val collapsePosted = AtomicBoolean(false)
     private val documentGate = Any()
     private val mainThread = Handler(Looper.getMainLooper())
-    /** Media URLs for the document currently being fetched, flushed once that document starts. */
-    private val mediaSeen = LinkedHashSet<String>()
-    private var mediaPage: String? = null
+    /** Media URLs for the navigation currently being fetched, flushed once that document starts. */
+    private val mediaLedger = MediaLedger()
     private val loadingCollapsed = LinkedHashSet<String>()
     private val collapsed = LinkedHashSet<String>()
     private var hideScript: ScriptHandler? = null
@@ -180,6 +179,7 @@ class SkimWebViewClient(
         documentStartedAt = now()
         lastInteractionAt = NO_INTERACTION
         val early = synchronized(documentGate) {
+            if (url != null) mediaLedger.noteDocumentStart(url)
             val sameDocument = url != null && url == loadingUrl
             val carried = if (sameDocument) loadingBlocked.get() else 0
             val carriedHosts = if (carriesCollapse(url, loadingUrl)) LinkedHashSet(loadingCollapsed) else LinkedHashSet()
@@ -197,7 +197,7 @@ class SkimWebViewClient(
         }
         if (detached || url == null) return
         events.onPageStarted(tabId, url)
-        val seen = synchronized(documentGate) { if (mediaPage == url) mediaSeen.toList() else emptyList() }
+        val seen = synchronized(documentGate) { mediaLedger.recorded(url) }
         seen.forEach { events.onMediaUrl(tabId, url, it) }
         if (early.first > 0) events.onShieldCount(tabId, early.first)
         cookieStyleInjected = false
@@ -215,9 +215,12 @@ class SkimWebViewClient(
             shield.warmCosmetic()
             return null
         }
-        val document = synchronized(documentGate) { loadingUrl ?: documentUrl }
-        if (!shield.blocks(document, url, incognito)) {
-            noteMedia(document, request)
+        val observed = synchronized(documentGate) {
+            val page = loadingUrl ?: documentUrl ?: return@synchronized null
+            page to mediaLedger.capture(page)
+        }
+        if (!shield.blocks(observed?.first, url, incognito)) {
+            if (observed != null) noteMedia(observed.first, observed.second, request)
             return null
         }
         noteBlocked(view, url)
@@ -485,6 +488,7 @@ class SkimWebViewClient(
 
     private fun noteMainFrame(url: String) {
         synchronized(documentGate) {
+            mediaLedger.noteMainFrame(url)
             loadingUrl = url
             loadingBlocked.set(0)
             loadingCollapsed.clear()
@@ -719,13 +723,10 @@ class SkimWebViewClient(
         return if (slash < 0) "" else rest.substring(slash)
     }
 
-    private fun noteMedia(page: String?, request: WebResourceRequest) {
+    private fun noteMedia(page: String, watch: MediaWatch, request: WebResourceRequest) {
         val url = request.url?.toString() ?: return
-        if (page == null || shield.knownTracker(page, url)) return
+        if (shield.knownTracker(page, url)) return
         val headers = request.requestHeaders
-        val known = synchronized(documentGate) {
-            if (mediaPage == page) mediaSeen.toList() else emptyList()
-        }
         val sight = sightMedia(
             MediaLook(
                 url = url,
@@ -733,19 +734,13 @@ class SkimWebViewClient(
                 accept = requestHeader(headers, "Accept"),
             ),
             tracker = false,
-            knownManifests = known,
+            knownManifests = watch.known,
         ) ?: return
         val record = when (sight) {
             is MediaSight.File -> sight.url
             is MediaSight.Segment -> sight.manifestUrl ?: return
         }
-        val added = synchronized(documentGate) {
-            if (mediaPage != page) {
-                mediaPage = page
-                mediaSeen.clear()
-            }
-            mediaSeen.add(record)
-        }
+        val added = synchronized(documentGate) { mediaLedger.commit(watch.epoch, page, record) }
         if (!added) return
         mainThread.post {
             if (!detached) events.onMediaUrl(tabId, page, record)

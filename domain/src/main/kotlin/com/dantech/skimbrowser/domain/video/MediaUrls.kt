@@ -84,6 +84,35 @@ fun mediaFromPlayingBridge(json: String): List<String> {
     return mediaFromProbe(json).mapNotNull(::bridgeUrl)
 }
 
+/** How many file addresses one document keeps. The newest stays, and the oldest is the one that goes. */
+const val MAX_REMEMBERED_MEDIA = 32
+
+/**
+ * One playing clip. [durationSeconds] is 0 when the element has not reported a duration yet.
+ */
+data class PlayedClip(val src: String, val durationSeconds: Double, val width: Int, val height: Int)
+
+/**
+ * [newestFirst] plus [clip], newest at the front, or null when [clip] is not a video worth keeping.
+ * A thumbnail is refused before the cap is applied, so preview clips cannot fill the list.
+ * A clip already kept moves to the front and is still returned, so the latest play is always offered.
+ * The caller passes an empty list for a new document.
+ */
+fun rememberPlayed(newestFirst: List<PlayedClip>, clip: PlayedClip, limit: Int = MAX_REMEMBERED_MEDIA): List<PlayedClip>? {
+    if (!playableAddress(clip.src) || isThumbnailUrl(clip.src) || isThumbnailSample(clip.durationSeconds, clip.width, clip.height)) {
+        return null
+    }
+    val older = newestFirst.filterNot { it.src == clip.src }
+    return (listOf(clip) + older).take(limit.coerceAtLeast(0))
+}
+
+/** [newestFirst] plus [url], newest at the front, dropping the oldest past [limit]. */
+fun rememberMediaUrl(newestFirst: List<String>, url: String, limit: Int = MAX_REMEMBERED_MEDIA): List<String> {
+    if (url.isBlank() || limit <= 0) return newestFirst
+    val older = newestFirst.filterNot { it == url }
+    return (listOf(url) + older).take(limit)
+}
+
 private fun probeSample(sample: JsonObject): String? {
     val src = (sample["src"] as? JsonPrimitive)?.contentOrNull ?: return null
     if (!playableAddress(src)) return null

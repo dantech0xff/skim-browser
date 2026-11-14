@@ -31,6 +31,7 @@ import com.dantech.skimbrowser.domain.video.bridgeUrl
 import com.dantech.skimbrowser.domain.video.mediaFromPlayingBridge
 import com.dantech.skimbrowser.domain.video.mediaFromProbe
 import com.dantech.skimbrowser.domain.video.playingPage
+import com.dantech.skimbrowser.domain.video.rememberMediaUrl
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
 import com.dantech.skimbrowser.domain.url.isWebUrl
 import com.dantech.skimbrowser.domain.url.sameNavigation
@@ -1143,7 +1144,8 @@ class TabManager(
         val raw = evaluateOrNull(live, tabId, VIDEO_PROBE) ?: return
         if (runtimeOf(tabId).loadNonce != nonce) return
         val page = runtimeOf(tabId).committedUrl ?: return
-        mediaFromProbe(raw).forEach { events.onMediaUrl(tabId, page, it) }
+        // The probe lists the newest clip first. Applying the oldest first leaves the newest at the front.
+        mediaFromProbe(raw).asReversed().forEach { events.onMediaUrl(tabId, page, it) }
     }
 
     private suspend fun evaluateOrNull(live: TabEngine, tabId: String, script: String): String? = try {
@@ -1381,8 +1383,9 @@ class TabManager(
             val runtime = runtimeOf(tabId)
             val page = runtime.committedUrl ?: open.url
             if (page != null && !sameNavigation(page, pageUrl)) return
-            if (mediaUrl in runtime.mediaUrls || runtime.mediaUrls.size >= MAX_MEDIA_URLS) return
-            updateRuntime(tabId) { it.copy(mediaUrls = it.mediaUrls + mediaUrl) }
+            val remembered = rememberMediaUrl(runtime.mediaUrls, mediaUrl, MAX_MEDIA_URLS)
+            if (remembered == runtime.mediaUrls) return
+            updateRuntime(tabId) { it.copy(mediaUrls = remembered) }
         }
 
         override fun onShieldCount(tabId: String, count: Int) {
@@ -1469,27 +1472,52 @@ class TabManager(
          */
         private val VIDEO_PROBE = """
             (function(){
-              var played = window.__skimPlayed || (window.__skimPlayed = []);
+              function clips() {
+                var state = window.__skimPlayed;
+                if (!state || state.doc !== document) state = window.__skimPlayed = {doc: document, items: []};
+                return state.items;
+              }
               function keep(src) {
                 if (!src) return false;
                 if (src.indexOf('blob:') === 0 || src.indexOf('mediasource:') === 0) return false;
                 return src.indexOf('http://') === 0 || src.indexOf('https://') === 0;
               }
+              function isThumb(src, duration, width, height) {
+                var path = src.split('?')[0].split('#')[0].toLowerCase();
+                var file = path.substring(path.lastIndexOf('/') + 1);
+                var dot = file.lastIndexOf('.');
+                var ext = dot >= 0 ? file.substring(dot + 1) : '';
+                if (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'gif' || ext === 'webp' || ext === 'avif' || ext === 'svg' || ext === 'ico') return true;
+                if (file.indexOf('thumb.') === 0 || file.indexOf('thumbnail.') === 0 || file.indexOf('poster.') === 0) return true;
+                var parts = path.split('/');
+                for (var p = 0; p < parts.length; p++) {
+                  var seg = parts[p];
+                  if (seg === 'thumb' || seg === 'thumbs' || seg === 'thumbnail' || seg === 'thumbnails' || seg === 'poster' || seg === 'posters' || seg === 'sprite' || seg === 'sprites') return true;
+                }
+                var tiny = width >= 1 && width <= 160 && height >= 1 && height <= 160;
+                var compact = width >= 1 && width <= 320 && height >= 1 && height <= 180;
+                var short = duration > 0 && duration < 2;
+                if (tiny && (short || duration <= 0)) return true;
+                return short && compact;
+              }
               function take(el) {
                 var src = el.currentSrc || el.src || '';
                 if (!keep(src)) return null;
-                for (var n = 0; n < played.length; n++) {
-                  if (played[n].src === src) return null;
-                }
-                if (played.length >= 32) return null;
                 var duration = el.duration;
-                var item = {
-                  src: src,
-                  duration: (typeof duration === 'number' && isFinite(duration)) ? duration : 0,
-                  width: el.videoWidth || 0,
-                  height: el.videoHeight || 0
-                };
-                played.push(item);
+                duration = (typeof duration === 'number' && isFinite(duration)) ? duration : 0;
+                var width = el.videoWidth || 0;
+                var height = el.videoHeight || 0;
+                if (isThumb(src, duration, width, height)) return null;
+                var played = clips();
+                for (var n = 0; n < played.length; n++) {
+                  if (played[n].src === src) {
+                    played.splice(n, 1);
+                    break;
+                  }
+                }
+                var item = {src: src, duration: duration, width: width, height: height};
+                played.unshift(item);
+                if (played.length > 32) played.length = 32;
                 return item;
               }
               function publish(item) {
@@ -1522,7 +1550,7 @@ class TabManager(
                   docs.push(text.length > 200000 ? text.slice(0, 200000) : text);
                 }
               }
-              return {urls: played.slice(), docs: docs};
+              return {urls: clips().slice(), docs: docs};
             })()
         """.trimIndent()
         private const val HIT_BUFFER = 8
