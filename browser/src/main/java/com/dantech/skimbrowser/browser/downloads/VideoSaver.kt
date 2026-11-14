@@ -319,16 +319,44 @@ class VideoSaver(
         if (audioOpened?.playlist?.protected == true) throw DownloadException("The video is protected")
         val videoSpans = mediaSpans(opened.playlist)
         if (videoSpans.isEmpty()) throw DownloadException("The playlist has no video")
+        val audioSpans = audioOpened?.let { mediaSpans(it.playlist) }.orEmpty()
+        if (audioOpened != null && audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
+        val segmentTotal = videoSpans.size + audioSpans.size
+        val videoBytes = spanBytes(videoSpans)
+        val audioBytes = spanBytes(audioSpans)
+        val jobBytes = if (videoBytes != null && audioBytes != null) videoBytes + audioBytes else -1L
         val dir = jobDir(localId)
         val budget = ByteBudget(maxBytes)
         try {
-            val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video", budget)
+            val video = downloadSpans(
+                videoSpans,
+                headers,
+                agent,
+                incognito,
+                dir,
+                localId,
+                "video",
+                budget,
+                segmentsInJob = segmentTotal,
+                jobBytes = jobBytes,
+            )
             if (audioOpened == null) {
                 return publish(video, name, containerMime(video, videoSpans.map { it.url }))
             }
-            val audioSpans = mediaSpans(audioOpened.playlist)
-            if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
-            val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio", budget)
+            val audio = downloadSpans(
+                audioSpans,
+                headers,
+                agent,
+                incognito,
+                dir,
+                localId,
+                "audio",
+                budget,
+                bytesAlready = video.length(),
+                segmentsAlready = videoSpans.size,
+                segmentsInJob = segmentTotal,
+                jobBytes = jobBytes,
+            )
             val out = File(dir, "mux.mp4")
             muxWithRoom(video, audio, out)
             return publish(out, name, "video/mp4")
@@ -367,19 +395,43 @@ class VideoSaver(
         localId: Long,
         label: String,
         budget: ByteBudget,
+        bytesAlready: Long = 0,
+        segmentsAlready: Int = 0,
+        segmentsInJob: Int = spans.size,
+        jobBytes: Long = -1,
     ): File {
         dir.mkdirs()
         val dest = File(dir, "$label.bin")
         val known = spans.all { it.length != null }
-        val total = if (known) spans.sumOf { it.length ?: 0L } else -1L
-        var soFar = 0L
+        val wholeJob = bytesAlready == 0L && segmentsInJob == spans.size
+        val total = when {
+            jobBytes > 0 -> jobBytes
+            known && wholeJob -> spans.sumOf { it.length ?: 0L }
+            else -> -1L
+        }
+        var soFar = bytesAlready
         dest.outputStream().use { out ->
-            for (span in spans) {
-                soFar += appendSpan(span, headers, agent, incognito, out, soFar, total, localId, budget)
+            for ((index, span) in spans.withIndex()) {
+                soFar += appendSpan(
+                    span,
+                    headers,
+                    agent,
+                    incognito,
+                    out,
+                    soFar,
+                    total,
+                    localId,
+                    budget,
+                    segmentIndex = segmentsAlready + index,
+                    segmentCount = segmentsInJob,
+                )
             }
         }
         return dest
     }
+
+    private fun spanBytes(spans: List<MediaSpan>): Long? =
+        if (spans.all { it.length != null }) spans.sumOf { it.length ?: 0L } else null
 
     private suspend fun appendSpan(
         span: MediaSpan,
@@ -391,6 +443,8 @@ class VideoSaver(
         total: Long,
         localId: Long,
         budget: ByteBudget,
+        segmentIndex: Int = 0,
+        segmentCount: Int = 1,
     ): Long {
         val start = span.start
         val length = span.length
@@ -416,8 +470,38 @@ class VideoSaver(
             }
             return fetch(span.url, headers, agent, incognito) { response ->
                 val body = response.body ?: throw DownloadException("The response has no body")
-                val reported = body.contentLength().takeIf { it > 0 } ?: total
-                copyBody(body, out, soFar, reported, onProgress = { written, size -> log.noteProgress(localId, written, size) }, charge = budget)
+                val segmentLength = body.contentLength()
+                val copied = copyBody(
+                    body,
+                    out,
+                    soFar,
+                    -1L,
+                    onProgress = { written, _ ->
+                        val into = written - soFar
+                        val progress = hlsProgress(
+                            cumulative = written,
+                            segmentIndex = segmentIndex,
+                            bytesIntoSegment = into,
+                            segmentLength = segmentLength,
+                            segmentCount = segmentCount,
+                            segmentFinished = segmentLength > 0L && into >= segmentLength,
+                        )
+                        log.noteProgress(localId, progress.arrived, progress.implied)
+                    },
+                    charge = budget,
+                )
+                if (segmentLength <= 0L) {
+                    val progress = hlsProgress(
+                        cumulative = soFar + copied,
+                        segmentIndex = segmentIndex,
+                        bytesIntoSegment = copied,
+                        segmentLength = segmentLength,
+                        segmentCount = segmentCount,
+                        segmentFinished = true,
+                    )
+                    log.noteProgress(localId, progress.arrived, progress.implied)
+                }
+                copied
             }
         }
         val end = start + length - 1
@@ -427,7 +511,22 @@ class VideoSaver(
             if (!partial && start > 0L && (body.contentLength() < 0L || body.contentLength() > length)) {
                 discardBytes(body, start)
             }
-            copyAtMost(body, out, length, soFar, total, budget) { written, size -> log.noteProgress(localId, written, size) }
+            copyAtMost(body, out, length, soFar, total, budget) { written, size ->
+                if (size > 0L) {
+                    log.noteProgress(localId, written, size)
+                } else {
+                    val into = written - soFar
+                    val progress = hlsProgress(
+                        cumulative = written,
+                        segmentIndex = segmentIndex,
+                        bytesIntoSegment = into,
+                        segmentLength = length,
+                        segmentCount = segmentCount,
+                        segmentFinished = into >= length,
+                    )
+                    log.noteProgress(localId, progress.arrived, progress.implied)
+                }
+            }
         }
     }
 
@@ -793,7 +892,15 @@ class VideoSaver(
         if (playlist.variants.isEmpty()) {
             return VideoQualities.Ready(listOf(variant.copy(title = title, mimeType = "video/mp2t")))
         }
-        val rows = playlist.variants.map { item ->
+        val chosen = playlist.variants
+            .groupBy { it.url }
+            .map { (_, group) ->
+                group.maxBy { item -> audioRate(preferredHlsAudio(playlist.audios, item.audioGroup)?.url) }
+            }
+            .groupBy { hlsQuality(it) }
+            .map { (_, group) -> group.maxBy { it.bandwidth ?: 0 } }
+            .sortedByDescending { qualityHeight(hlsQuality(it)) ?: -1 }
+        val rows = chosen.map { item ->
             val audio = preferredHlsAudio(playlist.audios, item.audioGroup)?.url
             variant.copy(
                 title = title,
@@ -802,9 +909,7 @@ class VideoSaver(
                 sizeBytes = null,
                 source = VideoSource.Hls(item.url, source.headers, audio),
             )
-        }.groupBy { (it.source as VideoSource.Hls).playlistUrl }
-            .map { (_, group) -> group.maxBy { audioRate((it.source as VideoSource.Hls).audioPlaylistUrl) } }
-            .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+        }
         return VideoQualities.Ready(rows)
     }
 
@@ -1136,6 +1241,27 @@ internal fun hlsQuality(item: HlsVariant): String {
     if (!resolution.isNullOrBlank()) return resolution
     val bandwidth = item.bandwidth ?: return "HLS"
     return "${bandwidth / 1000} kbps"
+}
+
+internal data class HlsBytes(val arrived: Long, val implied: Long)
+
+internal fun hlsProgress(
+    cumulative: Long,
+    segmentIndex: Int,
+    bytesIntoSegment: Long,
+    segmentLength: Long,
+    segmentCount: Int,
+    segmentFinished: Boolean,
+): HlsBytes {
+    if (cumulative < 0L || segmentCount <= 0) return HlsBytes(cumulative, -1L)
+    val into = when {
+        segmentLength > 0L -> bytesIntoSegment.coerceIn(0L, segmentLength).toDouble() / segmentLength.toDouble()
+        segmentFinished && bytesIntoSegment > 0L -> 1.0
+        else -> 0.0
+    }
+    val fraction = ((segmentIndex.coerceAtLeast(0) + into) / segmentCount.toDouble()).coerceIn(0.0, 1.0)
+    if (fraction <= 0.0) return HlsBytes(cumulative, -1L)
+    return HlsBytes(cumulative, (cumulative / fraction).toLong().coerceAtLeast(cumulative))
 }
 
 internal fun projectedTotal(known: List<Long>, count: Int): Long {

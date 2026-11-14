@@ -62,6 +62,9 @@ fun DownloadItem.fraction(): Float? {
     return (bytesSoFar.toFloat() / bytesTotal.toFloat()).coerceIn(0f, 1f)
 }
 
+fun DownloadItem.runningSize(): Long =
+    if (phase == DownloadPhase.Running && bytesSoFar > 0L) bytesSoFar else bytesTotal
+
 /** Retry, refresh, and removal for the Downloads screen. The browser owns the real work. */
 interface DownloadCommands {
     fun retry(retry: DownloadRetry)

@@ -151,6 +151,7 @@ fun parseDash(mpd: String, manifestUrl: String): DashManifest {
     val videos = mutableListOf<DashFile>()
     val audios = mutableListOf<DashFile>()
     adaptationSets(mpd).forEach { set ->
+        if (!playableAdaptation(set)) return@forEach
         val audio = set.contains("contentType=\"audio\"", ignoreCase = true) ||
             set.contains("mimeType=\"audio", ignoreCase = true)
         val target = if (audio) audios else videos
@@ -180,6 +181,28 @@ internal fun resolveUrl(base: String, raw: String): String {
     }
     val dir = root.substringBeforeLast('/', root)
     return "$dir/$ref"
+}
+
+private val MAIN_ROLES = setOf("main")
+
+private fun playableAdaptation(set: String): Boolean {
+    val open = set.substringBefore('>')
+    val type = attr(open, "contentType")?.lowercase()
+    val mime = attr(open, "mimeType")?.lowercase()
+    if (type == "image" || type == "text" || type == "application" || type == "font") return false
+    if (mime != null && !mime.startsWith("video/") && !mime.startsWith("audio/") && type != "video" && type != "audio") {
+        return false
+    }
+    val role = adaptationRole(set)?.lowercase()
+    return role == null || role in MAIN_ROLES
+}
+
+private fun adaptationRole(set: String): String? {
+    val start = set.indexOf("<Role", ignoreCase = true)
+    if (start < 0) return null
+    val end = set.indexOf('>', start)
+    if (end < 0) return null
+    return attr(set.substring(start, end + 1), "value")
 }
 
 private fun adaptationSets(mpd: String): List<String> {

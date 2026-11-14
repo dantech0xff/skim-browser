@@ -14,6 +14,13 @@ class DownloadItemTest {
     }
 
     @Test
+    fun aRunningDownloadShowsTheBytesThatHaveArrived() {
+        assertEquals(24_000L, sample(phase = DownloadPhase.Running, soFar = 24_000, total = 100_000).runningSize())
+        assertEquals(100_000L, sample(phase = DownloadPhase.Done, soFar = 24_000, total = 100_000).runningSize())
+        assertEquals(-1L, sample(phase = DownloadPhase.Running, soFar = 0, total = -1).runningSize())
+    }
+
+    @Test
     fun anUnknownSizeOrAFinishedDownloadHasNoFraction() {
         assertNull(sample(phase = DownloadPhase.Running, soFar = 10, total = -1).fraction())
         assertNull(sample(phase = DownloadPhase.Done, soFar = 100, total = 100).fraction())

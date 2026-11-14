@@ -27,6 +27,7 @@ import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadPhase
 import com.dantech.skimbrowser.domain.download.fraction
+import com.dantech.skimbrowser.domain.download.runningSize
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.LargeTitleScaffold
 import com.dantech.skimbrowser.ui.components.SkimAlertDialog
@@ -140,7 +141,7 @@ private fun DownloadRow(
 
 @Composable
 private fun statusText(item: DownloadItem): String {
-    val size = sizeText(item.bytesTotal)
+    val size = sizeText(item.runningSize())
     return when (item.phase) {
         DownloadPhase.Running -> {
             val fraction = item.fraction()

@@ -342,6 +342,26 @@ class VideoExtractTest {
     }
 
     @Test
+    fun distinctClipsThatShareAHeightStayListed() {
+        val variants = listOf(
+            VideoVariant("Cat", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/videos/cat-720.m3u8")),
+            VideoVariant("Dog", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/videos/dog-720.m3u8")),
+            VideoVariant("Cat", "720p", "video/mp4", null, VideoSource.SeparateAv("https://cdn.example/clips/cat.mp4", "https://cdn.example/clips/cat.m4a")),
+            VideoVariant("Dog", "720p", "video/mp4", null, VideoSource.SeparateAv("https://cdn.example/clips/dog.mp4", "https://cdn.example/clips/dog.m4a")),
+            VideoVariant("Left", "480p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/shows/a/480.m3u8")),
+            VideoVariant("Right", "480p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/episodes/a/480.m3u8")),
+        )
+        val listed = listedQualities(variants)
+        assertEquals(6, listed.size)
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/videos/cat-720.m3u8" })
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/videos/dog-720.m3u8" })
+        assertTrue(listed.any { (it.source as? VideoSource.SeparateAv)?.videoUrl == "https://cdn.example/clips/cat.mp4" })
+        assertTrue(listed.any { (it.source as? VideoSource.SeparateAv)?.videoUrl == "https://cdn.example/clips/dog.mp4" })
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/shows/a/480.m3u8" })
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/episodes/a/480.m3u8" })
+    }
+
+    @Test
     fun aPairedVideoFileIsNotAlsoOfferedWithoutAudio() {
         val variants = listOf(
             VideoVariant(
