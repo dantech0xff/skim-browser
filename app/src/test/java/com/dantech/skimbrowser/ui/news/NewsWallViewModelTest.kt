@@ -15,7 +15,9 @@ import com.dantech.skimbrowser.testing.MainDispatcherRule
 import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -172,6 +174,21 @@ class NewsWallViewModelTest {
         assertFalse(vm.state.value.enabled)
     }
 
+    @Test
+    fun turningNewsBackOnWhileACancelledFetchStillHoldsTheGateLoadsAgain() = runTest(dispatcher) {
+        val client = BlockingHoldClient()
+        val store = MemoryNews()
+        val vm = viewModel(store, client, images = true, now = 1)
+        assertEquals(4, client.urls.size)
+
+        vm.setEnabled(false)
+        vm.setEnabled(true)
+        client.release()
+
+        assertTrue(client.urls.groupingBy { it }.eachCount().any { it.value >= 2 })
+        assertTrue(store.currentPreferences().enabled)
+    }
+
     private fun viewModel(
         store: MemoryNews,
         client: RecordingClient,
@@ -220,6 +237,22 @@ class NewsWallViewModelTest {
         override suspend fun fetch(url: String): String {
             urls += url
             hold.await()
+            return "<rss/>"
+        }
+
+        fun release() {
+            hold.complete(Unit)
+        }
+    }
+
+    /** A fetch that keeps running after cancellation, the way a blocking HTTP read does. */
+    private class BlockingHoldClient : NewsFeedClient {
+        val urls = mutableListOf<String>()
+        private val hold = CompletableDeferred<Unit>()
+
+        override suspend fun fetch(url: String): String {
+            urls += url
+            withContext(NonCancellable) { hold.await() }
             return "<rss/>"
         }
 

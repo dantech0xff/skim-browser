@@ -141,7 +141,8 @@ class NewsWallViewModel @Inject constructor(
                             previous.customFeedUrls != prefs.customFeedUrls
                         )
                     val topicChanged = previous != null && previous.topic != prefs.topic
-                    refresh(force = sourcesChanged, wait = sourcesChanged || topicChanged)
+                    val turnedOn = previous != null && !previous.enabled
+                    refresh(force = sourcesChanged, wait = sourcesChanged || topicChanged || turnedOn)
                 }
         }
     }
@@ -155,7 +156,9 @@ class NewsWallViewModel @Inject constructor(
 
     /**
      * [wait] queues behind a fetch already running. A topic change waits, so that topic is loaded
-     * when the current round finishes. A second open of Home does not, so two opens share one fetch.
+     * when the current round finishes. Turning news back on waits too: a cancelled round can still
+     * hold the gate while a blocking read ends, and that round does not save. A second open of Home
+     * does not wait, so two opens share one fetch.
      */
     private fun refresh(force: Boolean, wait: Boolean) {
         refreshScope.launch {
