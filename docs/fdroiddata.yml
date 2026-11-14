@@ -1,6 +1,7 @@
 # Draft only. Do not copy this into fdroiddata until the four release URLs
 # are chosen. skim.aiProxyUrl, skim.termsUrl, skim.privacyUrl, and
-# skim.aiDataPolicyUrl are required for assembleRelease and are not stored here.
+# skim.aiDataPolicyUrl are required for assembleFullRelease and are not stored here.
+# F-Droid builds the full flavor. The play flavor is the Google Play artifact.
 #
 # A byte-for-byte rebuild has not been verified. versionCode and versionName
 # are constants in app/build.gradle.kts. There is no Google Play dependency.
@@ -34,11 +35,11 @@ Builds:
     # Replace with the tag that is actually published. master is not a release.
     commit: REPLACE_WITH_RELEASE_TAG
     gradle:
-      - yes
-    output: app/build/outputs/apk/release/app-release-unsigned.apk
+      - assembleFullRelease
+    output: app/build/outputs/apk/full/release/app-full-release-unsigned.apk
     prebuild:
       - echo sdk.dir=$ANDROID_HOME > local.properties
-    # assembleRelease also requires https values for skim.aiProxyUrl,
+    # assembleFullRelease also requires https values for skim.aiProxyUrl,
     # skim.termsUrl, skim.privacyUrl, and skim.aiDataPolicyUrl.
     # Add them as gradle properties in the published recipe. Do not commit them here.
 
