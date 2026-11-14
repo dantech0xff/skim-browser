@@ -94,6 +94,20 @@ class UrlPartsTest {
     }
 
     @Test
+    fun aPageAndItsFrameOriginMatchWithoutThePathOrDefaultPort() {
+        assertTrue(sameWebOrigin("https://news.example/story?q=1#part", "https://news.example"))
+        assertTrue(sameWebOrigin("https://News.Example:443/story", "https://news.example/"))
+        assertTrue(sameWebOrigin("https://user:secret@news.example/story", "https://news.example"))
+        assertTrue(sameWebOrigin("http://[::1]:8080/a", "http://[::1]:8080"))
+        assertFalse(sameWebOrigin("https://news.example/story", "https://player.vimeo.com"))
+        assertFalse(sameWebOrigin("https://www.news.example/story", "https://news.example"))
+        assertFalse(sameWebOrigin("https://news.example/story", "http://news.example"))
+        assertFalse(sameWebOrigin("https://news.example:8443/story", "https://news.example"))
+        assertFalse(sameWebOrigin("javascript:alert(1)", "https://news.example"))
+        assertFalse(sameWebOrigin("https://news.example/story", "null"))
+    }
+
+    @Test
     fun withoutFragmentDropsOnlyTheFragment() {
         assertEquals("https://a.example/page?q=1", withoutFragment("https://a.example/page?q=1#section-2"))
         assertEquals("https://a.example/", withoutFragment("https://a.example/#"))

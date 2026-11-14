@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.video.MAX_BRIDGE_URL_LENGTH
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.domain.tab.PageEvent
 
@@ -106,6 +107,24 @@ class TabManagerPageTest {
         f.engine.openPage(id, "https://news.example/next", "Next")
         f.events.onVideoPlaying(id, playing)
         assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
+    fun aPlayingEventDropsAScriptAddressAndAVeryLongOne() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        val longUrl = "https://cdn.example/" + "a".repeat(MAX_BRIDGE_URL_LENGTH)
+        val playing = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"javascript:alert(1)","duration":30,"width":640,"height":360},
+              {"src":"file:///sdcard/secret.mp4","duration":30,"width":640,"height":360},
+              {"src":"$longUrl","duration":30,"width":640,"height":360},
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.domain.video
 
+import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.url.isWebUrl
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -57,6 +59,29 @@ fun mediaFromProbe(json: String): List<String> {
 fun playingPage(json: String): String? {
     val root = runCatching { Json.parseToJsonElement(json) }.getOrNull() as? JsonObject ?: return null
     return (root["page"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+}
+
+/** The longest address a playing-message report may carry. Matches the history URL cap. */
+const val MAX_BRIDGE_URL_LENGTH = 8_192
+
+/** The longest raw playing-message body that is parsed. One file address fits, a pasted page does not. */
+const val MAX_PLAYING_REPORT_CHARS = 16 * 1024
+
+/**
+ * [url] when it is an http(s) address with a host and at most [MAX_BRIDGE_URL_LENGTH] characters.
+ * The playing-message port is the page's word, so anything else is dropped.
+ */
+fun bridgeUrl(url: String): String? =
+    url.takeIf { it.length <= MAX_BRIDGE_URL_LENGTH && isWebUrl(it) && hostOf(it) != null }
+
+/**
+ * File addresses from a playing-message body. The page address has to be an acceptable [bridgeUrl],
+ * and page JSON carried for site extractors is not taken from this port.
+ */
+fun mediaFromPlayingBridge(json: String): List<String> {
+    if (json.length > MAX_PLAYING_REPORT_CHARS) return emptyList()
+    if (bridgeUrl(playingPage(json).orEmpty()) == null) return emptyList()
+    return mediaFromProbe(json).mapNotNull(::bridgeUrl)
 }
 
 private fun probeSample(sample: JsonObject): String? {

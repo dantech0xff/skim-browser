@@ -82,8 +82,8 @@ interface TabEventSink {
     fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String)
 
     /**
-     * A `playing` event from the page. [report] is the probe object plus the page address.
-     * A report for a page that is no longer showing is ignored.
+     * A `playing` event from the main frame. [report] is untrusted: only an http(s) address of
+     * limited length, for the page now showing, is kept.
      */
     fun onVideoPlaying(tabId: String, report: String) = Unit
 

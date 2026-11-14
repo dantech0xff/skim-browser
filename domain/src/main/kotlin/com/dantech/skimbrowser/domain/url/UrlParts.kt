@@ -12,6 +12,64 @@ fun isWebUrl(url: String): Boolean {
 }
 
 /**
+ * The origin of an http(s) URL: scheme, host, and a port only when it is not the scheme's default.
+ * A leading `www` stays, because that host is a different origin. Null when [url] has no web host.
+ */
+fun webOrigin(url: String): String? {
+    if (!isWebUrl(url)) return null
+    val trimmed = url.trim()
+    val schemeEnd = trimmed.indexOf("://")
+    val scheme = trimmed.substring(0, schemeEnd).lowercase()
+    val rest = trimmed.substring(schemeEnd + 3).replace('\\', '/')
+    val authority = rest.substringBefore('#').substringBefore('?').substringBefore('/')
+    if (authority.isEmpty()) return null
+    val hostPort = if ('@' in authority) authority.substringAfterLast('@') else authority
+    if (hostPort.isEmpty() || ' ' in hostPort) return null
+    val host: String
+    val port: Int?
+    if (hostPort.startsWith("[")) {
+        val end = hostPort.indexOf(']')
+        if (end < 1) return null
+        host = hostPort.substring(0, end + 1).lowercase()
+        val portText = hostPort.substring(end + 1)
+        port = when {
+            portText.isEmpty() -> null
+            portText.startsWith(":") -> portText.substring(1).toIntOrNull() ?: return null
+            else -> return null
+        }
+    } else {
+        val colon = hostPort.lastIndexOf(':')
+        if (colon >= 0) {
+            host = hostPort.substring(0, colon)
+            port = hostPort.substring(colon + 1).toIntOrNull() ?: return null
+        } else {
+            host = hostPort
+            port = null
+        }
+        if (host.isEmpty()) return null
+    }
+    val ascii = if (host.startsWith("[")) {
+        host
+    } else {
+        try {
+            IDN.toASCII(host).lowercase()
+        } catch (_: IllegalArgumentException) {
+            return null
+        }
+    }
+    if (ascii.isEmpty()) return null
+    val defaultPort = if (scheme == "https") 443 else 80
+    val shownPort = if (port == null || port == defaultPort) "" else ":$port"
+    return "$scheme://$ascii$shownPort"
+}
+
+/** True when [pageUrl] and [sourceOrigin] are the same http(s) origin. */
+fun sameWebOrigin(pageUrl: String, sourceOrigin: String): Boolean {
+    val page = webOrigin(pageUrl) ?: return false
+    return page == webOrigin(sourceOrigin)
+}
+
+/**
  * The site key of [url]: its host in lowercase without a leading "www.", as the address bar and
  * site permissions use it. Null when [url] is not an http(s) URL with a valid host, so
  * `javascript:`, `data:`, `about:blank`, `file:` and `view-source:` URLs have no site.

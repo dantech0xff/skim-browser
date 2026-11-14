@@ -505,6 +505,27 @@ class VideoExtractTest {
         assertEquals(listOf("1080p", "360p"), listedQualities(variants).map { it.qualityLabel })
     }
 
+    @Test
+    fun aPlayingMessageKeepsOnlyAShortWebAddress() {
+        val report = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360},
+              {"src":"javascript:alert(1)","duration":30,"width":640,"height":360},
+              {"src":"file:///sdcard/secret.mp4","duration":30,"width":640,"height":360},
+              "blob:https://news.example/1"
+            ],"docs":["{\"play_addr\":\"https://cdn.example/hidden.mp4\"}"]}
+        """.trimIndent()
+        assertEquals(listOf("https://cdn.example/stream"), mediaFromPlayingBridge(report))
+
+        val longUrl = "https://cdn.example/" + "a".repeat(MAX_BRIDGE_URL_LENGTH)
+        val tooLong = """{"page":"https://news.example/story","urls":[{"src":"$longUrl","duration":30,"width":640,"height":360}],"docs":[]}"""
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge(tooLong))
+
+        val scriptPage = """{"page":"javascript:alert(1)","urls":[{"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}],"docs":[]}"""
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge(scriptPage))
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge("x".repeat(MAX_PLAYING_REPORT_CHARS + 1)))
+    }
+
     private fun extractor(
         name: String,
         page: String,

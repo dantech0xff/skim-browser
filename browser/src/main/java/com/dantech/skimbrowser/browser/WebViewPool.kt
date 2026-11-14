@@ -660,7 +660,9 @@ class WebViewPool(
 
     /**
      * `SkimVideo.postMessage` receives a playing file. It is a message listener, not a Java object
-     * the page can call into.
+     * the page can call into. The port is registered for every origin because the tab navigates
+     * after this WebView exists. Only a string from the main frame, whose origin is the page now
+     * showing, is delivered. A player inside an iframe is left to the request sniffer.
      */
     private fun listenForPlaying(view: WebView, tabId: String) {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
@@ -668,9 +670,15 @@ class WebViewPool(
             view,
             "SkimVideo",
             setOf("*"),
-        ) { _, message, _, _, _ ->
-            val data = message.data
-            if (!data.isNullOrBlank()) events.onVideoPlaying(tabId, data)
+        ) { _, message, sourceOrigin, isMainFrame, _ ->
+            val report = textPlayingMessage(
+                type = message.type,
+                isMainFrame = isMainFrame,
+                sourceOrigin = sourceOrigin.toString(),
+                pageUrl = tabs.runtime(tabId).value.committedUrl
+                    ?: tabs.state.value.tabs.firstOrNull { it.id == tabId }?.url,
+            ) { message.data }
+            if (report != null) events.onVideoPlaying(tabId, report)
         }
     }
 

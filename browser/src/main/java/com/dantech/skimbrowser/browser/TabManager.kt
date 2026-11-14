@@ -27,6 +27,8 @@ import com.dantech.skimbrowser.domain.interrupt.InterruptKind
 import com.dantech.skimbrowser.domain.interrupt.InterruptNotices
 import com.dantech.skimbrowser.domain.phishing.SafetyWarning
 import com.dantech.skimbrowser.domain.url.hostOf
+import com.dantech.skimbrowser.domain.video.bridgeUrl
+import com.dantech.skimbrowser.domain.video.mediaFromPlayingBridge
 import com.dantech.skimbrowser.domain.video.mediaFromProbe
 import com.dantech.skimbrowser.domain.video.playingPage
 import com.dantech.skimbrowser.domain.url.httpsUpgrade
@@ -1370,8 +1372,8 @@ class TabManager(
             val open = openTab(tabId) ?: return
             val page = runtimeOf(tabId).committedUrl ?: open.url ?: return
             val reported = playingPage(report) ?: return
-            if (!sameNavigation(page, reported)) return
-            mediaFromProbe(report).forEach { onMediaUrl(tabId, page, it) }
+            if (bridgeUrl(reported) == null || !sameNavigation(page, reported)) return
+            mediaFromPlayingBridge(report).forEach { onMediaUrl(tabId, page, it) }
         }
 
         override fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String) {
