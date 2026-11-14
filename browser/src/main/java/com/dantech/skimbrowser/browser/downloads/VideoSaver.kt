@@ -319,16 +319,44 @@ class VideoSaver(
         if (audioOpened?.playlist?.protected == true) throw DownloadException("The video is protected")
         val videoSpans = mediaSpans(opened.playlist)
         if (videoSpans.isEmpty()) throw DownloadException("The playlist has no video")
+        val audioSpans = audioOpened?.let { mediaSpans(it.playlist) }.orEmpty()
+        if (audioOpened != null && audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
+        val segmentTotal = videoSpans.size + audioSpans.size
+        val videoBytes = spanBytes(videoSpans)
+        val audioBytes = spanBytes(audioSpans)
+        val jobBytes = if (videoBytes != null && audioBytes != null) videoBytes + audioBytes else -1L
         val dir = jobDir(localId)
         val budget = ByteBudget(maxBytes)
         try {
-            val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video", budget)
+            val video = downloadSpans(
+                videoSpans,
+                headers,
+                agent,
+                incognito,
+                dir,
+                localId,
+                "video",
+                budget,
+                segmentsInJob = segmentTotal,
+                jobBytes = jobBytes,
+            )
             if (audioOpened == null) {
                 return publish(video, name, containerMime(video, videoSpans.map { it.url }))
             }
-            val audioSpans = mediaSpans(audioOpened.playlist)
-            if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
-            val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio", budget)
+            val audio = downloadSpans(
+                audioSpans,
+                headers,
+                agent,
+                incognito,
+                dir,
+                localId,
+                "audio",
+                budget,
+                bytesAlready = video.length(),
+                segmentsAlready = videoSpans.size,
+                segmentsInJob = segmentTotal,
+                jobBytes = jobBytes,
+            )
             val out = File(dir, "mux.mp4")
             muxWithRoom(video, audio, out)
             return publish(out, name, "video/mp4")
@@ -367,12 +395,20 @@ class VideoSaver(
         localId: Long,
         label: String,
         budget: ByteBudget,
+        bytesAlready: Long = 0,
+        segmentsAlready: Int = 0,
+        segmentsInJob: Int = spans.size,
+        jobBytes: Long = -1,
     ): File {
         dir.mkdirs()
         val dest = File(dir, "$label.bin")
         val known = spans.all { it.length != null }
-        val total = if (known) spans.sumOf { it.length ?: 0L } else -1L
-        var soFar = 0L
+        val total = when {
+            jobBytes > 0 -> jobBytes
+            known -> bytesAlready + spans.sumOf { it.length ?: 0L }
+            else -> -1L
+        }
+        var soFar = bytesAlready
         dest.outputStream().use { out ->
             for ((index, span) in spans.withIndex()) {
                 soFar += appendSpan(
@@ -385,13 +421,16 @@ class VideoSaver(
                     total,
                     localId,
                     budget,
-                    segmentIndex = index,
-                    segmentCount = spans.size,
+                    segmentIndex = segmentsAlready + index,
+                    segmentCount = segmentsInJob,
                 )
             }
         }
         return dest
     }
+
+    private fun spanBytes(spans: List<MediaSpan>): Long? =
+        if (spans.all { it.length != null }) spans.sumOf { it.length ?: 0L } else null
 
     private suspend fun appendSpan(
         span: MediaSpan,
