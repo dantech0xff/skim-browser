@@ -1,6 +1,9 @@
 package com.dantech.skimbrowser.browser
 
 import com.dantech.skimbrowser.domain.tab.LoadError
+import com.dantech.skimbrowser.domain.video.MAX_BRIDGE_URL_LENGTH
+import com.dantech.skimbrowser.domain.video.MAX_REMEMBERED_MEDIA
+import com.dantech.skimbrowser.domain.video.PAGE_DOCUMENT
 import com.dantech.skimbrowser.domain.tab.HitTarget
 import com.dantech.skimbrowser.domain.tab.PageEvent
 
@@ -49,6 +52,135 @@ class TabManagerPageTest {
     }
 
     // Page reports
+
+    @Test
+    fun aPlayingFileIsOfferedUntilTheNextPage() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        val probe = """
+            {"urls":[
+              {"src":"https://cdn.example/playing.mp4","duration":12,"width":1280,"height":720},
+              {"src":"blob:https://news.example/1","duration":12,"width":1280,"height":720},
+              {"src":"https://cdn.example/thumb.mp4","duration":1,"width":120,"height":80}
+            ],"docs":[]}
+        """.trimIndent()
+        f.engine.evaluator = { _, script -> if ("__skimPlayed" in script) probe else null }
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        advanceTimeBy(2_000)
+        assertEquals(listOf("https://cdn.example/playing.mp4"), f.manager.runtime(id).value.mediaUrls)
+
+        f.engine.evaluator = { _, _ -> null }
+        f.engine.openPage(id, "https://news.example/next", "Next")
+        advanceTimeBy(2_000)
+        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
+    fun aPlayingEventOffersTheFileAndAStalePageDoesNot() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        var notifiesOnPlaying = false
+        f.engine.evaluator = { _, script ->
+            if ("__skimPlayed" in script) {
+                notifiesOnPlaying = "addEventListener('playing'" in script &&
+                    "SkimVideo.postMessage" in script &&
+                    "state.doc !== document" in script &&
+                    "played.unshift(item)" in script &&
+                    script.indexOf("isThumb(") < script.indexOf("played.unshift(item)")
+            }
+            """{"urls":[],"docs":[]}"""
+        }
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        runCurrent()
+        assertTrue(notifiesOnPlaying)
+        val playing = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360},
+              {"src":"blob:https://news.example/1","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+
+        val stale = """
+            {"page":"https://other.example/old","urls":[
+              {"src":"https://cdn.example/old.mp4","duration":40,"width":1280,"height":720}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, stale)
+        assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+
+        f.engine.openPage(id, "https://news.example/next", "Next")
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(emptyList<String>(), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
+    fun aPlayingEventDropsAScriptAddressAndAVeryLongOne() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        val longUrl = "https://cdn.example/" + "a".repeat(MAX_BRIDGE_URL_LENGTH)
+        val playing = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"javascript:alert(1)","duration":30,"width":640,"height":360},
+              {"src":"file:///sdcard/secret.mp4","duration":30,"width":640,"height":360},
+              {"src":"$longUrl","duration":30,"width":640,"height":360},
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(listOf("https://cdn.example/stream"), f.manager.runtime(id).value.mediaUrls)
+    }
+
+    @Test
+    fun aFullMediaListKeepsTheNewestClipAndDropsTheOldest() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        val page = "https://news.example/story"
+        f.engine.openPage(id, page, "Story")
+        repeat(MAX_REMEMBERED_MEDIA) { index ->
+            f.events.onMediaUrl(id, page, "https://cdn.example/feed-$index.mp4")
+        }
+        f.events.onMediaUrl(id, page, "https://cdn.example/the-one.mp4")
+        val urls = f.manager.runtime(id).value.mediaUrls
+        assertEquals("https://cdn.example/the-one.mp4", urls.first())
+        assertEquals(MAX_REMEMBERED_MEDIA, urls.size)
+        assertFalse(urls.contains("https://cdn.example/feed-0.mp4"))
+    }
+
+    @Test
+    fun aRespeltPageStillKeepsTheFile() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://news.example/story")
+        f.engine.openPage(id, "https://news.example/story", "Story")
+        f.events.onMediaUrl(id, "https://www.news.example/story/", "https://cdn.example/clip.mp4")
+        val playing = """
+            {"page":"https://WWW.news.example/story#part","urls":[
+              {"src":"https://cdn.example/played.mp4","duration":30,"width":640,"height":360}
+            ],"docs":[]}
+        """.trimIndent()
+        f.events.onVideoPlaying(id, playing)
+        assertEquals(
+            listOf("https://cdn.example/played.mp4", "https://cdn.example/clip.mp4"),
+            f.manager.runtime(id).value.mediaUrls,
+        )
+    }
+
+    @Test
+    fun fortySniffedFilesDoNotEvictThePageJson() = runTest {
+        val f = attached()
+        val id = f.manager.newTab(incognito = false, url = "https://www.tiktok.com/@a/video/1")
+        val page = "https://www.tiktok.com/@a/video/1"
+        f.engine.openPage(id, page, "clip")
+        val json = """{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]}}"""
+        f.events.onMediaUrl(id, page, PAGE_DOCUMENT + json)
+        repeat(40) { index -> f.events.onMediaUrl(id, page, "https://cdn.example/file-$index.mp4") }
+        val runtime = f.manager.runtime(id).value
+        assertEquals(listOf(json), runtime.pageDocuments)
+        assertEquals(MAX_REMEMBERED_MEDIA, runtime.mediaUrls.size)
+        assertFalse(runtime.mediaUrls.any { it.startsWith(PAGE_DOCUMENT) })
+    }
 
     @Test
     fun pageReportsUpdateTheRuntimeAndTheTab() = runTest {

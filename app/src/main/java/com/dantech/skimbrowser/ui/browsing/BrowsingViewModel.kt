@@ -280,7 +280,7 @@ internal fun browsingUiState(
         },
         indicator = if (certificate != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error, safety),
         readerAvailable = runtime.readerable && error == null && certificate == null && safety == null,
-        videoAvailable = videoCanBeSaved(tab.url, runtime.mediaUrls, extractors) &&
+        videoAvailable = videoCanBeSaved(tab.url, runtime.mediaUrls, extractors, runtime.pageDocuments) &&
             error == null && certificate == null && safety == null,
         progress = runtime.progress,
         loadError = error,

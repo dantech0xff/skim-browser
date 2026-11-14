@@ -12,7 +12,7 @@ class TikTokVideoExtractor : VideoExtractor {
 
     override fun matches(pageUrl: String): Boolean = hostIs(pageUrl, "tiktok.com")
 
-    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = pageDocuments(hints.mediaUrls)
+    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = hints.pageDocuments
         .flatMap { document ->
             urlsByKey(document, TIKTOK_KEYS)
                 .filter { (url, _) -> !isStill(url) }
@@ -26,7 +26,7 @@ class FacebookVideoExtractor : VideoExtractor {
 
     override fun matches(pageUrl: String): Boolean = hostIs(pageUrl, "facebook.com", "fb.com", "fb.watch")
 
-    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = pageDocuments(hints.mediaUrls).flatMap { document ->
+    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = hints.pageDocuments.flatMap { document ->
         val files = urlsByKey(document, FACEBOOK_FILES)
         val manifests = textByKey(document, setOf("dash_manifest"))
         files.map { (url, quality) -> progressive(hints, url, quality) } + manifests.flatMap { dashVariants(hints, it) }
@@ -39,7 +39,7 @@ class RedditVideoExtractor : VideoExtractor {
 
     override fun matches(pageUrl: String): Boolean = hostIs(pageUrl, "reddit.com", "redd.it")
 
-    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = pageDocuments(hints.mediaUrls).flatMap { document ->
+    override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = hints.pageDocuments.flatMap { document ->
         val values = urlsByKey(document, REDDIT_KEYS)
         values.map { (url, _) ->
             when (mediaStream(url, null)) {

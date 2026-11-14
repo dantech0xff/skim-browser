@@ -10,6 +10,7 @@ import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,12 +23,76 @@ class VideoExtractTest {
     @Test
     fun aMediaAddressIsAFileOrAPlaylistAndASegmentIsNeither() {
         assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/v.mp4", null))
+        assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/v.mov", null))
         assertEquals(MediaStream.Progressive, mediaStream("https://cdn.example/clip", "video/webm"))
         assertEquals(MediaStream.Hls, mediaStream("https://cdn.example/a.m3u8?x=1", null))
         assertEquals(MediaStream.Dash, mediaStream("https://cdn.example/p", "application/dash+xml"))
         assertNull(mediaStream("https://cdn.example/seg-1.ts", null))
         assertNull(mediaStream("https://cdn.example/seg.m4s", "video/mp2t"))
         assertNull(mediaStream("https://cdn.example/poster.jpg", "image/jpeg"))
+    }
+
+    @Test
+    fun aSnifferKeepsWholeFilesAndMapsASegmentToItsPlaylist() {
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.mp4"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.webm"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.mov"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Progressive, (sightMedia(MediaLook("https://cdn.example/v.m4v"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Hls, (sightMedia(MediaLook("https://cdn.example/a.m3u8"), false) as MediaSight.File).stream)
+        assertEquals(MediaStream.Dash, (sightMedia(MediaLook("https://cdn.example/a.mpd"), false) as MediaSight.File).stream)
+        val ranged = sightMedia(MediaLook("https://video.example/playback", range = "bytes=0-"), tracker = false)
+        assertEquals("https://video.example/playback", (ranged as MediaSight.File).url)
+        val accepted = sightMedia(MediaLook("https://video.example/clip", accept = "video/mp4, */*;q=0.8"), tracker = false)
+        assertEquals(MediaStream.Progressive, (accepted as MediaSight.File).stream)
+        assertNull(sightMedia(MediaLook("https://cdn.example/app.js", range = "bytes=0-"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/thumb.jpg"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/thumbs/poster.mp4"), false))
+        assertNull(sightMedia(MediaLook("https://ads.example/ad.mp4"), tracker = true))
+        assertNull(sightMedia(MediaLook("blob:https://news.example/1"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/nope"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/song.mp3", range = "bytes=0-"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/song.m4a", range = "bytes=0-1"), false))
+        assertNull(sightMedia(MediaLook("https://cdn.example/song", accept = "audio/mpeg, video/*;q=0.1"), false))
+        assertEquals("https://news.example/story", playingPage("""{"page":"https://news.example/story","urls":[],"docs":[]}"""))
+        assertNull(playingPage("{}"))
+        assertEquals(MediaStream.Hls, textPlaylist("#EXTM3U\n#EXTINF:1,\nseg.ts\n"))
+        assertEquals(MediaStream.Dash, textPlaylist("<?xml version=\"1.0\"?><MPD></MPD>"))
+        assertNull(textPlaylist("\u0000\u0000\u0000 ftypisom"))
+
+        val playlist = "https://cdn.example/hls/master.m3u8"
+        val nested = "https://cdn.example/hls/720/index.m3u8"
+        val segment = sightMedia(
+            MediaLook("https://cdn.example/hls/720/seg-1.ts"),
+            tracker = false,
+            knownManifests = listOf(playlist, nested, "https://cdn.example/other/clip.mp4"),
+        ) as MediaSight.Segment
+        assertEquals(nested, segment.manifestUrl)
+        val alone = sightMedia(MediaLook("https://cdn.example/hls/seg-1.m4s"), tracker = false) as MediaSight.Segment
+        assertNull(alone.manifestUrl)
+    }
+
+    @Test
+    fun aProbeDropsBlobMediaSourceAndThumbnailsAndKeepsAPlayingFile() {
+        val json = """
+            {"urls":[
+              "https://cdn.example/direct.mp4",
+              "blob:https://news.example/1",
+              "mediasource:https://news.example/2",
+              {"src":"https://cdn.example/playing.mp4","duration":12.5,"width":1280,"height":720},
+              {"src":"https://cdn.example/thumb.mp4","duration":1.2,"width":160,"height":90},
+              {"src":"blob:https://news.example/3","duration":20,"width":1920,"height":1080}
+            ],"docs":["{\"play_addr\":\"https://v.example/a.mp4\"}"]}
+        """.trimIndent()
+        val found = mediaFromProbe(json)
+        assertEquals(
+            listOf("https://cdn.example/direct.mp4", "https://cdn.example/playing.mp4"),
+            found.filterNot { it.startsWith(PAGE_DOCUMENT) },
+        )
+        assertTrue(found.any { it.startsWith(PAGE_DOCUMENT) })
+        assertTrue(isThumbnailSample(1.2, 160, 90))
+        assertFalse(isThumbnailSample(12.5, 1280, 720))
+        assertFalse(isThumbnailSample(1_800.0, 144, 144))
+        assertFalse(isThumbnailSample(0.0, 0, 0))
     }
 
     @Test
@@ -46,6 +111,10 @@ class VideoExtractTest {
         assertTrue(parseHls(sample, "https://cdn.example/a.m3u8").protected)
         val widevine = "#EXT-X-KEY:METHOD=SAMPLE-AES,KEYFORMAT=\"urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed\",URI=\"data:text/plain,widevine\""
         assertTrue(hlsProtected(widevine))
+        val fairplay = "#EXT-X-KEY:METHOD=SAMPLE-AES,KEYFORMAT=\"com.apple.streamingkeydelivery\",URI=\"skd://x\""
+        assertTrue(hlsProtected(fairplay))
+        val aes = "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"https://cdn.example/key\"\nseg.ts"
+        assertTrue(parseHls(aes, "https://cdn.example/a.m3u8").protected)
         assertTrue(dashProtected("<MPD><ContentProtection schemeIdUri=\"urn:uuid:edef8ba9\"/></MPD>"))
     }
 
@@ -145,12 +214,29 @@ class VideoExtractTest {
                 "https://cdn.example/a.mp4",
                 "https://cdn.example/a.m3u8",
                 "https://cdn.example/seg.ts",
+                "https://other.example/clip.mov",
+                "https://files.example/movie.webm",
+                "https://cdn.example/thumbs/poster.mp4",
+                "https://video.example/playback",
                 "${PAGE_DOCUMENT}{}",
             ),
         )
         val variants = GenericVideoExtractor().extract(hints)
-        assertEquals(listOf(MediaStream.Progressive, MediaStream.Hls), variants.map { streamOf(it) })
-        assertEquals("https://news.example/story", (variants.first().source as VideoSource.Progressive).headers["Referer"])
+        assertEquals(
+            listOf(MediaStream.Hls, MediaStream.Progressive, MediaStream.Progressive, MediaStream.Progressive),
+            variants.map { streamOf(it) },
+        )
+        val hls = variants.first().source as VideoSource.Hls
+        assertEquals("https://cdn.example/a.m3u8", hls.playlistUrl)
+        assertEquals("https://news.example/story", hls.headers["Referer"])
+        assertEquals("test", hls.headers["User-Agent"])
+        assertEquals("Story", variants.first().title)
+        assertEquals("https://other.example/clip.mov", (variants[1].source as VideoSource.Progressive).url)
+        assertEquals("video/quicktime", variants[1].mimeType)
+        assertEquals("https://files.example/movie.webm", (variants[2].source as VideoSource.Progressive).url)
+        assertEquals("video/webm", variants[2].mimeType)
+        assertEquals("https://video.example/playback", (variants[3].source as VideoSource.Progressive).url)
+        assertEquals("video/mp4", variants[3].mimeType)
     }
 
     @Test
@@ -229,13 +315,29 @@ class VideoExtractTest {
         val hints = hints(page, "Talk", listOf("https://cdn.example/also.mp4"))
         val collected = collectVariants(listOf(generic, youtube), hints)
         assertEquals(
-            listOf("https://rr.example/video|https://rr.example/audio", "https://cdn.example/also.mp4"),
+            listOf("https://rr.example/video|https://rr.example/audio"),
             collected.variants.map { it.source.address() },
         )
         assertNull(collected.failure)
         assertTrue(collected.variants.first().source is VideoSource.SeparateAv)
 
-        val refused = collectVariants(listOf(extractor("youtube", page) { throw VideoExtractException(VideoExtractFailure.DRM) }), hints(page, "Talk", emptyList()))
+        val elsewhere = collectVariants(
+            listOf(generic, youtube),
+            hints("https://news.example/story", "Story", listOf("https://cdn.example/also.mp4")),
+        )
+        assertEquals(listOf("https://cdn.example/also.mp4"), elsewhere.variants.map { it.source.address() })
+
+        val emptySite = extractor("tiktok", "https://www.tiktok.com/@a/video/1") { emptyList() }
+        val fellBack = collectVariants(
+            listOf(emptySite, generic),
+            hints("https://www.tiktok.com/@a/video/1", "clip", listOf("https://cdn.example/also.mp4")),
+        )
+        assertEquals(listOf("https://cdn.example/also.mp4"), fellBack.variants.map { it.source.address() })
+
+        val refused = collectVariants(
+            listOf(generic, extractor("youtube", page) { throw VideoExtractException(VideoExtractFailure.DRM) }),
+            hints(page, "Talk", listOf("https://cdn.example/also.mp4")),
+        )
         assertTrue(refused.variants.isEmpty())
         assertEquals(VideoExtractFailure.DRM, refused.failure)
 
@@ -404,6 +506,80 @@ class VideoExtractTest {
         assertEquals(listOf("1080p", "360p"), listedQualities(variants).map { it.qualityLabel })
     }
 
+    @Test
+    fun aPlayedListDropsThumbnailsBeforeTheCapAndKeepsTheNewestClip() {
+        val preview = PlayedClip("https://cdn.example/thumb.mp4", 1.0, 120, 80)
+        val poster = PlayedClip("https://cdn.example/thumbs/poster.mp4", 30.0, 1280, 720)
+        assertNull(rememberPlayed(emptyList(), preview))
+        assertNull(rememberPlayed(emptyList(), poster))
+
+        var played = emptyList<PlayedClip>()
+        repeat(MAX_REMEMBERED_MEDIA) { index ->
+            val clip = PlayedClip("https://cdn.example/feed-$index.mp4", 40.0, 640, 360)
+            played = rememberPlayed(played, clip) ?: played
+        }
+        assertEquals(MAX_REMEMBERED_MEDIA, played.size)
+        assertEquals("https://cdn.example/feed-31.mp4", played.first().src)
+        assertNull(rememberPlayed(played, preview))
+        assertEquals(MAX_REMEMBERED_MEDIA, played.size)
+
+        val latest = PlayedClip("https://cdn.example/the-one.mp4", 90.0, 1280, 720)
+        val next = rememberPlayed(played, latest)
+        assertEquals("https://cdn.example/the-one.mp4", next?.first()?.src)
+        assertEquals(MAX_REMEMBERED_MEDIA, next?.size)
+        assertEquals("https://cdn.example/feed-1.mp4", next?.last()?.src)
+        assertEquals(null, next?.find { it.src == "https://cdn.example/feed-0.mp4" })
+
+        val again = rememberPlayed(next!!, latest)
+        assertEquals(latest.src, again?.first()?.src)
+        assertEquals(1, again?.count { it.src == latest.src })
+
+        assertEquals(listOf(latest.src), rememberPlayed(emptyList(), latest)?.map { it.src })
+        val remembered = (0 until 34).fold(emptyList<String>()) { urls, index ->
+            rememberMediaUrl(urls, "https://cdn.example/n-$index.mp4")
+        }
+        assertEquals("https://cdn.example/n-33.mp4", remembered.first())
+        assertEquals(MAX_REMEMBERED_MEDIA, remembered.size)
+        assertFalse(remembered.contains("https://cdn.example/n-0.mp4"))
+        assertFalse(remembered.contains("https://cdn.example/n-1.mp4"))
+
+        val json = """{"download_addr":{"url_list":["https://v.tiktok.com/a/download.mp4"]}}"""
+        val documents = rememberPageDocument(emptyList(), PAGE_DOCUMENT + json)
+        val files = (0 until 40).fold(emptyList<String>()) { urls, index ->
+            rememberMediaUrl(urls, "https://cdn.example/file-$index.mp4")
+        }
+        assertEquals(listOf(json), documents)
+        assertEquals(MAX_REMEMBERED_MEDIA, files.size)
+        assertFalse(files.any { it.startsWith(PAGE_DOCUMENT) })
+        val saved = runBlocking {
+            TikTokVideoExtractor().extract(
+                PageVideoHints("https://www.tiktok.com/@a/video/1", "clip", files, "test", null, documents),
+            )
+        }
+        assertEquals("https://v.tiktok.com/a/download.mp4", (saved.single().source as VideoSource.Progressive).url)
+    }
+
+    @Test
+    fun aPlayingMessageKeepsOnlyAShortWebAddress() {
+        val report = """
+            {"page":"https://news.example/story","urls":[
+              {"src":"https://cdn.example/stream","duration":30,"width":640,"height":360},
+              {"src":"javascript:alert(1)","duration":30,"width":640,"height":360},
+              {"src":"file:///sdcard/secret.mp4","duration":30,"width":640,"height":360},
+              "blob:https://news.example/1"
+            ],"docs":["{\"play_addr\":\"https://cdn.example/hidden.mp4\"}"]}
+        """.trimIndent()
+        assertEquals(listOf("https://cdn.example/stream"), mediaFromPlayingBridge(report))
+
+        val longUrl = "https://cdn.example/" + "a".repeat(MAX_BRIDGE_URL_LENGTH)
+        val tooLong = """{"page":"https://news.example/story","urls":[{"src":"$longUrl","duration":30,"width":640,"height":360}],"docs":[]}"""
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge(tooLong))
+
+        val scriptPage = """{"page":"javascript:alert(1)","urls":[{"src":"https://cdn.example/stream","duration":30,"width":640,"height":360}],"docs":[]}"""
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge(scriptPage))
+        assertEquals(emptyList<String>(), mediaFromPlayingBridge("x".repeat(MAX_PLAYING_REPORT_CHARS + 1)))
+    }
+
     private fun extractor(
         name: String,
         page: String,
@@ -417,9 +593,10 @@ class VideoExtractTest {
     private fun hints(page: String, title: String?, media: List<String>) = PageVideoHints(
         pageUrl = page,
         pageTitle = title,
-        mediaUrls = media,
+        mediaUrls = media.filterNot { it.startsWith(PAGE_DOCUMENT) },
         userAgent = "test",
         cookieHeader = "session=secret",
+        pageDocuments = media.mapNotNull { it.takeIf { url -> url.startsWith(PAGE_DOCUMENT) }?.removePrefix(PAGE_DOCUMENT) },
     )
 
     private fun streamOf(variant: VideoVariant): MediaStream = when (variant.source) {

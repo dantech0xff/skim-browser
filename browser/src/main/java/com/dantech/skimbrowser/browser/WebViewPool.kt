@@ -581,7 +581,8 @@ class WebViewPool(
         }
     }
 
-    // A browser runs the pages' JavaScript; no Java object is ever exposed to it.
+    // A browser runs the pages' JavaScript. The only name the page can reach is SkimVideo,
+    // a message port that accepts a playing-file report.
     @SuppressLint("SetJavaScriptEnabled")
     private fun configure(view: SkimWebView, tab: Tab): Entry {
         view.settings.apply {
@@ -650,10 +651,35 @@ class WebViewPool(
         )
         view.webViewClient = client
         view.webChromeClient = chrome
+        listenForPlaying(view, tab.id)
         applyDesktopMode(view, tab.desktopSite)
         // The process start does not read the rules. The first WebView does, off this thread.
         scope.launch(Dispatchers.IO) { shield.warmCosmetic() }
         return Entry(tab.id, view, client, chrome)
+    }
+
+    /**
+     * `SkimVideo.postMessage` receives a playing file. It is a message listener, not a Java object
+     * the page can call into. The port is registered for every origin because the tab navigates
+     * after this WebView exists. Only a string from the main frame, whose origin is the page now
+     * showing, is delivered. A player inside an iframe is left to the request sniffer.
+     */
+    private fun listenForPlaying(view: WebView, tabId: String) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
+        WebViewCompat.addWebMessageListener(
+            view,
+            "SkimVideo",
+            setOf("*"),
+        ) { _, message, sourceOrigin, isMainFrame, _ ->
+            val report = textPlayingMessage(
+                type = message.type,
+                isMainFrame = isMainFrame,
+                sourceOrigin = sourceOrigin.toString(),
+                pageUrl = tabs.runtime(tabId).value.committedUrl
+                    ?: tabs.state.value.tabs.firstOrNull { it.id == tabId }?.url,
+            ) { message.data }
+            if (report != null) events.onVideoPlaying(tabId, report)
+        }
     }
 
     /** Arms the history entry [delta] steps from the current one, then the caller moves there. */

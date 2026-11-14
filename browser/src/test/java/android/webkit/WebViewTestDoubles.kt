@@ -26,6 +26,7 @@ class TestWebResourceRequest(
     private val mainFrame: Boolean,
     private val gesture: Boolean = true,
     private val redirect: Boolean = false,
+    private val headers: Map<String, String> = emptyMap(),
 ) : WebResourceRequest {
     override fun getUrl(): android.net.Uri = android.net.Uri.parse(url)
 
@@ -37,7 +38,7 @@ class TestWebResourceRequest(
 
     override fun getMethod(): String = "GET"
 
-    override fun getRequestHeaders(): Map<String, String> = emptyMap()
+    override fun getRequestHeaders(): Map<String, String> = headers
 }
 
 /** Records whether a certificate load was allowed to continue. The handler's constructor is hidden. */
