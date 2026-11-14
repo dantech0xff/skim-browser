@@ -14,13 +14,19 @@ import com.dantech.skimbrowser.domain.video.parseHls
 import com.dantech.skimbrowser.domain.video.retryHeaders
 import com.dantech.skimbrowser.domain.video.variantFromRetry
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 
 /**
  * Saves a video in this process. Android's download manager is not used: a file the person asked
@@ -38,6 +44,8 @@ class VideoSaver(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val mux: (File, File, File) -> Unit = ::muxToMp4,
+    private val freeBytes: () -> Long = { store.freeBytes() },
+    private val maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
 ) : VideoCommands {
 
     private val files = InProcessDownloader(httpClient, store)
@@ -66,12 +74,6 @@ class VideoSaver(
         incognito: Boolean,
     ): VideoSaveResult {
         val source = variant.source
-        if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
-            return VideoSaveResult.Protected
-        }
-        if (source is VideoSource.Dash && manifestProtected(source.manifestUrl, source.headers, userAgent, incognito)) {
-            return VideoSaveResult.Protected
-        }
         val name = DownloadNames.sanitize(variant.title.ifBlank { "video" }, variant.mimeType ?: "video/mp4")
         val retry = DownloadRetry(
             tabId = tabId,
@@ -88,11 +90,31 @@ class VideoSaver(
             incognito = incognito,
             headers = retryHeaders(source),
         )
+        try {
+            if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
+                return VideoSaveResult.Protected
+            }
+            if (source is VideoSource.Dash && manifestProtected(source.manifestUrl, source.headers, userAgent, incognito)) {
+                return VideoSaveResult.Protected
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failBeforeStart(name, incognito, retry)
+            return VideoSaveResult.Started
+        }
         val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
-        scope.launch {
+        val job = scope.launch {
             finish(localId, name, incognito, retry, source, userAgent)
         }
+        tracker.followJob(localId, job)
         return VideoSaveResult.Started
+    }
+
+    private suspend fun failBeforeStart(name: String, incognito: Boolean, retry: DownloadRetry) {
+        val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
+        log.noteFailed(localId)
+        tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
     }
 
     private suspend fun finish(
@@ -184,16 +206,15 @@ class VideoSaver(
         name: String,
         localId: Long,
     ): DownloadEvent.DownloadCompleted {
-        val video = downloadFile(videoUrl, headers, agent, incognito, localId, 0)
-        val audio = downloadFile(audioUrl, headers, agent, incognito, localId, video.length())
-        val out = File(workDir, "$name.mp4")
+        val dir = jobDir(localId)
         try {
+            val video = downloadFile(videoUrl, headers, agent, incognito, dir, localId, 0)
+            val audio = downloadFile(audioUrl, headers, agent, incognito, dir, localId, video.length())
+            val out = File(dir, "mux.mp4")
             mux(video, audio, out)
             return publish(out, name, "video/mp4")
         } finally {
-            video.delete()
-            audio.delete()
-            out.delete()
+            dir.deleteRecursively()
         }
     }
 
@@ -205,63 +226,129 @@ class VideoSaver(
         name: String,
         localId: Long,
     ): DownloadEvent.DownloadCompleted {
-        var soFar = 0L
-        val parts = urls.map { url ->
-            downloadFile(url, headers, agent, incognito, localId, soFar).also { soFar += it.length() }
-        }
-        val joined = File(workDir, "$name.joined")
+        val dir = jobDir(localId)
         try {
+            var soFar = 0L
+            val parts = mutableListOf<File>()
+            for (url in urls) {
+                val part = downloadFile(url, headers, agent, incognito, dir, localId, soFar)
+                parts += part
+                soFar += part.length()
+            }
+            val joined = File(dir, "joined")
             joined.outputStream().use { out -> parts.forEach { file -> file.inputStream().use { it.copyTo(out) } } }
             val progressive = urls.size == 1 && mediaStream(urls.single(), null) == MediaStream.Progressive
             val mime = if (progressive) "video/mp4" else "video/mp2t"
             return publish(joined, name, mime)
         } finally {
-            parts.forEach { it.delete() }
-            joined.delete()
+            dir.deleteRecursively()
         }
     }
+
+    private fun jobDir(localId: Long): File = File(workDir, localId.toString()).apply { mkdirs() }
 
     private suspend fun downloadFile(
         url: String,
         headers: Map<String, String>,
         agent: String?,
         incognito: Boolean,
+        dir: File,
         localId: Long,
         already: Long,
-    ): File = withContext(io) {
-        workDir.mkdirs()
-        val dest = File.createTempFile("skim-video", ".part", workDir)
-        val request = Request.Builder().url(url).get().apply {
-            headers.forEach { (name, value) ->
-                if (!name.equals("Cookie", ignoreCase = true)) header(name, value)
+    ): File {
+        dir.mkdirs()
+        val dest = File.createTempFile("part-", ".bin", dir)
+        try {
+            fetch(url, headers, agent, incognito) { response ->
+                val body = response.body ?: throw DownloadException("The response has no body")
+                val length = body.contentLength()
+                if (length > 0 && already + length > maxBytes) throw DownloadException("The file is larger than the limit")
+                requireRoom(already)
+                dest.outputStream().use { out ->
+                    val buffer = ByteArray(COPY_BUFFER)
+                    var written = 0L
+                    val input = body.byteStream()
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        written += read
+                        if (already + written > maxBytes) throw DownloadException("The file is larger than the limit")
+                        if (written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) requireRoom(already + written)
+                        out.write(buffer, 0, read)
+                    }
+                }
             }
-            agent?.takeIf { it.isNotBlank() }?.let { header("User-Agent", it) }
-            cookies(incognito, url)?.takeIf { it.isNotBlank() }?.let { header("Cookie", it) }
-        }.build()
-        files.client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw DownloadException("The server answered ${response.code}")
-            val body = response.body ?: throw DownloadException("The response has no body")
-            dest.outputStream().use { out -> body.byteStream().use { it.copyTo(out) } }
+            log.noteProgress(localId, already + dest.length(), -1)
+            return dest
+        } catch (e: Exception) {
+            dest.delete()
+            throw e
         }
-        log.noteProgress(localId, already + dest.length(), -1)
-        dest
     }
 
     private suspend fun getText(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): String =
-        withContext(io) {
-            val request = Request.Builder().url(url).get().apply {
+        fetch(url, headers, agent, incognito) { response ->
+            val text = response.body?.string().orEmpty()
+            if (text.length > MAX_PLAYLIST_CHARS) throw DownloadException("The playlist is larger than the limit")
+            text
+        }
+
+    private suspend fun <T> fetch(
+        url: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        block: suspend (Response) -> T,
+    ): T = withContext(io) {
+        var address = url.toHttpUrlOrNull() ?: throw DownloadException("Not an http or https address")
+        repeat(MAX_REDIRECTS + 1) {
+            val hop = address.toString()
+            val request = Request.Builder().url(address).get().apply {
                 headers.forEach { (name, value) ->
-                    if (!name.equals("Cookie", ignoreCase = true)) header(name, value)
+                    if (!name.equals("Cookie", ignoreCase = true) && !name.startsWith("X-Skim-", ignoreCase = true)) {
+                        header(name, value)
+                    }
                 }
                 agent?.takeIf { it.isNotBlank() }?.let { header("User-Agent", it) }
-                cookies(incognito, url)?.takeIf { it.isNotBlank() }?.let { header("Cookie", it) }
+                cookies(incognito, hop)?.takeIf { it.isNotBlank() }?.let { header("Cookie", it) }
             }.build()
-            files.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw DownloadException("The server answered ${response.code}")
-                response.body?.string().orEmpty()
+            val step = files.client.newCall(request).executeCancellable { response ->
+                if (response.isRedirect) {
+                    val location = response.header("Location") ?: throw DownloadException("A redirect without a location")
+                    FetchStep.Redirect(address.resolve(location) ?: throw DownloadException("A redirect to an address that is not http or https"))
+                } else if (!response.isSuccessful) {
+                    throw DownloadException("The server answered ${response.code}")
+                } else {
+                    FetchStep.Ready(block(response))
+                }
+            }
+            when (step) {
+                is FetchStep.Redirect -> address = step.to
+                is FetchStep.Ready -> return@withContext step.value
             }
         }
+        throw DownloadException("Too many redirects")
+    }
+
+    private fun requireRoom(incoming: Long) {
+        val free = freeBytes()
+        if (free != Long.MAX_VALUE && free < InProcessDownloader.MIN_FREE_BYTES + incoming) {
+            throw DownloadException("Too little free space")
+        }
+    }
 
     private suspend fun publish(file: File, name: String, mime: String): DownloadEvent.DownloadCompleted =
         store.save(DownloadNames.sanitize(name, mime), mime) { out -> file.inputStream().use { it.copyTo(out) } }
+
+    private sealed interface FetchStep<out T> {
+        class Redirect(val to: HttpUrl) : FetchStep<Nothing>
+        class Ready<T>(val value: T) : FetchStep<T>
+    }
+
+    private companion object {
+        const val MAX_REDIRECTS = 20
+        const val COPY_BUFFER = 64 * 1024
+        const val MAX_PLAYLIST_CHARS = 2 * 1024 * 1024
+    }
 }

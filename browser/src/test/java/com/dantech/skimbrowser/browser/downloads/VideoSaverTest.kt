@@ -65,6 +65,53 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aRedirectedPlaylistIsReadAndAMissingOneBecomesAFailedRow() = runTest {
+        val server = MockWebServer()
+        server.start()
+        server.enqueue(MockResponse().setResponseCode(302).addHeader("Location", server.url("/real.m3u8").toString()))
+        server.enqueue(MockResponse().setBody("#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\n"))
+        server.enqueue(MockResponse().setResponseCode(403))
+        val log = CountingLog()
+        val saver = saver(log, this)
+        try {
+            val variant = VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))
+            assertEquals(VideoSaveResult.Protected, saver.save("t", variant))
+            assertEquals(0, log.started)
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            assertEquals(1, log.started)
+            assertEquals(1, log.failed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aFailedSegmentRemovesTheFilesItAlreadyWrote() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val first = server.url("/a.ts")
+        val second = server.url("/b.ts")
+        val playlist = "#EXTM3U\n#EXTINF:1,\n$first\n#EXTINF:1,\n$second\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody("AAAA"))
+        server.enqueue(MockResponse().setResponseCode(403))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        val cache = File(ApplicationProvider.getApplicationContext<android.content.Context>().cacheDir, "video-test")
+        try {
+            val variant = VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/list.m3u8").toString()))
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            assertEquals(1, log.failed)
+            val leftovers = cache.walkTopDown().filter { it.isFile }.toList()
+            org.junit.Assert.assertTrue(leftovers.toString(), leftovers.isEmpty())
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun separateAudioAndVideoAreMuxedIntoOneFile() = runBlocking {
         val server = MockWebServer()
         server.enqueue(MockResponse().setBody("VIDEO"))
@@ -214,25 +261,29 @@ class VideoSaverTest {
             scope = scope,
             io = io,
             mux = mux,
+            freeBytes = { Long.MAX_VALUE },
         )
     }
 }
 
 private class CountingLog : DownloadLog {
     var started = 0
+    var failed = 0
     var finished = false
 
     override fun observe(): Flow<List<DownloadItem>> = flowOf(emptyList())
     override suspend fun noteStarted(draft: DownloadDraft): Long {
         started += 1
-        return 7
+        return started.toLong()
     }
     override suspend fun noteSystem(localId: Long, systemId: Long) = Unit
     override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) = Unit
     override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) {
         finished = true
     }
-    override suspend fun noteFailed(localId: Long) = Unit
+    override suspend fun noteFailed(localId: Long) {
+        failed += 1
+    }
     override suspend fun remove(id: Long): DownloadItem? = null
     override suspend fun clearIncognito() = Unit
     override suspend fun runningWithSystemId(): List<DownloadItem> = emptyList()

@@ -193,7 +193,7 @@ class InProcessDownloader(
  * coroutine cancels the call, which also ends a read the server keeps waiting; the coroutine then
  * ends as cancelled, not with the call's failure.
  */
-private suspend fun <T> Call.executeCancellable(block: suspend (Response) -> T): T = coroutineScope {
+internal suspend fun <T> Call.executeCancellable(block: suspend (Response) -> T): T = coroutineScope {
     val call = this@executeCancellable
     val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
         try {
