@@ -13,7 +13,11 @@ class TikTokVideoExtractor : VideoExtractor {
     override fun matches(pageUrl: String): Boolean = hostIs(pageUrl, "tiktok.com")
 
     override suspend fun extract(hints: PageVideoHints): List<VideoVariant> = pageDocuments(hints.mediaUrls)
-        .flatMap { document -> urlsByKey(document, TIKTOK_KEYS).map { (url, quality) -> progressive(hints, url, quality) } }
+        .flatMap { document ->
+            urlsByKey(document, TIKTOK_KEYS)
+                .filter { (url, _) -> !isStill(url) }
+                .map { (url, quality) -> progressive(hints, url, quality) }
+        }
 }
 
 /** Facebook and fb.watch files named in the page, including a clear DASH manifest. */
@@ -47,7 +51,7 @@ class RedditVideoExtractor : VideoExtractor {
     }
 }
 
-private val TIKTOK_KEYS = setOf("play_addr", "playaddr", "download_addr", "downloadaddr", "url_list", "urllist")
+private val TIKTOK_KEYS = setOf("play_addr", "playaddr", "download_addr", "downloadaddr")
 private val FACEBOOK_FILES = setOf(
     "playable_url_quality_hd",
     "browser_native_hd_url",
@@ -55,6 +59,12 @@ private val FACEBOOK_FILES = setOf(
     "browser_native_sd_url",
 )
 private val REDDIT_KEYS = setOf("dash_url", "hls_url", "fallback_url")
+
+private fun isStill(url: String): Boolean {
+    val path = url.substringBefore('?').substringBefore('#').lowercase()
+    return path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".png") ||
+        path.endsWith(".webp") || path.endsWith(".gif") || path.endsWith(".mp3") || path.endsWith(".m4a")
+}
 
 private fun progressive(hints: PageVideoHints, url: String, quality: String): VideoVariant {
     val mime = if (url.substringBefore('?').endsWith(".webm")) "video/webm" else "video/mp4"

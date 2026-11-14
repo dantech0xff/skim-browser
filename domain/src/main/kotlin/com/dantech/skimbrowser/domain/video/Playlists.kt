@@ -120,11 +120,18 @@ private fun baseUrls(block: String): List<String> {
         val open = block.indexOf('>', start)
         val end = block.indexOf("</BaseURL>", open, ignoreCase = true)
         if (open < 0 || end < 0) break
-        urls += block.substring(open + 1, end).trim()
+        urls += unescapeXml(block.substring(open + 1, end)).trim()
         from = end + 1
     }
     return urls.filter { it.isNotEmpty() }
 }
+
+private fun unescapeXml(text: String): String = text
+    .replace("&lt;", "<")
+    .replace("&gt;", ">")
+    .replace("&quot;", "\"")
+    .replace("&apos;", "'")
+    .replace("&amp;", "&")
 
 private fun attr(line: String, name: String): String? {
     val key = "$name="

@@ -60,6 +60,11 @@ class VideoExtractTest {
         val manifest = parseDash(mpd, "https://v.redd.it/abc/DASHPlaylist.mpd")
         assertFalse(manifest.protected)
         assertEquals("https://v.redd.it/abc/DASH_720.mp4", manifest.videos.single().url)
+        val encoded = """<MPD><AdaptationSet contentType="video"><Representation><BaseURL>https://video.fbcdn.net/v.mp4?oh=1&amp;oe=2</BaseURL></Representation></AdaptationSet></MPD>"""
+        assertEquals(
+            "https://video.fbcdn.net/v.mp4?oh=1&oe=2",
+            parseDash(encoded, "https://www.facebook.com/reel/1").videos.single().url,
+        )
         assertEquals("https://v.redd.it/abc/DASH_AUDIO.mp4", manifest.audios.single().url)
     }
 
@@ -105,6 +110,13 @@ class VideoExtractTest {
         assertEquals(setOf("https://v.tiktok.com/a/download.mp4", "https://v.tiktok.com/a/720.mp4"), variants.map { (it.source as VideoSource.Progressive).url }.toSet())
         assertTrue(variants.any { it.qualityLabel == "720p" })
         assertFalse(TikTokVideoExtractor().matches("https://example.com/"))
+        val mixed = """
+            {"cover":{"url_list":["https://p16.tiktokcdn.com/cover.jpeg"]},
+            "music":{"play_url":{"url_list":["https://sf16.tiktokcdn.com/a.mp3"]}},
+            "video":{"play_addr":{"url_list":["https://v.tiktok.com/a/720.mp4"]}}}
+        """.trimIndent()
+        val onlyVideo = TikTokVideoExtractor().extract(hints("https://www.tiktok.com/@a/video/2", "clip", listOf(PAGE_DOCUMENT + mixed)))
+        assertEquals(listOf("https://v.tiktok.com/a/720.mp4"), onlyVideo.map { (it.source as VideoSource.Progressive).url })
     }
 
     @Test
