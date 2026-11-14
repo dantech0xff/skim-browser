@@ -42,7 +42,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okio.Buffer
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -1286,30 +1286,39 @@ class VideoSaverTest {
         val parent = SupervisorJob()
         val scope = CoroutineScope(parent + Dispatchers.Unconfined)
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val roomDir = File(context.cacheDir, "video-reserve-room")
+        val tightDir = File(context.cacheDir, "video-reserve-tight")
+        val roomStore = FileDownloads(context, roomDir)
+        val tightStore = FileDownloads(context, tightDir)
         val variant = VideoVariant("reserve-room", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
         val room = saver(
             log,
             scope,
             Dispatchers.Unconfined,
             freeBytes = { InProcessDownloader.MIN_FREE_BYTES + 16 },
-            workDir = File(context.cacheDir, "video-reserve-room"),
+            workDir = roomDir,
+            store = roomStore,
         )
         val tight = saver(
             log,
             scope,
             Dispatchers.Unconfined,
             freeBytes = { InProcessDownloader.MIN_FREE_BYTES - 1 },
-            workDir = File(context.cacheDir, "video-reserve-tight"),
+            workDir = tightDir,
+            store = tightStore,
         )
         try {
             assertEquals(VideoSaveResult.Started, room.save("t", variant))
             parent.children.toList().forEach { it.join() }
-            // Robolectric can refuse the MediaStore publish after the reserve check. That is not a full disk.
-            assertNotEquals("space", log.reason)
+            assertEquals(null, log.reason)
+            assertTrue(log.finished)
+            assertEquals(1, roomStore.saved)
             log.reason = null
+            log.finished = false
             assertEquals(VideoSaveResult.Started, tight.save("t", variant))
             parent.children.toList().forEach { it.join() }
             assertEquals("space", log.reason)
+            assertEquals(0, tightStore.saved)
         } finally {
             parent.cancel()
             server.shutdown()
@@ -1348,12 +1357,15 @@ class VideoSaverTest {
         val parent = SupervisorJob()
         val scope = CoroutineScope(parent + Dispatchers.Unconfined)
         val variant = VideoVariant("reserve-second", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))
+        val tightStore = FileDownloads(context, tightDir)
+        val roomStore = FileDownloads(context, roomDir)
         val tight = saver(
             log,
             scope,
             Dispatchers.Unconfined,
             freeBytes = { reserve + 24 - occupied(tightDir) },
             workDir = tightDir,
+            store = tightStore,
         )
         val room = saver(
             log,
@@ -1361,16 +1373,19 @@ class VideoSaverTest {
             Dispatchers.Unconfined,
             freeBytes = { reserve + 32 - occupied(roomDir) },
             workDir = roomDir,
+            store = roomStore,
         )
         try {
             assertEquals(VideoSaveResult.Started, tight.save("t", variant))
             parent.children.toList().forEach { it.join() }
             assertEquals("space", log.reason)
+            assertEquals(0, tightStore.saved)
             log.reason = null
             assertEquals(VideoSaveResult.Started, room.save("t", variant))
             parent.children.toList().forEach { it.join() }
-            // Robolectric can refuse the MediaStore publish after the reserve check. That is not a full disk.
-            assertNotEquals("space", log.reason)
+            assertEquals(null, log.reason)
+            assertTrue(log.finished)
+            assertEquals(1, roomStore.saved)
         } finally {
             parent.cancel()
             server.shutdown()
@@ -1436,6 +1451,7 @@ class VideoSaverTest {
         maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
         freeBytes: () -> Long = { Long.MAX_VALUE },
         workDir: File? = null,
+        store: MediaStoreDownloads? = null,
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -1444,7 +1460,7 @@ class VideoSaverTest {
         }
         return VideoSaver(
             httpClient = { OkHttpClient() },
-            store = MediaStoreDownloads(context),
+            store = store ?: MediaStoreDownloads(context),
             log = log,
             tracker = DownloadTracker(FakeSystemDownloads(), scope, log = log),
             tabs = tabs,
@@ -1495,6 +1511,31 @@ private class CountingLog : DownloadLog {
     override suspend fun remove(id: Long): DownloadItem? = null
     override suspend fun clearIncognito() = Unit
     override suspend fun runningWithSystemId(): List<DownloadItem> = emptyList()
+}
+
+/** Writes the finished video into a folder this test owns, instead of MediaStore. */
+private class FileDownloads(
+    context: android.content.Context,
+    private val folder: File,
+) : MediaStoreDownloads(context, ioDispatcher = Dispatchers.Unconfined) {
+    var saved = 0
+
+    override suspend fun save(
+        fileName: String,
+        mimeType: String,
+        write: suspend (java.io.OutputStream) -> Unit,
+    ): DownloadEvent.DownloadCompleted {
+        if (!folder.isDirectory && !folder.mkdirs()) throw java.io.IOException("There is no folder for the save")
+        val file = File(folder, fileName)
+        file.outputStream().use { write(it) }
+        saved += 1
+        return DownloadEvent.DownloadCompleted(
+            fileName,
+            android.net.Uri.fromFile(file),
+            mimeType,
+            bytes = file.length(),
+        )
+    }
 }
 
 private fun memorySource(mime: String, marker: Byte): ElementarySource = object : ElementarySource {
