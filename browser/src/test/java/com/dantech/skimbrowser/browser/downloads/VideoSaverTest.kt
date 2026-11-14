@@ -123,6 +123,26 @@ class VideoSaverTest {
     }
 
     @Test
+    fun anOversizedPlaylistFailsBeforeTheRestOfTheBodyIsKept() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        server.enqueue(MockResponse().setBody("x".repeat(80)))
+        server.enqueue(MockResponse().setChunkedBody("#EXTM3U\n" + "y".repeat(80), 16))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined, maxPlaylistChars = 32)
+        try {
+            val variant = VideoVariant("clip", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            assertEquals(VideoSaveResult.Started, saver.save("t", variant))
+            assertEquals(2, log.started)
+            assertEquals(2, log.failed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aFailedSegmentRemovesTheFilesItAlreadyWrote() = runBlocking {
         val server = MockWebServer()
         server.start()
@@ -281,6 +301,7 @@ class VideoSaverTest {
         log: CountingLog,
         scope: CoroutineScope,
         io: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO,
+        maxPlaylistChars: Int = 2 * 1024 * 1024,
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -299,6 +320,7 @@ class VideoSaverTest {
             io = io,
             mux = mux,
             freeBytes = { Long.MAX_VALUE },
+            maxPlaylistChars = maxPlaylistChars,
         )
     }
 }

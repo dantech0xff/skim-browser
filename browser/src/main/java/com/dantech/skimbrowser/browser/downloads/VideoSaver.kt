@@ -13,6 +13,7 @@ import com.dantech.skimbrowser.domain.video.parseDash
 import com.dantech.skimbrowser.domain.video.parseHls
 import com.dantech.skimbrowser.domain.video.retryHeaders
 import com.dantech.skimbrowser.domain.video.variantFromRetry
+import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -46,6 +47,7 @@ class VideoSaver(
     private val mux: (File, File, File) -> Unit = ::muxToMp4,
     private val freeBytes: () -> Long = { store.freeBytes() },
     private val maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
+    private val maxPlaylistChars: Int = MAX_PLAYLIST_CHARS,
 ) : VideoCommands {
 
     private val files = InProcessDownloader(httpClient, store)
@@ -295,10 +297,33 @@ class VideoSaver(
 
     private suspend fun getText(url: String, headers: Map<String, String>, agent: String?, incognito: Boolean): TextBody =
         fetch(url, headers, agent, incognito) { response ->
-            val text = response.body?.string().orEmpty()
-            if (text.length > MAX_PLAYLIST_CHARS) throw DownloadException("The playlist is larger than the limit")
-            TextBody(text, response.request.url.toString())
+            TextBody(readLimited(response), response.request.url.toString())
         }
+
+    /** Stops once [maxPlaylistChars] bytes are in hand, before the rest of a chunked body arrives. */
+    private suspend fun readLimited(response: Response): String {
+        val body = response.body ?: return ""
+        val declared = body.contentLength()
+        if (declared > maxPlaylistChars) throw DownloadException("The playlist is larger than the limit")
+        val stream = body.byteStream()
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(COPY_BUFFER)
+        var total = 0
+        try {
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val room = maxPlaylistChars - total + 1
+                val read = stream.read(buffer, 0, minOf(buffer.size, room))
+                if (read < 0) break
+                total += read
+                if (total > maxPlaylistChars) throw DownloadException("The playlist is larger than the limit")
+                out.write(buffer, 0, read)
+            }
+        } finally {
+            stream.close()
+        }
+        return out.toString(Charsets.UTF_8)
+    }
 
     private suspend fun <T> fetch(
         url: String,
