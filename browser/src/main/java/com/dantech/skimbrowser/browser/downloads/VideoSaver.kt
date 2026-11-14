@@ -106,7 +106,7 @@ class VideoSaver(
         incognito: Boolean,
         replaceId: Long? = null,
     ): VideoSaveResult {
-        val source = variant.source
+        val source = resolvePlaylist(variant.source, userAgent, incognito)
         val display = videoDisplayTitle(variant.title, source.mediaAddress())
         val named = if (source is VideoSource.Hls) segmentTitle(display) else display
         val nameMime = when {
@@ -269,11 +269,6 @@ class VideoSaver(
         retry: DownloadRetry,
         quality: String,
     ): DownloadEvent.DownloadCompleted {
-        when (playlistAt(url, headers, agent, incognito)) {
-            MediaStream.Hls -> return savePlaylist(url, headers, agent, incognito, name, localId, null)
-            MediaStream.Dash -> return saveDash(url, headers, agent, incognito, name, localId, retry.tabId)
-            else -> Unit
-        }
         try {
             return writeProgressive(url, headers, agent, incognito, name, localId, retry.mimeType)
         } catch (e: CancellationException) {
@@ -877,6 +872,19 @@ class VideoSaver(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * An extensionless file whose body is a playlist becomes that playlist before a download row
+     * exists, so a protected manifest is refused with no row.
+     */
+    private suspend fun resolvePlaylist(source: VideoSource, agent: String?, incognito: Boolean): VideoSource {
+        val file = source as? VideoSource.Progressive ?: return source
+        return when (playlistAt(file.url, file.headers, agent, incognito)) {
+            MediaStream.Hls -> VideoSource.Hls(file.url, file.headers)
+            MediaStream.Dash -> VideoSource.Dash(file.url, file.headers)
+            else -> file
         }
     }
 

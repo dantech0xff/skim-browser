@@ -50,6 +50,26 @@ import org.junit.runner.RunWith
 class VideoSaverTest {
 
     @Test
+    fun anExtensionlessProtectedPlaylistIsRefusedBeforeARowExists() = runTest {
+        val server = MockWebServer()
+        val locked = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://key\"\nseg.ts\n"
+        server.enqueue(MockResponse().setBody(locked))
+        server.enqueue(MockResponse().setBody(locked))
+        server.start()
+        val log = CountingLog()
+        val saver = saver(log, this)
+        try {
+            assertEquals(
+                VideoSaveResult.Protected,
+                saver.save("t", VideoVariant("clip", "Video", "video/mp4", null, VideoSource.Progressive(server.url("/play").toString()))),
+            )
+            assertEquals(0, log.started)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun anExtensionlessPlaylistIsListedAsHlsAndAProtectedOneIsRefused() = runTest {
         val server = MockWebServer()
         val master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=1280x720\n720.m3u8\n"
