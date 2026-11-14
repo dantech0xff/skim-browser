@@ -107,7 +107,7 @@ Listing one row per video height, and reporting HLS progress from segments finis
 
 Blocking stats, measured with `assemblePlayReleaseSmoke` and `assembleFullReleaseSmoke` on that tree, is 4,270,381 bytes on play, 27,384 above 4,242,997, and 4,890,992 bytes on full, 28,264 above 4,862,728. No library was added. Compressed `classes.dex` in these APKs is 2,495,758 (play) and 3,049,762 (full). The bytes are the stats screen, the two Room tables, and the in-memory batch. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new play baseline is 4,270,381. The new full baseline is 4,890,992.
 
-The news wall was measured on the tree before blocking stats, at 4,353,149 play bytes and 4,990,144 full bytes. Those figures are not the baseline on this tree. The combined size is measured again after the rebase and written into the size-budget files.
+The news wall on top of blocking stats, measured with `assemblePlayReleaseSmoke` and `assembleFullReleaseSmoke` on that tree, is 4,380,533 bytes on play, 110,152 above 4,270,381, and 5,017,528 bytes on full, 126,536 above 4,890,992. No library was added. A Kotlin JSON library was tried and removed, because it kept a runtime the release build had been able to drop. The bytes are the feed parser, the file cache, and the New tab list. The download-size estimate and the method counts were not remeasured. `maxGrowthBytes` stays 8,192. The new play baseline is 4,380,533. The new full baseline is 5,017,528.
 
 1. Done. Unused font axes are dropped and the glyph set is Latin plus Vietnamese. On its own, the APK file fell from 5,752,084 bytes to 4,033,448 bytes. The font entry is 89,941 compressed bytes. Rebuild with `python3 tools/subset_google_sans_flex.py`.
 
