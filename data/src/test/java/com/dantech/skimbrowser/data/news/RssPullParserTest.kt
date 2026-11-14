@@ -70,6 +70,14 @@ class RssPullParserTest {
     }
 
     @Test
+    fun aGmtDateSortsAsUtc() {
+        assertEquals(
+            java.time.Instant.parse("2026-11-14T15:00:00Z").toEpochMilli(),
+            parseNewsDate("Sat, 14 Nov 2026 15:00:00 GMT"),
+        )
+    }
+
+    @Test
     fun anAudioEnclosureIsNotUsedAsAThumbnail() {
         val stories = parser.parse(AUDIO, "npr", "NPR")
 

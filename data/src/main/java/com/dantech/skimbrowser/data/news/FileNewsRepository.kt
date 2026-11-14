@@ -90,6 +90,10 @@ class FileNewsRepository(
             NewsPreferences()
         } catch (e: IllegalStateException) {
             NewsPreferences()
+        } catch (e: IndexOutOfBoundsException) {
+            NewsPreferences()
+        } catch (e: NumberFormatException) {
+            NewsPreferences()
         }
     }
 
@@ -105,6 +109,10 @@ class FileNewsRepository(
         } catch (e: IllegalArgumentException) {
             null
         } catch (e: IllegalStateException) {
+            null
+        } catch (e: IndexOutOfBoundsException) {
+            null
+        } catch (e: NumberFormatException) {
             null
         }
     }

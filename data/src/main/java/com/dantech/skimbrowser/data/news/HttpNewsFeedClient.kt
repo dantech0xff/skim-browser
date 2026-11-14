@@ -4,6 +4,7 @@ import com.dantech.skimbrowser.domain.news.NewsFeedClient
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.charset.Charset
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,7 +38,13 @@ class HttpNewsFeedClient @Inject constructor() : NewsFeedClient {
                     if (total > MAX_BYTES) error("Feed is larger than $MAX_BYTES bytes")
                     buffer.write(chunk, 0, read)
                 }
-                return buffer.toString(Charsets.UTF_8.name())
+                val charset = connection.contentType
+                    ?.substringAfter("charset=", "")
+                    ?.substringBefore(';')
+                    ?.trim()
+                    ?.trim('"')
+                    ?.takeIf { it.isNotEmpty() }
+                return decodeFeed(buffer.toByteArray(), charset)
             }
         } finally {
             connection.disconnect()
@@ -53,3 +60,31 @@ class HttpNewsFeedClient @Inject constructor() : NewsFeedClient {
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 }
+
+/**
+ * Decodes a feed using the HTTP charset, a BOM, or the XML encoding declaration.
+ * UTF-8 is the fallback when the declared charset is unknown.
+ */
+internal fun decodeFeed(bytes: ByteArray, httpCharset: String?): String {
+    val named = httpCharset?.trim()?.trim('"')?.takeIf { it.isNotEmpty() }
+    if (named != null) {
+        return runCatching { String(bytes, Charset.forName(named)) }.getOrElse { String(bytes, Charsets.UTF_8) }
+    }
+    if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
+        return String(bytes, Charsets.UTF_8)
+    }
+    if (bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte()) {
+        return String(bytes, Charsets.UTF_16BE)
+    }
+    if (bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte()) {
+        return String(bytes, Charsets.UTF_16LE)
+    }
+    val head = String(bytes, 0, minOf(bytes.size, 240), Charsets.ISO_8859_1)
+    val declared = ENCODING.find(head)?.groupValues?.get(1)
+    if (declared != null) {
+        return runCatching { String(bytes, Charset.forName(declared)) }.getOrElse { String(bytes, Charsets.UTF_8) }
+    }
+    return String(bytes, Charsets.UTF_8)
+}
+
+private val ENCODING = Regex("""encoding\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)

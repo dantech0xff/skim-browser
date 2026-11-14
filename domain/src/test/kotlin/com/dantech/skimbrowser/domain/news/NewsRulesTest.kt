@@ -13,6 +13,7 @@ class NewsUrlsTest {
             "https://example.com/rss?x=1",
             NewsUrls.canonical("  https://Example.com/rss?x=1#top  "),
         )
+        assertEquals("https://example.com:8443/rss", NewsUrls.canonical("https://Example.com:8443/rss"))
     }
 
     @Test

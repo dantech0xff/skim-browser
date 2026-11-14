@@ -61,6 +61,10 @@ class FileNewsRepositoryTest {
         assertNull(repository(dir).currentSnapshot("en", NewsTopic.TOP))
         File(dir, "preferences.json").writeText("nope")
         assertTrue(repository(dir).currentPreferences().enabled)
+        File(dir, "preferences.json").writeText("{\"custom\":[\"https://example.com/rss\\")
+        assertTrue(repository(dir).currentPreferences().enabled)
+        File(dir, "cache-en-TOP.json").writeText("{\"articles\":[{\"title\":\"\\u12\"}]")
+        assertNull(repository(dir).currentSnapshot("en", NewsTopic.TOP))
     }
 
     private fun repository(dir: File) = FileNewsRepository(dir, io = kotlinx.coroutines.Dispatchers.Unconfined)

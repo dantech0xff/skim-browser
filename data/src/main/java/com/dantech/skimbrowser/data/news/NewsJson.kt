@@ -156,6 +156,7 @@ internal object NewsJson {
                 when (ch) {
                     '"' -> return out.toString()
                     '\\' -> {
+                        if (index >= text.length) throw IllegalArgumentException("truncated escape")
                         val escaped = text[index++]
                         out.append(
                             when (escaped) {
@@ -163,7 +164,10 @@ internal object NewsJson {
                                 'n' -> '\n'
                                 'r' -> '\r'
                                 't' -> '\t'
-                                'u' -> text.substring(index, index + 4).toInt(16).toChar().also { index += 4 }
+                                'u' -> {
+                                    if (index + 4 > text.length) throw IllegalArgumentException("truncated escape")
+                                    text.substring(index, index + 4).toInt(16).toChar().also { index += 4 }
+                                }
                                 else -> escaped
                             },
                         )

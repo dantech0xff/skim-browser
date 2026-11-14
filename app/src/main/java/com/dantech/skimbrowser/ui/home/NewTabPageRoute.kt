@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,6 +109,7 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
         val news = hiltViewModel<NewsWallViewModel>(key = NEWS_VIEW_MODEL_KEY)
         val state by home.state.collectAsStateWithLifecycle()
         val newsState by news.state.collectAsStateWithLifecycle()
+        LaunchedEffect(news) { news.onShown() }
         val actions = HomeActions(
             onSearch = { openSearch("") },
             onVoice = startVoice,
@@ -139,7 +141,7 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
             toolbar,
             foldItems = {
                 // Slot for new-tab extras. News goes first. Append another feature in this block.
-                if (newsState.visible) newsWall(newsState, newsActions)
+                if (newsState.visible) newsWall(newsState, newsActions, news::allowThumbnails)
             },
             foldRefreshing = newsState.refreshing,
             onFoldRefresh = { news.refresh(force = true) },

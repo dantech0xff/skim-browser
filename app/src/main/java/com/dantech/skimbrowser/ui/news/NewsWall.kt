@@ -54,7 +54,11 @@ import kotlinx.coroutines.withContext
  * The news wall inside the New tab page scroll. The first story is the lead card.
  * A long press offers a new tab, share, and hiding the source.
  */
-fun LazyListScope.newsWall(state: NewsWallUiState, actions: NewsActions) {
+fun LazyListScope.newsWall(
+    state: NewsWallUiState,
+    actions: NewsActions,
+    allowThumbnails: () -> Boolean = { true },
+) {
     item(key = "news-head") { NewsHead(state, actions) }
     val articles = state.articles
     if (articles.isEmpty()) {
@@ -68,13 +72,25 @@ fun LazyListScope.newsWall(state: NewsWallUiState, actions: NewsActions) {
         }
     } else {
         item(key = "news-hero-${articles.first().link}") {
-            NewsCard(articles.first(), actions, hero = true, modifier = Modifier.padding(top = 12.dp).animateItem())
+            NewsCard(
+                articles.first(),
+                actions,
+                hero = true,
+                allowThumbnails = allowThumbnails,
+                modifier = Modifier.padding(top = 12.dp).animateItem(),
+            )
         }
         items(
             count = articles.size - 1,
             key = { index -> articles[index + 1].link },
         ) { index ->
-            NewsCard(articles[index + 1], actions, hero = false, modifier = Modifier.padding(top = 8.dp).animateItem())
+            NewsCard(
+                articles[index + 1],
+                actions,
+                hero = false,
+                allowThumbnails = allowThumbnails,
+                modifier = Modifier.padding(top = 8.dp).animateItem(),
+            )
         }
     }
 }
@@ -113,7 +129,13 @@ private fun NewsHead(state: NewsWallUiState, actions: NewsActions) {
 }
 
 @Composable
-private fun NewsCard(card: NewsCardUi, actions: NewsActions, hero: Boolean, modifier: Modifier = Modifier) {
+private fun NewsCard(
+    card: NewsCardUi,
+    actions: NewsActions,
+    hero: Boolean,
+    allowThumbnails: () -> Boolean,
+    modifier: Modifier = Modifier,
+) {
     var menu by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier.fillMaxWidth().combinedClickable(
@@ -125,12 +147,12 @@ private fun NewsCard(card: NewsCardUi, actions: NewsActions, hero: Boolean, modi
     ) {
         Column(Modifier.padding(if (hero) 0.dp else 12.dp)) {
             if (hero) {
-                card.thumbnailUrl?.let { NewsThumbnail(it, Modifier.fillMaxWidth().height(180.dp)) }
+                card.thumbnailUrl?.let { NewsThumbnail(it, allowThumbnails, Modifier.fillMaxWidth().height(180.dp)) }
                 Column(Modifier.padding(16.dp)) { CardText(card, hero = true) }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     card.thumbnailUrl?.let {
-                        NewsThumbnail(it, Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
+                        NewsThumbnail(it, allowThumbnails, Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
                         Spacer(Modifier.width(12.dp))
                     }
                     CardText(card, hero = false, modifier = Modifier.weight(1f))
@@ -186,10 +208,12 @@ private fun CardText(card: NewsCardUi, hero: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-private fun NewsThumbnail(url: String, modifier: Modifier = Modifier) {
+private fun NewsThumbnail(url: String, allowThumbnails: () -> Boolean, modifier: Modifier = Modifier) {
     var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(url) {
-        val loaded = withContext(Dispatchers.IO) { runCatching { loadNewsBitmap(url) }.getOrNull() }
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching { loadNewsBitmapIfAllowed(allowThumbnails(), url) }.getOrNull()
+        }
         if (loaded != null) bitmap = loaded.asImageBitmap()
     }
     val image = bitmap ?: return

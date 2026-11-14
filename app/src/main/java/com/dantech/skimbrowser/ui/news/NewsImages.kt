@@ -5,6 +5,11 @@ import android.graphics.BitmapFactory
 import java.net.HttpURLConnection
 import java.net.URL
 
+internal fun loadNewsBitmapIfAllowed(allow: Boolean, url: String): Bitmap? {
+    if (!allow) return null
+    return loadNewsBitmap(url)
+}
+
 /** Decodes a story image down to about [TARGET_PX] on its long side. Null when the bytes are unusable. */
 internal fun loadNewsBitmap(url: String): Bitmap? {
     if (!url.startsWith("https://") && !url.startsWith("http://")) return null

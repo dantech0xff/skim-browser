@@ -3,6 +3,7 @@ package com.dantech.skimbrowser.ui.news
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.dantech.skimbrowser.di.NewsLanguage
 import com.dantech.skimbrowser.di.WallClock
 import com.dantech.skimbrowser.di.WallZone
@@ -16,13 +17,13 @@ import com.dantech.skimbrowser.domain.news.ThumbnailPolicy
 import com.dantech.skimbrowser.ui.text.UiText
 import com.dantech.skimbrowser.ui.text.relativeTimeText
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +33,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** One story card. [timeText] is empty when the feed had no date. */
 @Immutable
@@ -98,7 +101,8 @@ class NewsWallViewModel @Inject constructor(
 ) : ViewModel() {
     private val refreshing = MutableStateFlow(false)
     private val feedError = MutableStateFlow(false)
-    private var refreshJob: Job? = null
+    private val refreshGate = Mutex()
+    private var seen: NewsPreferences? = null
 
     val state: StateFlow<NewsWallUiState> = repository.preferences().flatMapLatest { prefs ->
         repository.snapshot(language, prefs.topic).map { snap -> prefs to snap }
@@ -119,46 +123,65 @@ class NewsWallViewModel @Inject constructor(
                         old.customFeedUrls == new.customFeedUrls
                 }
                 .collect { prefs ->
-                    if (prefs.enabled) refresh(force = false) else refreshJob?.cancel()
+                    val previous = seen
+                    seen = prefs
+                    if (!prefs.enabled) return@collect
+                    val sourcesChanged = previous != null && (
+                        previous.hiddenSourceIds != prefs.hiddenSourceIds ||
+                            previous.customFeedUrls != prefs.customFeedUrls
+                        )
+                    refresh(force = sourcesChanged)
                 }
         }
     }
 
+    /** Re-checks the cache when Home is shown again. A fresh list does not open a connection. */
+    fun onShown() = refresh(force = false)
+
+    fun allowThumbnails(): Boolean = thumbnails.showThumbnails()
+
     fun refresh(force: Boolean) {
-        refreshJob?.cancel()
-        refreshJob = viewModelScope.launch {
-            if (!repository.currentPreferences().enabled) return@launch
-            refreshing.value = true
-            try {
-                refreshNews(language, force)
-            } finally {
-                refreshing.value = false
+        viewModelScope.launch {
+            if (!force && refreshGate.isLocked) return@launch
+            refreshGate.withLock {
+                try {
+                    if (!repository.currentPreferences().enabled) return@withLock
+                    refreshing.value = true
+                    refreshNews(language, force)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: IOException) {
+                    Log.w(TAG, "News was not saved: ${e.javaClass.simpleName}")
+                } finally {
+                    refreshing.value = false
+                }
             }
         }
     }
 
-    fun selectTopic(topic: NewsTopic) {
-        viewModelScope.launch { repository.setTopic(topic) }
-    }
+    fun selectTopic(topic: NewsTopic) = launchEdit { repository.setTopic(topic) }
 
     fun hideSource(sourceId: String) = setSourceShown(sourceId, shown = false)
 
-    fun setSourceShown(sourceId: String, shown: Boolean) {
-        viewModelScope.launch { repository.setSourceShown(sourceId, shown) }
-    }
+    fun setSourceShown(sourceId: String, shown: Boolean) = launchEdit { repository.setSourceShown(sourceId, shown) }
 
-    fun addFeed(url: String) {
-        viewModelScope.launch { feedError.value = !repository.addCustomFeed(url) }
-    }
+    fun addFeed(url: String) = launchEdit { feedError.value = !repository.addCustomFeed(url) }
 
     fun dismissFeedError() {
         feedError.value = false
     }
 
-    fun setEnabled(enabled: Boolean) {
+    fun setEnabled(enabled: Boolean) = launchEdit { repository.setEnabled(enabled) }
+
+    private fun launchEdit(block: suspend () -> Unit) {
         viewModelScope.launch {
-            repository.setEnabled(enabled)
-            if (!enabled) refreshJob?.cancel()
+            try {
+                block()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Log.w(TAG, "News choice was not saved: ${e.javaClass.simpleName}")
+            }
         }
     }
 
@@ -171,7 +194,9 @@ class NewsWallViewModel @Inject constructor(
         val images = thumbnails.showThumbnails()
         val now = clock()
         val zoneId = zone()
-        val cards = snap?.articles.orEmpty().map { article ->
+        val cards = snap?.articles.orEmpty()
+            .filter { it.sourceId !in prefs.hiddenSourceIds }
+            .map { article ->
             NewsCardUi(
                 link = article.link,
                 title = article.title,
@@ -191,6 +216,7 @@ class NewsWallViewModel @Inject constructor(
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+        const val TAG = "NewsWall"
     }
 }
 

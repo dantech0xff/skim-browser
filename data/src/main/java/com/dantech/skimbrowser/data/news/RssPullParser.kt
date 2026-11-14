@@ -192,7 +192,7 @@ internal fun parseNewsDate(raw: String): Long? {
 }
 
 private val GMT_OFFSET = Regex("""GMT([+-])(\d{1,2})\s*$""", RegexOption.IGNORE_CASE)
-private val DATE_PATTERNS = listOf(
+private val DATE_PATTERNS = listOf(DateTimeFormatter.RFC_1123_DATE_TIME) + listOf(
     "EEE, dd MMM yyyy HH:mm:ss XX",
     "EEE, dd MMM yy HH:mm:ss XX",
 ).map { DateTimeFormatter.ofPattern(it, Locale.US) }

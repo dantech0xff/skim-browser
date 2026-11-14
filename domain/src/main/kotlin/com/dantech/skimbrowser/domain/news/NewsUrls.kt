@@ -18,9 +18,10 @@ object NewsUrls {
         if (!uri.isAbsolute || uri.scheme != "https" || uri.userInfo != null) return null
         val host = uri.host?.lowercase() ?: return null
         if (host.isEmpty() || !host.contains('.')) return null
+        val port = if (uri.port == -1) "" else ":${uri.port}"
         val path = uri.rawPath ?: ""
         val query = uri.rawQuery?.let { "?$it" } ?: ""
-        return "https://$host$path$query"
+        return "https://$host$port$path$query"
     }
 
     fun hostLabel(url: String): String {

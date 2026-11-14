@@ -1,6 +1,8 @@
 package com.dantech.skimbrowser.ui.news
 
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.domain.news.NewsArticle
+import com.dantech.skimbrowser.domain.news.NewsBoard
 import com.dantech.skimbrowser.domain.news.NewsFeedClient
 import com.dantech.skimbrowser.domain.news.NewsParser
 import com.dantech.skimbrowser.domain.news.NewsPreferences
@@ -23,8 +25,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(AndroidJUnit4::class)
 class NewsWallViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
 
@@ -90,7 +94,63 @@ class NewsWallViewModelTest {
         assertFalse(store.currentPreferences().enabled)
     }
 
-    private fun viewModel(store: MemoryNews, client: RecordingClient, images: Boolean, now: Long = 0) = NewsWallViewModel(
+    @Test
+    fun hidingASourceDropsItsStoriesAndFetchesAgain() = runTest(dispatcher) {
+        val now = NewsBoard.TTL_MILLIS
+        val cached = NewsSnapshot(
+            listOf(NewsArticle("https://example.com/bbc", "Old", "bbc", "BBC", 1, null)),
+            fetchedAtMillis = now,
+        )
+        val store = MemoryNews(snapshot = cached)
+        val client = RecordingClient()
+        val vm = viewModel(store, client, images = true, now = now)
+        vm.state.first { it.articles.singleOrNull()?.sourceId == "bbc" }
+        val before = client.urls.size
+
+        vm.hideSource("bbc")
+
+        val state = vm.state.first { it.articles.none { card -> card.sourceId == "bbc" } }
+        assertTrue(state.articles.none { it.sourceId == "bbc" })
+        assertTrue(client.urls.size > before)
+    }
+
+    @Test
+    fun aFullDiskKeepsTheStoriesAlreadySaved() = runTest(dispatcher) {
+        val cached = NewsSnapshot(
+            listOf(NewsArticle("https://example.com/kept", "Kept", "bbc", "BBC", 1, null)),
+            fetchedAtMillis = 0,
+        )
+        val store = MemoryNews(snapshot = cached, failSave = true)
+        val vm = viewModel(store, RecordingClient(), images = true, now = NewsBoard.TTL_MILLIS + 1)
+
+        val state = vm.state.first { it.ready && it.articles.isNotEmpty() }
+
+        assertEquals("Kept", state.articles.single().title)
+    }
+
+    @Test
+    fun openingHomeAgainWaitsOutTheHalfHour() = runTest(dispatcher) {
+        var time = 1L
+        val client = RecordingClient()
+        val vm = viewModel(MemoryNews(), client, images = true, clock = { time })
+        vm.state.first { it.articles.singleOrNull()?.title == "New" }
+        val afterFirst = client.urls.size
+
+        vm.onShown()
+        assertEquals(afterFirst, client.urls.size)
+
+        time += NewsBoard.TTL_MILLIS + 1
+        vm.onShown()
+        assertTrue(client.urls.size > afterFirst)
+    }
+
+    private fun viewModel(
+        store: MemoryNews,
+        client: RecordingClient,
+        images: Boolean,
+        now: Long = 0,
+        clock: () -> Long = { now },
+    ) = NewsWallViewModel(
         repository = store,
         refreshNews = RefreshNews(
             store,
@@ -100,11 +160,11 @@ class NewsWallViewModelTest {
                     NewsArticle("https://example.com/new", "New", sourceId, sourceName, 10, "https://images.example/new.jpg"),
                 )
             },
-            clock = { now },
+            clock = clock,
             io = dispatcher,
         ),
         thumbnails = ThumbnailPolicy { images },
-        clock = { now },
+        clock = clock,
         zone = { ZoneOffset.UTC },
         language = "en",
     )
@@ -120,6 +180,7 @@ class NewsWallViewModelTest {
     private class MemoryNews(
         prefs: NewsPreferences = NewsPreferences(),
         snapshot: NewsSnapshot? = null,
+        private val failSave: Boolean = false,
     ) : NewsRepository {
         private val prefs = MutableStateFlow(prefs)
         private val stored = MutableStateFlow(snapshot)
@@ -139,6 +200,7 @@ class NewsWallViewModelTest {
         override fun snapshot(language: String, topic: NewsTopic): Flow<NewsSnapshot?> = stored
         override suspend fun currentSnapshot(language: String, topic: NewsTopic): NewsSnapshot? = stored.value
         override suspend fun saveSnapshot(language: String, topic: NewsTopic, snapshot: NewsSnapshot) {
+            if (failSave) throw java.io.IOException("full")
             stored.value = snapshot
         }
     }
