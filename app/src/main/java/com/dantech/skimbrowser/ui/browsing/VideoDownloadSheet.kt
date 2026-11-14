@@ -91,6 +91,7 @@ class VideoDownloadViewModel @AssistedInject constructor(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
+                    ready += variant
                 }
             }
             variants = ready.distinctBy { it.source }

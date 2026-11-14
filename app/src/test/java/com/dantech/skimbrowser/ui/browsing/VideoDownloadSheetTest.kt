@@ -124,6 +124,15 @@ class VideoDownloadSheetTest {
             VideoExtractFailure.PRIVATE to R.string.video_private,
             VideoExtractFailure.UNAVAILABLE to R.string.video_unavailable,
         )
+        val offline = RecordingCommands().apply { failQualities = true }
+        val kept = VideoDownloadViewModel(
+            "t",
+            tabs,
+            setOf(youtube(VideoVariant("Talk", "HLS", null, null, VideoSource.Hls("https://cdn.example/a.m3u8")))),
+            offline,
+        )
+        assertEquals(listOf("HLS"), kept.state.value.choices.map { it.quality })
+
         notices.forEach { (failure, notice) ->
             val refused = VideoDownloadViewModel("t", tabs, setOf(refusing(failure)), commands)
             assertEquals(failure.name, notice, refused.state.value.notice)
@@ -170,6 +179,10 @@ private class RecordingCommands : VideoCommands {
         return result
     }
 
-    override suspend fun qualities(tabId: String, variant: VideoVariant): VideoQualities =
-        VideoQualities.Ready(listOf(variant))
+    var failQualities = false
+
+    override suspend fun qualities(tabId: String, variant: VideoVariant): VideoQualities {
+        if (failQualities) throw IllegalStateException("offline")
+        return VideoQualities.Ready(listOf(variant))
+    }
 }
