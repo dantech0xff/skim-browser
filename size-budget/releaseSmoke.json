@@ -1,6 +1,6 @@
 {
-  "apk": "app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk",
-  "variant": "releaseSmoke",
+  "apk": "app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk",
+  "variant": "playReleaseSmoke",
   "abiSplits": false,
   "fileSizeBytes": 4168285,
   "downloadSizeBytes": 3722681,
@@ -8,5 +8,5 @@
   "definedMethods": 24326,
   "referencedMethods": 27744,
   "dexFiles": 1,
-  "notes": "Find-and-translate baseline was 4154515. One releaseSmoke assemble measured 4168285 bytes, 13770 above that. assets/shield/cookie.txt is 9689 compressed bytes and 41781 raw (1800 cookie-banner selectors). The other 4081 bytes are the popup and redirect decision, the settings rows, and the snackbar. No library was added. downloadSizeBytes and the method counts are apkanalyzer on this APK. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "Popup-blocking baseline was 4168285. The distribution flavor move measured the same file size for playReleaseSmoke. The YouTube extractor is not in this APK. fullReleaseSmoke is size-budget/fullReleaseSmoke.json. downloadSizeBytes and the method counts are the previous measurement. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

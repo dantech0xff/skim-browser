@@ -10,6 +10,8 @@ The dependency check is `docs/foss-licenses.md`. The draft metadata file is `doc
 
 `applicationId` is `com.dantech.skimbrowser`. `versionCode` is `1` and `versionName` is `1.0`, both written in `app/build.gradle.kts`. They are not computed from the date, the git revision, or CI. The release build does not use Google Play services. `release` is signed by the builder. `releaseSmoke` uses the debug key and is not a ship variant.
 
+F-Droid builds the `full` flavor (`assembleFullRelease`). The unsigned APK is `app/build/outputs/apk/full/release/app-full-release-unsigned.apk`, which is the `output` in `docs/fdroiddata.yml`. That flavor adds the YouTube extractor. The `play` flavor is the Google Play artifact and does not contain it. Both flavors contain Skim AI.
+
 A byte-for-byte rebuild has not been verified. The APK still depends on four strings that are not in git. `assembleRelease` fails until `skim.aiProxyUrl`, `skim.termsUrl`, `skim.privacyUrl`, and `skim.aiDataPolicyUrl` are https URLs passed on the command line or in `local.properties`. Two builds with different strings are different APKs. The proxy URL stays out of this repository. `docs/fdroiddata.yml` does not contain it.
 
 ## NonFreeNet
@@ -24,7 +26,7 @@ A like or dislike can also be sent to that proxy, and only after the person agre
 
 These are decided.
 
-1. One APK, with Skim AI. Accept NonFreeNet. Do not add a flavor that removes the AI client.
+1. One installable app, with Skim AI in every flavor. Accept NonFreeNet. Do not add a flavor that removes the AI client. The `distribution` flavors `play` and `full` both keep the client. `full` only adds the YouTube extractor.
 2. The application id stays `com.dantech.skimbrowser`.
 3. Google Sans Flex stays under OFL 1.1. Material Symbols stay under Apache-2.0.
 

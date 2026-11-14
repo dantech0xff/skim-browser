@@ -2,7 +2,7 @@
 
 Skim Browser is GPL-3.0-only. The terms are in `LICENSE`. Third-party code and bundled assets keep their own licenses. This page is the check that a `release` runtime classpath and the bundled assets are free software.
 
-The check is the resolved `releaseRuntimeClasspath` of `:app` on this tree, after the Anthropic Java SDK was removed. 202 Maven artifacts were selected. 201 POMs name a license. Every named license is the Apache License 2.0, the MIT license, or BSD-3-Clause. One POM omits a `<licenses>` block and inherits one.
+The check is the resolved `playReleaseRuntimeClasspath` of `:app` on this tree, after the Anthropic Java SDK was removed. 202 Maven artifacts were selected. 201 POMs name a license. Every named license is the Apache License 2.0, the MIT license, or BSD-3-Clause. One POM omits a `<licenses>` block and inherits one. The `play` flavor does not add artifacts. The `full` flavor adds the libraries in the next section.
 
 | Artifact | License |
 |---|---|
@@ -28,6 +28,19 @@ These are the versions the app modules declare. Transitive jars are included in 
 | `org.jsoup:jsoup` | 1.23.2 | MIT |
 | `com.mikepenz:aboutlibraries-compose-m3` | 15.3.0 | Apache-2.0 |
 | Kotlin stdlib, pulled by the Kotlin plugin | 2.4.21 | Apache-2.0 |
+
+## Full flavor
+
+`fullReleaseRuntimeClasspath` adds these artifacts. `playReleaseRuntimeClasspath` does not resolve them. NewPipe Extractor is GPL-3.0-or-later, which this GPL-3.0-only program can include. The pin is `v0.26.5` because `v0.27` compiles as Java 17 and asks for `desugar_jdk_libs_nio` on minSdk 26. That desugar flag is per module, so it would rewrite the play APK as well.
+
+| Artifact | License |
+|---|---|
+| `com.github.teamnewpipe:NewPipeExtractor:v0.26.5` | GPL-3.0-or-later |
+| `com.github.TeamNewPipe:nanojson` (the commit NewPipe 0.26.5 requests) | Apache-2.0 |
+| `org.mozilla:rhino:1.8.1` and `org.mozilla:rhino-engine:1.8.1` | MPL-2.0 |
+| `com.google.protobuf:protobuf-javalite:4.35.1` | BSD-3-Clause |
+
+Rhino evaluates YouTube's player script. Protobuf lite decodes NewPipe's player payloads. MPL-2.0 and BSD-3-Clause can be bundled in a GPL-3.0-only program.
 
 ## Bundled assets
 

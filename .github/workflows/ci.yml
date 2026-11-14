@@ -66,21 +66,28 @@ jobs:
               }
           }
           EOF
-          ./gradlew :app:testDebugUnitTest --no-configuration-cache --stacktrace --init-script /tmp/test-log.init.gradle
+          ./gradlew :app:testPlayDebugUnitTest --no-configuration-cache --stacktrace --init-script /tmp/test-log.init.gradle
 
       - name: Run lint
-        run: ./gradlew :app:lintDebug --no-configuration-cache --stacktrace
+        run: ./gradlew :app:lintPlayDebug :app:lintFullDebug --no-configuration-cache --stacktrace
 
       - name: Write the Kover XML report
-        run: ./gradlew :app:koverXmlReportDebug --no-configuration-cache --stacktrace
+        run: ./gradlew :app:koverXmlReportPlayDebug --no-configuration-cache --stacktrace
 
       - name: Check the 80 percent line floor
         run: |
           python3 tools/check_line_coverage.py --self-test
-          python3 tools/check_line_coverage.py app/build/reports/kover/reportDebug.xml
+          python3 tools/check_line_coverage.py app/build/reports/kover/reportPlayDebug.xml
 
-      - name: Assemble releaseSmoke
-        run: ./gradlew :app:assembleReleaseSmoke --no-configuration-cache --stacktrace
+      - name: Assemble both releaseSmoke flavors
+        run: ./gradlew :app:assemblePlayReleaseSmoke :app:assembleFullReleaseSmoke --no-configuration-cache --stacktrace
+
+      - name: Check the play APK has no YouTube extractor
+        run: |
+          python3 tools/check_play_has_no_youtube.py --self-test
+          python3 tools/check_play_has_no_youtube.py \
+            --apk app/build/outputs/apk/play/releaseSmoke \
+            --mapping app/build/outputs/mapping/playReleaseSmoke/mapping.txt
 
       - name: Upload reports after a failure
         if: failure()

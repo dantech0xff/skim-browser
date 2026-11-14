@@ -1,0 +1,9 @@
+{
+  "apk": "app/build/outputs/apk/full/releaseSmoke/app-full-releaseSmoke.apk",
+  "variant": "fullReleaseSmoke",
+  "abiSplits": false,
+  "fileSizeBytes": 4739744,
+  "downloadSizeBytes": 4280974,
+  "maxGrowthBytes": 8192,
+  "notes": "playReleaseSmoke on the same assemble is 4168285 bytes. fullReleaseSmoke is 4739744, 571459 above that. The added bytes are NewPipe Extractor 0.26.5, Rhino 1.8.1, and protobuf-javalite, kept only in the full flavor. apkanalyzer apk download-size on this file reported 4280974. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+}

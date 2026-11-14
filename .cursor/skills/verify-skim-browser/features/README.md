@@ -6,7 +6,7 @@ This directory is the maintained source for verifying Skim on an emulator. Read 
 
 - One emulator is booted and `adb get-state` prints `device`.
 - `ANDROID_SERIAL` names that emulator when any other device is connected.
-- `app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk` exists. The debug APK is the wrong build for Ask Skim.
+- `app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk` exists. The debug APK is the wrong build for Ask Skim.
 - `python3 tools/verify-skim/drive.py doctor` has been run on that emulator.
 - The drive clears `com.dantech.skimbrowser` before it taps anything. Do not point it at a device whose data you need.
 

@@ -16,10 +16,10 @@ From the repo root, with `ANDROID_HOME` set and `adb` and `emulator` on `PATH`.
 1. Build the APK that talks to the local stand-in. The debug APK calls `https://api.anthropic.com` and will not use the fake backend.
 
 ```
-./gradlew :app:assembleReleaseSmoke --no-configuration-cache
+./gradlew :app:assemblePlayReleaseSmoke --no-configuration-cache
 ```
 
-The APK is `app/build/outputs/apk/releaseSmoke/app-releaseSmoke.apk`.
+The APK is `app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk`.
 
 2. Boot one emulator and wait until `adb shell getprop sys.boot_completed` prints `1`.
 
@@ -50,7 +50,7 @@ It prints the adb state, whether `com.dantech.skimbrowser` is installed, and the
 
 - It starts `tools/verify-skim/fake_backend.py` on `127.0.0.1:8787`.
 - It runs `adb reverse tcp:8787 tcp:8787` so the emulator's localhost is the host.
-- It installs `app-releaseSmoke.apk`, clears the package, and launches `com.dantech.skimbrowser/.MainActivity`.
+- It installs `app-play-releaseSmoke.apk`, clears the package, and launches `com.dantech.skimbrowser/.MainActivity`.
 - It taps **Get started**, then **Start browsing**.
 - It opens `http://127.0.0.1:8787/article` with `ACTION_VIEW`.
 - It opens the tab switcher, creates a new tab, returns to the article tab, taps **Ask Skim about this page**, then **Allow**.

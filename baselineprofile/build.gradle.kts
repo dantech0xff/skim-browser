@@ -9,6 +9,7 @@ android {
     }
     defaultConfig {
         minSdk = 26
+        missingDimensionStrategy("distribution", "play")
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"

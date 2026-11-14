@@ -50,10 +50,11 @@ jobs:
           python3 -m pip install --user 'fonttools>=4.54' 'uharfbuzz>=0.37'
           python3 tools/subset_google_sans_flex.py --check
 
-      - name: Assemble releaseSmoke
-        run: ./gradlew :app:assembleReleaseSmoke --no-configuration-cache --stacktrace
+      - name: Assemble both releaseSmoke flavors
+        run: ./gradlew :app:assemblePlayReleaseSmoke :app:assembleFullReleaseSmoke --no-configuration-cache --stacktrace
 
-      - name: Check the APK budget
+      - name: Check the APK budgets
         run: |
           python3 tools/check_apk_budget.py --self-test
-          python3 tools/check_apk_budget.py
+          python3 tools/check_apk_budget.py --baseline size-budget/releaseSmoke.json
+          python3 tools/check_apk_budget.py --baseline size-budget/fullReleaseSmoke.json
