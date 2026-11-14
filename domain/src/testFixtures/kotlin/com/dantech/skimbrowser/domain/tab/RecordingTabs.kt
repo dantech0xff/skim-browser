@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 class RecordingTabs(currentTabId: String? = null) : TabsController {
     override val state: StateFlow<TabsState> = MutableStateFlow(TabsState(currentTabId = currentTabId))
     val opened = mutableListOf<Opened>()
+    val runtimes = mutableMapOf<String, TabRuntime>()
     val loads = mutableListOf<Pair<String, String>>()
     val background = mutableListOf<Opened>()
     val closed = mutableListOf<List<String>>()
@@ -41,7 +42,7 @@ class RecordingTabs(currentTabId: String? = null) : TabsController {
         loads += tabId to url
     }
 
-    override fun runtime(tabId: String): StateFlow<TabRuntime> = error("unused")
+    override fun runtime(tabId: String): StateFlow<TabRuntime> = MutableStateFlow(runtimes[tabId] ?: TabRuntime())
     override fun select(tabId: String) = error("unused")
     override fun returnToNewTabPage(tabId: String) = error("unused")
     override fun goBack(tabId: String): Boolean = error("unused")

@@ -48,6 +48,7 @@ class RecordingEvents : TabEventSink {
         data class SafetyWarningEvent(val tabId: String, val warning: SafetyWarning?) : Event
 
         data class ShieldCount(val tabId: String, val count: Int) : Event
+        data class MediaUrl(val tabId: String, val pageUrl: String, val mediaUrl: String) : Event
 
         data class CertificateActionAsked(val tabId: String, val host: String, val fingerprint: String) : Event
 
@@ -135,6 +136,10 @@ class RecordingEvents : TabEventSink {
 
     override fun onShieldCount(tabId: String, count: Int) {
         events += Event.ShieldCount(tabId, count)
+    }
+
+    override fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String) {
+        events += Event.MediaUrl(tabId, pageUrl, mediaUrl)
     }
 
     override fun certificateAction(tabId: String, host: String, fingerprint: String): CertificateAction {

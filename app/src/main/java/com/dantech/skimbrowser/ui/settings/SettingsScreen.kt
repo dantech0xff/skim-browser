@@ -84,6 +84,7 @@ fun SettingsRoute(navigator: SkimNavigator) {
         onBlockPopups = model::setBlockPopups,
         onBlockOddRedirects = model::setBlockOddRedirects,
         onHideCookieBanners = model::setHideCookieBanners,
+        onSaveVideos = model::setSaveVideos,
         onPrivacyPolicy = legalOpener(navigator, BuildConfig.PRIVACY_URL),
         onTerms = legalOpener(navigator, BuildConfig.TERMS_URL),
         onLicenses = { navigator.push(LicensesKey) },
@@ -193,6 +194,7 @@ fun SettingsScreen(
     onBlockPopups: (Boolean) -> Unit = {},
     onBlockOddRedirects: (Boolean) -> Unit = {},
     onHideCookieBanners: (Boolean) -> Unit = {},
+    onSaveVideos: (Boolean) -> Unit = {},
     onPrivacyPolicy: (() -> Unit)?,
     onTerms: (() -> Unit)?,
     onLicenses: () -> Unit,
@@ -317,10 +319,19 @@ fun SettingsScreen(
                 count = PRIVACY_ROWS,
                 onCheckedChange = onHideCookieBanners,
             )
+            SwitchRow(
+                headline = stringResource(R.string.settings_save_videos),
+                supporting = stringResource(R.string.settings_save_videos_summary),
+                icon = R.drawable.ic_download,
+                checked = state.saveVideos,
+                index = 4,
+                count = PRIVACY_ROWS,
+                onCheckedChange = onSaveVideos,
+            )
             SkimListItem(
                 headline = stringResource(R.string.downloads_title),
                 supporting = stringResource(R.string.settings_downloads_summary),
-                index = 4,
+                index = 5,
                 count = PRIVACY_ROWS,
                 onClick = onDownloads,
                 leading = { IconTile(R.drawable.ic_download, colors.secondaryContainer, colors.onSecondaryContainer) },
@@ -328,7 +339,7 @@ fun SettingsScreen(
             SkimListItem(
                 headline = stringResource(R.string.clear_browsing_data),
                 supporting = stringResource(R.string.settings_clear_browsing_data_summary),
-                index = 5,
+                index = 6,
                 count = PRIVACY_ROWS,
                 onClick = onClearData,
                 leading = { IconTile(R.drawable.ic_delete, colors.errorContainer, colors.onErrorContainer) },
@@ -435,5 +446,5 @@ private fun LazyListScope.section(
     item { SegmentedColumn(content = content) }
 }
 
-private const val PRIVACY_ROWS = 6
+private const val PRIVACY_ROWS = 7
 private const val TAG = "Settings"

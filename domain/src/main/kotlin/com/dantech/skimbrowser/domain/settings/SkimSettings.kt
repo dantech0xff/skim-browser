@@ -36,6 +36,8 @@ data class SkimSettings(
     val blockOddRedirects: Boolean = true,
     /** Common cookie consent banners are hidden, and a page they locked can scroll. */
     val hideCookieBanners: Boolean = true,
+    /** A page that is playing a video offers a download. On until the person turns it off. */
+    val saveVideos: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_READER_TEXT_SCALE = 100

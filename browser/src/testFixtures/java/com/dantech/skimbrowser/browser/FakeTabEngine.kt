@@ -222,6 +222,8 @@ class FakeTabEngine(
 
         override fun onShieldCount(tabId: String, count: Int) = Unit
 
+        override fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String) = Unit
+
         override fun certificateAction(tabId: String, host: String, fingerprint: String) = CertificateAction.Cancel
 
         override fun onCertificateError(tabId: String, warning: CertificateWarning) = Unit

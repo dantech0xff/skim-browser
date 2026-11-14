@@ -144,6 +144,8 @@ class SkimNavigator @AssistedInject constructor(
 
     fun openMoreMenu(tabId: String) = push(MoreMenuKey(tabId))
 
+    fun openVideoDownload(tabId: String) = push(VideoDownloadKey(tabId))
+
     fun openLinkOptions(tabId: String, target: HitTarget) = push(LinkOptionsKey(tabId, target))
 
     fun openSiteInfo(tabId: String) = push(SiteInfoKey(tabId))

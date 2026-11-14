@@ -67,6 +67,8 @@ class FakeSettingsRepository(initial: SkimSettings = SkimSettings()) : SettingsR
 
     override suspend fun setHideCookieBanners(enabled: Boolean) = update { it.copy(hideCookieBanners = enabled) }
 
+    override suspend fun setSaveVideos(enabled: Boolean) = update { it.copy(saveVideos = enabled) }
+
     override suspend fun setPopupAllowed(host: String, allowed: Boolean) {
         val key = normalizeHost(host)
         if (key.isEmpty()) return

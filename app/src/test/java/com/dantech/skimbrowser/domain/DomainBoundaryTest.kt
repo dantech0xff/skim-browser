@@ -19,6 +19,22 @@ class DomainBoundaryTest {
     }
 
     @Test
+    fun theVideoContractLivesOnceInTheKotlinSources() {
+        val kotlinRoot = moduleSourceRoot("domain", "kotlin")
+        val files = kotlinFiles(kotlinRoot.resolve("domain"))
+        assertTrue(
+            files.joinToString { it.invariantSeparatorsPath },
+            files.any { it.invariantSeparatorsPath.endsWith("domain/video/VideoExtractor.kt") },
+        )
+        val javaContract = listOf(
+            File("../domain/src/main/java/com/dantech/skimbrowser/domain/video/VideoExtractor.kt"),
+            File("domain/src/main/java/com/dantech/skimbrowser/domain/video/VideoExtractor.kt"),
+        )
+        assertTrue(javaContract.none { it.isFile })
+        assertTrue(violationsIn("domain").none { it.contains("VideoExtractor.kt") })
+    }
+
+    @Test
     fun uiSourcesDoNotImportTheDataLayer() {
         val violations = violationsIn("ui").filter { it.contains(DATA) }
         assertTrue(violations.joinToString("\n"), violations.isEmpty())

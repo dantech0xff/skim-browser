@@ -49,6 +49,9 @@ interface SettingsRepository {
 
     suspend fun setHideCookieBanners(enabled: Boolean)
 
+    /** [enabled] false hides the video download control and does not record media addresses. */
+    suspend fun setSaveVideos(enabled: Boolean)
+
     val popupAllowHosts: Flow<Set<String>>
 
     /** Sites that may redirect, or open an app, without a gesture. */

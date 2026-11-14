@@ -8,7 +8,9 @@ import com.dantech.skimbrowser.domain.download.DownloadDraft
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadPhase
+import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_ROW
 import com.dantech.skimbrowser.testing.MainDispatcherRule
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
@@ -53,7 +55,7 @@ class DownloadsViewModelTest {
         assertEquals(DownloadPhase.Failed, shown.phase)
 
         model.retry(shown)
-        assertEquals(retry, commands.retried.single())
+        assertEquals(retry.copy(headers = listOf(DownloadHeader(VIDEO_ROW, "4"))), commands.retried.single())
         assertEquals(1, commands.refreshes)
     }
 
@@ -75,7 +77,7 @@ class DownloadsViewModelTest {
         val saved = folder.newFile("guide.pdf").apply { writeText("hello") }
         val log = DownloadRepository(File(folder.root, "downloads-log"))
         val id = log.noteStarted(DownloadDraft("guide.pdf", incognito = false, retry = null))
-        log.noteFinished(id, saved.toURI().toString(), "application/pdf", saved.length())
+        log.noteFinished(id, saved.toURI().toString(), "application/pdf", saved.length(), null)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         val commands = object : DownloadCommands {
@@ -131,9 +133,9 @@ private class FakeDownloadLog : DownloadLog {
 
     override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) = Unit
 
-    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) = Unit
+    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String?) = Unit
 
-    override suspend fun noteFailed(localId: Long) = Unit
+    override suspend fun noteFailed(localId: Long, reason: String?) = Unit
 
     override suspend fun remove(id: Long): DownloadItem? = null
 

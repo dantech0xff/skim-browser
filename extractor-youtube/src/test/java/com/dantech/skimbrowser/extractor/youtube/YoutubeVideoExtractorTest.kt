@@ -24,6 +24,9 @@ class YoutubeVideoExtractorTest {
 
         val variants = extractor.extract(hints("https://example.com/watch?v=1"))
 
+        assertTrue(extractor.pageUrlSufficient)
+        assertTrue(extractor.matches("https://www.youtube.com/watch?v=abc"))
+        assertTrue(extractor.matches("https://www.youtube.com/shorts/abc"))
         assertTrue(variants.isEmpty())
         assertEquals(false, called)
     }

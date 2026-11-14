@@ -19,6 +19,8 @@ import com.dantech.skimbrowser.domain.tab.Tab
 import com.dantech.skimbrowser.domain.tab.TabRuntime
 import com.dantech.skimbrowser.domain.tab.TabsController
 import com.dantech.skimbrowser.domain.tab.TabsState
+import com.dantech.skimbrowser.domain.video.VideoExtractor
+import com.dantech.skimbrowser.domain.video.videoCanBeSaved
 import com.dantech.skimbrowser.domain.text.cutTo
 import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.url.hostOf
@@ -70,6 +72,8 @@ data class BrowsingUiState(
     val httpFallback: String? = null,
     /** A scam warning covering the page. Null on an ordinary load. */
     val safetyWarning: SafetyWarning? = null,
+    /** A video file or playlist was seen on this document, and saving videos is on. */
+    val videoAvailable: Boolean = false,
 )
 
 /**
@@ -95,6 +99,7 @@ data class FindUiState(
 class BrowsingViewModel @AssistedInject constructor(
     @Assisted private val tabId: String,
     private val tabs: TabsController,
+    private val extractors: Set<@JvmSuppressWildcards VideoExtractor>,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -115,14 +120,14 @@ class BrowsingViewModel @AssistedInject constructor(
 
     val state: StateFlow<BrowsingUiState> =
         combine(tabs.state, runtime, findOpen, refreshing) { all, page, open, reloading ->
-            all.tab(tabId)?.let { browsingUiState(it, page, all, open, reloading) }
+            all.tab(tabId)?.let { browsingUiState(it, page, all, open, reloading, extractors) }
         }
             .filterNotNull()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
                 initialValue = tabs.state.value.let { all ->
-                    all.tab(tabId)?.let { browsingUiState(it, runtime.value, all, findOpen = false, refreshing = false) } ?: Blank
+                    all.tab(tabId)?.let { browsingUiState(it, runtime.value, all, findOpen = false, refreshing = false, extractors) } ?: Blank
                 },
             )
 
@@ -259,6 +264,7 @@ internal fun browsingUiState(
     all: TabsState,
     findOpen: Boolean,
     refreshing: Boolean,
+    extractors: Iterable<VideoExtractor> = emptyList(),
 ): BrowsingUiState {
     val certificate = runtime.certificateWarning
     val safety = runtime.safetyWarning
@@ -274,6 +280,8 @@ internal fun browsingUiState(
         },
         indicator = if (certificate != null) SiteIndicator.Error else siteIndicatorOf(tab.url, error, safety),
         readerAvailable = runtime.readerable && error == null && certificate == null && safety == null,
+        videoAvailable = videoCanBeSaved(tab.url, runtime.mediaUrls, extractors) &&
+            error == null && certificate == null && safety == null,
         progress = runtime.progress,
         loadError = error,
         certificateWarning = certificate,

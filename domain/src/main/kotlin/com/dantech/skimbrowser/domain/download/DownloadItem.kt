@@ -20,6 +20,8 @@ data class DownloadItem(
     val incognito: Boolean,
     val retry: DownloadRetry?,
     val systemId: Long?,
+    /** A short reason the row failed, without an address. Null when the row did not fail, or the cause was not kept. */
+    val failureReason: String? = null,
 )
 
 /** What is known when a download is first asked for, before any bytes move. */
@@ -27,6 +29,8 @@ data class DownloadDraft(
     val fileName: String,
     val incognito: Boolean,
     val retry: DownloadRetry?,
+    /** When set, this start continues the failed row instead of adding another. */
+    val replaceId: Long? = null,
 )
 
 /** The saved list of downloads. The browser writes it. The Downloads screen reads it. */
@@ -40,9 +44,9 @@ interface DownloadLog {
 
     suspend fun noteProgress(localId: Long, soFar: Long, total: Long)
 
-    suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long)
+    suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String? = null)
 
-    suspend fun noteFailed(localId: Long)
+    suspend fun noteFailed(localId: Long, reason: String? = null)
 
     suspend fun remove(id: Long): DownloadItem?
 

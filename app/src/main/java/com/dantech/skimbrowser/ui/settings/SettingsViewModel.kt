@@ -30,6 +30,7 @@ data class SettingsUiState(
     val blockPopups: Boolean = true,
     val blockOddRedirects: Boolean = true,
     val hideCookieBanners: Boolean = true,
+    val saveVideos: Boolean = true,
     val versionName: String = "",
     val versionCode: Int = 0,
 )
@@ -59,6 +60,7 @@ class SettingsViewModel @Inject constructor(
             blockPopups = stored.blockPopups,
             blockOddRedirects = stored.blockOddRedirects,
             hideCookieBanners = stored.hideCookieBanners,
+            saveVideos = stored.saveVideos,
             versionName = version.name,
             versionCode = version.code,
         )
@@ -104,5 +106,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setHideCookieBanners(enabled: Boolean) {
         viewModelScope.launch { settings.setHideCookieBanners(enabled) }
+    }
+
+    fun setSaveVideos(enabled: Boolean) {
+        viewModelScope.launch { settings.setSaveVideos(enabled) }
     }
 }

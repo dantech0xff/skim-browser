@@ -226,13 +226,13 @@ class DownloadTracker(
                 return@launch
             }
             when (snap?.status) {
-                null, DownloadManager.STATUS_FAILED -> log.noteFailed(localId)
+                null, DownloadManager.STATUS_FAILED -> log.noteFailed(localId, "unknown")
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     val event = completed(systemId, "", null)
                     if (event is DownloadEvent.DownloadCompleted) {
                         log.noteFinished(localId, event.uri.toString(), event.mime, snap.total)
                     } else {
-                        log.noteFailed(localId)
+                        log.noteFailed(localId, "unknown")
                     }
                 }
                 else -> log.noteProgress(localId, snap.soFar, snap.total)
@@ -306,7 +306,7 @@ class DownloadTracker(
             return
         }
         when (snap?.status) {
-            null -> if (followed.remove(systemId) != null && localId != 0L) log.noteFailed(localId)
+            null -> if (followed.remove(systemId) != null && localId != 0L) log.noteFailed(localId, "unknown")
             DownloadManager.STATUS_SUCCESSFUL -> if (followed.remove(systemId) != null) {
                 val event = completed(systemId, name, known.retry)
                 report(event)
@@ -314,13 +314,13 @@ class DownloadTracker(
                     if (event is DownloadEvent.DownloadCompleted) {
                         log.noteFinished(localId, event.uri.toString(), event.mime, snap.total)
                     } else {
-                        log.noteFailed(localId)
+                        log.noteFailed(localId, "unknown")
                     }
                 }
             }
             DownloadManager.STATUS_FAILED -> if (followed.remove(systemId) != null) {
                 report(DownloadEvent.DownloadFailed(name, incognito = false, retry = known.retry))
-                if (localId != 0L) log.noteFailed(localId)
+                if (localId != 0L) log.noteFailed(localId, "unknown")
             }
             else -> if (localId != 0L) log.noteProgress(localId, snap.soFar, snap.total)
         }

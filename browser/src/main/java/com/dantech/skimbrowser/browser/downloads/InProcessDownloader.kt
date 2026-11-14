@@ -22,7 +22,7 @@ import okhttp3.Response
 import okio.BufferedSource
 
 /** A download that could not be made; the message never holds an address or a cookie. */
-class DownloadException(message: String) : IOException(message)
+class DownloadException(message: String, val code: Int? = null) : IOException(message)
 
 /** The largest file Skim downloads itself (from an incognito tab). */
 const val MAX_IN_PROCESS_DOWNLOAD_BYTES = 2L * 1024 * 1024 * 1024
@@ -78,10 +78,17 @@ class InProcessDownloader(
         cookies: suspend (url: String) -> String?,
         rawName: String?,
         declaredMime: String?,
+        headers: Map<String, String> = emptyMap(),
+        onProgress: suspend (soFar: Long, total: Long) -> Unit = { _, _ -> },
     ): DownloadEvent.DownloadCompleted {
         var address = url.toHttpUrlOrNull() ?: throw DownloadException("Not an http or https address")
         repeat(MAX_REDIRECTS + 1) {
             val request = Request.Builder().url(address).get().apply {
+                headers.forEach { (name, value) ->
+                    if (!name.equals(COOKIE, ignoreCase = true) && !name.startsWith("X-Skim-", ignoreCase = true)) {
+                        header(name, value)
+                    }
+                }
                 userAgent?.takeIf { it.isNotBlank() }?.let { header(USER_AGENT, it) }
                 cookies(address.toString())?.takeIf { it.isNotBlank() }?.let { header(COOKIE, it) }
             }.build()
@@ -90,7 +97,7 @@ class InProcessDownloader(
                     when {
                         response.isRedirect -> Step.Redirect(redirectTarget(address, response))
                         !response.isSuccessful -> throw DownloadException("The server answered ${response.code}")
-                        else -> Step.Saved(save(response, rawName, declaredMime))
+                        else -> Step.Saved(save(response, rawName, declaredMime, onProgress))
                     }
                 }
             }
@@ -114,11 +121,17 @@ class InProcessDownloader(
         return from.resolve(location) ?: throw DownloadException("A redirect to an address that is not http or https")
     }
 
-    private suspend fun save(response: Response, rawName: String?, declaredMime: String?): DownloadEvent.DownloadCompleted {
+    private suspend fun save(
+        response: Response,
+        rawName: String?,
+        declaredMime: String?,
+        onProgress: suspend (soFar: Long, total: Long) -> Unit,
+    ): DownloadEvent.DownloadCompleted {
         val body = response.body ?: throw DownloadException("The response has no body")
         if (body.contentLength() > maxBytes) throw DownloadException("The file is larger than the limit")
         if (freeSpace() < MIN_FREE_BYTES) throw DownloadException("Too little free space")
         val source = body.source()
+        val expected = body.contentLength()
         val head = firstBytes(source)
         val mime = downloadMimeOf(head, body.contentType()?.toString() ?: declaredMime, rawName)
         val name = DownloadNames.sanitize(rawName, mime)
@@ -147,6 +160,7 @@ class InProcessDownloader(
                     windowBytes = 0
                 }
                 out.write(buffer, 0, read)
+                onProgress(total, expected)
             }
         }
     }
@@ -179,7 +193,7 @@ class InProcessDownloader(
  * coroutine cancels the call, which also ends a read the server keeps waiting; the coroutine then
  * ends as cancelled, not with the call's failure.
  */
-private suspend fun <T> Call.executeCancellable(block: suspend (Response) -> T): T = coroutineScope {
+internal suspend fun <T> Call.executeCancellable(block: suspend (Response) -> T): T = coroutineScope {
     val call = this@executeCancellable
     val watcher = launch(start = CoroutineStart.UNDISPATCHED) {
         try {

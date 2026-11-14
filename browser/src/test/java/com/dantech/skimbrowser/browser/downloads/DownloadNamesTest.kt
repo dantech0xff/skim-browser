@@ -10,10 +10,28 @@ import org.junit.runner.RunWith
 class DownloadNamesTest {
 
     @Test
-    fun onlyTheLastPathSegmentIsKept() {
-        assertEquals("passwd.txt", DownloadNames.sanitize("../../etc/passwd", "text/plain"))
-        assertEquals("report.pdf", DownloadNames.sanitize("..\\..\\Windows\\report.pdf", "application/pdf"))
-        assertEquals("report.pdf", DownloadNames.sanitize("/sdcard/Download/../../data/report.pdf", "application/pdf"))
+    fun aSlashInTheTitleIsKeptAndCannotLeaveTheFolder() {
+        val passwd = DownloadNames.sanitize("../../etc/passwd", "text/plain")
+        assertTrue(passwd, passwd.contains("etc") && passwd.contains("passwd"))
+        assertTrue('/' !in passwd && '\\' !in passwd)
+        val report = DownloadNames.sanitize("..\\..\\Windows\\report.pdf", "application/pdf")
+        assertTrue(report, report.contains("Windows") && report.endsWith(".pdf") && '/' !in report)
+        assertEquals(
+            "My cat coming downstairs _ r_aww.mp4",
+            DownloadNames.sanitize("My cat coming downstairs : r/aww", "video/mp4"),
+        )
+    }
+
+    @Test
+    fun aSiteSuffixIsRemovedFromTheTitle() {
+        assertEquals("clip.mp4", DownloadNames.sanitize("clip _ TikTok", "video/mp4"))
+        assertEquals("clip.mp4", DownloadNames.sanitize("clip | Facebook | Facebook", "video/mp4"))
+        assertEquals("clip.mp4", DownloadNames.sanitize("clip _ Facebook _ Facebook", "video/mp4"))
+    }
+
+    @Test
+    fun anHlsSaveIsNamedForTheTransportStream() {
+        assertEquals("x36xhzz.ts", DownloadNames.sanitize("x36xhzz.m3u8", "video/mp2t"))
     }
 
     @Test

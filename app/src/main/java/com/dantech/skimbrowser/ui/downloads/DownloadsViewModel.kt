@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.download.DownloadCommands
+import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadItem
 import com.dantech.skimbrowser.domain.download.DownloadLog
+import com.dantech.skimbrowser.domain.download.VIDEO_ROW
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +44,8 @@ class DownloadsViewModel @Inject constructor(
 
     fun retry(item: DownloadItem) {
         val retry = item.retry ?: return
-        commands.retry(retry)
+        val headers = retry.headers.filterNot { it.name == VIDEO_ROW } + DownloadHeader(VIDEO_ROW, item.id.toString())
+        commands.retry(retry.copy(headers = headers))
     }
 
     fun remove(id: Long, deleteFile: Boolean) {

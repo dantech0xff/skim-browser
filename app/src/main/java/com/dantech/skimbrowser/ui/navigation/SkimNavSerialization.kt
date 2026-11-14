@@ -29,6 +29,7 @@ val skimNavConfig: SavedStateConfiguration = SavedStateConfiguration {
             subclass(SkimHistoryKey::class, SkimHistoryKey.serializer())
             subclass(LicensesKey::class, LicensesKey.serializer())
             subclass(MoreMenuKey::class, MoreMenuKey.serializer())
+            subclass(VideoDownloadKey::class, VideoDownloadKey.serializer())
             subclass(LinkOptionsKey::class, LinkOptionsKey.serializer())
             subclass(SiteInfoKey::class, SiteInfoKey.serializer())
             subclass(AskPageKey::class, AskPageKey.serializer())

@@ -78,6 +78,9 @@ interface TabEventSink {
      */
     fun onShieldCount(tabId: String, count: Int)
 
+    /** A media file or playlist for [pageUrl], the document it belongs to. Called on the main thread. */
+    fun onMediaUrl(tabId: String, pageUrl: String, mediaUrl: String)
+
     /**
      * Whether [tabId] may continue a load whose certificate is [fingerprint] for [host].
      * [CertificateAction.Proceed] only after the person already chose that pair in this session.

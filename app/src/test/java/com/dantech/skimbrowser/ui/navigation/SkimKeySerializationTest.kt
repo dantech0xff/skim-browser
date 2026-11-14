@@ -122,6 +122,7 @@ class SkimKeySerializationTest {
             SkimHistoryKey,
             LicensesKey,
             MoreMenuKey("tab-1"),
+            VideoDownloadKey("tab-1"),
             LinkOptionsKey("tab-1", HitTarget.Image("https://example.com/cat.png", alt = "A cat", linkUrl = null)),
             SiteInfoKey("tab-1"),
             AskPageKey(tabId = "tab-1", savedChatId = 7, fromReader = true),

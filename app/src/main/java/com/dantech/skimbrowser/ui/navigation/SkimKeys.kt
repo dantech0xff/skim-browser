@@ -103,6 +103,10 @@ data object LicensesKey : SkimKey
 @Serializable
 data class MoreMenuKey(override val tabId: String) : SheetKey
 
+/** Variants of the video playing in [tabId]. */
+@Serializable
+data class VideoDownloadKey(override val tabId: String) : SheetKey
+
 /** 05d Link or Image options for what a long-press on [tabId]'s page hit. */
 @Serializable
 data class LinkOptionsKey(override val tabId: String, val target: HitTarget) : SheetKey

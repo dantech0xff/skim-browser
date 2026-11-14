@@ -8,6 +8,7 @@ import com.dantech.skimbrowser.di.AppScope
 import com.dantech.skimbrowser.domain.download.DownloadCommands
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.videoKind
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 class DownloadActions @Inject constructor(
     private val log: DownloadLog,
     private val tracker: DownloadTracker,
+    private val videos: VideoSaver,
     private val app: Application,
     @AppScope private val scope: CoroutineScope,
 ) : DownloadCommands {
@@ -34,10 +36,15 @@ class DownloadActions @Inject constructor(
     fun attach(router: DownloadRouter, webViewOf: (String) -> WebView?) {
         this.router = router
         this.webViewOf = webViewOf
+        videos.attach { id -> webViewOf(id)?.settings?.userAgentString }
     }
 
     override fun retry(retry: DownloadRetry) {
-        router?.retry(retry, webViewOf(retry.tabId))
+        if (retry.videoKind() != null) {
+            scope.launch { videos.saveAgain(retry) }
+        } else {
+            router?.retry(retry, webViewOf(retry.tabId))
+        }
     }
 
     override fun refresh() {

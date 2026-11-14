@@ -42,7 +42,7 @@ class DownloadRepositoryTest {
         val id = log.noteStarted(DownloadDraft("guide.pdf", incognito = false, retry = RETRY))
         log.noteSystem(id, 70)
         log.noteProgress(id, 25, 100)
-        log.noteFinished(id, "content://downloads/70", "application/pdf", -1)
+        log.noteFinished(id, "content://downloads/70", "application/pdf", -1, null)
 
         val done = log.observe().first().single()
         assertEquals(DownloadPhase.Done, done.phase)
@@ -54,6 +54,13 @@ class DownloadRepositoryTest {
 
         log.noteFailed(id)
         assertEquals(DownloadPhase.Failed, log.observe().first().single().phase)
+
+        val again = log.noteStarted(DownloadDraft("clip.mp4", incognito = false, retry = RETRY, replaceId = id))
+        assertEquals(id, again)
+        val replaced = log.observe().first().single()
+        assertEquals(DownloadPhase.Running, replaced.phase)
+        assertEquals("clip.mp4", replaced.fileName)
+        assertEquals(null, replaced.failureReason)
     }
 
     @Test
@@ -78,7 +85,7 @@ class DownloadRepositoryTest {
         log.noteSystem(running, 70)
         val finished = log.noteStarted(DownloadDraft("done.pdf", incognito = false, retry = RETRY))
         log.noteSystem(finished, 71)
-        log.noteFinished(finished, "content://downloads/71", "application/pdf", 10)
+        log.noteFinished(finished, "content://downloads/71", "application/pdf", 10, null)
         log.noteStarted(DownloadDraft("local.pdf", incognito = false, retry = RETRY))
 
         assertEquals(listOf(running), log.runningWithSystemId().map { it.id })
