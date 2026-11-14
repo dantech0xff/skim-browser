@@ -73,6 +73,42 @@ object ShieldEstimate {
 
 enum class BlockedResource { SCRIPT, IMAGE, XHR, MEDIA, OTHER }
 
+enum class ByteUnit { BYTE, KILOBYTE, MEGABYTE, GIGABYTE }
+
+/** A byte count split so the UI can pick one unit string. [tenths] is used for megabytes and gigabytes. */
+data class ScaledBytes(val unit: ByteUnit, val whole: Long, val tenths: Int)
+
+enum class DurationUnit { NONE, SECOND, MINUTE, HOUR }
+
+/** A duration split so the UI can pick one unit string. [NONE] is under one second, including zero. */
+data class ScaledDuration(val unit: DurationUnit, val amount: Long)
+
+private const val KIB = 1024L
+private const val MIB = KIB * 1024
+private const val GIB = MIB * 1024
+
+/** Groups [bytes] into one unit. Negative counts as zero. */
+fun scaleBytes(bytes: Long): ScaledBytes {
+    val safe = bytes.coerceAtLeast(0)
+    return when {
+        safe < KIB -> ScaledBytes(ByteUnit.BYTE, safe, 0)
+        safe < MIB -> ScaledBytes(ByteUnit.KILOBYTE, safe / KIB, 0)
+        safe < GIB -> ScaledBytes(ByteUnit.MEGABYTE, safe / MIB, ((safe % MIB) * 10 / MIB).toInt())
+        else -> ScaledBytes(ByteUnit.GIGABYTE, safe / GIB, ((safe % GIB) * 10 / GIB).toInt())
+    }
+}
+
+/** Groups [millis] into one unit. Under one second is [DurationUnit.NONE]. */
+fun scaleDuration(millis: Long): ScaledDuration {
+    val safe = millis.coerceAtLeast(0)
+    if (safe < 1_000L) return ScaledDuration(DurationUnit.NONE, 0)
+    val seconds = safe / 1_000L
+    if (seconds < 60L) return ScaledDuration(DurationUnit.SECOND, seconds)
+    val minutes = seconds / 60L
+    if (minutes < 60L) return ScaledDuration(DurationUnit.MINUTE, minutes)
+    return ScaledDuration(DurationUnit.HOUR, minutes / 60L)
+}
+
 internal fun saturatingAdd(left: Long, right: Long): Long {
     if (right <= 0L) return left.coerceAtLeast(0L)
     val base = left.coerceAtLeast(0L)

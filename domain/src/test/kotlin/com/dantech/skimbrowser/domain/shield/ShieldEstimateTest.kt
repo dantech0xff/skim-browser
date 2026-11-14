@@ -43,6 +43,18 @@ class ShieldEstimateTest {
     }
 
     @Test
+    fun savedAmountsUseOneUnit() {
+        assertEquals(ScaledBytes(ByteUnit.BYTE, 12, 0), scaleBytes(12))
+        assertEquals(ScaledBytes(ByteUnit.KILOBYTE, 16, 0), scaleBytes(16 * 1024))
+        assertEquals(ScaledBytes(ByteUnit.MEGABYTE, 1, 5), scaleBytes((1.5 * 1024 * 1024).toLong()))
+        assertEquals(ScaledBytes(ByteUnit.GIGABYTE, 2, 0), scaleBytes(2L * 1024 * 1024 * 1024))
+        assertEquals(ScaledDuration(DurationUnit.NONE, 0), scaleDuration(999))
+        assertEquals(ScaledDuration(DurationUnit.SECOND, 2), scaleDuration(2_100))
+        assertEquals(ScaledDuration(DurationUnit.MINUTE, 3), scaleDuration(3 * 60_000L))
+        assertEquals(ScaledDuration(DurationUnit.HOUR, 2), scaleDuration(2 * 3_600_000L))
+    }
+
+    @Test
     fun cosmeticRuleCountFollowsTheHideMarker() {
         assertEquals(0, CosmeticFilters.ruleCount(""))
         assertEquals(2, CosmeticFilters.ruleCount(".a{display:none !important}\n.b{display:none !important}\n"))
