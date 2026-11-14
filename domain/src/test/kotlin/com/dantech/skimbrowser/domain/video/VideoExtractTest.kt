@@ -119,6 +119,21 @@ class VideoExtractTest {
             "https://v.redd.it/abc/CMAF_AUDIO_128.m3u8",
             preferredHlsAudio(hls.audios, "7")?.url,
         )
+        assertEquals(null, preferredHlsAudio(hls.audios, null))
+
+        val switched = """
+            #EXTM3U
+            #EXT-X-MAP:URI="init-a.mp4",BYTERANGE="4@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:4@4
+            part-a.mp4
+            #EXT-X-MAP:URI="init-b.mp4",BYTERANGE="4@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:4@4
+            part-b.mp4
+        """.trimIndent()
+        val order = mediaSpans(parseHls(switched, "https://cdn.example/media.m3u8")).map { it.url.substringAfterLast('/') }
+        assertEquals(listOf("init-a.mp4", "part-a.mp4", "init-b.mp4", "part-b.mp4"), order)
     }
 
     @Test
@@ -311,11 +326,14 @@ class VideoExtractTest {
             VideoVariant("cat", "720p", "video/mp4", null, VideoSource.Progressive("https://v.redd.it/abc/DASH_720.mp4")),
             VideoVariant("Talk", "360p", "video/mp4", null, VideoSource.Progressive("https://rr.googlevideo.com/videoplayback?id=1")),
             VideoVariant("cat", "1280p", "video/mp2t", null, VideoSource.Hls("https://v.redd.it/abc/CMAF_720.m3u8")),
+            VideoVariant("pair", "720p", "video/mp4", null, VideoSource.SeparateAv("https://cdn.example/a/video.mp4", "https://cdn.example/a/audio.mp4")),
+            VideoVariant("other", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/b/clip.m3u8")),
             VideoVariant("other", "720p", "video/mp2t", null, VideoSource.Hls("https://cdn.example/other/master.m3u8")),
             VideoVariant("other", "720p", "video/mp4", null, VideoSource.Progressive("https://cdn.example/other/clip.mp4")),
         )
         val listed = listedQualities(variants)
-        assertEquals(listOf("1280p", "720p", "720p", "480p", "360p"), listed.map { it.qualityLabel })
+        assertEquals(listOf("1280p", "720p", "720p", "720p", "720p", "480p", "360p"), listed.map { it.qualityLabel })
+        assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/b/clip.m3u8" })
         assertTrue(listed.any { (it.source as? VideoSource.Hls)?.playlistUrl == "https://cdn.example/other/master.m3u8" })
         assertTrue(listed.any { (it.source as? VideoSource.Progressive)?.url == "https://cdn.example/other/clip.mp4" })
         assertTrue(listed.none { (it.source as? VideoSource.Hls)?.playlistUrl?.contains("v.redd.it") == true })

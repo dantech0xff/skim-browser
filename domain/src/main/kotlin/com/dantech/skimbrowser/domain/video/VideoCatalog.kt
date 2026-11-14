@@ -74,15 +74,20 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
     val pairedVideoPaths = variants.mapNotNull { variant ->
         (variant.source as? VideoSource.SeparateAv)?.videoUrl
     }.toSet()
-    val pairedHeights = variants.mapNotNull { variant ->
-        if (variant.source is VideoSource.SeparateAv) qualityHeight(variant.qualityLabel) else null
-    }.toSet()
+    val pairedHeightsByClip = buildMap {
+        for (variant in variants) {
+            val source = variant.source as? VideoSource.SeparateAv ?: continue
+            val height = qualityHeight(variant.qualityLabel) ?: continue
+            getOrPut(clipId(source.videoUrl)) { mutableSetOf() }.add(height)
+        }
+    }
     val kept = variants.filter { variant ->
         val source = variant.source
         if (source is VideoSource.Progressive && sameMedia(source.url, pairedVideoPaths)) return@filter false
         if (source is VideoSource.Hls) {
             val height = qualityHeight(variant.qualityLabel)
-            if (height != null && height in pairedHeights) return@filter false
+            val heights = pairedHeightsByClip[clipId(source.playlistUrl)]
+            if (height != null && heights != null && height in heights) return@filter false
         }
         val directory = clipDirectory(source.mediaAddress())
         if (directory !in pairedDirectories) return@filter true
@@ -96,6 +101,9 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
         .distinctBy { it.source.address() }
         .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
 }
+
+/** The folder name that identifies one clip, even when the hosts differ. */
+internal fun clipId(url: String): String = clipDirectory(url).substringAfterLast('/')
 
 /** The directory of a media file, so two files of one clip can be told from another clip. */
 internal fun clipDirectory(url: String): String {

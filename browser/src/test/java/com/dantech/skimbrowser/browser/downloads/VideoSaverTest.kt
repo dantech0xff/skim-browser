@@ -944,6 +944,58 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aProtectedAudioGroupIsRefusedAndAHugeRangeStopsAtTheLimit() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val master = """
+            #EXTM3U
+            #EXT-X-MEDIA:URI="locked.m3u8",TYPE=AUDIO,GROUP-ID="1",NAME="audio",DEFAULT=YES
+            #EXT-X-STREAM-INF:BANDWIDTH=1000,RESOLUTION=640x360,AUDIO="1"
+            video.m3u8
+        """.trimIndent()
+        val locked = "#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI=\"skd://x\"\nseg.ts\n"
+        val ranged = """
+            #EXTM3U
+            #EXT-X-MAP:URI="big.mp4",BYTERANGE="8@0"
+            #EXTINF:1,
+            #EXT-X-BYTERANGE:8@8
+            big.mp4
+        """.trimIndent()
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("locked-master") -> MockResponse().setBody(master)
+                    path.contains("locked.m3u8") -> MockResponse().setBody(locked)
+                    path.contains("video.m3u8") -> MockResponse().setBody("#EXTM3U\n#EXTINF:1,\nvideo.mp4\n")
+                    path.contains("video.mp4") -> MockResponse().setBody("VIDEO")
+                    path.contains("range.m3u8") -> MockResponse().setBody(ranged)
+                    path.contains("big.mp4") -> MockResponse().setResponseCode(206).setBody("0123456789ABCDEF")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined, maxBytes = 8)
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/locked-master.m3u8").toString()))),
+            )
+            assertEquals("protected", log.reason)
+            log.reason = null
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip", "360p", null, null, VideoSource.Hls(server.url("/range.m3u8").toString()))),
+            )
+            assertEquals("limit", log.reason)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aMuxedGooglevideoFileRefreshesAfter403() = runBlocking {
         val server = MockWebServer()
         server.start()

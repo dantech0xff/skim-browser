@@ -307,16 +307,18 @@ class VideoSaver(
         val videoSpans = mediaSpans(opened.playlist)
         if (videoSpans.isEmpty()) throw DownloadException("The playlist has no video")
         val dir = jobDir(localId)
+        val budget = ByteBudget(maxBytes)
         try {
-            val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video")
+            val video = downloadSpans(videoSpans, headers, agent, incognito, dir, localId, "video", budget)
             val audioUrl = opened.audioUrl
             if (audioUrl == null) {
                 return publish(video, name, containerMime(video, videoSpans.map { it.url }))
             }
             val audioOpened = openMedia(audioUrl, headers, agent, incognito, null)
+            if (audioOpened.playlist.protected) throw DownloadException("The video is protected")
             val audioSpans = mediaSpans(audioOpened.playlist)
             if (audioSpans.isEmpty()) throw DownloadException("The playlist has no video")
-            val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio")
+            val audio = downloadSpans(audioSpans, headers, agent, incognito, dir, localId, "audio", budget)
             val out = File(dir, "mux.mp4")
             mux(video, audio, out)
             return publish(out, name, "video/mp4")
@@ -354,6 +356,7 @@ class VideoSaver(
         dir: File,
         localId: Long,
         label: String,
+        budget: ByteBudget,
     ): File {
         dir.mkdirs()
         val dest = File(dir, "$label.bin")
@@ -362,7 +365,7 @@ class VideoSaver(
         var soFar = 0L
         dest.outputStream().use { out ->
             for (span in spans) {
-                soFar += appendSpan(span, headers, agent, incognito, out, soFar, total, localId)
+                soFar += appendSpan(span, headers, agent, incognito, out, soFar, total, localId, budget)
             }
         }
         return dest
@@ -377,6 +380,7 @@ class VideoSaver(
         soFar: Long,
         total: Long,
         localId: Long,
+        budget: ByteBudget,
     ): Long {
         val start = span.start
         val length = span.length
@@ -392,7 +396,7 @@ class VideoSaver(
                         temp,
                         soFar,
                         { written, size -> log.noteProgress(localId, written, size) },
-                        null,
+                        budget,
                     )
                     temp.inputStream().use { it.copyTo(out) }
                     temp.length()
@@ -403,7 +407,7 @@ class VideoSaver(
             return fetch(span.url, headers, agent, incognito) { response ->
                 val body = response.body ?: throw DownloadException("The response has no body")
                 val reported = body.contentLength().takeIf { it > 0 } ?: total
-                copyBody(body, out, soFar, reported, onProgress = { written, size -> log.noteProgress(localId, written, size) })
+                copyBody(body, out, soFar, reported, onProgress = { written, size -> log.noteProgress(localId, written, size) }, charge = budget)
             }
         }
         val end = start + length - 1
@@ -413,7 +417,7 @@ class VideoSaver(
             if (!partial && start > 0L && (body.contentLength() < 0L || body.contentLength() > length)) {
                 discardBytes(body, start)
             }
-            copyAtMost(body, out, length, soFar, total) { written, size -> log.noteProgress(localId, written, size) }
+            copyAtMost(body, out, length, soFar, total, budget) { written, size -> log.noteProgress(localId, written, size) }
         }
     }
 
@@ -884,8 +888,10 @@ class VideoSaver(
         limit: Long,
         base: Long,
         total: Long,
+        budget: ByteBudget,
         onProgress: suspend (Long, Long) -> Unit,
     ): Long {
+        requireRoom(base)
         val input = body.byteStream()
         val buffer = ByteArray(COPY_BUFFER)
         var written = 0L
@@ -893,6 +899,10 @@ class VideoSaver(
             currentCoroutineContext().ensureActive()
             val read = input.read(buffer, 0, minOf(buffer.size.toLong(), limit - written).toInt())
             if (read < 0) break
+            budget.add(read.toLong())
+            if (written == 0L || written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) {
+                requireRoom(base + written + read)
+            }
             out.write(buffer, 0, read)
             written += read
             onProgress(base + written, total)

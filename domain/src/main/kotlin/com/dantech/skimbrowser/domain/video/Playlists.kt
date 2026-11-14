@@ -76,7 +76,9 @@ fun parseHls(body: String, playlistUrl: String): HlsPlaylist {
                 val uri = attr(line, "URI")
                 if (!uri.isNullOrBlank()) {
                     val url = resolveUrl(playlistUrl, uri)
-                    map = HlsSegment(url, byteRange(attr(line, "BYTERANGE"), url, nextOffset))
+                    val piece = HlsSegment(url, byteRange(attr(line, "BYTERANGE"), url, nextOffset))
+                    if (map == null) map = piece
+                    segments += piece
                 }
             }
             line.startsWith("#EXT-X-BYTERANGE:", ignoreCase = true) -> pendingRange = line.substringAfter(':').trim()
@@ -103,18 +105,16 @@ fun parseHls(body: String, playlistUrl: String): HlsPlaylist {
     return HlsPlaylist(protected = false, variants = variants, segments = segments, map = map, audios = audios)
 }
 
-/** The audio rendition for [groupId], preferring the higher rate named in the address. */
+/** The audio rendition for [groupId]. A variant with no audio group keeps its own audio. */
 fun preferredHlsAudio(audios: List<HlsAudio>, groupId: String?): HlsAudio? {
-    val group = audios.filter { groupId == null || it.groupId == groupId }
+    if (groupId == null) return null
+    val group = audios.filter { it.groupId == groupId }
     return group.maxByOrNull { audioRate(it.url) }
 }
 
-/** Map and media ranges, joined when they are contiguous pieces of one file. */
+/** Initialization maps and media ranges, in playlist order. Contiguous ranges of one file are joined. */
 fun mediaSpans(playlist: HlsPlaylist): List<MediaSpan> {
-    val pieces = buildList {
-        playlist.map?.let { add(it) }
-        addAll(playlist.segments)
-    }
+    val pieces = playlist.segments
     if (pieces.isEmpty()) return emptyList()
     if (pieces.any { it.range == null }) {
         return pieces.map { piece -> MediaSpan(piece.url, piece.range?.offset, piece.range?.length) }
