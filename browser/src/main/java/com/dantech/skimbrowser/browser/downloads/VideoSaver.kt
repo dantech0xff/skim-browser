@@ -122,13 +122,13 @@ class VideoSaver(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "The video save failed before it started", e)
-            failBeforeStart(name, incognito, retry, shortFailureReason(e))
+            Log.w(TAG, failureCode(e))
+            failBeforeStart(name, incognito, retry, failureCode(e))
             return VideoSaveResult.Started
         }
         val localId = log.noteStarted(DownloadDraft(name, incognito, retry))
         val job = scope.launch {
-            finish(localId, name, incognito, retry, source, userAgent)
+            finish(localId, name, incognito, retry, source, userAgent, variant.qualityLabel)
         }
         tracker.followJob(localId, job)
         return VideoSaveResult.Started
@@ -158,6 +158,7 @@ class VideoSaver(
         retry: DownloadRetry,
         source: VideoSource,
         userAgent: String?,
+        quality: String,
     ) {
         try {
             val done = when (source) {
@@ -185,14 +186,15 @@ class VideoSaver(
                     name,
                     localId,
                     retry.tabId,
+                    quality,
                 )
             }
             log.noteFinished(localId, done.uri.toString(), done.mime, done.bytes)
             tracker.report(done.copy(incognito = incognito))
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.w(TAG, "The video save failed", e)
-            log.noteFailed(localId, shortFailureReason(e))
+            Log.w(TAG, failureCode(e))
+            log.noteFailed(localId, failureCode(e))
             tracker.report(DownloadEvent.DownloadFailed(name, incognito, retry))
         }
     }
@@ -248,7 +250,7 @@ class VideoSaver(
         return if (audio == null) {
             saveSegments(listOf(video.url), headers, agent, incognito, name, localId)
         } else {
-            saveSeparate(video.url, audio.url, headers, agent, incognito, name, localId, tabId)
+            saveSeparate(video.url, audio.url, headers, agent, incognito, name, localId, tabId, video.height?.let { "${it}p" } ?: "DASH")
         }
     }
 
@@ -261,6 +263,7 @@ class VideoSaver(
         name: String,
         localId: Long,
         tabId: String,
+        quality: String,
     ): DownloadEvent.DownloadCompleted {
         try {
             return muxPair(videoUrl, audioUrl, headers, agent, incognito, name, localId)
@@ -268,7 +271,7 @@ class VideoSaver(
             throw e
         } catch (e: Exception) {
             if (httpCode(e) != 403) throw e
-            val fresh = freshSeparate(tabId, agent, incognito) ?: throw e
+            val fresh = freshSeparate(tabId, headers, agent, incognito, quality)
             return muxPair(fresh.videoUrl, fresh.audioUrl, fresh.headers, agent, incognito, name, localId)
         }
     }
@@ -283,14 +286,15 @@ class VideoSaver(
         localId: Long,
     ): DownloadEvent.DownloadCompleted {
         val dir = jobDir(localId)
+        val budget = ByteBudget(maxBytes)
         try {
             val progress = PairProgress(localId)
             val (video, audio) = coroutineScope {
                 val videoFile = async {
-                    downloadFile(videoUrl, headers, agent, incognito, dir, localId, 0, onProgress = progress::video)
+                    downloadFile(videoUrl, headers, agent, incognito, dir, localId, 0, onProgress = progress::video, budget = budget)
                 }
                 val audioFile = async {
-                    downloadFile(audioUrl, headers, agent, incognito, dir, localId, 0, onProgress = progress::audio)
+                    downloadFile(audioUrl, headers, agent, incognito, dir, localId, 0, onProgress = progress::audio, budget = budget)
                 }
                 videoFile.await() to audioFile.await()
             }
@@ -363,25 +367,31 @@ class VideoSaver(
         plannedTotal: Long = -1,
         segmentCount: Int = 1,
         onProgress: suspend (Long, Long) -> Unit = { soFar, total -> log.noteProgress(localId, soFar, total) },
+        budget: ByteBudget? = null,
     ): File {
         dir.mkdirs()
         val dest = File.createTempFile("part-", ".bin", dir)
         try {
+            requireRoom(already)
             if (rangeHost(url)) {
-                downloadInRanges(url, headers, agent, incognito, dest, already, onProgress)
+                downloadInRanges(url, headers, agent, incognito, dest, already, onProgress, budget)
             } else {
                 fetch(url, headers, agent, incognito) { response ->
                     val body = response.body ?: throw DownloadException("The response has no body")
                     val length = body.contentLength()
-                    if (length > 0 && already + length > maxBytes) throw DownloadException("The file is larger than the limit")
-                    requireRoom(already)
+                    if (length > 0 && budget == null && already + length > maxBytes) {
+                        throw DownloadException("The file is larger than the limit")
+                    }
+                    if (length > 0) budget?.add(length)
                     val total = when {
                         plannedTotal > 0 -> plannedTotal
                         length > 0 && segmentCount > 1 -> length * segmentCount
                         length > 0 -> length
                         else -> -1L
                     }
-                    dest.outputStream().use { out -> copyBody(body, out, already, total, onProgress) }
+                    dest.outputStream().use { out ->
+                        copyBody(body, out, already, total, onProgress, charge = budget?.takeIf { length <= 0 })
+                    }
                 }
             }
             return dest
@@ -399,25 +409,45 @@ class VideoSaver(
         dest: File,
         already: Long,
         onProgress: suspend (Long, Long) -> Unit,
+        budget: ByteBudget?,
     ) {
+        requireRoom(already)
         var start = 0L
         var total = -1L
+        var reserved = false
         dest.outputStream().use { out ->
             while (total < 0 || start < total) {
                 currentCoroutineContext().ensureActive()
                 val end = if (total > 0) minOf(start + rangeChunkBytes - 1, total - 1) else start + rangeChunkBytes - 1
+                val requested = end - start + 1
                 val piece = fetch(withRange(url, start, end), headers, agent, incognito) { response ->
                     val body = response.body ?: throw DownloadException("The response has no body")
                     val declared = contentRangeTotal(response.header("Content-Range"))
-                    if (declared != null) total = declared
-                    val wholeFile = response.code == 200 && response.header("Content-Range") == null
-                    val copied = copyBody(body, out, already + start, if (total > 0) total else -1L, onProgress)
+                    if (declared != null) {
+                        total = declared
+                        if (!reserved) {
+                            budget?.add(declared)
+                            reserved = true
+                        }
+                    }
+                    val copied = copyBody(
+                        body,
+                        out,
+                        already + start,
+                        if (total > 0) total else -1L,
+                        onProgress,
+                        charge = budget?.takeIf { !reserved },
+                    )
+                    val wholeFile = response.header("Content-Range") == null && copied > requested
                     wholeFile to copied
                 }
-                if (piece.second <= 0) throw DownloadException("The response has no body")
+                if (piece.second <= 0) {
+                    if (start > 0) break
+                    throw DownloadException("The response has no body")
+                }
                 if (piece.first) break
                 start += piece.second
-                if (total < 0 && piece.second < rangeChunkBytes) break
+                if (piece.second < requested) break
             }
         }
     }
@@ -542,17 +572,28 @@ class VideoSaver(
         return VideoQualities.Ready(listOf(variant))
     }
 
-    private suspend fun freshSeparate(tabId: String, agent: String?, incognito: Boolean): VideoSource.SeparateAv? {
-        val tab = tabs.state.value.tab(tabId) ?: return null
-        val page = tab.url ?: return null
+    private suspend fun freshSeparate(
+        tabId: String,
+        headers: Map<String, String>,
+        agent: String?,
+        incognito: Boolean,
+        quality: String,
+    ): VideoSource.SeparateAv {
+        val tab = tabs.state.value.tab(tabId)
+        val page = headers.entries.firstOrNull { it.key.equals("Referer", ignoreCase = true) }?.value
+            ?: tab?.url
+            ?: throw DownloadException("That quality is no longer available")
         val hints = PageVideoHints(
             pageUrl = page,
-            pageTitle = tab.title,
+            pageTitle = tab?.title,
             mediaUrls = tabs.runtime(tabId).value.mediaUrls,
             userAgent = agent,
             cookieHeader = cookies(incognito, page),
         )
-        return collectVariants(extractors, hints).variants.map { it.source }.filterIsInstance<VideoSource.SeparateAv>().firstOrNull()
+        val match = collectVariants(extractors, hints).variants.firstOrNull { variant ->
+            variant.qualityLabel == quality && variant.source is VideoSource.SeparateAv
+        } ?: throw DownloadException("That quality is no longer available")
+        return match.source as VideoSource.SeparateAv
     }
 
     private suspend fun copyBody(
@@ -561,7 +602,9 @@ class VideoSaver(
         base: Long,
         total: Long,
         onProgress: suspend (Long, Long) -> Unit,
+        charge: ByteBudget? = null,
     ): Long {
+        requireRoom(base)
         val input = body.byteStream()
         val buffer = ByteArray(COPY_BUFFER)
         var written = 0L
@@ -571,8 +614,11 @@ class VideoSaver(
             val read = input.read(buffer)
             if (read < 0) break
             written += read
-            if (base + written > maxBytes) throw DownloadException("The file is larger than the limit")
-            if (written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) requireRoom(base + written)
+            if (charge != null) charge.add(read.toLong())
+            else if (base + written > maxBytes) throw DownloadException("The file is larger than the limit")
+            if (written == read.toLong() || written % InProcessDownloader.FREE_SPACE_CHECK_BYTES < read) {
+                requireRoom(base + written)
+            }
             out.write(buffer, 0, read)
             if (written - reported >= REPORT_BYTES) {
                 reported = written
@@ -635,13 +681,30 @@ internal fun contentRangeTotal(header: String?): Long? {
     return total.toLongOrNull()?.takeIf { it > 0 }
 }
 
-internal fun shortFailureReason(error: Throwable): String {
-    val raw = generateSequence(error) { it.cause }
-        .mapNotNull { it.message?.lineSequence()?.firstOrNull()?.trim() }
-        .firstOrNull { it.isNotEmpty() }
-        .orEmpty()
-    val cleaned = raw.replace(Regex("https?://\\S+"), "").replace(Regex("\\s+"), " ").trim()
-    return (cleaned.ifBlank { error.javaClass.simpleName }).take(120)
+internal fun failureCode(error: Throwable): String {
+    httpCode(error)?.let { return "http:$it" }
+    val text = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString(" ").lowercase()
+    return when {
+        "protected" in text -> "protected"
+        "larger than the limit" in text -> "limit"
+        "free space" in text -> "space"
+        "no video" in text -> "empty"
+        "no longer available" in text -> "quality"
+        else -> "unknown"
+    }
+}
+
+private class ByteBudget(private val max: Long) {
+    private val gate = Mutex()
+    private var used = 0L
+
+    suspend fun add(bytes: Long) {
+        if (bytes <= 0) return
+        gate.withLock {
+            if (used > max - bytes) throw DownloadException("The file is larger than the limit")
+            used += bytes
+        }
+    }
 }
 
 internal fun segmentTitle(title: String): String = title.trim().removeSuffix(".m3u8").removeSuffix(".m3u").ifBlank { title.trim() }

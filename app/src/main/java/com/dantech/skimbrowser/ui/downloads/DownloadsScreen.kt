@@ -151,15 +151,23 @@ private fun statusText(item: DownloadItem): String {
             }
         }
         DownloadPhase.Done -> stringResource(R.string.downloads_done, size)
-        DownloadPhase.Failed -> {
-            val reason = item.failureReason
-            if (reason.isNullOrBlank()) {
-                stringResource(R.string.downloads_failed, size)
-            } else {
-                stringResource(R.string.downloads_failed_reason, reason)
-            }
-        }
+        DownloadPhase.Failed -> failureText(item.failureReason, size)
     }
+}
+
+@Composable
+private fun failureText(reason: String?, size: String): String {
+    if (reason.isNullOrBlank() || reason == "unknown") return stringResource(R.string.downloads_failed, size)
+    if (reason.startsWith("http:")) return stringResource(R.string.downloads_failed_http, reason.substringAfter("http:"))
+    val message = when (reason) {
+        "protected" -> R.string.downloads_failed_protected
+        "limit" -> R.string.downloads_failed_limit
+        "space" -> R.string.downloads_failed_space
+        "empty" -> R.string.downloads_failed_empty
+        "quality" -> R.string.downloads_failed_quality
+        else -> return stringResource(R.string.downloads_failed, size)
+    }
+    return stringResource(message)
 }
 
 @Composable

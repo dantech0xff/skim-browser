@@ -363,10 +363,12 @@ class VideoSaverTest {
         server.start()
         server.enqueue(MockResponse().setBody("VIDEO"))
         server.enqueue(MockResponse().setResponseCode(403))
-        val freshVideo = server.url("/v2.mp4").toString()
-        val freshAudio = server.url("/a2.mp4").toString()
-        server.enqueue(MockResponse().setBody("VIDEO2"))
-        server.enqueue(MockResponse().setBody("AUDIO2"))
+        val lowVideo = server.url("/360v.mp4").toString()
+        val lowAudio = server.url("/360a.mp4").toString()
+        val highVideo = server.url("/1080v.mp4").toString()
+        val highAudio = server.url("/1080a.mp4").toString()
+        server.enqueue(MockResponse().setBody("LOW-VIDEO"))
+        server.enqueue(MockResponse().setBody("LOW-AUDIO"))
         val log = CountingLog()
         val scope = CoroutineScope(Dispatchers.Unconfined)
         val extractor = object : VideoExtractor {
@@ -374,7 +376,8 @@ class VideoSaverTest {
             override val pageUrlSufficient = true
             override fun matches(pageUrl: String) = pageUrl.contains("example.com")
             override suspend fun extract(hints: PageVideoHints) = listOf(
-                VideoVariant("clip", "360p", "video/mp4", null, VideoSource.SeparateAv(freshVideo, freshAudio)),
+                VideoVariant("clip", "1080p", "video/mp4", null, VideoSource.SeparateAv(highVideo, highAudio)),
+                VideoVariant("clip", "360p", "video/mp4", null, VideoSource.SeparateAv(lowVideo, lowAudio)),
             )
         }
         val muxed = mutableListOf<String>()
@@ -402,7 +405,75 @@ class VideoSaverTest {
                     ),
                 ),
             )
-            assertEquals(listOf("VIDEO2AUDIO2"), muxed)
+            assertEquals(listOf("LOW-VIDEOLOW-AUDIO"), muxed)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun aQueryRangeWithoutContentRangeContinuesUntilTheFileEnds() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val segment = server.url("/seg.ts").toString()
+        val playlist = "#EXTM3U\n#EXTINF:1,\n$segment\n"
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setBody(playlist))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("VIDE"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("O123"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody(""))
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined, rangeChunkBytes = 4, rangeHost = { true })
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))),
+            )
+            val ranges = buildList {
+                repeat(server.requestCount) { add(server.takeRequest().requestUrl?.queryParameter("range")) }
+            }.filterNotNull()
+            org.junit.Assert.assertTrue(ranges.toString(), ranges.containsAll(listOf("0-3", "4-7")))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun separateTracksThatEachFitAreRefusedWhenTheirSumDoesNot() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("12345678"))
+        server.enqueue(MockResponse().setBody("12345678"))
+        server.start()
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val muxed = mutableListOf<String>()
+        val saver = saver(
+            log,
+            scope,
+            Dispatchers.Unconfined,
+            maxBytes = 10,
+            mux = { _, _, out ->
+                muxed += "muxed"
+                out.writeText("MUXED")
+            },
+        )
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save(
+                    "t",
+                    VideoVariant(
+                        "clip",
+                        "360p",
+                        "video/mp4",
+                        null,
+                        VideoSource.SeparateAv(server.url("/v.mp4").toString(), server.url("/a.mp4").toString()),
+                    ),
+                ),
+            )
+            assertEquals("limit", log.reason)
+            org.junit.Assert.assertTrue(muxed.isEmpty())
         } finally {
             server.shutdown()
         }
@@ -454,7 +525,7 @@ class VideoSaverTest {
             assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/a.m3u8").toString()))))
             org.junit.Assert.assertTrue(log.progress.toString(), log.progress.any { it.second == 8L && it.first > 0L })
             assertEquals(VideoSaveResult.Started, saver.save("t", VideoVariant("clip.m3u8", "HLS", null, null, VideoSource.Hls(server.url("/missing.m3u8").toString()))))
-            assertEquals("The server answered 403", log.reason)
+            assertEquals("http:403", log.reason)
         } finally {
             server.shutdown()
         }
@@ -468,6 +539,7 @@ class VideoSaverTest {
         extractors: Set<VideoExtractor> = emptySet(),
         rangeChunkBytes: Long = 10L * 1024 * 1024,
         rangeHost: (String) -> Boolean = ::isRangeHost,
+        maxBytes: Long = MAX_IN_PROCESS_DOWNLOAD_BYTES,
         mux: (File, File, File) -> Unit = ::muxToMp4,
     ): VideoSaver {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -490,6 +562,7 @@ class VideoSaverTest {
             extractors = extractors,
             rangeChunkBytes = rangeChunkBytes,
             rangeHost = rangeHost,
+            maxBytes = maxBytes,
         )
     }
 }
