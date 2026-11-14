@@ -71,10 +71,15 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
     val pairedDirectories = variants.mapNotNull { variant ->
         (variant.source as? VideoSource.SeparateAv)?.let { clipDirectory(it.videoUrl) }
     }.toSet()
+    val pairedVideoPaths = variants.mapNotNull { variant ->
+        (variant.source as? VideoSource.SeparateAv)?.let { mediaPath(it.videoUrl) }
+    }.toSet()
     val kept = variants.filter { variant ->
-        val directory = clipDirectory(variant.source.mediaAddress())
+        val source = variant.source
+        if (source is VideoSource.Progressive && mediaPath(source.url) in pairedVideoPaths) return@filter false
+        val directory = clipDirectory(source.mediaAddress())
         if (directory !in pairedDirectories) return@filter true
-        when (val source = variant.source) {
+        when (source) {
             is VideoSource.SeparateAv -> true
             is VideoSource.Hls, is VideoSource.Dash -> false
             is VideoSource.Progressive -> !isVideoOnlyRendition(source.url)
@@ -87,10 +92,12 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
 
 /** The directory of a media file, so two files of one clip can be told from another clip. */
 internal fun clipDirectory(url: String): String {
-    val path = url.substringBefore('?').substringBefore('#')
+    val path = mediaPath(url)
     val slash = path.lastIndexOf('/')
     return if (slash >= 0) path.substring(0, slash) else path
 }
+
+private fun mediaPath(url: String): String = url.substringBefore('?').substringBefore('#')
 
 /** A page title with a trailing site name removed, including a repeated `| Facebook`. */
 fun videoCaption(title: String): String {

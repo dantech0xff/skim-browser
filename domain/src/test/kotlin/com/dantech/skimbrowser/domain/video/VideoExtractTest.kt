@@ -287,6 +287,25 @@ class VideoExtractTest {
         assertTrue(listed.none { (it.source as? VideoSource.Progressive)?.url?.contains("DASH_") == true })
     }
 
+    @Test
+    fun aPairedVideoFileIsNotAlsoOfferedWithoutAudio() {
+        val variants = listOf(
+            VideoVariant(
+                "reel",
+                "1080p",
+                "video/mp4",
+                null,
+                VideoSource.SeparateAv("https://video.fbcdn.net/v.mp4?oh=1", "https://video.fbcdn.net/a.mp4"),
+            ),
+            VideoVariant("reel", "Video", "video/mp4", null, VideoSource.Progressive("https://video.fbcdn.net/v.mp4?oh=2")),
+            VideoVariant("other", "SD", "video/mp4", null, VideoSource.Progressive("https://video.fbcdn.net/other.mp4")),
+        )
+        val listed = listedQualities(variants)
+        assertEquals(listOf("1080p", "SD"), listed.map { it.qualityLabel })
+        assertTrue(listed.none { (it.source as? VideoSource.Progressive)?.url?.contains("/v.mp4") == true })
+        assertTrue(listed.any { (it.source as? VideoSource.Progressive)?.url == "https://video.fbcdn.net/other.mp4" })
+    }
+
     private fun extractor(
         name: String,
         page: String,
