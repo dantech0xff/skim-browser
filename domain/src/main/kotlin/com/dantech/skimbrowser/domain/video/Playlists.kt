@@ -185,7 +185,6 @@ internal fun resolveUrl(base: String, raw: String): String {
 
 private val MAIN_ROLES = setOf("main")
 
-/** A main video or audio set. Any other Role, or a non-media type, is not a rendition to offer. */
 private fun playableAdaptation(set: String): Boolean {
     val open = set.substringBefore('>')
     val type = attr(open, "contentType")?.lowercase()

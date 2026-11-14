@@ -62,10 +62,6 @@ fun DownloadItem.fraction(): Float? {
     return (bytesSoFar.toFloat() / bytesTotal.toFloat()).coerceIn(0f, 1f)
 }
 
-/**
- * The size a running row shows. Once bytes have arrived, that is the cumulative count, so a
- * playlist does not replace it with the latest segment. A finished or failed row shows [bytesTotal].
- */
 fun DownloadItem.runningSize(): Long =
     if (phase == DownloadPhase.Running && bytesSoFar > 0L) bytesSoFar else bytesTotal
 

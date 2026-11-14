@@ -1174,27 +1174,24 @@ internal fun hlsQuality(item: HlsVariant): String {
     return "${bandwidth / 1000} kbps"
 }
 
-/**
- * Progress for one HLS segment when the playlist does not know each file's length.
- * [cumulative] is every byte saved so far. The second value is the implied whole file, so
- * [cumulative] divided by it is the share of segments finished, including the current one.
- */
+internal data class HlsBytes(val arrived: Long, val implied: Long)
+
 internal fun hlsProgress(
     cumulative: Long,
     segmentIndex: Int,
     bytesIntoSegment: Long,
     segmentLength: Long,
     segmentCount: Int,
-): Pair<Long, Long> {
-    if (cumulative < 0L || segmentCount <= 0) return cumulative to -1L
+): HlsBytes {
+    if (cumulative < 0L || segmentCount <= 0) return HlsBytes(cumulative, -1L)
     val into = when {
         segmentLength > 0L -> bytesIntoSegment.coerceIn(0L, segmentLength).toDouble() / segmentLength.toDouble()
         bytesIntoSegment > 0L -> 1.0
         else -> 0.0
     }
     val fraction = ((segmentIndex.coerceAtLeast(0) + into) / segmentCount.toDouble()).coerceIn(0.0, 1.0)
-    if (fraction <= 0.0) return cumulative to -1L
-    return cumulative to (cumulative / fraction).toLong().coerceAtLeast(cumulative)
+    if (fraction <= 0.0) return HlsBytes(cumulative, -1L)
+    return HlsBytes(cumulative, (cumulative / fraction).toLong().coerceAtLeast(cumulative))
 }
 
 internal fun projectedTotal(known: List<Long>, count: Int): Long {

@@ -101,11 +101,6 @@ fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
         .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
 }
 
-/**
- * One row per height of one clip when a paired video and audio file exists, or when every row
- * at that height is an HLS playlist. A paired row wins. Mixed files that are not a pair stay,
- * so two different clips that share a folder name both remain.
- */
 private fun collapseHeights(variants: List<VideoVariant>): List<VideoVariant> {
     val groups = linkedMapOf<String, MutableList<VideoVariant>>()
     for (variant in variants) {
