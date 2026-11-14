@@ -403,9 +403,10 @@ class VideoSaver(
         dir.mkdirs()
         val dest = File(dir, "$label.bin")
         val known = spans.all { it.length != null }
+        val wholeJob = bytesAlready == 0L && segmentsInJob == spans.size
         val total = when {
             jobBytes > 0 -> jobBytes
-            known -> bytesAlready + spans.sumOf { it.length ?: 0L }
+            known && wholeJob -> spans.sumOf { it.length ?: 0L }
             else -> -1L
         }
         var soFar = bytesAlready
@@ -510,7 +511,22 @@ class VideoSaver(
             if (!partial && start > 0L && (body.contentLength() < 0L || body.contentLength() > length)) {
                 discardBytes(body, start)
             }
-            copyAtMost(body, out, length, soFar, total, budget) { written, size -> log.noteProgress(localId, written, size) }
+            copyAtMost(body, out, length, soFar, total, budget) { written, size ->
+                if (size > 0L) {
+                    log.noteProgress(localId, written, size)
+                } else {
+                    val into = written - soFar
+                    val progress = hlsProgress(
+                        cumulative = written,
+                        segmentIndex = segmentIndex,
+                        bytesIntoSegment = into,
+                        segmentLength = length,
+                        segmentCount = segmentCount,
+                        segmentFinished = into >= length,
+                    )
+                    log.noteProgress(localId, progress.arrived, progress.implied)
+                }
+            }
         }
     }
 

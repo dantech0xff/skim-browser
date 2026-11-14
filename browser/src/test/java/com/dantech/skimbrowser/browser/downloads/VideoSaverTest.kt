@@ -782,6 +782,55 @@ class VideoSaverTest {
     }
 
     @Test
+    fun aKnownVideoLengthDoesNotFinishBeforeAudio() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        val videoFile = server.url("/v.mp4").toString()
+        val audioSegment = server.url("/a.ts").toString()
+        val videoPlaylist = "#EXTM3U\n#EXT-X-BYTERANGE:4@0\n$videoFile\n"
+        val audioPlaylist = "#EXTM3U\n#EXTINF:1,\n$audioSegment\n"
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                val path = request.path.orEmpty()
+                return when {
+                    path.contains("video.m3u8") -> MockResponse().setBody(videoPlaylist)
+                    path.contains("audio.m3u8") -> MockResponse().setBody(audioPlaylist)
+                    path.contains("v.mp4") -> MockResponse().setBody("abcdEFGH")
+                    path.contains("a.ts") -> MockResponse().setBody("efghij")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+        val log = CountingLog()
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val saver = saver(log, scope, Dispatchers.Unconfined)
+        try {
+            assertEquals(
+                VideoSaveResult.Started,
+                saver.save(
+                    "t",
+                    VideoVariant(
+                        "clip.m3u8",
+                        "184p",
+                        null,
+                        null,
+                        VideoSource.Hls(
+                            server.url("/video.m3u8").toString(),
+                            audioPlaylistUrl = server.url("/audio.m3u8").toString(),
+                        ),
+                    ),
+                ),
+            )
+            val steps = log.progress.filter { it.first > 0L }
+            org.junit.Assert.assertTrue(steps.toString(), steps.zipWithNext().all { (before, after) -> after.first >= before.first })
+            org.junit.Assert.assertTrue(steps.toString(), steps.any { it.first == 4L && it.second > it.first })
+            assertEquals(steps.toString(), 10L to 10L, steps.last())
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun aChunkedHlsSegmentStaysBelowOneHundredPercentUntilItEnds() = runBlocking {
         val server = MockWebServer()
         server.start()
