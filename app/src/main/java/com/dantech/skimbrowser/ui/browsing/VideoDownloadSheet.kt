@@ -27,6 +27,8 @@ import com.dantech.skimbrowser.domain.video.VideoQualities
 import com.dantech.skimbrowser.domain.video.VideoSaveResult
 import com.dantech.skimbrowser.domain.video.VideoVariant
 import com.dantech.skimbrowser.domain.video.collectVariants
+import com.dantech.skimbrowser.domain.video.listedQualities
+import com.dantech.skimbrowser.domain.video.videoCaption
 import kotlinx.coroutines.CancellationException
 import com.dantech.skimbrowser.ui.components.SkimListItem
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
@@ -94,7 +96,7 @@ class VideoDownloadViewModel @AssistedInject constructor(
                     ready += variant
                 }
             }
-            variants = ready.distinctBy { it.source }
+            variants = listedQualities(ready)
             _state.value = VideoDownloadUiState(
                 loading = false,
                 choices = variants.mapIndexed { index, variant ->
@@ -168,9 +170,10 @@ fun VideoDownloadSheet(state: VideoDownloadUiState, onSave: (Int) -> Unit) {
             )
             else -> state.choices.forEach { choice ->
                 val size = choice.sizeBytes?.let { sizeLabel(it) }
+                val caption = videoCaption(choice.title).ifBlank { null }
                 SkimListItem(
                     headline = choice.quality,
-                    supporting = listOfNotNull(choice.title, size).joinToString(" · "),
+                    supporting = listOfNotNull(caption, size).joinToString(" · "),
                     index = choice.index,
                     count = state.choices.size,
                     onClick = { onSave(choice.index) },

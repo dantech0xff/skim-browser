@@ -75,7 +75,7 @@ class DownloadsViewModelTest {
         val saved = folder.newFile("guide.pdf").apply { writeText("hello") }
         val log = DownloadRepository(File(folder.root, "downloads-log"))
         val id = log.noteStarted(DownloadDraft("guide.pdf", incognito = false, retry = null))
-        log.noteFinished(id, saved.toURI().toString(), "application/pdf", saved.length())
+        log.noteFinished(id, saved.toURI().toString(), "application/pdf", saved.length(), null)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         val commands = object : DownloadCommands {
@@ -131,7 +131,7 @@ private class FakeDownloadLog : DownloadLog {
 
     override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) = Unit
 
-    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) = Unit
+    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String?) = Unit
 
     override suspend fun noteFailed(localId: Long, reason: String?) = Unit
 

@@ -59,3 +59,11 @@ fun VideoSource.address(): String = when (this) {
     is VideoSource.Dash -> manifestUrl
     is VideoSource.SeparateAv -> "$videoUrl|$audioUrl"
 }
+
+/** The file a title falls back to when the page has no name of its own. */
+fun VideoSource.mediaAddress(): String = when (this) {
+    is VideoSource.Progressive -> url
+    is VideoSource.Hls -> playlistUrl
+    is VideoSource.Dash -> manifestUrl
+    is VideoSource.SeparateAv -> videoUrl
+}

@@ -42,7 +42,7 @@ interface DownloadLog {
 
     suspend fun noteProgress(localId: Long, soFar: Long, total: Long)
 
-    suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long)
+    suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String? = null)
 
     suspend fun noteFailed(localId: Long, reason: String? = null)
 

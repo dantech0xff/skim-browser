@@ -35,9 +35,13 @@ fun DownloadRetry.videoKind(): String? = headers.firstOrNull { it.name == VIDEO_
 /** The quality label stored on a video retry, such as `720p`. */
 fun DownloadRetry.videoQuality(): String? = headers.firstOrNull { it.name == VIDEO_QUALITY }?.value
 
+/** The title shown for a video retry. The file address is not a title. */
+fun DownloadRetry.videoTitle(): String? = headers.firstOrNull { it.name == VIDEO_TITLE }?.value
+
 const val VIDEO_KIND = "X-Skim-Kind"
 const val VIDEO_AUDIO = "X-Skim-Audio"
 const val VIDEO_QUALITY = "X-Skim-Quality"
+const val VIDEO_TITLE = "X-Skim-Title"
 const val VIDEO_PROGRESSIVE = "progressive"
 const val VIDEO_HLS = "hls"
 const val VIDEO_DASH = "dash"

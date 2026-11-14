@@ -283,6 +283,7 @@
     <string name="downloads_failed_space">Couldn\'t download. There is too little free space.</string>
     <string name="downloads_failed_empty">Couldn\'t download. The playlist has no video.</string>
     <string name="downloads_failed_quality">Couldn\'t download. That quality is no longer available.</string>
+    <string name="downloads_failed_network">Couldn\'t download. The network failed.</string>
     <string name="downloads_remove_title">Remove download?</string>
     <string name="downloads_remove_body">%1$s leaves the list. Delete file also removes it from the device.</string>
     <string name="downloads_remove_list">Remove from list</string>

@@ -7,7 +7,9 @@ import com.dantech.skimbrowser.domain.download.VIDEO_DASH
 import com.dantech.skimbrowser.domain.download.VIDEO_HLS
 import com.dantech.skimbrowser.domain.download.VIDEO_KIND
 import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.VIDEO_TITLE
 import com.dantech.skimbrowser.domain.download.videoQuality
+import com.dantech.skimbrowser.domain.download.videoTitle
 import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE
 import com.dantech.skimbrowser.domain.download.videoKind
@@ -61,6 +63,60 @@ suspend fun collectVariants(extractors: Iterable<VideoExtractor>, hints: PageVid
     return CollectedVideos(variants, failure.takeIf { variants.isEmpty() })
 }
 
+/**
+ * One row per quality, highest first. A DASH pair replaces the video-only playlist and the
+ * video-only rendition files of that same clip.
+ */
+fun listedQualities(variants: List<VideoVariant>): List<VideoVariant> {
+    val hasPair = variants.any { it.source is VideoSource.SeparateAv }
+    val pairedHeights = variants.mapNotNull { variant ->
+        if (variant.source is VideoSource.SeparateAv) qualityHeight(variant.qualityLabel) else null
+    }.toSet()
+    val kept = variants.filter { variant ->
+        if (!hasPair) return@filter true
+        when (val source = variant.source) {
+            is VideoSource.SeparateAv -> true
+            is VideoSource.Hls, is VideoSource.Dash -> false
+            is VideoSource.Progressive -> {
+                val height = qualityHeight(variant.qualityLabel)
+                (height == null || height !in pairedHeights) && !isVideoOnlyRendition(source.url)
+            }
+        }
+    }
+    return kept
+        .distinctBy { it.source.address() }
+        .sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+}
+
+/** A page title with a trailing site name removed, including a repeated `| Facebook`. */
+fun videoCaption(title: String): String {
+    var name = title.trim()
+    while (true) {
+        val next = SITE_SUFFIX.replace(name, "").trim()
+        if (next == name) return name
+        name = next
+    }
+}
+
+/**
+ * The name of a video. A page with no title of its own, or whose title is the address, uses the
+ * last path segment of [url].
+ */
+fun videoDisplayTitle(title: String?, url: String): String {
+    val caption = videoCaption(title.orEmpty())
+    if (caption.isNotBlank() && "://" !in caption) return caption
+    val path = url.substringBefore('?').substringBefore('#')
+    val segment = path.substringAfterLast('/').trim()
+    return segment.ifBlank { caption.ifBlank { "video" } }
+}
+
+private fun isVideoOnlyRendition(url: String): Boolean {
+    val path = url.substringBefore('?').lowercase()
+    return path.contains("dash_") || path.contains("cmaf_") || path.contains("/hls_")
+}
+
+private val SITE_SUFFIX = Regex("""(?:\s+\|\s+|\s+_\s+)(?:TikTok|Facebook|Reddit)\s*$""", RegexOption.IGNORE_CASE)
+
 internal fun hostIs(pageUrl: String, vararg names: String): Boolean {
     val host = hostOf(pageUrl) ?: return false
     return names.any { host == it || host.endsWith(".$it") }
@@ -84,7 +140,7 @@ internal fun variant(
         is VideoSource.SeparateAv -> source.copy(headers = headers)
     }
     return VideoVariant(
-        title = title?.takeIf { it.isNotBlank() } ?: quality,
+        title = videoDisplayTitle(title, source.mediaAddress()),
         qualityLabel = quality,
         mimeType = mime,
         sizeBytes = null,
@@ -104,7 +160,8 @@ fun variantFromRetry(retry: DownloadRetry): VideoVariant? {
         else -> VideoSource.Progressive(retry.url, headers)
     }
     val quality = retry.videoQuality()?.takeIf { it.isNotBlank() } ?: "Video"
-    return VideoVariant(retry.url.substringAfterLast('/').substringBefore('?'), quality, retry.mimeType, null, source)
+    val title = videoDisplayTitle(retry.videoTitle(), retry.url)
+    return VideoVariant(title, quality, retry.mimeType, null, source)
 }
 
 fun retryHeaders(source: VideoSource): List<DownloadHeader> {

@@ -2,8 +2,10 @@ package com.dantech.skimbrowser.domain.video
 
 import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadRetry
+import com.dantech.skimbrowser.domain.download.VIDEO_HLS
 import com.dantech.skimbrowser.domain.download.VIDEO_KIND
 import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.VIDEO_TITLE
 import com.dantech.skimbrowser.domain.download.VIDEO_PROGRESSIVE
 import com.dantech.skimbrowser.domain.download.videoKind
 import com.dantech.skimbrowser.domain.download.wireHeaders
@@ -232,13 +234,50 @@ class VideoExtractTest {
                     DownloadHeader(VIDEO_KIND, com.dantech.skimbrowser.domain.download.VIDEO_SEPARATE),
                     DownloadHeader(com.dantech.skimbrowser.domain.download.VIDEO_AUDIO, "https://cdn.example/a.m4a"),
                     DownloadHeader(VIDEO_QUALITY, "360p"),
+                    DownloadHeader(VIDEO_TITLE, "Big Buck Bunny"),
                 ),
             ),
         )
         assertEquals("360p", again?.qualityLabel)
+        assertEquals("Big Buck Bunny", again?.title)
+        val fromAddress = variantFromRetry(
+            DownloadRetry(
+                tabId = "t",
+                url = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+                userAgent = null,
+                contentDisposition = null,
+                mimeType = "video/mp2t",
+                userInitiated = true,
+                incognito = false,
+                headers = listOf(DownloadHeader(VIDEO_KIND, VIDEO_HLS)),
+            ),
+        )
+        assertEquals("x36xhzz.m3u8", fromAddress?.title)
         val separate = again?.source as VideoSource.SeparateAv
         assertEquals("https://cdn.example/a.m4a", separate.audioUrl)
         assertEquals(null, separate.headers[VIDEO_QUALITY])
+    }
+
+    @Test
+    fun aPageWhoseTitleIsItsAddressUsesTheLastPathSegment() = runTest {
+        val page = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+        val variants = GenericVideoExtractor().extract(hints(page, page, listOf(page)))
+        assertEquals("x36xhzz.m3u8", variants.single().title)
+        assertEquals("Cat", videoCaption("Cat | Facebook | Facebook"))
+        assertEquals("clip", videoCaption("clip _ TikTok"))
+    }
+
+    @Test
+    fun pairedQualitiesReplaceTheVideoOnlyPlaylistAndStaySorted() {
+        val variants = listOf(
+            VideoVariant("cat", "480p", "video/mp4", null, VideoSource.SeparateAv("https://v.redd.it/abc/DASH_480.mp4", "https://v.redd.it/abc/DASH_audio.mp4")),
+            VideoVariant("cat", "1280p", "video/mp4", null, VideoSource.SeparateAv("https://v.redd.it/abc/DASH_1280.mp4", "https://v.redd.it/abc/DASH_audio.mp4")),
+            VideoVariant("cat", "854p", "video/mp2t", null, VideoSource.Hls("https://v.redd.it/abc/HLS_854.m3u8")),
+            VideoVariant("cat", "HLS", null, null, VideoSource.Hls("https://v.redd.it/abc/HLSPlaylist.m3u8")),
+            VideoVariant("cat", "720p", "video/mp4", null, VideoSource.Progressive("https://v.redd.it/abc/DASH_720.mp4")),
+            VideoVariant("Talk", "360p", "video/mp4", null, VideoSource.Progressive("https://rr.googlevideo.com/videoplayback?id=1")),
+        )
+        assertEquals(listOf("1280p", "480p", "360p"), listedQualities(variants).map { it.qualityLabel })
     }
 
     private fun extractor(

@@ -78,15 +78,17 @@ class DownloadRepository(private val file: File) : DownloadLog {
         }
     }
 
-    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) {
+    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String?) {
         edit { current ->
             0L to current.map { row ->
                 if (row.id != localId) {
                     row
                 } else {
                     val total = if (bytes >= 0) bytes else row.bytesTotal
+                    val name = fileName?.takeIf { it.isNotBlank() && '/' !in it && '\\' !in it } ?: row.fileName
                     row.copy(
                         phase = DownloadPhase.Done,
+                        fileName = name,
                         uri = uri,
                         mime = mime,
                         bytesTotal = total,

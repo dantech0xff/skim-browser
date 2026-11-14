@@ -13,7 +13,7 @@ object NoDownloadLog : DownloadLog {
 
     override suspend fun noteProgress(localId: Long, soFar: Long, total: Long) = Unit
 
-    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) = Unit
+    override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String?) = Unit
 
     override suspend fun noteFailed(localId: Long, reason: String?) = Unit
 

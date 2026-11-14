@@ -70,6 +70,10 @@ fun parseDash(mpd: String, manifestUrl: String): DashManifest {
     return DashManifest(protected = false, videos = videos, audios = audios)
 }
 
+/** The height in a label such as `720p`, `720p MP4 separate audio`, or `1080p60`. */
+fun qualityHeight(label: String): Int? =
+    Regex("""(\d+)p""", RegexOption.IGNORE_CASE).find(label)?.groupValues?.get(1)?.toIntOrNull()
+
 internal fun resolveUrl(base: String, raw: String): String {
     val ref = raw.trim()
     if (ref.startsWith("http://") || ref.startsWith("https://")) return ref

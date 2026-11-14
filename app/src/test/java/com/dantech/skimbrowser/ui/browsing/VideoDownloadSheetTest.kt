@@ -65,6 +65,21 @@ class VideoDownloadSheetTest {
     }
 
     @Test
+    fun aRepeatedFacebookSuffixIsNotShownOnTheRow() {
+        compose.setContent {
+            VideoDownloadSheet(
+                VideoDownloadUiState(
+                    loading = false,
+                    choices = listOf(VideoChoice(0, "Cat | Facebook | Facebook", "HD", null)),
+                ),
+                onSave = {},
+            )
+        }
+        compose.onNodeWithText("Cat").assertExists()
+        compose.onNodeWithText("Facebook", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun pickingATikTokFileStartsTheDownloadAndAProtectedResultStaysOnTheSheet() = runTest {
         val tabs = RecordingTabs()
         tabs.show(

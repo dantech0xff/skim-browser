@@ -300,7 +300,7 @@ class DownloadTrackerTest {
             notes += "progress" to (soFar to total)
         }
 
-        override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long) {
+        override suspend fun noteFinished(localId: Long, uri: String?, mime: String?, bytes: Long, fileName: String?) {
             finishedUri = uri
             finishedBytes = bytes
         }

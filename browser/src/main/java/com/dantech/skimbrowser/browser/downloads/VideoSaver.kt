@@ -5,10 +5,10 @@ import com.dantech.skimbrowser.domain.download.DownloadHeader
 import com.dantech.skimbrowser.domain.download.DownloadLog
 import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.download.VIDEO_QUALITY
+import com.dantech.skimbrowser.domain.download.VIDEO_TITLE
 import com.dantech.skimbrowser.domain.tab.TabsController
 import android.util.Log
 import com.dantech.skimbrowser.domain.video.HlsVariant
-import com.dantech.skimbrowser.domain.video.MediaStream
 import com.dantech.skimbrowser.domain.video.PageVideoHints
 import com.dantech.skimbrowser.domain.video.VideoCommands
 import com.dantech.skimbrowser.domain.video.VideoExtractor
@@ -18,11 +18,13 @@ import com.dantech.skimbrowser.domain.video.VideoSource
 import com.dantech.skimbrowser.domain.video.VideoVariant
 import com.dantech.skimbrowser.domain.video.collectVariants
 import com.dantech.skimbrowser.domain.video.dashProtected
-import com.dantech.skimbrowser.domain.video.mediaStream
+import com.dantech.skimbrowser.domain.video.mediaAddress
 import com.dantech.skimbrowser.domain.video.parseDash
 import com.dantech.skimbrowser.domain.video.parseHls
+import com.dantech.skimbrowser.domain.video.qualityHeight
 import com.dantech.skimbrowser.domain.video.retryHeaders
 import com.dantech.skimbrowser.domain.video.variantFromRetry
+import com.dantech.skimbrowser.domain.video.videoDisplayTitle
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
@@ -96,7 +98,8 @@ class VideoSaver(
         incognito: Boolean,
     ): VideoSaveResult {
         val source = variant.source
-        val named = if (source is VideoSource.Hls) segmentTitle(variant.title) else variant.title
+        val display = videoDisplayTitle(variant.title, source.mediaAddress())
+        val named = if (source is VideoSource.Hls) segmentTitle(display) else display
         val nameMime = if (source is VideoSource.Hls) "video/mp2t" else variant.mimeType ?: "video/mp4"
         val name = DownloadNames.sanitize(named.ifBlank { "video" }, nameMime)
         val retry = DownloadRetry(
@@ -112,7 +115,10 @@ class VideoSaver(
             mimeType = nameMime,
             userInitiated = true,
             incognito = incognito,
-            headers = retryHeaders(source) + listOf(DownloadHeader(VIDEO_QUALITY, variant.qualityLabel)),
+            headers = retryHeaders(source) + listOf(
+                DownloadHeader(VIDEO_QUALITY, variant.qualityLabel),
+                DownloadHeader(VIDEO_TITLE, display),
+            ),
         )
         try {
             if (source is VideoSource.Hls && playlistProtected(source.playlistUrl, source.headers, userAgent, incognito)) {
@@ -191,7 +197,7 @@ class VideoSaver(
                     quality,
                 )
             }
-            log.noteFinished(localId, done.uri.toString(), done.mime, done.bytes)
+            log.noteFinished(localId, done.uri.toString(), done.mime, done.bytes, done.fileName)
             tracker.report(done.copy(incognito = incognito))
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -273,7 +279,15 @@ class VideoSaver(
             throw e
         } catch (e: Exception) {
             if (httpCode(e) != 403) throw e
-            val fresh = freshSeparate(tabId, headers, agent, incognito, quality)
+            Log.i(TAG, "Refreshing the video address after HTTP 403")
+            val fresh = try {
+                freshSeparate(tabId, headers, agent, incognito, quality)
+            } catch (refresh: Exception) {
+                if (refresh is CancellationException) throw refresh
+                Log.w(TAG, "The video address refresh failed: ${failureCode(refresh)}")
+                throw refresh
+            }
+            Log.i(TAG, "The video address refresh succeeded")
             return muxPair(fresh.videoUrl, fresh.audioUrl, fresh.headers, agent, incognito, name, localId)
         }
     }
@@ -330,9 +344,7 @@ class VideoSaver(
             }
             val joined = File(dir, "joined")
             joined.outputStream().use { out -> parts.forEach { file -> file.inputStream().use { it.copyTo(out) } } }
-            val progressive = urls.size == 1 && mediaStream(urls.single(), null) == MediaStream.Progressive
-            val mime = if (progressive) "video/mp4" else "video/mp2t"
-            return publish(joined, name, mime)
+            return publish(joined, name, containerMime(joined, urls))
         } finally {
             dir.deleteRecursively()
         }
@@ -552,7 +564,7 @@ class VideoSaver(
         if (playlist.variants.isEmpty()) {
             return VideoQualities.Ready(listOf(variant.copy(title = title, mimeType = "video/mp2t")))
         }
-        return VideoQualities.Ready(playlist.variants.map { item ->
+        val rows = playlist.variants.map { item ->
             variant.copy(
                 title = title,
                 qualityLabel = hlsQuality(item),
@@ -560,7 +572,8 @@ class VideoSaver(
                 sizeBytes = null,
                 source = VideoSource.Hls(item.url, source.headers),
             )
-        })
+        }.sortedByDescending { qualityHeight(it.qualityLabel) ?: -1 }
+        return VideoQualities.Ready(rows)
     }
 
     private suspend fun dashQualities(
@@ -570,8 +583,30 @@ class VideoSaver(
         incognito: Boolean,
     ): VideoQualities {
         val fetched = getText(source.manifestUrl, source.headers, agent, incognito)
-        if (dashProtected(fetched.text) || parseDash(fetched.text, fetched.url).protected) return VideoQualities.Protected
-        return VideoQualities.Ready(listOf(variant))
+        val manifest = parseDash(fetched.text, fetched.url)
+        if (manifest.protected) return VideoQualities.Protected
+        val videos = rankedVideos(manifest.videos)
+        if (videos.isEmpty()) return VideoQualities.Ready(listOf(variant))
+        val audio = manifest.audios.maxByOrNull { it.bandwidth ?: 0 }
+        val rows = videos.map { file ->
+            val label = file.height?.let { "${it}p" } ?: variant.qualityLabel
+            if (audio == null) {
+                variant.copy(
+                    qualityLabel = label,
+                    mimeType = "video/mp4",
+                    sizeBytes = null,
+                    source = VideoSource.Progressive(file.url, source.headers),
+                )
+            } else {
+                variant.copy(
+                    qualityLabel = label,
+                    mimeType = "video/mp4",
+                    sizeBytes = null,
+                    source = VideoSource.SeparateAv(file.url, audio.url, source.headers),
+                )
+            }
+        }
+        return VideoQualities.Ready(rows)
     }
 
     private suspend fun freshSeparate(
@@ -707,15 +742,50 @@ internal fun contentRangeTotal(header: String?): Long? {
 
 internal fun failureCode(error: Throwable): String {
     httpCode(error)?.let { return "http:$it" }
-    val text = generateSequence(error) { it.cause }.mapNotNull { it.message }.joinToString(" ").lowercase()
+    val chain = generateSequence(error) { it.cause }.toList()
+    val text = chain.mapNotNull { it.message }.joinToString(" ").lowercase()
     return when {
         "protected" in text -> "protected"
         "larger than the limit" in text -> "limit"
         "free space" in text -> "space"
         "no video" in text -> "empty"
         "no longer available" in text -> "quality"
+        chain.any(::isNetworkFailure) -> "network"
         else -> "unknown"
     }
+}
+
+/** One video file per height, tallest first. A repeated height keeps the larger bandwidth. */
+internal fun rankedVideos(videos: List<com.dantech.skimbrowser.domain.video.DashFile>): List<com.dantech.skimbrowser.domain.video.DashFile> =
+    videos.groupBy { file -> file.height?.let { "h:$it" } ?: file.url }
+        .map { (_, files) -> files.maxBy { it.bandwidth ?: 0 } }
+        .sortedByDescending { it.height ?: -1 }
+
+/**
+ * The container the joined bytes actually are. An fMP4 or CMAF file is `video/mp4`. A transport
+ * stream stays `video/mp2t`.
+ */
+internal fun containerMime(file: File, urls: List<String>): String {
+    val header = ByteArray(12)
+    val read = file.inputStream().use { it.read(header) }
+    if (read >= 8) {
+        val box = String(header, 4, 4, Charsets.ISO_8859_1)
+        if (box in MP4_BOXES) return "video/mp4"
+        if (header[0] == 0x47.toByte()) return "video/mp2t"
+    }
+    val fragmented = urls.isNotEmpty() && urls.all { url ->
+        val path = url.substringBefore('?').substringBefore('#').lowercase()
+        path.endsWith(".m4s") || path.endsWith(".mp4") || path.endsWith(".m4v") ||
+            path.endsWith(".cmfv") || path.endsWith(".cmfa")
+    }
+    return if (fragmented) "video/mp4" else "video/mp2t"
+}
+
+private val MP4_BOXES = setOf("ftyp", "moof", "styp", "mdat", "sidx", "free")
+
+internal fun isNetworkFailure(error: Throwable): Boolean {
+    if (error is DownloadException) return false
+    return error is java.io.IOException && error !is java.io.FileNotFoundException
 }
 
 private class ByteBudget(private val max: Long) {
@@ -732,9 +802,6 @@ private class ByteBudget(private val max: Long) {
 }
 
 internal fun segmentTitle(title: String): String = title.trim().removeSuffix(".m3u8").removeSuffix(".m3u").ifBlank { title.trim() }
-
-internal fun qualityHeight(label: String): Int? =
-    Regex("""(\d+)p""", RegexOption.IGNORE_CASE).find(label)?.groupValues?.get(1)?.toIntOrNull()
 
 internal fun hlsQuality(item: HlsVariant): String {
     val resolution = item.resolution

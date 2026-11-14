@@ -165,6 +165,7 @@ private fun failureText(reason: String?, size: String): String {
         "space" -> R.string.downloads_failed_space
         "empty" -> R.string.downloads_failed_empty
         "quality" -> R.string.downloads_failed_quality
+        "network" -> R.string.downloads_failed_network
         else -> return stringResource(R.string.downloads_failed, size)
     }
     return stringResource(message)
