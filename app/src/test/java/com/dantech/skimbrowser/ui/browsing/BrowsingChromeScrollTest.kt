@@ -30,6 +30,17 @@ class BrowsingChromeScrollTest {
     }
 
     @Test
+    fun aPillBroughtBackByATapStaysUntilThePageMovesDownThatFarAgain() {
+        assertEquals(true, scroll.onScrolled(scrollY = 80, dy = 40, collapsed = false))
+        assertNull(scroll.onScrolled(scrollY = 600, dy = 520, collapsed = true))
+
+        // The chip was tapped, so the pill is full again without a move up.
+        assertNull(scroll.onScrolled(scrollY = 601, dy = 1, collapsed = false))
+        assertNull(scroll.onScrolled(scrollY = 621, dy = 20, collapsed = false))
+        assertEquals(true, scroll.onScrolled(scrollY = 633, dy = 12, collapsed = false))
+    }
+
+    @Test
     fun theTopOfThePageRestoresThePill() {
         assertEquals(true, scroll.onScrolled(scrollY = 80, dy = 40, collapsed = false))
         assertEquals(false, scroll.onScrolled(scrollY = 0, dy = -8, collapsed = true))

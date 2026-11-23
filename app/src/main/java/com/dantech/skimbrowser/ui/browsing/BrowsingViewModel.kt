@@ -24,8 +24,6 @@ import com.dantech.skimbrowser.domain.video.videoCanBeSaved
 import com.dantech.skimbrowser.domain.text.cutTo
 import com.dantech.skimbrowser.domain.text.toVisibleText
 import com.dantech.skimbrowser.domain.url.hostOf
-import com.dantech.skimbrowser.ui.browser.BrowserBack
-import com.dantech.skimbrowser.ui.browser.browserBack
 import com.dantech.skimbrowser.ui.components.SiteIndicator
 import com.dantech.skimbrowser.ui.shell.AiFabMode
 import com.dantech.skimbrowser.ui.shell.aiFabMode
@@ -57,13 +55,11 @@ data class BrowsingUiState(
     /** Why the page failed to load; the error screen covers the page while it is set. */
     val loadError: LoadError?,
     val certificateWarning: CertificateWarning? = null,
-    /** Back has something to do in the tab, as system Back does ([browserBack]). */
-    val backEnabled: Boolean,
-    val forwardEnabled: Boolean,
     /** The open tabs of the tab's own kind, for the toolbar's Tabs button. */
     val tabCount: Int,
     val incognito: Boolean,
-    val aiFab: AiFabMode,
+    /** Ask Skim in the pill and the collapsed chip: on, off in incognito, or unavailable on a failed or warned page. */
+    val aiMode: AiFabMode,
     /** Find in page while its bar shows in place of the address bar; null otherwise. */
     val find: FindUiState?,
     /** The pull to refresh indicator shows while the page reloads after a pull. */
@@ -183,9 +179,6 @@ class BrowsingViewModel @AssistedInject constructor(
     @MainThread
     fun proceedDespiteCertificate() = tabs.proceedDespiteCertificate(tabId)
 
-    @MainThread
-    fun goForward() = tabs.goForward(tabId)
-
     /**
      * Pull to refresh: the page reloads, and the indicator shows until the reload has loaded or
      * failed. A reload that never starts (the page refused it) lets the indicator go after a moment.
@@ -246,11 +239,9 @@ class BrowsingViewModel @AssistedInject constructor(
             readerAvailable = false,
             progress = null,
             loadError = null,
-            backEnabled = false,
-            forwardEnabled = false,
             tabCount = 0,
             incognito = false,
-            aiFab = AiFabMode.Enabled,
+            aiMode = AiFabMode.Enabled,
             find = null,
             refreshing = false,
         )
@@ -286,11 +277,9 @@ internal fun browsingUiState(
         loadError = error,
         certificateWarning = certificate,
         safetyWarning = safety,
-        backEnabled = certificate != null || safety != null || browserBack(tab, runtime) != BrowserBack.Leave,
-        forwardEnabled = certificate == null && safety == null && runtime.canGoForward,
         tabCount = all.tabs.count { it.incognito == tab.incognito },
         incognito = tab.incognito,
-        aiFab = aiFabMode(tab, runtime),
+        aiMode = aiFabMode(tab, runtime),
         httpFallback = if (error != null) runtime.httpFallback else null,
         find = if (findOpen && error == null && certificate == null && safety == null) {
             FindUiState(

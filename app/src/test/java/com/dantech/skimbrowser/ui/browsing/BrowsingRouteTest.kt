@@ -59,8 +59,11 @@ import com.dantech.skimbrowser.browser.TabEngineAttachment
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.TabRuntime
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
+import com.dantech.skimbrowser.testing.clickNearEnd
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.browser.BrowserRoute
+import com.dantech.skimbrowser.ui.navigation.AiPermissionKey
+import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.LinkOptionsKey
@@ -201,7 +204,7 @@ class BrowsingRouteTest {
         tabs.newTab(incognito = false, url = PAGE)
         showBrowser()
 
-        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").performClick()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").clickNearEnd()
         composeRule.waitForIdle()
 
         field().assert(hasText(PAGE))
@@ -218,7 +221,7 @@ class BrowsingRouteTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNode(hasContentDescription("Edit address", substring = true)).performClick()
+        composeRule.onNode(hasContentDescription("Edit address", substring = true)).clickNearEnd()
         composeRule.waitForIdle()
 
         field().assert(hasText(PAGE))
@@ -230,7 +233,7 @@ class BrowsingRouteTest {
     fun anAddressEnteredInTheSearchLoadsInThisTabAndTheSearchCloses() {
         val id = tabs.newTab(incognito = false, url = PAGE)
         showBrowser()
-        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").performClick()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").clickNearEnd()
 
         field().performTextReplacement("example.org")
         field().performImeAction()
@@ -246,7 +249,7 @@ class BrowsingRouteTest {
     fun askSkimInTheSearchAsksAcrossTheTabsAndTheSearchCloses() {
         tabs.newTab(incognito = false, url = PAGE)
         showBrowser()
-        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").performClick()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").clickNearEnd()
 
         field().performTextReplacement("heat pump")
         composeRule.pass(150)
@@ -281,7 +284,7 @@ class BrowsingRouteTest {
     }
 
     @Test
-    fun theBarAndTheToolbarOpenTheirDestinationsForThisTab() {
+    fun thePillsControlsOpenTheirDestinationsForThisTab() {
         val id = tabs.newTab(incognito = false, url = PAGE)
         engine.evaluator = { _, _ -> "true" }
         engine.openPage(id, PAGE)
@@ -307,31 +310,40 @@ class BrowsingRouteTest {
     }
 
     @Test
-    fun forwardGoesForwardInTheTab() {
+    fun askSkimInThePillAsksAboutThisPageInOneTap() {
         val id = tabs.newTab(incognito = false, url = PAGE)
         engine.openPage(id, PAGE)
-        engine.reportHistory(id, canGoBack = false, canGoForward = true)
         showBrowser()
 
-        composeRule.onNodeWithContentDescription("Forward").performClick()
+        composeRule.onNodeWithContentDescription("Ask Skim about this page").performClick()
+        composeRule.waitUntil(5_000) {
+            gateDispatcher.scheduler.advanceUntilIdle()
+            keys().last() != BrowserKey
+        }
 
-        assertEquals(Call.GoForward(id), engine.calls.last())
+        assertNull(gateError)
+        val opened = keys().last()
+        assertTrue(
+            "Ask about this page, or the site's permission first: $opened",
+            opened == AiPermissionKey(id) || (opened is AskPageKey && opened.tabId == id),
+        )
     }
 
     @Test
-    fun theToolbarsBackDoesWhatSystemBackDoesInTheTab() {
+    fun systemBackGoesBackInTheTabThenToTheNewTabPage() {
         val id = tabs.newTab(incognito = false)
         tabs.load(id, PAGE)
         engine.openPage(id, PAGE)
         engine.reportHistory(id, canGoBack = true, canGoForward = false)
         showBrowser()
 
-        composeRule.onNodeWithContentDescription("Back").performClick()
+        Espresso.pressBack()
+        composeRule.waitForIdle()
         assertEquals("the page before", Call.GoBack(id), engine.calls.last())
 
         engine.reportHistory(id, canGoBack = false, canGoForward = false)
         composeRule.waitForIdle()
-        composeRule.onNodeWithContentDescription("Back").performClick()
+        Espresso.pressBack()
         composeRule.waitForIdle()
 
         assertNull("the first page of a tab from the New tab page goes back to it", tabs.state.value.tab(id)?.url)

@@ -38,8 +38,9 @@ FloatingToolbarDefaults.StandardFloatingActionButton(
 
 Screens: 05 to 05d, 06 to 06d, 11
 
-- On 05, 05c and 11 the address sits in the middle of one 56 dp pill with small Back and Forward, Reader view and Tabs. Ask Skim is hidden for now. It is not a band under the status bar.
-- Site information (lock, or error on 11), the address as a button, Reader view.
+- On 05, 05c and 11 the address field starts one 56 dp pill, followed by Reader view, Save video, Tabs, More options and Ask Skim. The pill has no Back or Forward. It is not a band under the status bar.
+- Inside the field, Site information (lock, globe, or error on 11) and the host are centered together; the rest of the field is the address as a button.
+- While the page scrolls down, the pill becomes a 40 dp chip with the site mark, the host and Ask Skim. Tapping the chip brings the pill back.
 - While a page loads, wavy progress in primary runs along the bottom edge of that row.
 - Tapping the address opens 04b with the URL ready to edit.
 - 06 and 06d show the same pill and toolbar on the page behind the sheet or dialog.

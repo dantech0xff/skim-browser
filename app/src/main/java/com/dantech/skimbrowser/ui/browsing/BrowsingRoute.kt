@@ -46,9 +46,11 @@ import com.dantech.skimbrowser.ui.search.searchViewModel
  * - The address opens the search layer with the page's URL selected, for this tab's kind: an
  *   address or a search entered there loads in this tab, and Ask Skim asks across the tabs.
  * - The lock (or globe) opens Site information, Reader view opens 08, More options 05b, Tabs 09 or
- *   09b, and the AI FAB 06; a long press on a link or an image of this tab's page opens 05d for it.
- * - The toolbar's Back does what system Back does in the tab ([browserBack]); system Back closes
- *   Find in page first. This screen's handler is registered after the browser's, so it runs first.
+ *   09b, and Ask Skim 06; a long press on a link or an image of this tab's page opens 05d for it.
+ * - The pill collapses to a chip while the page scrolls down; a tap on the chip brings it back.
+ * - System Back closes Find in page first, and leaves a certificate or scam warning the way Back to
+ *   safety does. These handlers are registered after the browser's, so they run first; otherwise
+ *   the browser's does what Back does in the tab ([browserBack]).
  *
  * The screen's view model lives in the browser destination's store, one for each tab shown.
  */
@@ -124,12 +126,6 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onFindPrevious = browsing::findPrevious,
             onFindNext = browsing::findNext,
             onCloseFind = browsing::closeFind,
-            onBack = {
-                if (state.certificateWarning != null) leaveUnsafeCertificate()
-                else if (state.safetyWarning != null) leaveScam()
-                else browserBack(tab, runtime).perform(tab, tabs, navigator, activity)
-            },
-            onForward = browsing::goForward,
             onTabs = { navigator.openTabs(tab.incognito) },
             onMore = { navigator.openMoreMenu(tab.id) },
             onDownloadVideo = { navigator.openVideoDownload(tab.id) },
@@ -141,6 +137,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onProceedUnsafe = browsing::proceedUnsafe,
         ),
         chromeCollapsed = chromeCollapsed,
+        onExpandChrome = { chromeCollapsed = false },
         previousTab = openTabs.adjacentTab(forward = false),
         nextTab = openTabs.adjacentTab(forward = true),
         groups = openTabs.groups,

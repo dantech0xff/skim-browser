@@ -35,7 +35,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
@@ -70,8 +69,8 @@ enum class SiteIndicator {
  * @param address the text to show, already shortened by the caller (host on 05, URL without the
  *   scheme on 11).
  * @param loadProgress 0 to 1 while the page loads, null once it is done.
- * @param embedded the lock, a centered domain inside a hairline field, and Reader view, as a row for
- *   the browsing pill. The framed bar is the default.
+ * @param embedded a hairline field holding the lock and the domain, centered together, then Reader
+ *   view, as a row for the browsing pill. The framed bar is the default.
  */
 @Composable
 fun AddressBar(
@@ -179,8 +178,9 @@ private fun AddressControls(
 }
 
 /**
- * The address inside the browsing pill: the site mark, then the domain centered in a hairline field,
- * then Reader view. The field is the part that opens the address for editing.
+ * The address inside the browsing pill: a hairline field with the site mark and the domain centered
+ * together, then Reader view. The mark opens Site information; the rest of the field opens the
+ * address for editing. A long domain ellipsizes.
  */
 @Composable
 private fun CompactAddressField(
@@ -193,36 +193,7 @@ private fun CompactAddressField(
     modifier: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier.padding(horizontal = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        when (indicator) {
-            SiteIndicator.Secure, SiteIndicator.NotSecure -> {
-                val secure = indicator == SiteIndicator.Secure
-                SlotButton(
-                    onClick = onSiteInfo,
-                    description = stringResource(if (secure) R.string.cd_site_info_secure else R.string.cd_site_info),
-                ) {
-                    Icon(
-                        painterResource(if (secure) R.drawable.ic_lock else R.drawable.ic_public),
-                        null,
-                        Modifier.size(SiteIconSize),
-                        tint = colors.onSurfaceVariant,
-                    )
-                }
-            }
-
-            SiteIndicator.Error -> Box(Modifier.size(SlotSize), contentAlignment = Alignment.Center) {
-                Icon(
-                    painterResource(R.drawable.ic_error),
-                    stringResource(R.string.cd_page_didnt_load),
-                    Modifier.size(SiteIconSize),
-                    tint = colors.onSurfaceVariant,
-                )
-            }
-        }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         val editLabel = stringResource(R.string.cd_edit_address, address)
         Box(
             Modifier
@@ -235,18 +206,49 @@ private fun CompactAddressField(
                 .semantics { contentDescription = editLabel },
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = address,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                when (indicator) {
+                    SiteIndicator.Secure, SiteIndicator.NotSecure -> {
+                        val secure = indicator == SiteIndicator.Secure
+                        SlotButton(
+                            onClick = onSiteInfo,
+                            description = stringResource(if (secure) R.string.cd_site_info_secure else R.string.cd_site_info),
+                            size = FieldSlotSize,
+                        ) {
+                            Icon(
+                                painterResource(if (secure) R.drawable.ic_lock else R.drawable.ic_public),
+                                null,
+                                Modifier.size(SiteIconSize),
+                                tint = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    // Still, and a node of its own, so the field's label stays the address.
+                    SiteIndicator.Error -> Box(
+                        Modifier.size(FieldSlotSize).semantics(mergeDescendants = true) {},
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_error),
+                            stringResource(R.string.cd_page_didnt_load),
+                            Modifier.size(SiteIconSize),
+                            tint = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                Text(
+                    text = address,
+                    modifier = Modifier.weight(1f, fill = false).padding(start = 2.dp, end = 10.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (showReader) {
-            SlotButton(onClick = onReader, description = stringResource(R.string.cd_reader_view)) {
+            SlotButton(onClick = onReader, description = stringResource(R.string.cd_reader_view), size = ToolbarMetrics.BrowsingSlot) {
                 Icon(
                     painterResource(R.drawable.ic_chrome_reader_mode),
                     null,
@@ -285,11 +287,12 @@ internal fun AddressLoadProgress(
 private fun SlotButton(
     onClick: () -> Unit,
     description: String,
+    size: Dp,
     content: @Composable () -> Unit,
 ) {
     Box(
         Modifier
-            .size(SlotSize)
+            .size(size)
             .clip(CircleShape)
             .clickable(onClick = onClick, role = Role.Button)
             .semantics { contentDescription = description },
@@ -300,7 +303,9 @@ private fun SlotButton(
 
 private val SiteIconSize = 20.dp
 private val IconSlot = 48.dp
-private val SlotSize = 32.dp
+
+/** The site mark's tap slot inside the pill's address field. */
+private val FieldSlotSize = 28.dp
 private val FlatWave: (Float) -> Float = { 0f }
 
 @PreviewLightDark

@@ -2,6 +2,8 @@ package com.dantech.skimbrowser.ui.browsing
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -15,14 +17,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,29 +35,44 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.AddressBar
 import com.dantech.skimbrowser.ui.components.AddressLoadProgress
+import com.dantech.skimbrowser.ui.components.DisabledContentAlpha
+import com.dantech.skimbrowser.ui.components.ShapeArt
+import com.dantech.skimbrowser.ui.components.SiteIndicator
+import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.TabsCountIcon
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
+import com.dantech.skimbrowser.ui.shell.AiFabMode
+import com.dantech.skimbrowser.ui.shell.aiFabContentDescription
 import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
 import com.dantech.skimbrowser.ui.theme.isDarkScheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
-private val Slot = 32.dp
-private val NavSlot = 22.dp
 private val PillShadow = 3.dp
 private const val FIND_FADE_MS = 160
 
 /**
- * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view,
- * Tabs, and More options, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
+ * The floating pill of a page, on one row: the address (or Find in page), Reader view, Save video,
+ * Tabs, More options and Ask Skim. There is no Back or Forward: Back is the system gesture.
  *
- * The pill floats over web content, so it is drawn in the neutral chrome scheme.
+ * While [collapsed] the pill is a chip with the site mark, the host and Ask Skim, centered on the
+ * pill's place and resting on its bottom edge. Tapping the chip calls [onExpand]. One container
+ * morphs between the two sizes with the spatial spring while the content cross-fades; with Remove
+ * animations on, both snap.
+ *
+ * The pill floats over web content, so it is drawn in the neutral chrome scheme. Insets are the
+ * caller's.
  */
 @Composable
 fun BrowsingChrome(
@@ -61,8 +80,10 @@ fun BrowsingChrome(
     findQuery: TextFieldState,
     actions: BrowsingActions,
     modifier: Modifier = Modifier,
+    collapsed: Boolean = false,
+    onExpand: () -> Unit = {},
 ) {
-    SkimChromeTheme { BrowsingPill(state, findQuery, actions, modifier) }
+    SkimChromeTheme { BrowsingPill(state, findQuery, actions, collapsed, onExpand, modifier) }
 }
 
 @Composable
@@ -70,144 +91,244 @@ private fun BrowsingPill(
     state: BrowsingUiState,
     findQuery: TextFieldState,
     actions: BrowsingActions,
+    collapsed: Boolean,
+    onExpand: () -> Unit,
     modifier: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val content = colors.onSurfaceVariant
+    val reduced = rememberReducedMotion()
+    val motion = MaterialTheme.motionScheme
+    val sizeSpec: FiniteAnimationSpec<IntSize> = if (reduced) snap() else motion.defaultSpatialSpec()
+    val fadeSpec: FiniteAnimationSpec<Float> = if (reduced) snap() else motion.defaultEffectsSpec()
+    // Wraps the container, so beside the chip the page is not covered by the bar's bounds.
     Box(
-        modifier
-            .fillMaxWidth()
-            .semantics {
-                isTraversalGroup = true
-                traversalIndex = -1f
-            },
+        modifier.semantics {
+            isTraversalGroup = true
+            traversalIndex = -1f
+        },
+        contentAlignment = Alignment.Center,
     ) {
         Surface(
             shape = CircleShape,
             color = if (isDarkScheme()) colors.surfaceContainerHigh else colors.surfaceContainer,
-            contentColor = content,
+            contentColor = colors.onSurfaceVariant,
             shadowElevation = PillShadow,
-            modifier = Modifier.fillMaxWidth().height(ToolbarMetrics.AddressRowHeight),
         ) {
-            Box(Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalContentColor provides content) {
-                Row(
-                    Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    NavIcon(R.drawable.ic_history_back, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
-                    NavIcon(R.drawable.ic_history_forward, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
-                    val find = state.find
-                    val fade = if (rememberReducedMotion()) snap() else tween<Float>(FIND_FADE_MS)
-                    AnimatedContent(
-                        targetState = find != null,
-                        modifier = Modifier.weight(1f),
-                        transitionSpec = { fadeIn(fade) togetherWith fadeOut(fade) },
-                        label = "findInPage",
-                    ) { open ->
-                        if (open && find != null) {
-                            FindInPageBar(
-                                query = findQuery,
-                                state = find,
-                                incognito = state.incognito,
-                                onPrevious = actions.onFindPrevious,
-                                onNext = actions.onFindNext,
-                                onClose = actions.onCloseFind,
-                                modifier = Modifier.fillMaxWidth(),
-                                embedded = true,
-                            )
-                        } else if (!open) {
-                            AddressBar(
-                                address = state.address,
-                                indicator = state.indicator,
-                                readerAvailable = state.readerAvailable,
-                                loadProgress = null,
-                                onSiteInfo = actions.onSiteInfo,
-                                onEditAddress = actions.onEditAddress,
-                                onReader = actions.onReader,
-                                modifier = Modifier.fillMaxWidth(),
-                                embedded = true,
-                            )
-                        }
-                    }
-                    val tabsLabel = pluralStringResource(
-                        if (state.incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
-                        state.tabCount,
-                        state.tabCount,
-                    )
-                    AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (state.videoAvailable) {
-                                Box(
-                                    Modifier
-                                        .size(Slot)
-                                        .clip(CircleShape)
-                                        .clickable(onClick = actions.onDownloadVideo, role = Role.Button),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.ic_download),
-                                        stringResource(R.string.cd_download_video),
-                                        Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                            Box(
-                                Modifier
-                                    .size(Slot)
-                                    .clip(CircleShape)
-                                    .clickable(onClick = actions.onTabs, role = Role.Button)
-                                    .semantics { contentDescription = tabsLabel },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                TabsCountIcon(state.tabCount)
-                            }
-                            Box(
-                                Modifier
-                                    .size(Slot)
-                                    .clip(CircleShape)
-                                    .clickable(onClick = actions.onMore, role = Role.Button),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painterResource(R.drawable.ic_more_vert),
-                                    stringResource(R.string.cd_more_options),
-                                    Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-                if (state.find == null) {
-                    AddressLoadProgress(
-                        state.progress,
-                        Modifier.align(Alignment.BottomCenter).padding(horizontal = 36.dp).fillMaxWidth(),
-                        overflow = 0.dp,
-                    )
+            AnimatedContent(
+                targetState = collapsed,
+                transitionSpec = {
+                    (fadeIn(fadeSpec) togetherWith fadeOut(fadeSpec)).using(SizeTransform { _, _ -> sizeSpec })
+                },
+                contentAlignment = Alignment.Center,
+                label = "browsingPill",
+            ) { chip ->
+                if (chip) {
+                    CollapsedChip(state, onAskPage = actions.onAskPage, onExpand = onExpand)
+                } else {
+                    FullPill(state, findQuery, actions)
                 }
             }
         }
     }
 }
 
-/** A chevron for history, narrower than an arrow so the address keeps the width. */
 @Composable
-private fun NavIcon(
-    icon: Int,
-    description: String,
-    onClick: () -> Unit,
-    enabled: Boolean,
+private fun FullPill(
+    state: BrowsingUiState,
+    findQuery: TextFieldState,
+    actions: BrowsingActions,
 ) {
-    val tint = LocalContentColor.current.let { color ->
-        if (enabled) color else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val find = state.find
+    val fade = if (rememberReducedMotion()) snap() else tween<Float>(FIND_FADE_MS)
+    Box(Modifier.fillMaxWidth().height(ToolbarMetrics.AddressRowHeight)) {
+        Row(
+            Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AnimatedContent(
+                targetState = find != null,
+                modifier = Modifier.weight(1f),
+                transitionSpec = { fadeIn(fade) togetherWith fadeOut(fade) },
+                label = "findInPage",
+            ) { open ->
+                if (open && find != null) {
+                    FindInPageBar(
+                        query = findQuery,
+                        state = find,
+                        incognito = state.incognito,
+                        onPrevious = actions.onFindPrevious,
+                        onNext = actions.onFindNext,
+                        onClose = actions.onCloseFind,
+                        modifier = Modifier.fillMaxWidth(),
+                        embedded = true,
+                    )
+                } else if (!open) {
+                    AddressBar(
+                        address = state.address,
+                        indicator = state.indicator,
+                        readerAvailable = state.readerAvailable,
+                        loadProgress = null,
+                        onSiteInfo = actions.onSiteInfo,
+                        onEditAddress = actions.onEditAddress,
+                        onReader = actions.onReader,
+                        modifier = Modifier.fillMaxWidth(),
+                        embedded = true,
+                    )
+                }
+            }
+            val tabsLabel = pluralStringResource(
+                if (state.incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
+                state.tabCount,
+                state.tabCount,
+            )
+            AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (state.videoAvailable) {
+                        PillButton(onClick = actions.onDownloadVideo) {
+                            Icon(
+                                painterResource(R.drawable.ic_download),
+                                stringResource(R.string.cd_download_video),
+                                Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    PillButton(
+                        onClick = actions.onTabs,
+                        modifier = Modifier.semantics { contentDescription = tabsLabel },
+                    ) {
+                        TabsCountIcon(state.tabCount)
+                    }
+                    PillButton(onClick = actions.onMore) {
+                        Icon(
+                            painterResource(R.drawable.ic_more_vert),
+                            stringResource(R.string.cd_more_options),
+                            Modifier.size(20.dp),
+                        )
+                    }
+                    AskSkimButton(
+                        mode = state.aiMode,
+                        onClick = actions.onAskPage,
+                        slot = ToolbarMetrics.BrowsingSlot,
+                        mark = 32.dp,
+                        icon = 18.dp,
+                    )
+                }
+            }
+        }
+        if (find == null) {
+            AddressLoadProgress(
+                state.progress,
+                Modifier.align(Alignment.BottomCenter).padding(horizontal = 36.dp).fillMaxWidth(),
+                overflow = 0.dp,
+            )
+        }
     }
-    Box(
+}
+
+/**
+ * The pill while the page scrolls down: the site mark, the host and, while Skim AI is on, the Sunny
+ * mark. The chip is one button that brings the pill back; the mark opens Ask Skim.
+ */
+@Composable
+private fun CollapsedChip(
+    state: BrowsingUiState,
+    onAskPage: () -> Unit,
+    onExpand: () -> Unit,
+) {
+    val askSkim = state.aiMode == AiFabMode.Enabled
+    val expandLabel = stringResource(R.string.cd_show_browser_controls)
+    Row(
         Modifier
-            .size(NavSlot)
-            .clickable(enabled = enabled, onClick = onClick, role = Role.Button),
+            .height(ToolbarMetrics.BrowsingChipHeight)
+            .widthIn(max = ToolbarMetrics.BrowsingChipMaxWidth)
+            .clickable(onClickLabel = expandLabel, role = Role.Button, onClick = onExpand)
+            .padding(start = 14.dp, end = if (askSkim) 2.dp else 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val icon = when (state.indicator) {
+            SiteIndicator.Secure -> R.drawable.ic_lock
+            SiteIndicator.NotSecure -> R.drawable.ic_public
+            SiteIndicator.Error -> R.drawable.ic_error
+        }
+        // The host is the chip's label; the mark beside it is decoration.
+        Icon(painterResource(icon), null, Modifier.size(16.dp))
+        Text(
+            text = state.address,
+            modifier = Modifier.weight(1f, fill = false).padding(start = 6.dp, end = if (askSkim) 4.dp else 0.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (askSkim) {
+            AskSkimButton(mode = AiFabMode.Enabled, onClick = onAskPage, slot = 36.dp, mark = 28.dp, icon = 16.dp)
+        }
+    }
+}
+
+/** A button of the pill outside the address field: a 40 dp slot, touching its neighbours. */
+@Composable
+private fun PillButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier
+            .size(ToolbarMetrics.BrowsingSlot)
+            .clip(CircleShape)
+            .clickable(onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(icon), description, Modifier.size(20.dp), tint = tint)
+        content()
+    }
+}
+
+/**
+ * Ask Skim on a page: the Sunny mark in tertiaryContainer, as every AI surface. While [mode] is not
+ * [AiFabMode.Enabled] (incognito, a failed or warned page) the shape is drawn disabled, without a
+ * click action, and its label says why.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AskSkimButton(
+    mode: AiFabMode,
+    onClick: () -> Unit,
+    slot: Dp,
+    mark: Dp,
+    icon: Dp,
+) {
+    val label = aiFabContentDescription(mode, isNewTabPage = false)
+    if (mode == AiFabMode.Enabled) {
+        Box(
+            Modifier
+                .size(slot)
+                .clip(CircleShape)
+                .clickable(onClick = onClick, role = Role.Button),
+            contentAlignment = Alignment.Center,
+        ) {
+            SunnyMark(size = mark, iconSize = icon, contentDescription = label)
+        }
+    } else {
+        val colors = MaterialTheme.colorScheme
+        Box(
+            Modifier
+                .size(slot)
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
+                    disabled()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            ShapeArt(
+                shape = MaterialShapes.Sunny,
+                size = mark,
+                icon = R.drawable.ic_auto_awesome,
+                iconSize = icon,
+                container = colors.onSurface.copy(alpha = if (isDarkScheme()) 0.12f else 0.10f),
+                content = colors.onSurface.copy(alpha = DisabledContentAlpha),
+                contentDescription = label,
+            )
+        }
     }
 }

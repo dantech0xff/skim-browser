@@ -28,8 +28,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Browsing (05), Find in page (05c) and Page failed to load (11). The page slot is an empty box:
- * a WebView does not draw under Robolectric, so the article on the boards is absent.
+ * Browsing (05), Find in page (05c) and Page failed to load (11), and the pill collapsed to its
+ * chip. The page slot is an empty box: a WebView does not draw under Robolectric, so the article on
+ * the boards is absent.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -110,11 +111,45 @@ class BrowsingScreenshotTest {
         composeRule.assertA11y()
     }
 
-    private fun show(state: BrowsingUiState, query: TextFieldState) {
-        composeRule.setSkimContent {
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun collapsedChip() {
+        show(Loaded, TextFieldState(), collapsed = true)
+        captureScreenRoboImage("$COMPONENT_GOLDENS/browsing-pill-collapsed.png")
+        composeRule.assertA11y()
+    }
+
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun collapsedChipInTheDarkTheme() {
+        show(Loaded, TextFieldState(), collapsed = true, dark = true)
+        captureScreenRoboImage("$COMPONENT_GOLDENS/browsing-pill-collapsed-dark.png")
+        composeRule.assertA11y()
+    }
+
+    @OptIn(ExperimentalRoborazziApi::class)
+    @Test
+    fun pillOfAnIncognitoTab() {
+        show(
+            Loaded.copy(incognito = true, tabCount = 2, aiMode = AiFabMode.OffInIncognito),
+            TextFieldState(),
+            incognito = true,
+        )
+        captureScreenRoboImage("$COMPONENT_GOLDENS/browsing-pill-incognito.png")
+        composeRule.assertA11y()
+    }
+
+    private fun show(
+        state: BrowsingUiState,
+        query: TextFieldState,
+        collapsed: Boolean = false,
+        dark: Boolean = false,
+        incognito: Boolean = false,
+    ) {
+        composeRule.setSkimContent(dark = dark, incognito = incognito) {
             BrowsingScreen(state, query, actions, page = {
                 Box(Modifier.fillMaxSize().background(Color.White))
-            })
+            }, chromeCollapsed = collapsed)
         }
         composeRule.waitForIdle()
     }
@@ -129,11 +164,9 @@ class BrowsingScreenshotTest {
             readerAvailable = true,
             progress = null,
             loadError = null,
-            backEnabled = true,
-            forwardEnabled = false,
             tabCount = 7,
             incognito = false,
-            aiFab = AiFabMode.Enabled,
+            aiMode = AiFabMode.Enabled,
             find = null,
             refreshing = false,
         )
@@ -143,14 +176,14 @@ class BrowsingScreenshotTest {
             indicator = SiteIndicator.Error,
             readerAvailable = false,
             loadError = error,
-            aiFab = AiFabMode.UnavailableUntilLoaded,
+            aiMode = AiFabMode.UnavailableUntilLoaded,
         )
 
         fun certificate(fault: CertificateFault) = Loaded.copy(
             address = "bad.example",
             indicator = SiteIndicator.Error,
             readerAvailable = false,
-            aiFab = AiFabMode.UnavailableUntilLoaded,
+            aiMode = AiFabMode.UnavailableUntilLoaded,
             certificateWarning = CertificateWarning(
                 url = "https://bad.example/login",
                 host = "bad.example",
@@ -169,8 +202,6 @@ class BrowsingScreenshotTest {
             onFindPrevious = {},
             onFindNext = {},
             onCloseFind = {},
-            onBack = {},
-            onForward = {},
             onTabs = {},
             onMore = {},
             onAskPage = {},

@@ -19,6 +19,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -27,6 +30,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -46,11 +51,14 @@ import com.dantech.skimbrowser.domain.certificate.CertificateFault
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
+import com.dantech.skimbrowser.testing.clickNearEnd
+import com.dantech.skimbrowser.testing.clickNearStart
 import com.dantech.skimbrowser.testing.setSkimContent
 import com.dantech.skimbrowser.ui.components.SiteIndicator
 import com.dantech.skimbrowser.ui.shell.AiFabMode
 import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -58,9 +66,9 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /**
- * The browsing screen as its state draws it, with a stand-in page: which bar shows, the toolbar and
- * the AI FAB, the error over the page, and pull to refresh, driven the way the tab's WebView drives
- * it (nested scrolling, then a fling decides the refresh).
+ * The browsing screen as its state draws it, with a stand-in page: which bar shows, the pill's
+ * buttons and Ask Skim, the collapsed chip, the error over the page, and pull to refresh, driven
+ * the way the tab's WebView drives it (nested scrolling, then a fling decides the refresh).
  */
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = PHONE_QUALIFIERS)
@@ -72,6 +80,7 @@ class BrowsingScreenTest {
     private val calls = mutableListOf<String>()
     private val query = TextFieldState()
     private var state by mutableStateOf(Loaded)
+    private var collapsed by mutableStateOf(false)
 
     // The bars
 
@@ -142,7 +151,7 @@ class BrowsingScreenTest {
         show()
 
         composeRule.onNodeWithContentDescription("Site information, connection is secure").performClick()
-        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").performClick()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").clickNearEnd()
         composeRule.onNodeWithContentDescription("Reader view").performClick()
         composeRule.onNodeWithContentDescription("More options").performClick()
 
@@ -150,54 +159,164 @@ class BrowsingScreenTest {
     }
 
     @Test
-    fun theAddressSitsInTheBottomClusterAboveBack() {
+    fun theAddressSitsInTheBottomPillWithTheLockInsideItsField() {
         show()
 
         val root = composeRule.onRoot().getUnclippedBoundsInRoot()
         val address = composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").getUnclippedBoundsInRoot()
-        val back = composeRule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot()
+        val lock = composeRule.onNodeWithContentDescription("Site information, connection is secure").getUnclippedBoundsInRoot()
+        val tabs = composeRule.onNodeWithContentDescription("Tabs, 7 open").getUnclippedBoundsInRoot()
         assertTrue(address.top > (root.bottom - root.top) / 2)
-        assertTrue(address.left > back.left)
-        assertTrue(address.top < back.bottom && back.top < address.bottom)
+        assertTrue("the lock is inside the field", lock.left >= address.left && lock.right <= address.right)
+        assertTrue(address.right <= tabs.left)
+        assertTrue(address.top < tabs.bottom && tabs.top < address.bottom)
     }
 
-    // The toolbar
+    // The pill's buttons
 
     @Test
-    fun theToolbarFollowsTheTabAndDoesWhatItSays() {
-        state = Loaded.copy(backEnabled = true, forwardEnabled = false, tabCount = 7)
+    fun thePillHasNoBackOrForwardAndAskSkimAsksAboutThePage() {
         show()
 
-        composeRule.onNodeWithContentDescription("Forward").assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Back").performClick()
+        composeRule.onAllNodesWithContentDescription("Back").assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription("Forward").assertCountEquals(0)
         composeRule.onNodeWithContentDescription("Tabs, 7 open").performClick()
-        composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("Ask Skim about this page").assertIsEnabled().performClick()
 
-        state = Loaded.copy(backEnabled = false, forwardEnabled = true)
-        composeRule.waitForIdle()
-        composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Forward").performClick()
-
-        assertEquals(listOf("back", "tabs", "forward"), calls)
+        assertEquals(listOf("tabs", "askPage"), calls)
     }
 
     @Test
-    fun anIncognitoTabsToolbarCountsIncognitoTabsAndItsAiFabIsOff() {
-        state = Loaded.copy(incognito = true, tabCount = 2, aiFab = AiFabMode.OffInIncognito)
+    fun theButtonsOutsideTheFieldAre40DpSlotsSideBySide() {
+        state = Loaded.copy(videoAvailable = true)
+        show()
+
+        val slots = listOf("Reader view", "Download video", "Tabs, 7 open", "More options", "Ask Skim about this page").map { label ->
+            composeRule.onNode(hasContentDescription(label) and hasClickAction()).getUnclippedBoundsInRoot()
+        }
+        slots.forEach { assertEquals(40f, (it.right - it.left).value, 0.5f) }
+        slots.zipWithNext().forEach { (before, after) -> assertEquals("no gap", before.right.value, after.left.value, 0.5f) }
+    }
+
+    @Test
+    fun anIncognitoTabsPillCountsIncognitoTabsAndItsAskSkimIsOff() {
+        state = Loaded.copy(incognito = true, tabCount = 2, aiMode = AiFabMode.OffInIncognito)
         show(incognito = true)
 
         composeRule.onNodeWithContentDescription("Incognito tabs, 2 open").assertExists()
-        composeRule.onAllNodesWithContentDescription("Ask Skim, off in incognito").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("Ask Skim, off in incognito")
+            .assertIsNotEnabled()
+            .assertHasNoClickAction()
+        composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
         assertTrue(calls.isEmpty())
     }
 
     @Test
-    fun whileThePageFailedToLoadTheAiFabIsUnavailable() {
+    fun whileThePageFailedToLoadAskSkimIsUnavailable() {
         state = Failed
         show()
 
-        composeRule.onAllNodesWithContentDescription("Ask Skim about this page, unavailable until the page loads").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("Ask Skim about this page, unavailable until the page loads")
+            .assertIsNotEnabled()
+            .assertHasNoClickAction()
         composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
+    }
+
+    // The collapsed chip
+
+    @Test
+    fun scrolledDownThePillIsAChipWithTheHostThatBringsThePillBack() {
+        collapsed = true
+        show()
+
+        composeRule.onAllNodesWithContentDescription("Edit address, daylightjournal.com").assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription("Tabs, 7 open").assertCountEquals(0)
+        composeRule.onNodeWithText("daylightjournal.com")
+            .assert(
+                SemanticsMatcher("labelled Show browser controls") {
+                    it.config.getOrNull(SemanticsActions.OnClick)?.label == "Show browser controls"
+                },
+            )
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .clickNearStart()
+
+        assertEquals(listOf("expand"), calls)
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").assertExists()
+    }
+
+    @Test
+    fun theChipsMarkAsksAboutThePage() {
+        collapsed = true
+        show()
+
+        composeRule.onNodeWithContentDescription("Ask Skim about this page").performClick()
+
+        assertEquals(listOf("askPage"), calls)
+    }
+
+    @Test
+    fun withSkimAiOffTheChipHasNoMark() {
+        collapsed = true
+        state = Loaded.copy(incognito = true, aiMode = AiFabMode.OffInIncognito)
+        show(incognito = true)
+
+        composeRule.onNodeWithText("daylightjournal.com").assertExists()
+        composeRule.onAllNodesWithContentDescription("Ask Skim, off in incognito").assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription("Ask Skim about this page").assertCountEquals(0)
+    }
+
+    @Test
+    fun findInPageAndACoveredPageKeepTheFullPill() {
+        collapsed = true
+        state = Loaded.copy(find = FindUiState(countedText = ""))
+        show()
+        composeRule.onNodeWithContentDescription("Close find in page").assertExists()
+
+        state = Failed
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("Edit address, nightbus-kansai.jp/timetable").assertExists()
+    }
+
+    @Test
+    fun theChipShowsOnlyWhileNothingNeedsTheFullPill() {
+        assertTrue(showsChip(chromeCollapsed = true, Loaded, imeOpen = false))
+        assertFalse("at the top of the page", showsChip(chromeCollapsed = false, Loaded, imeOpen = false))
+        assertFalse("the keyboard is open", showsChip(chromeCollapsed = true, Loaded, imeOpen = true))
+        assertFalse("find in page", showsChip(chromeCollapsed = true, Loaded.copy(find = FindUiState()), imeOpen = false))
+        assertFalse("the page failed", showsChip(chromeCollapsed = true, Failed, imeOpen = false))
+        val certificate = CertificateWarning("https://bad.example/", "bad.example", "abc", CertificateFault.Expired)
+        assertFalse("a certificate warning", showsChip(chromeCollapsed = true, Loaded.copy(certificateWarning = certificate), imeOpen = false))
+    }
+
+    @Test
+    fun thePillMorphsIntoTheChipOverSeveralFrames() {
+        show()
+        composeRule.mainClock.autoAdvance = false
+
+        composeRule.runOnIdle { collapsed = true }
+        advanceFrames()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").assertExists()
+
+        composeRule.mainClock.autoAdvance = true
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithContentDescription("Edit address, daylightjournal.com").assertCountEquals(0)
+    }
+
+    @Test
+    fun withRemoveAnimationsThePillAndTheChipSwitchAtOnce() {
+        Settings.Global.putFloat(ApplicationProvider.getApplicationContext<android.content.Context>().contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        show()
+        composeRule.mainClock.autoAdvance = false
+
+        composeRule.runOnIdle { collapsed = true }
+        advanceFrames()
+        composeRule.onAllNodesWithContentDescription("Edit address, daylightjournal.com").assertCountEquals(0)
+        composeRule.onNodeWithText("daylightjournal.com").assertExists()
+
+        composeRule.runOnIdle { collapsed = false }
+        advanceFrames()
+        composeRule.onNodeWithContentDescription("Edit address, daylightjournal.com").assertExists()
+        composeRule.mainClock.autoAdvance = true
     }
 
     // Page failed to load
@@ -285,7 +404,7 @@ class BrowsingScreenTest {
             address = "bad.example",
             indicator = SiteIndicator.Error,
             readerAvailable = false,
-            aiFab = AiFabMode.UnavailableUntilLoaded,
+            aiMode = AiFabMode.UnavailableUntilLoaded,
             certificateWarning = CertificateWarning(
                 url = "https://bad.example/login",
                 host = "bad.example",
@@ -320,9 +439,25 @@ class BrowsingScreenTest {
 
     private fun show(incognito: Boolean = false, page: @Composable () -> Unit = { Box(Modifier.fillMaxSize().testTag(PAGE)) }) {
         composeRule.setSkimContent(incognito = incognito) {
-            BrowsingScreen(state, query, actions, page)
+            BrowsingScreen(
+                state,
+                query,
+                actions,
+                page,
+                chromeCollapsed = collapsed,
+                onExpandChrome = {
+                    calls += "expand"
+                    collapsed = false
+                },
+            )
         }
         composeRule.waitForIdle()
+    }
+
+    /** Lets the state written by the test reach the composition, then runs [FRAMES] frames. */
+    private fun advanceFrames() {
+        composeRule.waitForIdle()
+        repeat(FRAMES) { composeRule.mainClock.advanceTimeByFrame() }
     }
 
     /** A page that hands its drags to the screen, as the tab's WebView does at the top of a page. */
@@ -350,8 +485,6 @@ class BrowsingScreenTest {
         onFindPrevious = { calls += "findPrevious" },
         onFindNext = { calls += "findNext" },
         onCloseFind = { calls += "closeFind" },
-        onBack = { calls += "back" },
-        onForward = { calls += "forward" },
         onTabs = { calls += "tabs" },
         onMore = { calls += "more" },
         onAskPage = { calls += "askPage" },
@@ -361,6 +494,9 @@ class BrowsingScreenTest {
 
     private companion object {
         const val PAGE = "page"
+
+        /** A few frames: long enough for a snap, far shorter than the expressive springs. */
+        const val FRAMES = 4
         const val FAILED_URL = "https://nightbus-kansai.jp/timetable"
 
         val Loaded = BrowsingUiState(
@@ -369,11 +505,9 @@ class BrowsingScreenTest {
             readerAvailable = true,
             progress = null,
             loadError = null,
-            backEnabled = true,
-            forwardEnabled = false,
             tabCount = 7,
             incognito = false,
-            aiFab = AiFabMode.Enabled,
+            aiMode = AiFabMode.Enabled,
             find = null,
             refreshing = false,
         )
@@ -383,7 +517,7 @@ class BrowsingScreenTest {
             indicator = SiteIndicator.Error,
             readerAvailable = false,
             loadError = LoadError.Unreachable(FAILED_URL, "ERR_NAME_NOT_RESOLVED"),
-            aiFab = AiFabMode.UnavailableUntilLoaded,
+            aiMode = AiFabMode.UnavailableUntilLoaded,
         )
     }
 }

@@ -68,6 +68,15 @@ object ToolbarMetrics {
 
     /** The browsing pill. It replaces the separate address band and toolbar on a page. */
     val BrowsingClusterHeight = AddressRowHeight
+
+    /** A button of the browsing pill outside its address field. The slots touch each other. */
+    val BrowsingSlot = 40.dp
+
+    /** The browsing pill collapsed to a chip while the page scrolls down. */
+    val BrowsingChipHeight = 40.dp
+
+    /** The widest the collapsed chip grows for a long host. */
+    val BrowsingChipMaxWidth = 280.dp
 }
 
 /** Content at 38% for disabled controls, as drawn on every board. */

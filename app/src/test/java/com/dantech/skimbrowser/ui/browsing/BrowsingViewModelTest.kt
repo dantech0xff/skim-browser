@@ -13,7 +13,6 @@ import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.domain.certificate.CertificateAction
 import com.dantech.skimbrowser.domain.certificate.CertificateFault
 import com.dantech.skimbrowser.domain.certificate.CertificateWarning
-import com.dantech.skimbrowser.domain.phishing.classifyPhishing
 import com.dantech.skimbrowser.domain.tab.LoadError
 import com.dantech.skimbrowser.browser.TabManagerFixture
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -176,57 +175,7 @@ class BrowsingViewModelTest {
         assertNull(browsing.state.value.progress)
     }
 
-    // The toolbar
-
-    @Test
-    fun backIsOnWhenSystemBackHasSomethingToDoInTheTab() = runTest {
-        val f = fixture()
-        val plain = f.manager.newTab(incognito = false, url = PAGE)
-        f.engine.openPage(plain, PAGE)
-        val fromHome = f.manager.newTab(incognito = false)
-        f.manager.load(fromHome, PAGE)
-        f.engine.openPage(fromHome, PAGE)
-        val external = f.manager.newTab(incognito = false, url = PAGE, openedByExternalApp = true)
-        f.engine.openPage(external, PAGE)
-        runCurrent()
-
-        assertFalse("the first page of a plain tab: Back leaves", browsing(f, plain).state.value.backEnabled)
-        assertTrue("back to the New tab page", browsing(f, fromHome).state.value.backEnabled)
-        assertTrue("closes the tab and returns to the other app", browsing(f, external).state.value.backEnabled)
-
-        f.engine.reportHistory(plain, canGoBack = true, canGoForward = false)
-        runCurrent()
-        assertTrue("the page before", browsing(f, plain).state.value.backEnabled)
-    }
-
-    @Test
-    fun forwardFollowsTheTabsHistoryAndGoesForwardInIt() = runTest {
-        val (f, id) = page(PAGE)
-        val browsing = browsing(f, id)
-        assertFalse(browsing.state.value.forwardEnabled)
-
-        f.engine.reportHistory(id, canGoBack = true, canGoForward = true)
-        runCurrent()
-        assertTrue(browsing.state.value.forwardEnabled)
-
-        browsing.goForward()
-        assertEquals(Call.GoForward(id), f.engine.calls.last())
-    }
-
-    @Test
-    fun aScamWarningDoesNotOfferForward() = runTest {
-        val (f, id) = page(PAGE)
-        val browsing = browsing(f, id)
-        val warning = classifyPhishing("https://paypai.com/")
-        check(warning != null)
-        f.manager.events.onSafetyWarning(id, warning)
-        f.engine.reportHistory(id, canGoBack = true, canGoForward = true)
-        runCurrent()
-
-        assertFalse(browsing.state.value.forwardEnabled)
-        browsing.goForward()
-        assertTrue(f.engine.calls.filterIsInstance<Call.GoForward>().isEmpty())
-    }
+    // The pill
 
     @Test
     fun theTabCountCountsOnlyTheTabsOfTheSameKind() = runTest {
@@ -241,16 +190,16 @@ class BrowsingViewModelTest {
     }
 
     @Test
-    fun theAiFabIsOnForAPageOffInIncognitoAndUnavailableUntilAFailedPageLoads() = runTest {
+    fun askSkimIsOnForAPageOffInIncognitoAndUnavailableUntilAFailedPageLoads() = runTest {
         val (f, id) = page(PAGE)
         val incognito = f.manager.newTab(incognito = true, url = PAGE, background = true)
         val browsing = browsing(f, id)
-        assertEquals(AiFabMode.Enabled, browsing.state.value.aiFab)
-        assertEquals(AiFabMode.OffInIncognito, browsing(f, incognito).state.value.aiFab)
+        assertEquals(AiFabMode.Enabled, browsing.state.value.aiMode)
+        assertEquals(AiFabMode.OffInIncognito, browsing(f, incognito).state.value.aiMode)
 
         f.engine.failPage(id, ERROR_PAGE, WebViewClient.ERROR_HOST_LOOKUP, "net::ERR_INTERNET_DISCONNECTED")
         runCurrent()
-        assertEquals(AiFabMode.UnavailableUntilLoaded, browsing.state.value.aiFab)
+        assertEquals(AiFabMode.UnavailableUntilLoaded, browsing.state.value.aiMode)
     }
 
     // Find in page
@@ -535,7 +484,7 @@ class BrowsingViewModelTest {
         assertEquals(CertificateFault.Untrusted, state.certificateWarning?.fault)
         assertNull(state.loadError)
         assertNull(state.find)
-        assertEquals(AiFabMode.UnavailableUntilLoaded, state.aiFab)
+        assertEquals(AiFabMode.UnavailableUntilLoaded, state.aiMode)
 
         f.manager.events.onLoadError(id, WebViewClient.ERROR_FAILED_SSL_HANDSHAKE, "net::ERR_CERT_AUTHORITY_INVALID", BAD)
         f.manager.events.onVisitedHistory(id, BAD)
