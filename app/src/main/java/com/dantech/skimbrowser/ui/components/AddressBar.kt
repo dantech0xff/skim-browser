@@ -33,8 +33,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
@@ -179,8 +182,8 @@ private fun AddressControls(
 
 /**
  * The address inside the browsing pill: a hairline field with the site mark and the domain centered
- * together, then Reader view. The mark opens Site information; the rest of the field opens the
- * address for editing. A long domain ellipsizes.
+ * together, then Reader view. The mark opens Site information; the rest of the field, up to the
+ * mark's edge, opens the address for editing. A long domain ellipsizes.
  */
 @Composable
 private fun CompactAddressField(
@@ -201,11 +204,21 @@ private fun CompactAddressField(
                 .fillMaxHeight()
                 .padding(vertical = 10.dp)
                 .border(1.dp, colors.outlineVariant, CircleShape)
-                .clip(CircleShape)
-                .clickable(onClick = onEditAddress, role = Role.Button)
-                .semantics { contentDescription = editLabel },
+                .clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
+            // The whole field opens the address. The site mark is drawn over it as a sibling: a
+            // button inside the field would take every tap within its 48 dp touch area, which
+            // reaches the first letters of the domain.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clickable(onClick = onEditAddress, role = Role.Button)
+                    .semantics {
+                        contentDescription = editLabel
+                        text = AnnotatedString(address)
+                    },
+            )
             Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 when (indicator) {
                     SiteIndicator.Secure, SiteIndicator.NotSecure -> {
@@ -224,7 +237,8 @@ private fun CompactAddressField(
                         }
                     }
 
-                    // Still, and a node of its own, so the field's label stays the address.
+                    // Still, and a node of its own, so the field's label stays the address. A tap
+                    // on it reaches the field under it.
                     SiteIndicator.Error -> Box(
                         Modifier.size(FieldSlotSize).semantics(mergeDescendants = true) {},
                         contentAlignment = Alignment.Center,
@@ -239,7 +253,11 @@ private fun CompactAddressField(
                 }
                 Text(
                     text = address,
-                    modifier = Modifier.weight(1f, fill = false).padding(start = 2.dp, end = 10.dp),
+                    // The field's node already says the address.
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(start = 2.dp, end = 10.dp)
+                        .clearAndSetSemantics {},
                     style = MaterialTheme.typography.bodyLarge,
                     color = colors.onSurface,
                     maxLines = 1,

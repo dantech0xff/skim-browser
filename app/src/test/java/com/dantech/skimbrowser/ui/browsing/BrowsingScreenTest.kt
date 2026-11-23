@@ -41,9 +41,12 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.R
@@ -172,6 +175,17 @@ class BrowsingScreenTest {
         assertTrue(address.top < tabs.bottom && tabs.top < address.bottom)
     }
 
+    @Test
+    fun aTapJustPastTheLockOpensTheAddressNotSiteInformation() {
+        show()
+
+        // 6 dp past the lock's edge: inside the 48 dp touch area Compose gives a 28 dp button.
+        composeRule.onNodeWithContentDescription("Site information, connection is secure")
+            .performTouchInput { click(centerRight + Offset(6.dp.toPx(), 0f)) }
+
+        assertEquals(listOf("editAddress"), calls)
+    }
+
     // The pill's buttons
 
     @Test
@@ -252,6 +266,18 @@ class BrowsingScreenTest {
         composeRule.onNodeWithContentDescription("Ask Skim about this page").performClick()
 
         assertEquals(listOf("askPage"), calls)
+    }
+
+    @Test
+    fun aTapJustBeforeTheChipsMarkBringsThePillBackNotAskSkim() {
+        collapsed = true
+        show()
+
+        // 4 dp before the mark: inside the 48 dp touch area Compose gives a 36 dp button.
+        composeRule.onNodeWithContentDescription("Ask Skim about this page")
+            .performTouchInput { click(centerLeft - Offset(4.dp.toPx(), 0f)) }
+
+        assertEquals(listOf("expand"), calls)
     }
 
     @Test

@@ -12,6 +12,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -60,6 +61,10 @@ import com.dantech.skimbrowser.ui.theme.isDarkScheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 private val PillShadow = 3.dp
+
+/** Ask Skim's slot in the collapsed chip, and the space after it. */
+private val ChipAskSlot = 36.dp
+private val ChipAskEnd = 2.dp
 private const val FIND_FADE_MS = 160
 
 /**
@@ -237,31 +242,46 @@ private fun CollapsedChip(
 ) {
     val askSkim = state.aiMode == AiFabMode.Enabled
     val expandLabel = stringResource(R.string.cd_show_browser_controls)
-    Row(
+    // Ask Skim is drawn over the end of the row as a sibling, and the row keeps its place free.
+    // Inside the row, its 48 dp touch area would take the taps on the end of the host.
+    Box(
         Modifier
             .height(ToolbarMetrics.BrowsingChipHeight)
-            .widthIn(max = ToolbarMetrics.BrowsingChipMaxWidth)
-            .clickable(onClickLabel = expandLabel, role = Role.Button, onClick = onExpand)
-            .padding(start = 14.dp, end = if (askSkim) 2.dp else 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .widthIn(max = ToolbarMetrics.BrowsingChipMaxWidth),
+        contentAlignment = Alignment.CenterEnd,
     ) {
-        val icon = when (state.indicator) {
-            SiteIndicator.Secure -> R.drawable.ic_lock
-            SiteIndicator.NotSecure -> R.drawable.ic_public
-            SiteIndicator.Error -> R.drawable.ic_error
+        Row(
+            Modifier
+                .fillMaxHeight()
+                .clickable(onClickLabel = expandLabel, role = Role.Button, onClick = onExpand)
+                .padding(start = 14.dp, end = if (askSkim) ChipAskSlot + ChipAskEnd else 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val icon = when (state.indicator) {
+                SiteIndicator.Secure -> R.drawable.ic_lock
+                SiteIndicator.NotSecure -> R.drawable.ic_public
+                SiteIndicator.Error -> R.drawable.ic_error
+            }
+            // The host is the chip's label; the mark beside it is decoration.
+            Icon(painterResource(icon), null, Modifier.size(16.dp))
+            Text(
+                text = state.address,
+                modifier = Modifier.weight(1f, fill = false).padding(start = 6.dp, end = if (askSkim) 4.dp else 0.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        // The host is the chip's label; the mark beside it is decoration.
-        Icon(painterResource(icon), null, Modifier.size(16.dp))
-        Text(
-            text = state.address,
-            modifier = Modifier.weight(1f, fill = false).padding(start = 6.dp, end = if (askSkim) 4.dp else 0.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
         if (askSkim) {
-            AskSkimButton(mode = AiFabMode.Enabled, onClick = onAskPage, slot = 36.dp, mark = 28.dp, icon = 16.dp)
+            AskSkimButton(
+                mode = AiFabMode.Enabled,
+                onClick = onAskPage,
+                slot = ChipAskSlot,
+                mark = 28.dp,
+                icon = 16.dp,
+                modifier = Modifier.padding(end = ChipAskEnd),
+            )
         }
     }
 }
@@ -297,11 +317,12 @@ private fun AskSkimButton(
     slot: Dp,
     mark: Dp,
     icon: Dp,
+    modifier: Modifier = Modifier,
 ) {
     val label = aiFabContentDescription(mode, isNewTabPage = false)
     if (mode == AiFabMode.Enabled) {
         Box(
-            Modifier
+            modifier
                 .size(slot)
                 .clip(CircleShape)
                 .clickable(onClick = onClick, role = Role.Button),
@@ -312,7 +333,7 @@ private fun AskSkimButton(
     } else {
         val colors = MaterialTheme.colorScheme
         Box(
-            Modifier
+            modifier
                 .size(slot)
                 .semantics(mergeDescendants = true) {
                     role = Role.Button

@@ -137,7 +137,10 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onProceedUnsafe = browsing::proceedUnsafe,
         ),
         chromeCollapsed = chromeCollapsed,
-        onExpandChrome = { chromeCollapsed = false },
+        onExpandChrome = {
+            chromeScroll.onExpandedByTap()
+            chromeCollapsed = false
+        },
         previousTab = openTabs.adjacentTab(forward = false),
         nextTab = openTabs.adjacentTab(forward = true),
         groups = openTabs.groups,

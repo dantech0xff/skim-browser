@@ -26,6 +26,10 @@ val LocalSiteIcons = staticCompositionLocalOf<SiteIcons?> { null }
 /**
  * The icon [host] sent, or null while there is none (or no [LocalSiteIcons]). With [incognito] an
  * icon an incognito tab received comes first; without, it is never returned.
+ *
+ * A tile keeps the flow it was given while its site stays the same. The store's cache holds many
+ * times the icons one screen shows and pushes out the least recently asked for first, so the entry
+ * of a tile on screen is never the one that goes.
  */
 @Composable
 fun siteIcon(host: String?, incognito: Boolean = false): ImageBitmap? {

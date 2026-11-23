@@ -98,3 +98,12 @@ Read-only review. No Gradle run (build in use). Evidence: `git show`, source rea
    should also hold after `clearAll`.
 3. 96 px icons already on disk are kept and not re-fetched at 128 px. Is that acceptable until the
    site sends its icon again?
+
+## Follow-up
+
+- **Finding 1, not changed.** The cache pushes out the least recently asked for first, and a tile asks when it is composed. For the entry of a tile on screen to go, everything asked for before it must be gone and the icons asked for since must still overflow the cache: at least 64 large icons in normal mode (15 in incognito) while that one tile stays on screen. No screen composes that many tiles around one that stays. The invariant is now written on `siteIcon`. A screen that pins a tile above a long list of other sites would break it and needs a second look then.
+- **Finding 2, fixed.** The whole field is the edit button and the lock is drawn over it as a sibling, so a tap beside the lock is a direct hit on the field. `aTapJustPastTheLockOpensTheAddressNotSiteInformation` fails without the change. No golden moves.
+- **Finding 3, fixed.** `BrowsingChromeScroll.onExpandedByTap` holds the pill: moves down do not count until the page has been still for 150 ms or has moved up. Three tests with a clock cover the fling, a move up and a tap on a page at rest.
+- **Finding 4, fixed.** Ask Skim is drawn over the end of the chip's row as a sibling. `aTapJustBeforeTheChipsMarkBringsThePillBackNotAskSkim` fails without the change.
+- **Question 3.** Icons were kept at 96 px for one commit of this branch, so no installed app has such files; a site sends its icon again on its next load.
+
