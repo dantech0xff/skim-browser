@@ -60,10 +60,10 @@ Dan, 2026-11-23:
 | 1 | [Identity colors](./phase-01-start.md) | Done |
 | 2 | [Site icons](./phase-02-site-icons.md) | Done |
 | 3 | [Browsing pill](./phase-03-browsing-pill.md) | Done |
-| 4 | [Spatial transitions](./phase-04-spatial-transitions.md) | Pending |
-| 5 | [Touch feedback](./phase-05-touch-feedback.md) | Pending |
+| 4 | [Spatial transitions](./phase-04-spatial-transitions.md) | Pending: scouted, waits for a device |
+| 5 | [Touch feedback](./phase-05-touch-feedback.md) | Done |
 
-Phases 4 and 5 are outlines. Each gets its own scout pass before it starts.
+Phase 5 was built before phase 4, so everything on the branch up to it can be checked and merged without the transitions. Phase 4 is scouted, not built: its open risk is how the swap from a thumbnail to the live WebView looks, and that only shows on a device.
 
 ## Success Criteria
 
@@ -71,12 +71,14 @@ Phases 4 and 5 are outlines. Each gets its own scout pass before it starts.
 - [x] A visited site shows its icon on tab cards, history, bookmarks, shortcuts and chats; an incognito icon never reaches the disk. Not yet seen on a device.
 - [x] The pill has no Back or Forward and has Ask Skim; when a page scrolls it becomes a compact host chip instead of scaling. Not yet seen on a device.
 - [ ] A tab card grows into its page and back, the search field grows from the bar that opened it, and Home hands over to the page.
-- [ ] Haptics and micro-interactions are in, each with a still branch for Remove animations.
-- [ ] Each phase ends with `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` green and the size measured.
+- [x] Haptics and micro-interactions are in, each with a still branch for Remove animations. Not yet felt on a device.
+- [x] Each phase ends with `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` green and the size measured. Phases 1 to 3 are 4 bytes over the baseline. Phase 5 is 16,388 over, past the budget of 8,192 (see the open questions).
 - [ ] Frame time for tabs, sheet and navigation is measured on a device with `FrameBenchmarks` and written down. This needs Dan's phone.
 
 ## Open questions
 
 - The 64 dp toolbar of Home, Reader and the incognito New tab page also has Back and Forward. Should they leave with the pill's? On Home both are always off.
+- Size: phase 5 put `playReleaseSmoke` at 4,413,305 bytes, one 16 KB page over the baseline. May the baseline in `size-budget/releaseSmoke.json` move to that, with a note that the bytes are the touch feedback? Until it does, the size check fails.
+- Phase 4 needs a phone or the dedicated AVD in the loop, to look at the transitions and to run `FrameBenchmarks`. Who runs that, and when?
 
 <!-- slug: skim-identity-pill-motion -->

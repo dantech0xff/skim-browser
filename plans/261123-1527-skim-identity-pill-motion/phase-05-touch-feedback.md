@@ -1,6 +1,6 @@
 ---
 title: "Phase 5: Touch feedback"
-status: todo
+status: done
 priority: P2
 effort: "8h"
 dependencies: [3]
@@ -47,10 +47,16 @@ Give touch an answer. The UI has no haptics, a dragged tab card does not lift an
 - [x] Reorder and swipe to close
 - [x] Ask Skim and tab count
 - [x] Tests and goldens
-- [ ] Size measured
+- [x] Size measured: the `playReleaseSmoke` file is 4,413,305 bytes, 16,388 over the baseline. It was 4 over before this phase. The haptics, the tab count roll and the Ask Skim entrances pushed the file one 16 KB alignment page further; making room added nothing to the file. The budget allows 8,192, so `tools/check_apk_budget.py` fails and the Size budget workflow will fail on a pull request. The baseline is not moved: that needs Dan's yes.
 
 ## Success Criteria
 
 - Each listed gesture asks for exactly one haptic, proven by a test with a fake `HapticFeedback`.
 - Settled frames match the goldens, with and without Remove animations.
 - `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` pass.
+
+## Not seen on a device
+
+- How each haptic feels, and the context-click fallback on Android 8 to 13.
+- The lifted card's shadow, and how the neighbours' move and the dragged card's settle look together.
+- Frame time while dragging, swiping and while an answer streams.
