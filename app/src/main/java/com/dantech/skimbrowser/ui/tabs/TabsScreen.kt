@@ -41,6 +41,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.zIndex
+import com.dantech.skimbrowser.ui.components.TabCardShape
+import kotlin.math.abs
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -520,6 +530,12 @@ private fun SectionHeader(
     }
 }
 
+/**
+ * A tab card that closes when swiped sideways past [SwipeCloseFraction] of its width. While it is
+ * dragged, the space it leaves shows a close mark on errorContainer; at rest nothing is drawn
+ * behind it. Passing the point where a release closes the tab gives a threshold haptic, each time
+ * the drag passes it. A card picked up for reorder is drawn above the others.
+ */
 @Composable
 private fun SwipeCard(
     card: TabCardState,
@@ -541,12 +557,22 @@ private fun SwipeCard(
                 true
             }
         },
-        positionalThreshold = { distance -> distance * 0.4f },
+        positionalThreshold = { distance -> distance * SwipeCloseFraction },
     )
+    var width by remember { mutableIntStateOf(0) }
+    var lifted by remember { mutableStateOf(false) }
+    val haptics by rememberUpdatedState(LocalHapticFeedback.current)
+    LaunchedEffect(dismissState) {
+        snapshotFlow { width > 0 && abs(dismissState.requireOffset()) >= width * SwipeCloseFraction }
+            .distinctUntilChanged()
+            .collect { closes -> if (closes) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
+    }
     SwipeToDismissBox(
         state = dismissState,
-        backgroundContent = {},
-        modifier = modifier,
+        backgroundContent = { SwipeCloseBackground(dismissState) },
+        modifier = modifier
+            .onSizeChanged { width = it.width }
+            .zIndex(if (lifted) 1f else 0f),
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
     ) {
@@ -570,7 +596,33 @@ private fun SwipeCard(
                     tabKeys = tabKeys,
                     groupOf = groupOf,
                     onMove = onMove,
+                    onLiftChange = { lifted = it },
                 ),
+        )
+    }
+}
+
+/**
+ * What a swiped card uncovers: errorContainer in the card's shape with the close mark in
+ * onErrorContainer on the side the card leaves. Decoration only: the card's Close tab button is
+ * the accessible way to close it. Nothing is drawn while the card is at rest.
+ */
+@Composable
+private fun SwipeCloseBackground(state: SwipeToDismissBoxState) {
+    val direction by remember(state) { derivedStateOf { state.dismissDirection } }
+    if (direction == SwipeToDismissBoxValue.Settled) return
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.errorContainer, TabCardShape)
+            .padding(horizontal = SwipeIconInset),
+        contentAlignment = if (direction == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_close),
+            contentDescription = null,
+            tint = colors.onErrorContainer,
         )
     }
 }
@@ -600,6 +652,10 @@ private fun EmptyTabs() {
 private fun headerKey(section: TabSection): String = "header-${section.group?.id ?: "other"}"
 
 private const val GRID_COLUMNS = 2
+
+/** How far across its width a card is swiped before a release closes it. */
+private const val SwipeCloseFraction = 0.4f
+private val SwipeIconInset = 24.dp
 private val CARD_GAP = 12.dp
 private val HEADER_GAP = 8.dp
 private val SECTION_GAP = 16.dp

@@ -67,9 +67,9 @@ fun TabCard(
     val container = if (incognito || isDarkScheme()) colors.surfaceContainer else colors.surfaceContainerLow
     Box(
         modifier = modifier
-            .clip(CardShape)
+            .clip(TabCardShape)
             .background(container)
-            .then(if (isCurrent) Modifier.border(CurrentRingWidth, colors.primary, CardShape) else Modifier)
+            .then(if (isCurrent) Modifier.border(CurrentRingWidth, colors.primary, TabCardShape) else Modifier)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { selected = isCurrent },
     ) {
@@ -138,7 +138,8 @@ fun TabCard(
     }
 }
 
-private val CardShape = RoundedCornerShape(20.dp)
+/** The card's outline, also the shape of what the tab switcher draws behind or under a card. */
+internal val TabCardShape = RoundedCornerShape(20.dp)
 private val CurrentRingWidth = 3.dp
 private val TitleRowHeight = 44.dp
 private val FaviconSize = 20.dp

@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -17,13 +20,22 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * A question the user asked (06, 06b), at the end of the line: bodyMedium in onSecondaryContainer on
@@ -140,6 +155,85 @@ fun ChatInputPill(
         }
     }
 }
+
+/**
+ * Fades this in and lifts it [EntranceRise] into place, when [play] is true the first time it is
+ * composed. [delayMillis] holds the start back so a row of items arrives one after another. A later
+ * recomposition does not play it again. With Remove animations on it is in place at once.
+ *
+ * The values change in the draw phase only, so the entrance does not recompose anything.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun Modifier.entrance(play: Boolean, delayMillis: Int = 0): Modifier {
+    val reduced = rememberReducedMotion()
+    val fade = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    val rise = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val animate = play && !reduced
+    // Alpha, and the share of the rise still to go.
+    val shown = remember { Animatable(if (animate) 0f else 1f) }
+    val lowered = remember { Animatable(if (animate) 1f else 0f) }
+    LaunchedEffect(reduced) {
+        if (shown.value == 1f && lowered.value == 0f) return@LaunchedEffect
+        if (reduced) {
+            shown.snapTo(1f)
+            lowered.snapTo(0f)
+            return@LaunchedEffect
+        }
+        if (delayMillis > 0) {
+            // Counted in frames, so the hold-back runs on the same clock as the animation.
+            val start = withFrameMillis { it }
+            var now = start
+            while (now - start < delayMillis) now = withFrameMillis { it }
+        }
+        coroutineScope {
+            launch { shown.animateTo(1f, fade) }
+            lowered.animateTo(0f, rise)
+        }
+    }
+    val distance = with(LocalDensity.current) { EntranceRise.toPx() }
+    return graphicsLayer {
+        alpha = shown.value.coerceIn(0f, 1f)
+        translationY = lowered.value * distance
+    }
+}
+
+/**
+ * The scroll state of a chat that holds [turns] questions. The chat follows its end, so the newest
+ * text stays in view, from the moment a question is asked here, and whenever the person is at the
+ * end of a chat longer than the sheet. A chat that still fits does not follow when it grows: a
+ * summary streams in while the person reads it from the top. Once the person has scrolled up, the
+ * position does not move.
+ */
+@Composable
+internal fun rememberChatScrollState(turns: Int): ScrollState {
+    val scroll = rememberScrollState()
+    val following = remember { mutableStateOf(false) }
+    val asked = remember { mutableIntStateOf(turns) }
+    LaunchedEffect(scroll) {
+        // The position changes when the person scrolls, and when the chat is moved to its end below.
+        launch {
+            snapshotFlow { scroll.value }.collect { following.value = scroll.maxValue > 0 && it >= scroll.maxValue }
+        }
+        snapshotFlow { scroll.maxValue }.collect { end ->
+            if (following.value && end > scroll.value && !scroll.isScrollInProgress) scroll.scrollTo(end)
+        }
+    }
+    LaunchedEffect(turns) {
+        if (turns > asked.intValue) {
+            following.value = true
+            // The question is laid out by the next frame; go to it wherever the chat was left.
+            withFrameMillis { }
+            if (scroll.maxValue > scroll.value) scroll.scrollTo(scroll.maxValue)
+        }
+        asked.intValue = turns
+    }
+    return scroll
+}
+
+/** How far an item rises as it comes in, and how far apart items of a row start. */
+internal val EntranceRise = 8.dp
+internal const val EntranceStaggerMillis = 40
 
 private val BubbleMaxWidth = 300.dp
 private val BubbleShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 4.dp, bottomStart = 20.dp)

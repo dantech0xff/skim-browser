@@ -14,13 +14,18 @@ Give touch an answer. The UI has no haptics, a dragged tab card does not lift an
 
 ## Requirements
 
-- [ ] Haptics through `LocalHapticFeedback`, with no permission: closing a tab, a tab swipe that reaches its threshold, picking up and dropping a card, a long press that opens a menu, and the end of pull to refresh.
-- [ ] Reorder: the dragged card scales up and gets a shadow, and the other cards of its group move aside while it is over them. A drop outside the group still does nothing.
-- [ ] Swipe to close shows a close icon on `errorContainer` behind the card.
-- [ ] The tab count changes with a short vertical roll.
-- [ ] Ask Skim: suggested questions arrive one after another, a question and its answer fade and rise in, and streamed text does not jump the scroll.
-- [ ] The tab swipe caption fades in and out instead of popping.
-- [ ] Remove animations: no motion, haptics stay.
+- [x] Haptics through `LocalHapticFeedback`, with no permission. As built:
+  - A threshold tick each time a drag passes the point where a release acts: closing a tab card by a swipe, switching tab by a swipe on the pill, and reloading by a pull. The release gives nothing more, and neither does the card's Close button, which is a plain tap.
+  - Picking a card up gives a long press, dropping it a gesture end, a cancelled drag nothing.
+  - A long press that opens a menu already gave one: Compose's `combinedClickable` asks for it. A test now proves it for the Home shortcut, the News card and a list row.
+  - Android before 14 does not know the threshold tick, and before 11 not the gesture end. androidx.core falls back to a context click there, so no wrapper was added; `HapticFallbackTest` fails if a library update drops the fallback.
+- [x] Reorder: the dragged card scales to 1.04, gets a shadow and is drawn above the others.
+- [ ] Reorder: the other cards of its group move aside while it is over them. A drop outside the group still does nothing.
+- [x] Swipe to close shows a close icon on `errorContainer` behind the card.
+- [x] The tab count changes with a short vertical roll.
+- [x] Ask Skim: suggested questions arrive one after another, and a question and its answer fade and rise in. The chat goes to a question asked here and follows its answer, and follows while the person is at the end of a chat longer than the sheet. A summary that streams in does not move a reader at the top. Before, the chat never moved by itself, so an answer grew out of view below.
+- [x] The tab swipe caption fades in and out instead of popping.
+- [x] Remove animations: no motion, haptics stay.
 
 ## Related files
 
@@ -37,10 +42,10 @@ Give touch an answer. The UI has no haptics, a dragged tab card does not lift an
 
 ## Todo
 
-- [ ] Scout report
-- [ ] Haptics
+- [x] Scout report
+- [x] Haptics
 - [ ] Reorder and swipe to close
-- [ ] Ask Skim and tab count
+- [x] Ask Skim and tab count
 - [ ] Tests and goldens
 - [ ] Size measured
 

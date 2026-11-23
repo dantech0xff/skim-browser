@@ -25,8 +25,14 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -35,6 +41,7 @@ import com.dantech.skimbrowser.domain.tab.TabNeighbor
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
 import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** What the controls of the browsing screen do (05, 05c, 11). */
 @Immutable
@@ -73,8 +80,10 @@ data class BrowsingActions(
  * Find in page (05c) takes the address row's place. The keyboard lifts the cluster and shortens
  * the page to the cluster's top; at rest the page stays full bleed.
  *
- * Pulling down at the top of the page reloads it. The indicator clears the status bar. With Remove
- * animations on, the indicator is a still frame. The pull is off while the page failed to load:
+ * Pulling down at the top of the page reloads it. The indicator clears the status bar. A pull that
+ * reaches the point where a release reloads gives a threshold haptic, also with Remove animations
+ * on. With Remove animations on, the indicator is a still frame. The pull is off while the page
+ * failed to load:
  * Page failed to load (11) then covers the page, hidden from accessibility.
  *
  * While [chromeCollapsed] and the page is showing, the pill is a chip with the host; a tap on the
@@ -119,6 +128,7 @@ fun BrowsingScreen(
             val certificate = state.certificateWarning
             val safety = state.safetyWarning
             val pull = rememberPullToRefreshState()
+            PullThresholdHaptic(pull, refreshing = state.refreshing, enabled = !covered)
             PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = actions.onRefresh,
@@ -221,6 +231,27 @@ private val BrowsingUiState.covered: Boolean
  */
 internal fun showsChip(chromeCollapsed: Boolean, state: BrowsingUiState, imeOpen: Boolean): Boolean =
     chromeCollapsed && state.find == null && !state.covered && !imeOpen
+
+/**
+ * Asks for one threshold haptic each time [pull] reaches the distance where a release reloads,
+ * while the page is not already reloading and the pull is [enabled].
+ */
+@Composable
+private fun PullThresholdHaptic(pull: PullToRefreshState, refreshing: Boolean, enabled: Boolean) {
+    val haptics = LocalHapticFeedback.current
+    val latestHaptics by rememberUpdatedState(haptics)
+    val latestRefreshing by rememberUpdatedState(refreshing)
+    val latestEnabled by rememberUpdatedState(enabled)
+    LaunchedEffect(pull) {
+        snapshotFlow { pull.distanceFraction >= 1f }
+            .distinctUntilChanged()
+            .collect { reached ->
+                if (reached && latestEnabled && !latestRefreshing) {
+                    latestHaptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                }
+            }
+    }
+}
 
 /**
  * Pull to refresh's loading indicator, at the top center of the page: Material's, which morphs

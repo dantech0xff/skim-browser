@@ -127,14 +127,14 @@ Read springs from MaterialTheme.motionScheme. Spatial springs may overshoot, eff
 
 | Spec | Damping | Stiffness | Used for |
 |---|---|---|---|
-| fastSpatialSpec | 0.6 | 800 | Switch thumb, press shape morphs, toggles |
-| defaultSpatialSpec | 0.8 | 380 | Sheets, search bar expanding, toolbar and FAB |
+| fastSpatialSpec | 0.6 | 800 | Switch thumb, press shape morphs, toggles, the tab count rolling to a new number |
+| defaultSpatialSpec | 0.8 | 380 | Sheets, search bar expanding, toolbar and FAB, a tab card lifting for reorder, Ask Skim items rising 8 dp into place |
 | slowSpatialSpec | 0.8 | 200 | Whole screen changes such as 05 to 09 and 08 |
-| fastEffectsSpec | 1 | 3800 | Icon fill and color on press or selection |
-| defaultEffectsSpec | 1 | 1600 | Scrim, snackbars and menus fading in or out |
+| fastEffectsSpec | 1 | 3800 | Icon fill and color on press or selection, the tab count's fade |
+| defaultEffectsSpec | 1 | 1600 | Scrim, snackbars and menus fading in or out, the tab swipe caption, Ask Skim items fading in |
 | slowEffectsSpec | 1 | 800 | The summary replacing the loading state (06c) |
 
-With Remove animations on, show a still frame of the loading indicator and a flat wave.
+With Remove animations on, show a still frame of the loading indicator and a flat wave. Every other motion snaps to its end. Haptics stay.
 
 ## Spacing (dp)
 

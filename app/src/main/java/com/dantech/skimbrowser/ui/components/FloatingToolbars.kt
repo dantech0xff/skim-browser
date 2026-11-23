@@ -1,6 +1,16 @@
 package com.dantech.skimbrowser.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -40,11 +51,14 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import com.dantech.skimbrowser.ui.theme.isDarkScheme
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /** Sizes of the floating toolbars (04, 05, 05c, 06d, 08, 09, 09b, 09c, 11). */
 object ToolbarMetrics {
@@ -265,15 +279,20 @@ fun AiFab(
  * The tab count inside the Tabs button: a 22 dp square with a 2 dp border and radius 7 in the
  * content color. 100 tabs or more read "99+", which widens the square. The number is part of the
  * icon, so it is hidden from accessibility; the button's label says it ("Tabs, 7 open").
+ *
+ * When [count] changes, the new number rolls in: from below as the count grows, from above as it
+ * shrinks, with a short fade, while the old one leaves the other way. The first number shows
+ * without motion, and with Remove animations on every change is immediate.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TabsCountIcon(count: Int, modifier: Modifier = Modifier) {
     val color = LocalContentColor.current
-    val text = if (count > MaxShownTabCount) {
-        stringResource(R.string.tabs_count_overflow)
-    } else {
-        count.coerceAtLeast(0).toString()
-    }
+    val reduced = rememberReducedMotion()
+    val motion = MaterialTheme.motionScheme
+    val slide = motion.fastSpatialSpec<IntOffset>()
+    val resize = motion.fastSpatialSpec<IntSize>()
+    val fade = motion.fastEffectsSpec<Float>()
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = TabsCountSize)
@@ -283,7 +302,26 @@ fun TabsCountIcon(count: Int, modifier: Modifier = Modifier) {
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = color, style = MaterialTheme.typography.labelMediumEmphasized, maxLines = 1)
+        AnimatedContent(
+            targetState = count.coerceAtLeast(0),
+            transitionSpec = {
+                if (reduced) {
+                    EnterTransition.None togetherWith ExitTransition.None using SizeTransform { _, _ -> snap() }
+                } else {
+                    val grows = targetState > initialState
+                    val enter = slideInVertically(slide) { height -> if (grows) height else -height } + fadeIn(fade)
+                    val exit = slideOutVertically(slide) { height -> if (grows) -height else height } + fadeOut(fade)
+                    enter togetherWith exit using SizeTransform { _, _ -> resize }
+                }
+            },
+            contentAlignment = Alignment.Center,
+            // Every count from 100 on reads the same, so it does not roll.
+            contentKey = { it.coerceAtMost(MaxShownTabCount + 1) },
+            label = "tab count",
+        ) { shown ->
+            val text = if (shown > MaxShownTabCount) stringResource(R.string.tabs_count_overflow) else shown.toString()
+            Text(text, color = color, style = MaterialTheme.typography.labelMediumEmphasized, maxLines = 1)
+        }
     }
 }
 
