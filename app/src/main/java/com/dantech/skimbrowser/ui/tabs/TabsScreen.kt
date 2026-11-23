@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.zIndex
 import com.dantech.skimbrowser.ui.components.TabCardShape
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 import kotlin.math.abs
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -221,6 +222,16 @@ fun TabsScreen(
     val belowGrid = navigationBar + ToolbarMetrics.BottomOffset + ToolbarMetrics.Height + 16.dp
     val searching = searchState != null
     var menuGroupId by remember { mutableStateOf<Long?>(null) }
+    // The order a drop of the dragged tab would give. The ViewModel decides the order; this only
+    // shows it until the drop has settled.
+    var reorder by remember { mutableStateOf<ReorderPreview?>(null) }
+    val sections = remember(state.sections, reorder) { previewSections(state.sections, reorder) }
+    val indexInGroup = remember(sections) {
+        val map = HashMap<String, Int>()
+        sections.forEach { section -> section.tabs.forEachIndexed { index, card -> map[card.id] = index } }
+        return@remember { id: String -> map[id] }
+    }
+    val reduced = rememberReducedMotion()
     val tabKeys = remember(state.sections) {
         state.sections.flatMap { section -> section.tabs.map { it.id } }.toImmutableSet()
     }
@@ -228,6 +239,10 @@ fun TabsScreen(
         val map = HashMap<String, Long?>()
         state.sections.forEach { section -> section.tabs.forEach { map[it.id] = section.group?.id } }
         return@remember { id: String -> map[id] }
+    }
+    LaunchedEffect(tabKeys) {
+        // A tab closed while it was dragged takes its preview with it.
+        if (reorder?.tabId?.let { it !in tabKeys } == true) reorder = null
     }
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -274,7 +289,7 @@ fun TabsScreen(
                 if (state.empty && !searching) {
                     item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyTabs() }
                 }
-                state.sections.forEachIndexed { sectionIndex, section ->
+                sections.forEachIndexed { sectionIndex, section ->
                     if (section.showHeader) {
                         item(key = headerKey(section), span = { GridItemSpan(maxLineSpan) }) {
                             SectionHeader(
@@ -296,6 +311,9 @@ fun TabsScreen(
                     section.tabs.forEachIndexed { index, card ->
                         val row = index / GRID_COLUMNS
                         item(key = card.id) {
+                            // The dragged card follows the finger itself; the others move by the
+                            // grid's placement, at once with Remove animations.
+                            val placed = reorder?.tabId != card.id && !reduced
                             SwipeCard(
                                 card = card,
                                 preview = previewOf(card.id, thumbnails),
@@ -304,6 +322,14 @@ fun TabsScreen(
                                 gridState = gridState,
                                 tabKeys = tabKeys,
                                 groupOf = groupOf,
+                                indexInGroup = indexInGroup,
+                                onPreview = { index ->
+                                    when {
+                                        index != null -> reorder = ReorderPreview(card.id, index)
+                                        // Another card may have been picked up while this one settled.
+                                        reorder?.tabId == card.id -> reorder = null
+                                    }
+                                },
                                 onOpen = { actions.onOpen(card.id) },
                                 onClose = { actions.onClose(card.id) },
                                 onMove = { index -> actions.onMove(card.id, index) },
@@ -313,7 +339,7 @@ fun TabsScreen(
                                         bottom = if (row == lastRow) 0.dp else CARD_GAP,
                                     )
                                     .testTag("tab-card")
-                                    .animateItem(),
+                                    .then(if (placed) Modifier.animateItem() else Modifier.animateItem(placementSpec = null)),
                             )
                         }
                     }
@@ -545,6 +571,8 @@ private fun SwipeCard(
     gridState: LazyGridState,
     tabKeys: ImmutableSet<String>,
     groupOf: (String) -> Long?,
+    indexInGroup: (String) -> Int?,
+    onPreview: (Int?) -> Unit,
     onOpen: () -> Unit,
     onClose: () -> Unit,
     onMove: (Int) -> Unit,
@@ -595,6 +623,8 @@ private fun SwipeCard(
                     enabled = reorderEnabled && !incognito,
                     tabKeys = tabKeys,
                     groupOf = groupOf,
+                    indexInGroup = indexInGroup,
+                    onPreview = onPreview,
                     onMove = onMove,
                     onLiftChange = { lifted = it },
                 ),
