@@ -3,7 +3,10 @@ package com.dantech.skimbrowser.testing
 import android.view.View
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -28,6 +31,10 @@ val BOARD_STATUS_BAR_HEIGHT: Dp = 24.dp
  * Sets [content] the way the boards are drawn: SkimTheme with the neutral scheme (dynamic color off)
  * and a status bar of [statusBarInset] at the top.
  *
+ * Text and icons that set no color of their own are onSurface, as they are in the app: SkimApp
+ * draws every screen inside a Surface, and that Surface is where they get it. Without it they
+ * would be black, on dark screens too.
+ *
  * Robolectric draws no system bars and reports zero insets, so the status bar inset is dispatched
  * to the composition once it is attached. `WindowInsets.statusBars` then reports it, and
  * edge-to-edge layouts (statusBarsPadding, top app bars) land where the boards draw them.
@@ -50,8 +57,9 @@ fun ComposeContentTestRule.setSkimContent(
             theme = if (dark) ThemeSetting.Dark else ThemeSetting.Light,
             incognito = incognito,
             dynamicColor = false,
-            content = content,
-        )
+        ) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface, content)
+        }
     }
     runOnIdle {
         val statusBar = Insets.of(0, statusBarPx, 0, 0)

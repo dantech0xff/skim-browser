@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -103,6 +104,29 @@ class SkimThemeTest {
 
         composeRule.onNodeWithTag("content").assertTopPositionInRootIsEqualTo(BOARD_STATUS_BAR_HEIGHT)
         assertEquals(SkimLightColors.primary, scheme.primary)
+    }
+
+    @Test
+    fun setSkimContentGivesContentTheOnSurfaceColorOfTheAppWindow() {
+        assertEquals(SkimLightColors.onSurface, contentColorInSkimContent())
+    }
+
+    @Test
+    fun setSkimContentGivesDarkContentTheDarkOnSurfaceColor() {
+        assertEquals(SkimDarkColors.onSurface, contentColorInSkimContent(dark = true))
+    }
+
+    @Test
+    fun setSkimContentGivesIncognitoContentTheDarkOnSurfaceColor() {
+        assertEquals(SkimDarkColors.onSurface, contentColorInSkimContent(incognito = true))
+    }
+
+    /** The color of text and icons that set none of their own, inside the screenshot fixture. */
+    private fun contentColorInSkimContent(dark: Boolean = false, incognito: Boolean = false): Color {
+        var color = Color.Unspecified
+        composeRule.setSkimContent(dark = dark, incognito = incognito) { color = LocalContentColor.current }
+        composeRule.waitForIdle()
+        return color
     }
 
     private fun colorSchemeOf(theme: @Composable (content: @Composable () -> Unit) -> Unit): ColorScheme {
