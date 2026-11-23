@@ -146,7 +146,8 @@ fun AskTabsSheet(
     field: TextFieldState = rememberTextFieldState(),
     bodyHeight: Dp? = null,
 ) {
-    // Follow-ups the sheet opened with are shown in place; later ones come in.
+    // Follow-ups the sheet opened with are shown in place; the newest comes in while Skim answers
+    // it. A saved chat that loads after the first composition is not answering, so it shows in place.
     val openedTurns = remember { state.turns.size }
     var chipsShown by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().then(if (bodyHeight == null) Modifier.fillMaxHeight() else Modifier)) {
@@ -155,7 +156,7 @@ fun AskTabsSheet(
             Column(
                 Modifier
                     .then(if (bodyHeight != null) Modifier.height(bodyHeight) else Modifier.weight(1f))
-                    .verticalScroll(rememberChatScrollState(state.turns.size))
+                    .verticalScroll(rememberChatScrollState(state.turns.size, answering = state.generating))
                     .padding(start = 16.dp, top = 4.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -166,7 +167,9 @@ fun AskTabsSheet(
                     FollowUps(ready.followUps, actions.onChip, play = !chipsShown, onShown = { chipsShown = true })
                 }
                 state.turns.forEachIndexed { index, turn ->
-                    key(index) { FollowUpBlock(turn, arriving = index >= openedTurns && state.generating) }
+                    key(index) {
+                        FollowUpBlock(turn, arriving = index >= openedTurns && index == state.turns.lastIndex && state.generating)
+                    }
                 }
                 if (state.generating && state.overview is TabsOverviewState.Ready && state.turns.lastOrNull()?.answer == null) {
                     AiLoadingIndicator(stringResource(R.string.cd_writing_summary))

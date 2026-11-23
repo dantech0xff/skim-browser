@@ -204,9 +204,12 @@ internal fun Modifier.entrance(play: Boolean, delayMillis: Int = 0): Modifier {
  * end of a chat longer than the sheet. A chat that still fits does not follow when it grows: a
  * summary streams in while the person reads it from the top. Once the person has scrolled up, the
  * position does not move.
+ *
+ * A question is asked here when [turns] grows while Skim is [answering]. Turns that arrive
+ * otherwise are a saved chat loading after the sheet opened, and it opens at its top.
  */
 @Composable
-internal fun rememberChatScrollState(turns: Int): ScrollState {
+internal fun rememberChatScrollState(turns: Int, answering: Boolean): ScrollState {
     val scroll = rememberScrollState()
     val following = remember { mutableStateOf(false) }
     val asked = remember { mutableIntStateOf(turns) }
@@ -220,7 +223,7 @@ internal fun rememberChatScrollState(turns: Int): ScrollState {
         }
     }
     LaunchedEffect(turns) {
-        if (turns > asked.intValue) {
+        if (turns > asked.intValue && answering) {
             following.value = true
             // The question is laid out by the next frame; go to it wherever the chat was left.
             withFrameMillis { }

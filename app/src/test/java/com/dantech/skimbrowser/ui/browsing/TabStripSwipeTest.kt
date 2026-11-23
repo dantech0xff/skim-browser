@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -114,6 +117,47 @@ class TabStripSwipeTest {
         composeRule.waitForIdle()
         composeRule.onAllNodesWithText(NEXT.title, useUnmergedTree = true).assertCountEquals(0)
         assertEquals(rest.top, bar().getUnclippedBoundsInRoot().top)
+    }
+
+    @Test
+    fun afterASwipeThatSwitchesTabTheCaptionStillFadesOut() {
+        var previous by mutableStateOf<TabNeighbor?>(PREVIOUS)
+        var next by mutableStateOf<TabNeighbor?>(NEXT)
+        composeRule.setSkimContent {
+            ProvideHaptics(haptics) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    TabStripSwipe(
+                        previous = previous,
+                        next = next,
+                        groups = emptyList(),
+                        enabled = true,
+                        onSelect = {
+                            selected += it
+                            // The chosen tab is the current one now, so it is no longer a neighbour.
+                            previous = TabNeighbor(id = "c", title = "Daylight Journal", groupId = null, changedGroup = false)
+                            next = null
+                        },
+                    ) { modifier ->
+                        Box(modifier.fillMaxWidth().height(64.dp).testTag(BAR))
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.mainClock.autoAdvance = false
+
+        drag { down(center); moveBy(Offset(-120.dp.toPx(), 0f)) }
+        advanceFrames()
+        composeRule.onAllNodesWithText(NEXT.title, useUnmergedTree = true).assertCountEquals(1)
+
+        drag { up() }
+        advanceFrames()
+        assertEquals(listOf(NEXT.id), selected)
+        composeRule.onAllNodesWithText(NEXT.title, useUnmergedTree = true).assertCountEquals(1)
+
+        composeRule.mainClock.autoAdvance = true
+        composeRule.waitForIdle()
+        composeRule.onAllNodesWithText(NEXT.title, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

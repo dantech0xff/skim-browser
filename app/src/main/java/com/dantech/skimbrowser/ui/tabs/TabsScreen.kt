@@ -240,8 +240,9 @@ fun TabsScreen(
         state.sections.forEach { section -> section.tabs.forEach { map[it.id] = section.group?.id } }
         return@remember { id: String -> map[id] }
     }
-    LaunchedEffect(tabKeys) {
-        // A tab closed while it was dragged takes its preview with it.
+    LaunchedEffect(tabKeys, reorder) {
+        // A tab closed while it was dragged takes its preview with it, also when the cancelled drag
+        // writes the preview once more after the card has left.
         if (reorder?.tabId?.let { it !in tabKeys } == true) reorder = null
     }
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLow)) {

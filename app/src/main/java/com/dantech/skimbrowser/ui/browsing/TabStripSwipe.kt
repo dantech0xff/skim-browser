@@ -76,8 +76,9 @@ fun TabStripSwipe(
     // The id under the finger. The caption reads the current neighbor, so a title or group
     // that arrives during the drag is shown without restarting the gesture.
     var captionId by remember { mutableStateOf<String?>(null) }
-    // The last caption shown, kept on screen while it fades out.
-    var heldCaptionId by remember { mutableStateOf<String?>(null) }
+    // The last caption shown and its direction, kept on screen while it fades out. After a swipe
+    // that switched tab, that tab is the current one and no longer a neighbour to look up.
+    var heldCaption by remember { mutableStateOf<Pair<TabNeighbor, Boolean>?>(null) }
     val latestPrevious = rememberUpdatedState(previous)
     val latestNext = rememberUpdatedState(next)
     val latestSelect = rememberUpdatedState(onSelect)
@@ -85,7 +86,7 @@ fun TabStripSwipe(
     val latestSpatial = rememberUpdatedState(spatial)
     val latestHaptics = rememberUpdatedState(LocalHapticFeedback.current)
     val caption = neighborWithId(captionId, previous, next)
-    val heldCaption = caption ?: neighborWithId(heldCaptionId, previous, next)
+    val shownCaption = caption?.let { it to (it.id == next?.id) } ?: heldCaption
     val density = LocalDensity.current
     val travel = with(density) { Travel.toPx() }
     val threshold = with(density) { Threshold.toPx() }
@@ -96,8 +97,8 @@ fun TabStripSwipe(
             exit = if (reduced) ExitTransition.None else fadeOut(effects),
             label = "tab swipe caption",
         ) {
-            heldCaption?.let { neighbor ->
-                TabSwipeCaption(neighbor, groups, forward = neighbor.id == next?.id, Modifier.padding(bottom = 8.dp))
+            shownCaption?.let { (neighbor, forward) ->
+                TabSwipeCaption(neighbor, groups, forward, Modifier.padding(bottom = 8.dp))
             }
         }
         content(
@@ -137,9 +138,9 @@ fun TabStripSwipe(
                                 if (!dragging) continue
                                 change.consume()
                                 scope.launch { offset.snapTo(visualOffset(totalX, before, after, travel)) }
-                                val id = neighborFor(totalX, before, after)?.id
-                                captionId = id
-                                if (id != null) heldCaptionId = id
+                                val neighbor = neighborFor(totalX, before, after)
+                                captionId = neighbor?.id
+                                if (neighbor != null) heldCaption = neighbor to (neighbor.id == after?.id)
                                 val commits = committedNeighbor(totalX, threshold, before, after) != null
                                 if (commits && !committing) {
                                     latestHaptics.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)

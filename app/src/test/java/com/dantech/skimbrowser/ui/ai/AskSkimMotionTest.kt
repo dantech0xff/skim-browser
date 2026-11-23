@@ -242,6 +242,19 @@ class AskSkimMotionTest {
         assertEquals("at the end", after.maxValue, after.value, 0.5f)
     }
 
+    @Test
+    fun aChatThatLoadsAfterTheSheetOpensStaysAtItsTop() {
+        // The sheet is composed with the empty state first; the saved chat arrives after.
+        showPage(AskPageUiState(), bodyHeight = SHORT_BODY)
+
+        composeRule.runOnIdle { page = streaming(LONG_ANSWER).copy(generating = false) }
+        composeRule.waitForIdle()
+
+        val after = range()
+        assertTrue("the chat is longer than the sheet", after.maxValue > 0f)
+        assertEquals("at the top", 0f, after.value, 0.5f)
+    }
+
     // Helpers
 
     private fun showPage(state: AskPageUiState, bodyHeight: Dp = TALL_BODY) {

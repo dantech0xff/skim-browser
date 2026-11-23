@@ -110,7 +110,8 @@ fun AskPageSheet(
 ) {
     val reduced = rememberReducedMotion()
     val fade = if (reduced) snap<Float>() else MaterialTheme.motionScheme.slowEffectsSpec()
-    // Turns the sheet opened with are shown in place; later ones come in.
+    // Turns the sheet opened with are shown in place; the newest comes in while Skim answers it. A
+    // saved chat that loads after the first composition is not answering, so it shows in place too.
     val openedTurns = remember { state.turns.size }
     var chipsShown by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().then(if (bodyHeight == null) Modifier.fillMaxHeight() else Modifier)) {
@@ -119,7 +120,7 @@ fun AskPageSheet(
             Column(
                 Modifier
                     .then(if (bodyHeight != null) Modifier.height(bodyHeight) else Modifier.weight(1f))
-                    .verticalScroll(rememberChatScrollState(state.turns.size))
+                    .verticalScroll(rememberChatScrollState(state.turns.size, answering = state.generating || state.waitingForAnswer))
                     .padding(start = 16.dp, top = 4.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -134,7 +135,8 @@ fun AskPageSheet(
                 if (state.showChips) SuggestedQuestions(actions.onChip, play = !chipsShown, onShown = { chipsShown = true })
                 state.turns.forEachIndexed { index, turn ->
                     key(index) {
-                        val arriving = index >= openedTurns && (state.generating || state.waitingForAnswer)
+                        val arriving = index >= openedTurns && index == state.turns.lastIndex &&
+                            (state.generating || state.waitingForAnswer)
                         QuestionBlock(turn, state, actions, arriving)
                     }
                 }

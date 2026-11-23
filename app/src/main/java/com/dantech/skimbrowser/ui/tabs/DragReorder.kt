@@ -168,8 +168,9 @@ internal fun Modifier.tabDragReorder(
             startSlot = null
             drag = Offset.Zero
             liftChange(false)
-            // A move the ViewModel did not apply puts the real order back.
-            grid.keepScrollPosition()
+            // A move the ViewModel did not apply puts the real order back. A fling the person has
+            // started meanwhile goes on: keeping the position would stop it.
+            if (!grid.isScrollInProgress) grid.keepScrollPosition()
             preview(null)
         }
     }
