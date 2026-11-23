@@ -82,8 +82,8 @@ fun BrowsingChrome(
                     Modifier.fillMaxSize().padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    NavIcon(R.drawable.ic_chevron_left, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
-                    NavIcon(R.drawable.ic_chevron_right, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
+                    NavIcon(R.drawable.ic_history_back, stringResource(R.string.cd_back), actions.onBack, state.backEnabled)
+                    NavIcon(R.drawable.ic_history_forward, stringResource(R.string.cd_forward), actions.onForward, state.forwardEnabled)
                     val find = state.find
                     val fade = if (rememberReducedMotion()) snap() else tween<Float>(FIND_FADE_MS)
                     AnimatedContent(
