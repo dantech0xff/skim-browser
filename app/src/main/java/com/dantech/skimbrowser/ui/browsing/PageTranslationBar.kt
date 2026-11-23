@@ -20,11 +20,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.translate.PageTranslation
+import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
 
 /**
  * The bar above the browsing pill while a page is being translated, or while a translation is
  * showing. Idle draws nothing. Allowing a site is a separate dialog, so that failure is not drawn
  * here.
+ *
+ * Like the pill, the bar floats over web content and is drawn in the neutral chrome scheme.
  */
 @Composable
 fun PageTranslationBar(
@@ -35,6 +38,18 @@ fun PageTranslationBar(
     modifier: Modifier = Modifier,
 ) {
     val message = messageOf(state) ?: return
+    SkimChromeTheme { TranslationPill(state, message, onShowOriginal, onDismiss, onRetry, modifier) }
+}
+
+@Composable
+private fun TranslationPill(
+    state: PageTranslation,
+    message: String,
+    onShowOriginal: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier,
+) {
     val colors = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.widthIn(max = 480.dp),

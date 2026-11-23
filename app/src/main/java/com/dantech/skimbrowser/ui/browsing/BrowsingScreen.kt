@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.domain.tab.TabGroup
 import com.dantech.skimbrowser.domain.tab.TabNeighbor
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
+import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /** What the controls of the browsing screen do (05, 05c, 11). */
@@ -197,15 +198,18 @@ fun BrowsingScreen(
         if (previousTab == null && nextTab == null) {
             BrowsingChrome(state = state, findQuery = findQuery, actions = actions, modifier = barModifier)
         } else {
-            TabStripSwipe(
-                previous = previousTab,
-                next = nextTab,
-                groups = groups,
-                enabled = !covered && state.find == null,
-                onSelect = onSwipeToTab,
-                modifier = barModifier,
-            ) { bar ->
-                BrowsingChrome(state = state, findQuery = findQuery, actions = actions, modifier = bar)
+            // The caption of a swipe floats over the page with the pill, in the same scheme.
+            SkimChromeTheme {
+                TabStripSwipe(
+                    previous = previousTab,
+                    next = nextTab,
+                    groups = groups,
+                    enabled = !covered && state.find == null,
+                    onSelect = onSwipeToTab,
+                    modifier = barModifier,
+                ) { bar ->
+                    BrowsingChrome(state = state, findQuery = findQuery, actions = actions, modifier = bar)
+                }
             }
         }
     }

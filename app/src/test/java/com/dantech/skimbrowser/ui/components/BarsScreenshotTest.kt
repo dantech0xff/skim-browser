@@ -27,6 +27,7 @@ import com.dantech.skimbrowser.testing.PHONE_QUALIFIERS
 import com.dantech.skimbrowser.testing.assertA11y
 import com.dantech.skimbrowser.testing.captureComponent
 import com.dantech.skimbrowser.testing.setSkimContent
+import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -55,31 +56,32 @@ class BarsScreenshotTest {
     }
 
     @Test
-    fun addressBarOfASecurePage() = captureTop("address-bar-05", page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
+    fun addressBarOfASecurePage() = captureTop("address-bar-05", chrome = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
         PageAddressBar("daylightjournal.com", SiteIndicator.Secure, loadProgress = null)
     }
 
     @Test
-    fun addressBarWhileLoading() = captureTop("address-bar-05-loading", page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
+    fun addressBarWhileLoading() = captureTop("address-bar-05-loading", chrome = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
         PageAddressBar("daylightjournal.com", SiteIndicator.Secure, loadProgress = 0.58f)
     }
 
     @Test
     fun addressBarWhileLoadingWithAnimationsRemoved() {
         Settings.Global.putFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
-        captureTop("address-bar-05-loading-reduced-motion", page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
+        captureTop("address-bar-05-loading-reduced-motion", chrome = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
             PageAddressBar("daylightjournal.com", SiteIndicator.Secure, loadProgress = 0.58f)
         }
     }
 
     @Test
-    fun addressBarInTheDarkTheme() = captureTop("address-bar-05-dark", dark = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
+    fun addressBarInTheDarkTheme() = captureTop("address-bar-05-dark", chrome = true, dark = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
         PageAddressBar("daylightjournal.com", SiteIndicator.Secure, loadProgress = null)
     }
 
     @Test
     fun addressBarWhileLoadingInTheDarkTheme() = captureTop(
         "address-bar-05-loading-dark",
+        chrome = true,
         dark = true,
         page = { MaterialTheme.colorScheme.surfaceContainerLowest },
     ) {
@@ -87,13 +89,13 @@ class BarsScreenshotTest {
     }
 
     @Test
-    fun addressBarOfAPageWithoutHttps() = captureTop("address-bar-not-secure", page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
+    fun addressBarOfAPageWithoutHttps() = captureTop("address-bar-not-secure", chrome = true, page = { MaterialTheme.colorScheme.surfaceContainerLowest }) {
         PageAddressBar("example.com/plain", SiteIndicator.NotSecure, loadProgress = null, readerAvailable = false)
     }
 
     @Test
     fun addressBarWhenThePageFailedToLoad() {
-        captureTop("address-bar-11", page = { MaterialTheme.colorScheme.surface }) {
+        captureTop("address-bar-11", chrome = true, page = { MaterialTheme.colorScheme.surface }) {
             // Reader view is never offered on a page that failed to load.
             PageAddressBar("nightbus-kansai.jp/timetable", SiteIndicator.Error, loadProgress = null, readerAvailable = true)
         }
@@ -131,20 +133,27 @@ class BarsScreenshotTest {
         )
     }
 
-    /** The status bar on surface, [bar] under it, and the page (a later sibling) below. */
+    /**
+     * The status bar on surface, [bar] under it, and the page (a later sibling) below. [chrome]
+     * draws the strip in the neutral scheme of a web page, where the app draws the address.
+     */
     private fun captureTop(
         name: String,
         dark: Boolean = false,
         incognito: Boolean = false,
+        chrome: Boolean = false,
         page: @Composable () -> Color,
         bar: @Composable () -> Unit,
     ) {
         composeRule.setSkimContent(dark = dark, incognito = incognito) {
-            Column(Modifier.fillMaxWidth().height(STRIP_HEIGHT.dp).testTag(FRAME)) {
-                Spacer(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).statusBarsPadding())
-                bar()
-                Spacer(Modifier.fillMaxWidth().weight(1f).background(page()))
+            val strip = @Composable {
+                Column(Modifier.fillMaxWidth().height(STRIP_HEIGHT.dp).testTag(FRAME)) {
+                    Spacer(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).statusBarsPadding())
+                    bar()
+                    Spacer(Modifier.fillMaxWidth().weight(1f).background(page()))
+                }
             }
+            if (chrome) SkimChromeTheme(strip) else strip()
         }
         composeRule.onNodeWithTag(FRAME).captureComponent(name)
         composeRule.assertA11y()

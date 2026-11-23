@@ -1,6 +1,6 @@
 ---
 title: "Phase 1: Identity colors"
-status: todo
+status: done
 priority: P1
 effort: "6h"
 dependencies: []
@@ -19,6 +19,7 @@ Split the one neutral scheme into two. The chrome scheme keeps today's grays for
 - Tone: unchanged per role. `onSurface` on `surface` stays about 16:1 in light and 13:1 in dark.
 - Light `surface` stays `#FFFFFF`, so Home and Reader keep a white page and the window color does not change. Dark `surface` becomes `#212127`.
 - Unchanged in both schemes: primary, tertiary, error, scrim, `surfaceContainerLowest`.
+- The light ink keeps the red of the neutral ink (`0x20`). At `0x1F` text edges rendered about 5 L* lighter in the goldens.
 
 | Role | Light | Dark |
 |---|---|---|
@@ -28,7 +29,7 @@ Split the one neutral scheme into two. The chrome scheme keeps today's grays for
 | surfaceContainerHigh | `#EAE8FC` | `#373743` |
 | surfaceContainerHighest | `#DADAF4` | `#3E3E4C` |
 | secondaryContainer | `#E9E8FF` | `#3E3E4F` |
-| onSurface | `#1F202F` | `#ECE9EF` |
+| onSurface | `#20212F` | `#ECE9EF` |
 | onSurfaceVariant | `#616170` | `#9F9EAA` |
 | outline | `#767582` | `#908F9B` |
 | outlineVariant | `#C7C5D3` | `#464550` |
@@ -38,11 +39,11 @@ The chrome zone is the browsing pill with Find in page, the translation bar abov
 
 ## Requirements
 
-- [ ] `SkimLightColors` and `SkimDarkColors` are the Skim scheme. `SkimChromeLightColors` and `SkimChromeDarkColors` hold today's values.
-- [ ] `SkimChromeTheme` swaps only the color scheme and follows the light or dark of the theme around it.
-- [ ] `BrowsingChrome` and `PageTranslationBar` apply the chrome scheme themselves, so a screenshot of either alone matches the app.
-- [ ] `skim_window_dark` equals the dark `surface`.
-- [ ] The pill goldens do not change. Every other changed golden differs in color only.
+- [x] `SkimLightColors` and `SkimDarkColors` are the Skim scheme. `SkimChromeLightColors` and `SkimChromeDarkColors` hold today's values.
+- [x] `SkimChromeTheme` swaps only the color scheme and follows the light or dark of the theme around it.
+- [x] `BrowsingChrome` and `PageTranslationBar` apply the chrome scheme themselves, so a screenshot of either alone matches the app.
+- [x] `skim_window_dark` equals the dark `surface`.
+- [x] The pill goldens do not change. Every other changed golden differs in color only.
 
 ## Related files
 
@@ -64,18 +65,18 @@ The chrome zone is the browsing pill with Find in page, the translation bar abov
 
 ## Todo
 
-- [ ] Schemes and `SkimChromeTheme`
-- [ ] Chrome zone wrapped in the three places
-- [ ] Window color
-- [ ] Theme tests
-- [ ] Goldens re-recorded and diffed
-- [ ] `tokens.md`, `tokens.json`, `design-guidelines.md`
-- [ ] Size measured against `size-budget/releaseSmoke.json`
+- [x] Schemes and `SkimChromeTheme`
+- [x] Chrome zone wrapped in the three places
+- [x] Window color
+- [x] Theme tests
+- [x] Goldens re-recorded and diffed
+- [x] `tokens.md`, `tokens.json`, `design-guidelines.md`
+- [x] Size measured against `size-budget/releaseSmoke.json`
 
 ## Success Criteria
 
 - `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` pass.
-- `browser-toolbar` and address-bar goldens that draw the pill are unchanged.
+- The boards that draw only the pill (05, 05c) and the address-bar goldens are unchanged, byte for byte.
 - No text pair loses contrast: the test compares luminance per role.
 - `playReleaseSmoke` grows by less than 8,192 bytes.
 

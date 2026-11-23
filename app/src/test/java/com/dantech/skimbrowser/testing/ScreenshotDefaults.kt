@@ -28,7 +28,7 @@ const val PHONE_QUALIFIERS = "w412dp-h915dp-xhdpi"
 val BOARD_STATUS_BAR_HEIGHT: Dp = 24.dp
 
 /**
- * Sets [content] the way the boards are drawn: SkimTheme with the neutral scheme (dynamic color off)
+ * Sets [content] the way the boards are drawn: SkimTheme with the Skim scheme (dynamic color off)
  * and a status bar of [statusBarInset] at the top.
  *
  * Text and icons that set no color of their own are onSurface, as they are in the app: SkimApp

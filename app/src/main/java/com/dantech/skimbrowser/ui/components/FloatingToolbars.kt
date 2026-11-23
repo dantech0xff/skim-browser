@@ -25,12 +25,10 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -46,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
 
 /** Sizes of the floating toolbars (04, 05, 05c, 06d, 08, 09, 09b, 09c, 11). */
 object ToolbarMetrics {
@@ -73,14 +72,6 @@ object ToolbarMetrics {
 
 /** Content at 38% for disabled controls, as drawn on every board. */
 internal const val DisabledContentAlpha = 0.38f
-
-/**
- * Whether the colors in use are a dark scheme: incognito (09b, 09c), or Theme Dark (12). Some roles
- * differ between the two drawings, such as the toolbar container and the disabled container.
- */
-@Composable
-@ReadOnlyComposable
-internal fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
 /**
  * The browser's floating toolbar: Back, Forward, Tabs with the tab count and More options, with

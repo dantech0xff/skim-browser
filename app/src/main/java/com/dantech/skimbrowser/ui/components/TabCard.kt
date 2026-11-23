@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
 
 /**
  * A tab in the tab switcher (09, 09b): radius 20, a 44 dp title row (a 20 dp favicon letter tile,

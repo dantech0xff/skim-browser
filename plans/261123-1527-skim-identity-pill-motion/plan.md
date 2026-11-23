@@ -1,7 +1,7 @@
 ---
 title: "Skim identity, browsing pill and motion"
 description: "Give Skim its own look and movement: identity first, then the browsing pill, then motion."
-status: pending
+status: in-progress
 priority: P1
 effort: "46h"
 branch: claude/adoring-lovelace-1sstzn
@@ -57,7 +57,7 @@ Dan, 2026-11-23:
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Identity colors](./phase-01-start.md) | Pending |
+| 1 | [Identity colors](./phase-01-start.md) | Done |
 | 2 | [Site icons](./phase-02-site-icons.md) | Pending |
 | 3 | [Browsing pill](./phase-03-browsing-pill.md) | Pending |
 | 4 | [Spatial transitions](./phase-04-spatial-transitions.md) | Pending |
@@ -67,7 +67,7 @@ Phases 2 to 5 are outlines. Each gets its own scout pass before it starts.
 
 ## Success Criteria
 
-- [ ] Home, Tabs, Settings, sheets and dialogs draw in the Skim scheme; the pill of a page draws in the chrome scheme, in light and dark.
+- [x] Home, Tabs, Settings, sheets and dialogs draw in the Skim scheme; the pill of a page draws in the chrome scheme, in light and dark.
 - [ ] A visited site shows its icon on tab cards, history, bookmarks, shortcuts and chats; an incognito icon never reaches the disk.
 - [ ] The pill has no Back or Forward and has Ask Skim; when a page scrolls it becomes a compact host chip instead of scaling.
 - [ ] A tab card grows into its page and back, the search field grows from the bar that opened it, and Home hands over to the page.

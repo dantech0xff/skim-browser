@@ -4,10 +4,13 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 
 typealias ThemeSetting = com.dantech.skimbrowser.domain.settings.ThemeSetting
@@ -42,6 +45,31 @@ fun SkimTheme(
         colorScheme = colors,
         motionScheme = MotionScheme.expressive(),
         typography = SkimTypography,
+        content = content,
+    )
+}
+
+/**
+ * Whether the colors in use are a dark scheme: incognito (09b, 09c), or Theme Dark (12). Some roles
+ * differ between the two drawings, such as the toolbar container and the disabled container.
+ */
+@Composable
+@ReadOnlyComposable
+internal fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+/**
+ * The neutral scheme for what floats over a web page: the browsing pill and the bars above it.
+ * Inside [SkimTheme] it follows the theme's light or dark, and keeps its type, shapes and motion.
+ * Sheets, dialogs and the screens Skim draws itself stay in the Skim scheme.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SkimChromeTheme(content: @Composable () -> Unit) {
+    MaterialExpressiveTheme(
+        colorScheme = if (isDarkScheme()) SkimChromeDarkColors else SkimChromeLightColors,
+        motionScheme = MaterialTheme.motionScheme,
+        shapes = MaterialTheme.shapes,
+        typography = MaterialTheme.typography,
         content = content,
     )
 }

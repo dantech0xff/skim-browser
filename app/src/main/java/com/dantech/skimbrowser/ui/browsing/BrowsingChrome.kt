@@ -40,7 +40,8 @@ import com.dantech.skimbrowser.ui.components.AddressBar
 import com.dantech.skimbrowser.ui.components.AddressLoadProgress
 import com.dantech.skimbrowser.ui.components.TabsCountIcon
 import com.dantech.skimbrowser.ui.components.ToolbarMetrics
-import com.dantech.skimbrowser.ui.components.isDarkScheme
+import com.dantech.skimbrowser.ui.theme.SkimChromeTheme
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 private val Slot = 32.dp
@@ -51,6 +52,8 @@ private const val FIND_FADE_MS = 160
 /**
  * One floating pill for a page: small Back and Forward, the address (or Find in page), Reader view,
  * Tabs, and More options, on a single row. Ask Skim is hidden until it comes back. Insets are the caller's.
+ *
+ * The pill floats over web content, so it is drawn in the neutral chrome scheme.
  */
 @Composable
 fun BrowsingChrome(
@@ -58,6 +61,16 @@ fun BrowsingChrome(
     findQuery: TextFieldState,
     actions: BrowsingActions,
     modifier: Modifier = Modifier,
+) {
+    SkimChromeTheme { BrowsingPill(state, findQuery, actions, modifier) }
+}
+
+@Composable
+private fun BrowsingPill(
+    state: BrowsingUiState,
+    findQuery: TextFieldState,
+    actions: BrowsingActions,
+    modifier: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val content = colors.onSurfaceVariant
