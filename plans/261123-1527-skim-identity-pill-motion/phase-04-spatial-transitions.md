@@ -36,9 +36,23 @@ Make the three moves a browser repeats most start from where the finger was. Tod
 4. Measure the APK. Shared transitions keep more of Compose animation after R8.
 5. Device check, owed by Dan: `FrameBenchmarks.navigationAndTabsAndSheet` before and after on a mid-range phone, numbers written into `docs/`.
 
+## Scout notes
+
+Read from the code on 2026-11-23. No spike was built: frames drawn under Robolectric show where things are, but not whether the swap from an image to the live WebView is visible, and that swap is the open risk.
+
+- The pinned Navigation 3 (1.2.0) has what the tab transition needs: one `NavDisplay` overload takes a `SharedTransitionScope`, and an entry reads `LocalNavAnimatedContentScope`. No new library.
+- Tabs is pushed over the browser (`SkimNavigator.openTabs`). A card opens its tab with `showTab`, which selects the tab and pops back to the browser. So "the card grows into the page" is the pop from `TabsKey` to `BrowserKey`, and "the page shrinks into its card" is the push.
+- A thumbnail is not a picture of the page as the person left it. It is the top of the view, cut at 168:92 and drawn at 0.35 scale (`ThumbnailCapture.kt`). It is taken after a page loads and when the WebView leaves its host, and the WebView leaves its host after the push transition ends.
+  - At the start of "the page shrinks into its card" the stored thumbnail can show another scroll position.
+  - At the end of "the card grows into the page" the image covers only the top of the screen and is soft.
+  - Two ways out: take a full-height snapshot when the transition starts (a software draw of the WebView on the main thread, to be timed on a device), or grow the cut thumbnail and fade the page in under it. Either has to be looked at on a device.
+- The browser entry's content is composed from the first frame of the pop. `WebViewHost` has to wait for the transition to settle before it attaches the WebView, or the live view moves with the entry.
+- Home and a page are one entry: `BrowserRoute` switches on `tab.url`. To keep the WebView still, Home fades out over the page. The page is not the layer that moves or fades.
+- The search layer is a `Dialog` that scales from 0.92 (`SearchOverlay.kt`). The bounds it starts from have to come from the Home search bar or the pill's address field, in window coordinates.
+
 ## Todo
 
-- [ ] Scout and spike report
+- [x] Scout notes (above). The spike waits for a device.
 - [ ] Tab card and page
 - [ ] Search field
 - [ ] Home and page
