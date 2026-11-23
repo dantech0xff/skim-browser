@@ -71,6 +71,13 @@ class SiteIconStore(
         /** Bumped by every put, so a slower read from disk never replaces a newer icon. */
         var version = 0L
         var readRequested = false
+
+        /** Changes what [EntryCache] counts for this entry, so it is only called in [EntryCache.resize]. */
+        fun show(icon: ImageBitmap, size: Int) {
+            image = icon
+            bytes = size
+            flow.value = icon
+        }
     }
 
     private val writer = SerialWriter(scope, ioDispatcher, TAG)
@@ -87,24 +94,23 @@ class SiteIconStore(
         val key = pageUrl?.let(::hostOf)?.takeIf(::isStorableKey) ?: return
         val scaled = scaledDown(icon)
         val image = scaled.asImageBitmap()
-        var changed = true
         synchronized(lock) {
             if (incognito) {
                 val entry = incognitoEntries.get(key) ?: Entry()
-                entry.show(image, scaled.allocationByteCount)
-                incognitoEntries.put(key, entry)
+                incognitoEntries.resize(key, entry) { show(image, scaled.allocationByteCount) }
             } else {
                 val entry = normalEntries.get(key) ?: Entry()
-                changed = entry.image?.let { scaled.sameAs(it.asAndroidBitmap()) } != true
+                val changed = entry.image?.let { scaled.sameAs(it.asAndroidBitmap()) } != true
                 entry.version++
                 // A put is newer than the file, so the file is not read any more.
                 entry.readRequested = true
-                entry.show(image, scaled.allocationByteCount)
-                normalEntries.put(key, entry)
+                normalEntries.resize(key, entry) { show(image, scaled.allocationByteCount) }
                 incognitoEntries.get(key)?.let { fallback -> if (fallback.image == null) fallback.flow.value = image }
+                // Queued under the lock, so the file work keeps the order of the changes in memory:
+                // a clear that follows this put also deletes this file.
+                if (changed) writer.post { writeImage(key, scaled) }
             }
         }
-        if (!incognito && changed) writer.post { writeImage(key, scaled) }
     }
 
     /**
@@ -145,8 +151,9 @@ class SiteIconStore(
             normalEntries.evictAll()
             incognitoEntries.snapshot().values.forEach { it.flow.value = null }
             incognitoEntries.evictAll()
+            // Queued under the lock, as put queues its write.
+            writer.post { dir.listFiles()?.forEach { it.delete() } }
         }
-        writer.post { dir.listFiles()?.forEach { it.delete() } }
     }
 
     /** Forgets the icons incognito tabs received. The normal icons stay. */
@@ -164,12 +171,6 @@ class SiteIconStore(
 
     /** Returns once the file work requested so far is done. */
     suspend fun awaitIdle() = writer.awaitIdle()
-
-    private fun Entry.show(icon: ImageBitmap, size: Int) {
-        image = icon
-        bytes = size
-        flow.value = icon
-    }
 
     @WorkerThread
     private fun writeImage(key: String, bitmap: Bitmap) {
@@ -194,9 +195,7 @@ class SiteIconStore(
         synchronized(lock) {
             if (normalEntries.get(key) !== entry || entry.version != version || entry.image != null) return
             val image = bitmap.asImageBitmap()
-            entry.show(image, bitmap.allocationByteCount)
-            // Put again, so the cache counts the icon's bytes.
-            normalEntries.put(key, entry)
+            normalEntries.resize(key, entry) { show(image, bitmap.allocationByteCount) }
             incognitoEntries.get(key)?.let { fallback -> if (fallback.image == null) fallback.flow.value = image }
         }
     }
@@ -204,11 +203,22 @@ class SiteIconStore(
     /** Entries by host, sized by the bytes of their icons; one without an icon counts one byte. */
     private class EntryCache(maxBytes: Int) : LruCache<String, Entry>(maxBytes) {
         override fun sizeOf(key: String, value: Entry): Int = max(value.bytes, 1)
+
+        /**
+         * Applies [change], which may change the size of [entry], and counts the new size. The
+         * entry is taken out first: the cache subtracts what [sizeOf] answers when an entry leaves,
+         * so a size that changed inside the cache would be counted wrongly from then on.
+         */
+        fun resize(key: String, entry: Entry, change: Entry.() -> Unit) {
+            remove(key)
+            entry.change()
+            put(key, entry)
+        }
     }
 
     companion object {
-        /** The longest side of a stored icon, in pixels: the largest tile draws 40 dp at xxhdpi and more. */
-        const val MAX_ICON_PX = 96
+        /** The longest side of a stored icon, in pixels. The 40 dp list tile, the largest, is 120 px at xxhdpi. */
+        const val MAX_ICON_PX = 128
 
         private const val TAG = "SkimSiteIcons"
         private const val IMAGE_SUFFIX = ".png"

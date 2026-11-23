@@ -76,3 +76,19 @@ Every command ran with `export ANDROID_HOME=/root/android-sdk`.
 - The gap above is closed: `IncognitoSessionTest.endingTheSessionForgetsTheIconsItsTabsReceivedAndKeepsTheNormalOnes` builds the session through its injected constructor and ends it.
 - The gates were run again after that test: `:app:testPlayDebugUnitTest`, `:app:verifyRoborazziPlayDebug` and the size check pass.
 - The APK file size did not move with this phase because the new code fit in the alignment padding before the native libraries. The next change may cross a 16 KB page.
+
+## Independent review, after the phase was pushed
+
+An independent review of the pushed commit found defects the tests above did not catch. Every clear test called `put` before `observe`, so no entry changed size while it was in the cache.
+
+Fixed in a follow-up commit:
+
+- **Clearing threw.** An entry already in the cache changed size in place: an icon arriving for a tile already drawn, an icon read from disk, or a larger icon for the same host. `LruCache` kept counting the entry as one byte, so `clearAll` and `clearIncognito` threw `IllegalStateException` from `evictAll`. Clear history then left the icon files on disk, and the end of an incognito session did not forget its icons. `EntryCache.resize` now takes the entry out, changes it and puts it back. Five tests in `SiteIconStoreTest` fail without it.
+- **A put racing a clear could leave a file.** The write and the delete were queued outside the lock. Both are now queued under it, so the file work keeps the order of the changes in memory. There is no test: the window is between two statements and cannot be opened on purpose.
+- **A tile asked for its icon on every recomposition.** `siteIcon` now remembers the flow for its store, host and incognito flag. `FaviconTilesScreenshotTest.aTileAsksForItsIconOnceWhileItsSiteStaysTheSame` fails without it.
+- **`MAX_ICON_PX` was 96**, under the 120 px a 40 dp tile draws at xxhdpi. It is 128.
+
+Left as it is:
+
+- An icon that arrives after the person moved on to another site is filed under the new page's host, because `onReceivedIcon` carries no page URL. The new page's own icon replaces it when it arrives; a site that sends none keeps the wrong one. To be watched on a device.
+- The review also said `onReceivedIcon` never fires without `WebIconDatabase.open`. WebView turns icon downloads on by itself for apps that target Android 4.4 or later, so nothing was added. To be confirmed on a device with the first page that loads.

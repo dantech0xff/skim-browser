@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +31,7 @@ val LocalSiteIcons = staticCompositionLocalOf<SiteIcons?> { null }
 fun siteIcon(host: String?, incognito: Boolean = false): ImageBitmap? {
     val icons = LocalSiteIcons.current ?: return null
     if (host.isNullOrBlank()) return null
-    val icon by icons.observe(host, incognito).collectAsStateWithLifecycle()
+    val flow = remember(icons, host, incognito) { icons.observe(host, incognito) }
+    val icon by flow.collectAsStateWithLifecycle()
     return icon
 }

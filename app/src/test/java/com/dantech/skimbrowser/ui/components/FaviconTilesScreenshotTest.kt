@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -119,6 +122,38 @@ class FaviconTilesScreenshotTest {
         }
 
         assertNotEquals(ICON_COLOR.toArgb(), centerPixel())
+    }
+
+    @Test
+    fun aTileDrawnBeforeItsIconArrivesShowsTheIconWhenItDoes() {
+        setTile { FaviconLetterTile("K", host = "kotlinlang.org", modifier = Modifier.testTag(TILE)) }
+        assertNotEquals(ICON_COLOR.toArgb(), centerPixel())
+
+        store.put("https://kotlinlang.org/docs/home.html", drawnIcon(), incognito = false)
+
+        assertEquals(ICON_COLOR.toArgb(), centerPixel())
+    }
+
+    @Test
+    fun aTileAsksForItsIconOnceWhileItsSiteStaysTheSame() {
+        var asked = 0
+        val counting = SiteIcons { host, incognito ->
+            asked++
+            store.observe(host, incognito)
+        }
+        var letter by mutableStateOf("K")
+        composeRule.setSkimContent {
+            CompositionLocalProvider(LocalSiteIcons provides counting) {
+                FaviconLetterTile(letter, host = "kotlinlang.org", modifier = Modifier.testTag(TILE))
+            }
+        }
+        composeRule.waitForIdle()
+
+        // The page's title changed, so the tile is drawn again for the same site.
+        letter = "L"
+        composeRule.waitForIdle()
+
+        assertEquals(1, asked)
     }
 
     @Test

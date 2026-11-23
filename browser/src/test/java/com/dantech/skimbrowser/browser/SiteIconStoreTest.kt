@@ -56,16 +56,17 @@ class SiteIconStoreTest {
     fun aLargeIconIsScaledDownAndASmallOneKeptAsItIs() = runTest {
         val store = store()
         val small = solid(Color.BLUE, 16, 16)
+        val atTheLimit = solid(Color.GREEN, 128, 128)
 
-        store.put("https://tabi-note.jp/", solid(Color.RED, 192, 96), incognito = false)
+        store.put("https://tabi-note.jp/", solid(Color.RED, 256, 128), incognito = false)
         store.put("https://kotlinlang.org/", small, incognito = false)
-        store.put("https://example.com/", solid(Color.GREEN, 96, 96), incognito = false)
+        store.put("https://example.com/", atTheLimit, incognito = false)
 
         val large = store.observe("tabi-note.jp").value?.asAndroidBitmap() ?: throw AssertionError("no icon")
-        assertEquals(96, large.width)
-        assertEquals(48, large.height)
+        assertEquals(128, large.width)
+        assertEquals(64, large.height)
         assertSame(small, store.observe("kotlinlang.org").value?.asAndroidBitmap())
-        assertEquals(96, store.observe("example.com").value?.asAndroidBitmap()?.width)
+        assertSame(atTheLimit, store.observe("example.com").value?.asAndroidBitmap())
     }
 
     @Test
@@ -134,6 +135,82 @@ class SiteIconStoreTest {
         val again = store.observe("daylightjournal.com")
         store.awaitIdle()
         assertNull(again.value)
+    }
+
+    @Test
+    fun anIconThatArrivesAfterItsTileIsStillClearedWithHistory() = runTest {
+        val store = store()
+        val tile = store.observe("daylightjournal.com")
+        store.put("https://daylightjournal.com/", solid(Color.RED, 32, 32), incognito = false)
+        store.awaitIdle()
+        assertNotNull(tile.value)
+
+        store.clearAll()
+        store.awaitIdle()
+
+        assertNull(tile.value)
+        assertTrue(dir.list().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun anIconReadFromDiskIsClearedWithHistory() = runTest {
+        store().apply {
+            put("https://daylightjournal.com/", solid(Color.RED, 32, 32), incognito = false)
+            awaitIdle()
+        }
+        val restored = store()
+        val tile = restored.observe("daylightjournal.com")
+        restored.awaitIdle()
+        assertNotNull(tile.value)
+
+        restored.clearAll()
+        restored.awaitIdle()
+
+        assertNull(tile.value)
+        assertTrue(dir.list().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun aLargerIconForTheSameHostIsStillClearedWithHistory() = runTest {
+        val store = store()
+        store.put("https://daylightjournal.com/", solid(Color.RED, 16, 16), incognito = false)
+        store.put("https://daylightjournal.com/", solid(Color.BLUE, 64, 64), incognito = false)
+        val tile = store.observe("daylightjournal.com")
+        store.awaitIdle()
+
+        store.clearAll()
+        store.awaitIdle()
+
+        assertNull(tile.value)
+        assertTrue(dir.list().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun anIncognitoIconThatArrivesAfterItsTileIsForgottenWithTheSession() = runTest {
+        val store = store()
+        val tile = store.observe("tabi-note.jp", incognito = true)
+        store.put("https://tabi-note.jp/", solid(Color.BLUE, 32, 32), incognito = true)
+        assertNotNull(tile.value)
+
+        store.clearIncognito()
+
+        assertNull(tile.value)
+        assertNull(store.observe("tabi-note.jp", incognito = true).value)
+    }
+
+    @Test
+    fun iconsThatArriveAfterTheirTilesStillCountAgainstTheCache() = runTest {
+        val oneIcon = solid(Color.WHITE, 16, 16).allocationByteCount
+        // Room for two icons and a few hosts still without one.
+        val store = store(incognitoCacheBytes = oneIcon * 2 + 8)
+        val hosts = listOf("daylightjournal.com", "tabi-note.jp", "kotlinlang.org")
+        hosts.forEach { store.observe(it, incognito = true) }
+
+        hosts.forEach { store.put("https://$it/", solid(Color.RED, 16, 16), incognito = true) }
+
+        assertNotNull(store.observe("kotlinlang.org", incognito = true).value)
+        assertNotNull(store.observe("tabi-note.jp", incognito = true).value)
+        assertNull("put least recently", store.observe("daylightjournal.com", incognito = true).value)
     }
 
     @Test
