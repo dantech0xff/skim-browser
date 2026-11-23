@@ -58,7 +58,7 @@ Dan, 2026-11-23:
 | # | Phase | Status |
 |---|-------|--------|
 | 1 | [Identity colors](./phase-01-start.md) | Done |
-| 2 | [Site icons](./phase-02-site-icons.md) | Pending |
+| 2 | [Site icons](./phase-02-site-icons.md) | Done |
 | 3 | [Browsing pill](./phase-03-browsing-pill.md) | Pending |
 | 4 | [Spatial transitions](./phase-04-spatial-transitions.md) | Pending |
 | 5 | [Touch feedback](./phase-05-touch-feedback.md) | Pending |
@@ -68,7 +68,7 @@ Phases 2 to 5 are outlines. Each gets its own scout pass before it starts.
 ## Success Criteria
 
 - [x] Home, Tabs, Settings, sheets and dialogs draw in the Skim scheme; the pill of a page draws in the chrome scheme, in light and dark.
-- [ ] A visited site shows its icon on tab cards, history, bookmarks, shortcuts and chats; an incognito icon never reaches the disk.
+- [x] A visited site shows its icon on tab cards, history, bookmarks, shortcuts and chats; an incognito icon never reaches the disk. Not yet seen on a device.
 - [ ] The pill has no Back or Forward and has Ask Skim; when a page scrolls it becomes a compact host chip instead of scaling.
 - [ ] A tab card grows into its page and back, the search field grows from the bar that opened it, and Home hands over to the page.
 - [ ] Haptics and micro-interactions are in, each with a still branch for Remove animations.

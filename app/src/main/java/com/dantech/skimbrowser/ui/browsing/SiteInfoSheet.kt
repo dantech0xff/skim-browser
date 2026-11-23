@@ -345,7 +345,7 @@ private fun SiteHeader(state: SiteInfoUiState) {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FaviconLetterTile(state.letter)
+        FaviconLetterTile(state.letter, host = state.siteKey, incognito = state.incognito)
         Column {
             Text(
                 state.title,

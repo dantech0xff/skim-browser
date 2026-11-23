@@ -36,7 +36,7 @@ import com.dantech.skimbrowser.ui.theme.ThemeSetting
 import com.dantech.skimbrowser.ui.theme.isDarkScheme
 
 /**
- * A tab in the tab switcher (09, 09b): radius 20, a 44 dp title row (a 20 dp favicon letter tile,
+ * A tab in the tab switcher (09, 09b): radius 20, a 44 dp title row (the 20 dp tile of [host],
  * the [title] in labelMedium, Close tab), then the [preview] of the page, 92 dp high with radius 12,
  * cropped from its top. Without a preview the frame is surfaceContainerLowest. The card is 144 dp
  * high; its width comes from the grid.
@@ -61,6 +61,7 @@ fun TabCard(
     onClick: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    host: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val container = if (incognito || isDarkScheme()) colors.surfaceContainer else colors.surfaceContainerLow
@@ -88,6 +89,8 @@ fun TabCard(
                     textStyle = MaterialTheme.typography.labelMediumEmphasized.copy(fontSize = 10.sp, lineHeight = 12.sp),
                     container = colors.surfaceContainerHighest,
                     content = colors.onSurfaceVariant,
+                    host = host,
+                    incognito = incognito,
                 )
                 Text(
                     text = title,

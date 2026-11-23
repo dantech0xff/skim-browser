@@ -136,7 +136,7 @@ fun HistoryScreen(
                         count = section.entries.size,
                         onClick = { onOpen(entry.url) },
                         singleLine = true,
-                        leading = { FaviconLetterTile(siteLetter(entry.host, entry.title)) },
+                        leading = { FaviconLetterTile(siteLetter(entry.host, entry.title), host = entry.host) },
                         trailing = { RemoveButton { onRemove(entry.id) } },
                         trailingIsIconButton = true,
                     )

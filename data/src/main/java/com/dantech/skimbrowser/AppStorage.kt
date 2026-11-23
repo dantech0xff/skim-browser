@@ -18,6 +18,8 @@ data class AppStorage(
     val tabStateDir: (Context) -> File = { File(it.filesDir, "tabstate") },
     /** The tab card thumbnails of normal tabs, a cache. */
     val thumbnailDir: (Context) -> File = { File(it.cacheDir, "thumbs") },
+    /** The icons sites sent, one per host, of pages opened in normal tabs; a cache. */
+    val siteIconDir: (Context) -> File = { File(it.cacheDir, "site-icons") },
     /** Files shared from incognito tabs, deleted when the incognito session ends. */
     val incognitoSharedDir: (Context) -> File = { File(it.cacheDir, "shared/incognito") },
     /** Downloads Skim started. A private file, not a table: the list is short and the APK stays small. */
@@ -31,6 +33,7 @@ data class AppStorage(
             settingsFile = { File(dir, "skim_settings.preferences_pb") },
             tabStateDir = { File(dir, "tabstate") },
             thumbnailDir = { File(dir, "thumbs") },
+            siteIconDir = { File(dir, "site-icons") },
             incognitoSharedDir = { File(dir, "shared/incognito") },
             downloadsFile = { File(dir, "downloads-log") },
             newsDir = { File(dir, "news") },

@@ -96,6 +96,8 @@ class WebViewPool(
     private val drawThumbnail: (View) -> Bitmap? = ::captureThumbnail,
     private val interrupts: () -> InterruptPolicy = { InterruptPolicy() },
     private val stats: ShieldStatSink = ShieldStatSink.Ignore,
+    /** Where the icons pages send go; null keeps none. */
+    private val siteIcons: SiteIconStore? = null,
 ) : TabEngine {
 
     /**
@@ -648,6 +650,7 @@ class WebViewPool(
                 val choice = interrupts()
                 choice.blockPopups && source?.let(::hostOf) !in choice.popupAllowHosts
             },
+            onIcon = { pageUrl, icon -> siteIcons?.put(pageUrl, icon, tab.incognito) },
         )
         view.webViewClient = client
         view.webChromeClient = chrome

@@ -553,6 +553,7 @@ private fun SwipeCard(
         TabCard(
             title = card.title.ifBlank { stringResource(R.string.new_tab) },
             letter = card.letter,
+            host = card.host,
             preview = preview,
             isCurrent = card.isCurrent,
             hasSkimChat = card.hasSkimChat,

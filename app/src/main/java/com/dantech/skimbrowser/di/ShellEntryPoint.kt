@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.di
 
 import com.dantech.skimbrowser.ai.TabGrouping
+import com.dantech.skimbrowser.browser.SiteIconStore
 import com.dantech.skimbrowser.browser.TabManager
 import com.dantech.skimbrowser.browser.ThumbnailStore
 import com.dantech.skimbrowser.domain.settings.SettingsRepository
@@ -29,4 +30,5 @@ interface ShellEntryPoint {
     fun highlights(): ReaderHighlights
     fun grouping(): TabGrouping
     fun thumbnails(): ThumbnailStore
+    fun siteIcons(): SiteIconStore
 }

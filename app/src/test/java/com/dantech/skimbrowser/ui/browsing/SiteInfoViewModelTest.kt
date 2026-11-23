@@ -150,6 +150,7 @@ class SiteInfoViewModelTest {
             tabs = f.manager,
             stateStore = f.stateStore,
             thumbnails = f.thumbnails,
+            siteIcons = f.siteIcons,
             incognito = f.incognito,
             pendingUndo = SnackbarUndo(UndoRegistry(backgroundScope), SnackbarController(UndoRegistry(backgroundScope))),
             siteData = site,

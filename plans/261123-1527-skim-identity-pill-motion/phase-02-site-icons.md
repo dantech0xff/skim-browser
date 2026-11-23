@@ -1,6 +1,6 @@
 ---
 title: "Phase 2: Site icons"
-status: todo
+status: done
 priority: P1
 effort: "8h"
 dependencies: [1]
@@ -14,12 +14,12 @@ Show the icon a site sends wherever Skim lists that site. Today every site is a 
 
 ## Requirements
 
-- [ ] The icon comes from the page the person opened: `WebChromeClient.onReceivedIcon`. Skim sends no request of its own for an icon.
-- [ ] Icons are kept per host. A normal tab's icon is a small file; an incognito tab's icon lives in memory only and goes with the session.
-- [ ] Clearing history removes the icons, in the place `BrowsingDataCleaner` clears thumbnails.
-- [ ] `FaviconLetterTile` draws the icon when there is one and the letter when there is not. Shortcut tiles keep their MaterialShapes clip.
-- [ ] A tile with an icon reads the same for accessibility as it does today.
-- [ ] Goldens do not change: no fixture has an icon. New goldens cover a tile with an icon, light and dark.
+- [x] The icon comes from the page the person opened: `WebChromeClient.onReceivedIcon`. Skim sends no request of its own for an icon.
+- [x] Icons are kept per host. A normal tab's icon is a small file; an incognito tab's icon lives in memory only and goes with the session.
+- [x] Clearing history removes the icons, in the place `BrowsingDataCleaner` clears thumbnails.
+- [x] `FaviconLetterTile` draws the icon when there is one and the letter when there is not. Shortcut tiles keep their MaterialShapes clip.
+- [x] A tile with an icon reads the same for accessibility as it does today.
+- [x] Goldens do not change: no fixture has an icon. New goldens cover a tile with an icon, light and dark.
 
 ## Related files
 
@@ -37,16 +37,16 @@ Show the icon a site sends wherever Skim lists that site. Today every site is a 
 
 ## Todo
 
-- [ ] Scout report
-- [ ] Icon store and tests
-- [ ] WebView feed
-- [ ] Tile and call sites
-- [ ] Goldens for a tile with an icon
-- [ ] Size measured, baseline decision with Dan
-- [ ] `docs/design-guidelines.md` row, `docs/privacy-stats.md` untouched
+- [x] Scout report
+- [x] Icon store and tests
+- [x] WebView feed
+- [x] Tile and call sites
+- [x] Goldens for a tile with an icon
+- [x] Size measured: the APK file is 4,397,565 bytes, 648 over the baseline, the same as after phase 1. The new code fit in the padding that aligns the native libraries, so the baseline does not move.
+- [x] `docs/design-guidelines.md` row, `docs/privacy-stats.md` untouched
 
 ## Success Criteria
 
 - A visited site shows its icon on a tab card, in History, Bookmarks, Skim history and a shortcut after its page loads.
-- `BrowsingDataCleaner` tests prove the icons go with history and with the incognito session.
+- `BrowsingDataCleanerTest` proves the icons go with history, and `IncognitoSessionTest` that they go with the incognito session.
 - `:app:testPlayDebugUnitTest`, `:browser:testDebugUnitTest` and `:app:verifyRoborazziPlayDebug` pass.

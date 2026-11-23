@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
@@ -29,7 +31,10 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 
-/** Clear browsing data drops history, cancels its Undo, and clears the default profile's cache. */
+/**
+ * Clear browsing data drops history with the icons sites sent, cancels its Undo, and clears the
+ * default profile's cache.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class BrowsingDataCleanerTest {
@@ -64,7 +69,13 @@ class BrowsingDataCleanerTest {
         )
         File(f.stateDir.apply { mkdirs() }, "old.bin").writeText("state")
         File(f.thumbsDir.apply { mkdirs() }, "old.webp").writeBytes(byteArrayOf(1))
+        File(f.siteIconDir.apply { mkdirs() }, "old.example.png").writeBytes(byteArrayOf(1))
+        f.siteIcons.put(PAGE, icon(), incognito = false)
+        f.siteIcons.put(PAGE, icon(), incognito = true)
+        val normalIcon = f.siteIcons.observe(PAGE_HOST)
+        val incognitoIcon = f.siteIcons.observe(PAGE_HOST, incognito = true)
         f.settle()
+        assertTrue(File(f.siteIconDir, "$PAGE_HOST.png").isFile)
 
         val undo = UndoRegistry(backgroundScope)
         var finalized = false
@@ -90,6 +101,10 @@ class BrowsingDataCleanerTest {
         assertNull(f.tabRepo.snapshot())
         assertTrue(f.stateDir.listFiles().isNullOrEmpty())
         assertTrue(f.thumbsDir.listFiles().isNullOrEmpty())
+        assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
+        assertNull(normalIcon.value)
+        assertNull(incognitoIcon.value)
+        assertNull(f.siteIcons.observe(PAGE_HOST).value)
         assertTrue(f.engine.calls.any { it is Call.ClearHistory })
         assertEquals(listOf(Call.TemporaryWebView(null)), f.engine.callsOf<Call.TemporaryWebView>())
         assertTrue(site.clearedAll.not())
@@ -133,11 +148,14 @@ class BrowsingDataCleanerTest {
         tabs = f.manager,
         stateStore = f.stateStore,
         thumbnails = f.thumbnails,
+        siteIcons = f.siteIcons,
         incognito = f.incognito,
         pendingUndo = pendingUndo,
         siteData = site,
         mainDispatcher = f.main,
     )
+
+    private fun icon(): Bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
 
     private class RecordingSiteData : DefaultProfileSiteData {
         var clearedAll = false
@@ -149,5 +167,6 @@ class BrowsingDataCleanerTest {
 
     private companion object {
         const val PAGE = "https://daylightjournal.com/energy"
+        const val PAGE_HOST = "daylightjournal.com"
     }
 }

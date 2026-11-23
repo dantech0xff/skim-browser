@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.browser
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -490,6 +491,26 @@ class SkimChromeClientTest {
 
         assertTrue(incognitoClient().onConsoleMessage(message))
         assertFalse("a normal tab keeps the WebView's logging", client.onConsoleMessage(message))
+    }
+
+    @Test
+    fun theIconAPageSendsGoesOutWithThePageAddressUntilDetached() {
+        val icons = mutableListOf<Pair<String?, Bitmap>>()
+        val iconClient = SkimChromeClient(
+            TAB, false, events, host, fullscreen, sitePermissions, { null }, { shown }, { document },
+            onIcon = { pageUrl, icon -> icons += pageUrl to icon },
+        )
+        val icon = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        view.loadUrl(PAGE)
+
+        iconClient.onReceivedIcon(view, icon)
+        iconClient.onReceivedIcon(view, null)
+        iconClient.detach()
+        iconClient.onReceivedIcon(view, icon)
+
+        assertEquals(1, icons.size)
+        assertEquals(PAGE, icons.single().first)
+        assertSame(icon, icons.single().second)
     }
 
     private fun incognitoClient() = SkimChromeClient(TAB, true, events, host, fullscreen, sitePermissions, { null }, { shown }, { document })

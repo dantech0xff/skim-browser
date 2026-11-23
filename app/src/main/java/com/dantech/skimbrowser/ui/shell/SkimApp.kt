@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -19,8 +21,11 @@ import com.dantech.skimbrowser.domain.download.DownloadRetry
 import com.dantech.skimbrowser.domain.interrupt.InterruptKind
 import com.dantech.skimbrowser.ui.browsing.DownloadNotice
 import com.dantech.skimbrowser.ui.browsing.DownloadSnackbarEffect
+import com.dantech.skimbrowser.ui.components.LocalSiteIcons
+import com.dantech.skimbrowser.ui.components.SiteIcons
 import com.dantech.skimbrowser.ui.components.SkimSnackbarHost
 import com.dantech.skimbrowser.ui.navigation.SkimNavDisplay
+import com.dantech.skimbrowser.ui.navigation.rememberShell
 import com.dantech.skimbrowser.ui.navigation.snackbarPlacement
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.text.UiText
@@ -44,7 +49,7 @@ import kotlinx.coroutines.flow.Flow
  * [downloadNotices] the snackbar tells, the links it received, [retryDownload] for a failed save,
  * [onPagesDark], which follows the theme and night mode, and [onPageTextZoom], the stored page
  * text size. Null follows the system font scale. Incognito chrome is always dark; page darkening
- * is not.
+ * is not. Every screen reads the icons sites sent from [LocalSiteIcons].
  */
 @Composable
 fun SkimApp(
@@ -80,6 +85,8 @@ fun SkimApp(
     }
 
     val tabs by viewModel.tabs.collectAsStateWithLifecycle()
+    val iconStore = rememberShell().siteIcons()
+    val siteIcons = remember(iconStore) { SiteIcons(iconStore::observe) }
     val navigator = viewModel.navigator
     val keys = viewModel.backStack.toList()
     val incognitoSurface = secureTarget(keys, tabs)
@@ -118,26 +125,28 @@ fun SkimApp(
     }
 
     SkimTheme(state.theme, incognito = incognitoSurface) {
-        Surface(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize()) {
-                SkimNavDisplay(viewModel.backStack, navigator, tabs, secure)
-                SkimSnackbarHost(
-                    controller = viewModel.snackbar,
-                    placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
-                    onAction = { action ->
-                        when (action) {
-                            is SnackbarAction.OpenBlockedPopup -> viewModel.openHeldPopup(action.tabId, action.holdId)
-                            is SnackbarAction.AllowBlockedNavigation -> viewModel.allowBlockedNavigation(action.tabId, action.url)
-                            is SnackbarAction.AlwaysAllowPopups -> viewModel.alwaysAllowPopups(action.host, action.tabId, action.holdId)
-                            is SnackbarAction.AlwaysAllowRedirects -> viewModel.alwaysAllowRedirects(action.host, action.tabId, action.url)
-                            else -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload)
-                        }
-                    },
-                    onClosed = { action ->
-                        if (action is SnackbarAction.OpenBlockedPopup) viewModel.dropHeldPopup(action.tabId, action.holdId)
-                    },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
+        CompositionLocalProvider(LocalSiteIcons provides siteIcons) {
+            Surface(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize()) {
+                    SkimNavDisplay(viewModel.backStack, navigator, tabs, secure)
+                    SkimSnackbarHost(
+                        controller = viewModel.snackbar,
+                        placement = snackbarPlacement(keys, tabs.currentTab?.url != null),
+                        onAction = { action ->
+                            when (action) {
+                                is SnackbarAction.OpenBlockedPopup -> viewModel.openHeldPopup(action.tabId, action.holdId)
+                                is SnackbarAction.AllowBlockedNavigation -> viewModel.allowBlockedNavigation(action.tabId, action.url)
+                                is SnackbarAction.AlwaysAllowPopups -> viewModel.alwaysAllowPopups(action.host, action.tabId, action.holdId)
+                                is SnackbarAction.AlwaysAllowRedirects -> viewModel.alwaysAllowRedirects(action.host, action.tabId, action.url)
+                                else -> interpret(action, navigator, viewModel.undo, openExternal, retryDownload)
+                            }
+                        },
+                        onClosed = { action ->
+                            if (action is SnackbarAction.OpenBlockedPopup) viewModel.dropHeldPopup(action.tabId, action.holdId)
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
             }
         }
     }

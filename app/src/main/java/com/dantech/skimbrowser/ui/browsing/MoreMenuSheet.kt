@@ -306,7 +306,7 @@ private fun PageHeader(state: MoreMenuUiState, onStar: () -> Unit, onShare: () -
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FaviconLetterTile(state.letter)
+        FaviconLetterTile(state.letter, host = state.host, incognito = state.incognito)
         Column(Modifier.weight(1f)) {
             Text(state.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(

@@ -1,6 +1,7 @@
 package com.dantech.skimbrowser.browser
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Message
 import android.util.Log
@@ -18,8 +19,8 @@ import com.dantech.skimbrowser.browser.permissions.SitePermissionBridge
 
 /**
  * The [WebChromeClient] of one tab's WebView: load progress and title, file inputs, full-screen
- * content, windows the page opens, and the page's requests for location, camera and microphone,
- * which go to [sitePermissions].
+ * content, windows the page opens, the icon the page sends ([onIcon], with the page's address), and
+ * the page's requests for location, camera and microphone, which go to [sitePermissions].
  *
  * A file input is always answered exactly once, also when the picker is cancelled, a second input
  * replaces it, or the WebView goes away; an unanswered input would block every later one on the
@@ -54,6 +55,8 @@ class SkimChromeClient(
     private val parseFileChooserResult: (resultCode: Int, data: Intent?) -> Array<Uri>? =
         WebChromeClient.FileChooserParams::parseResult,
     private val blockUngesturedPopup: (sourceUrl: String?) -> Boolean = { true },
+    /** The icon a page sent, with the address of the page showing. */
+    private val onIcon: (pageUrl: String?, icon: Bitmap) -> Unit = { _, _ -> },
 ) : WebChromeClient() {
 
     private var pendingFiles: ValueCallback<Array<Uri>>? = null
@@ -101,6 +104,10 @@ class SkimChromeClient(
 
     override fun onReceivedTitle(view: WebView, title: String?) {
         if (!detached) events.onTitle(tabId, title.orEmpty())
+    }
+
+    override fun onReceivedIcon(view: WebView, icon: Bitmap?) {
+        if (!detached && icon != null) onIcon(view.url, icon)
     }
 
     override fun onShowFileChooser(

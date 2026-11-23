@@ -1,12 +1,17 @@
 package com.dantech.skimbrowser.browser
 
+import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import android.webkit.WebView
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.dantech.skimbrowser.AppStorage
 import com.dantech.skimbrowser.browser.IncognitoSession.State
 import com.dantech.skimbrowser.data.db.entity.PermissionState
 import com.dantech.skimbrowser.data.db.entity.SitePermissionKind
+import com.dantech.skimbrowser.domain.download.NoDownloadLog
+import com.dantech.skimbrowser.domain.shield.HostBlocklist
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -16,6 +21,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -278,6 +285,30 @@ class IncognitoSessionTest {
         val third = session.profileForNewTab { }
 
         assertEquals(listOf("incognito-1000", "incognito-1002", "incognito-1003"), listOf(first, second, third))
+    }
+
+    @Test
+    fun endingTheSessionForgetsTheIconsItsTabsReceivedAndKeepsTheNormalOnes() = runTest {
+        val icons = SiteIconStore(File(folder.root, "site-icons"), backgroundScope, StandardTestDispatcher(testScheduler))
+        // The injected constructor: its end of session is what the app runs.
+        val session = IncognitoSession(
+            profiles,
+            AppStorage.temp(folder.root),
+            ApplicationProvider.getApplicationContext<Application>(),
+            backgroundScope,
+            RequestShield.of(HostBlocklist.of()),
+            icons,
+            NoDownloadLog,
+        )
+        val icon = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        session.profileForNewTab { }
+        icons.put("https://private.example/", icon, incognito = true)
+        icons.put("https://daylightjournal.com/", icon, incognito = false)
+
+        session.end(engine)
+
+        assertNull(icons.observe("private.example", incognito = true).value)
+        assertNotNull(icons.observe("daylightjournal.com").value)
     }
 
     private fun TestScope.session() =

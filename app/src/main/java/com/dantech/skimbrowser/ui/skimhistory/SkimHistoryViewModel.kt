@@ -41,6 +41,8 @@ data class SkimHistoryRow(
     val title: String,
     val subtitle: UiText,
     val letter: String,
+    /** The site of a page chat, whose icon its tile shows; null for a chat about tabs. */
+    val host: String? = null,
 )
 
 /** One day section, newest first. */
@@ -137,5 +139,6 @@ private fun rowOf(item: ChatSummary): SkimHistoryRow {
         title = chat.title,
         subtitle = subtitle,
         letter = siteLetter(chat.host, chat.title),
+        host = chat.host,
     )
 }
