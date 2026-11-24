@@ -2,11 +2,11 @@
   "apk": "app/build/outputs/apk/play/releaseSmoke/app-play-releaseSmoke.apk",
   "variant": "playReleaseSmoke",
   "abiSplits": false,
-  "fileSizeBytes": 4396917,
+  "fileSizeBytes": 4412909,
   "downloadSizeBytes": 3751332,
   "maxGrowthBytes": 8192,
   "definedMethods": 24529,
   "referencedMethods": 27969,
   "dexFiles": 1,
-  "notes": "Generic media detection on top of the news-wall baseline 4380533 measured 4396917 bytes, 16384 above that. No library was added. The bytes are the media sniffer, the playing-file report, and the playlist peek. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 5033912. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
+  "notes": "The Skim redesign on top of generic media detection measured 4412909 bytes, 15992 above 4396917: the two color schemes, the site icon store, the browsing pill and its chip, and the touch feedback, less the toolbar's Back and Forward. No library was added. The YouTube extractor is not in this APK. fullReleaseSmoke from the same tree is 5049908. downloadSizeBytes and the method counts were not remeasured. maxGrowthBytes stays 8192. See docs/lightweight-budget.md."
 }

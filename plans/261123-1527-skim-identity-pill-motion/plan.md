@@ -77,7 +77,7 @@ Phase 5 was built before phase 4, so everything on the branch up to it can be ch
 - [x] The pill has no Back or Forward and has Ask Skim; when a page scrolls it becomes a compact host chip instead of scaling. Not yet seen on a device.
 - [ ] A tab card grows into its page and back, the search field grows from the bar that opened it, and Home hands over to the page.
 - [x] Haptics and micro-interactions are in, each with a still branch for Remove animations. Not yet felt on a device.
-- [x] Each phase ends with `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` green and the size measured. Phases 1 to 3 are 4 bytes over the baseline. Phase 5 is 16,388 over, past the budget of 8,192 (see the open questions).
+- [x] Each phase ends with `:app:testPlayDebugUnitTest` and `:app:verifyRoborazziPlayDebug` green and the size measured. Phases 1 to 3 are 4 bytes over the baseline. Phase 5 went 16,388 over, past the budget of 8,192; Dan moved the baseline on 2026-11-24, to 4,412,909 bytes on play and 5,049,908 on full, measured with the toolbar change.
 - [ ] Frame time for tabs, sheet and navigation is measured on a device with `FrameBenchmarks` and written down. This needs Dan's phone.
 
 ## Open questions

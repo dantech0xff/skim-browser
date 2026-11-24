@@ -47,7 +47,7 @@ Give touch an answer. The UI has no haptics, a dragged tab card does not lift an
 - [x] Reorder and swipe to close
 - [x] Ask Skim and tab count
 - [x] Tests and goldens
-- [x] Size measured: the `playReleaseSmoke` file is 4,413,305 bytes, 16,388 over the baseline. It was 4 over before this phase. The haptics, the tab count roll and the Ask Skim entrances pushed the file one 16 KB alignment page further; making room added nothing to the file. The budget allows 8,192, so `tools/check_apk_budget.py` fails and the Size budget workflow will fail on a pull request. The baseline is not moved: that needs Dan's yes.
+- [x] Size measured: the `playReleaseSmoke` file is 4,413,305 bytes, 16,388 over the baseline. It was 4 over before this phase. The haptics, the tab count roll and the Ask Skim entrances pushed the file one 16 KB alignment page further; making room added nothing to the file. The budget allows 8,192. Dan agreed to move the baseline on 2026-11-24; measured after the toolbar change, it is now 4,412,909 bytes on play and 5,049,908 on full (`size-budget/`).
 
 ## Success Criteria
 
