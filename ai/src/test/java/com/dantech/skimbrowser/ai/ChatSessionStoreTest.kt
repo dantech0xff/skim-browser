@@ -62,7 +62,7 @@ class ChatSessionStoreTest {
         session.beginStream(stream, MessageKind.SUMMARY)
         session.noteText("partial summary")
         open.fixture.engine.openPage(open.id, "https://example.com/other", "Other")
-        advanceUntilIdle()
+        runStoreUntil { open.store.sessionFor(open.id) == null }
         open.fixture.settle()
 
         assertNull(open.store.sessionFor(open.id))
@@ -119,6 +119,20 @@ class ChatSessionStoreTest {
         assertNull(open.tab().chatId)
     }
 
+    /**
+     * Runs the store's work until [done] holds, for at most [STORE_WAIT_MS]. The store writes to Room
+     * on a real thread and goes on on the test dispatcher afterwards, so one [advanceUntilIdle] can
+     * end while that write is still running. The assertions that follow say what was missing.
+     */
+    private fun TestScope.runStoreUntil(done: () -> Boolean) {
+        val started = System.currentTimeMillis()
+        while (true) {
+            advanceUntilIdle()
+            if (done() || System.currentTimeMillis() - started > STORE_WAIT_MS) return
+            Thread.sleep(10)
+        }
+    }
+
     private fun open(scope: TestScope): Open {
         val fixture = TabManagerFixture(scope, folder.newFolder()).also { fixtures += it }
         fixture.engines.attach(fixture.engine)
@@ -152,4 +166,9 @@ class ChatSessionStoreTest {
         text = text,
         status = MessageStatus.COMPLETE,
     )
+
+    private companion object {
+        /** Far longer than a Room write takes, so only a real failure waits this long. */
+        const val STORE_WAIT_MS = 8_000L
+    }
 }
