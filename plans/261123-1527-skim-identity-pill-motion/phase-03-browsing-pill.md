@@ -61,3 +61,4 @@ Rebuild the pill of a page around the address and Ask Skim. Back and Forward lea
 ## Decided after the phase
 
 - Dan, 2026-11-24: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. In Reader view system Back leaves Reader; a second Back goes back in the page. Forward has no control left; Dan keeps it in the tab engine for a later use.
+- Dan, 2026-11-24, from the review of PR 41: where Save video would leave the host under 48 dp (more with larger text), the pill leaves it out and More options offers Download video beside Translate page. A 360 dp phone at the default text size keeps it in the pill; a 320 dp phone does not. `saveVideoFitsInPill` decides for both.

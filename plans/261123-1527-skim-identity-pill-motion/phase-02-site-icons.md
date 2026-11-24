@@ -50,3 +50,7 @@ Show the icon a site sends wherever Skim lists that site. Today every site is a 
 - A visited site shows its icon on a tab card, in History, Bookmarks, Skim history and a shortcut after its page loads.
 - `BrowsingDataCleanerTest` proves the icons go with history, and `IncognitoSessionTest` that they go with the incognito session.
 - `:app:testPlayDebugUnitTest`, `:browser:testDebugUnitTest` and `:app:verifyRoborazziPlayDebug` pass.
+
+## Decided after the phase
+
+- Dan, 2026-11-24, from the review of PR 41: Cached images and files also clears the site icons, also while no WebView pool exists. History still clears them too.

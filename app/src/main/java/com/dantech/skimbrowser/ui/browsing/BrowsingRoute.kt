@@ -71,6 +71,8 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
     val saveVideos by remember(shell) { shell.settings().settings.map { it.saveVideos } }
         .collectAsStateWithLifecycle(initialValue = true)
     val shown = if (saveVideos) state else state.copy(videoAvailable = false)
+    // The pill leaves Save video out on a narrow window; More options offers it then.
+    val videoInMenu = shown.videoAvailable && !saveVideoFitsInPill()
     val translationModel = hiltViewModel<PageTranslationViewModel>()
     val sessions by translationModel.sessions.collectAsStateWithLifecycle()
     val pageTranslation = sessions[tab.id] ?: PageTranslation.Idle
@@ -127,7 +129,7 @@ fun BrowsingRoute(tab: Tab, runtime: TabRuntime, navigator: SkimNavigator) {
             onFindNext = browsing::findNext,
             onCloseFind = browsing::closeFind,
             onTabs = { navigator.openTabs(tab.incognito) },
-            onMore = { navigator.openMoreMenu(tab.id) },
+            onMore = { navigator.openMoreMenu(tab.id, saveVideo = videoInMenu) },
             onDownloadVideo = { navigator.openVideoDownload(tab.id) },
             onAskPage = { navigator.openAskPage(tab.id) },
             onOpenHttp = if (state.httpFallback == null) null else browsing::openHttpFallback,

@@ -67,6 +67,7 @@ import com.dantech.skimbrowser.ui.navigation.AskPageKey
 import com.dantech.skimbrowser.ui.navigation.AskTabsKey
 import com.dantech.skimbrowser.ui.navigation.BrowserKey
 import com.dantech.skimbrowser.ui.navigation.LinkOptionsKey
+import com.dantech.skimbrowser.ui.navigation.MoreMenuKey
 import com.dantech.skimbrowser.ui.navigation.ReaderKey
 import com.dantech.skimbrowser.ui.navigation.SiteInfoKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
@@ -310,6 +311,35 @@ class BrowsingRouteTest {
     }
 
     @Test
+    @Config(qualifiers = "w320dp-h640dp-xhdpi")
+    fun onANarrowScreenMoreOptionsOffersTheVideoThePillHadNoRoomFor() {
+        val id = tabs.newTab(incognito = false, url = PAGE)
+        engine.openPage(id, PAGE)
+        tabs.events.onMediaUrl(id, PAGE, VIDEO)
+        showBrowser()
+
+        composeRule.onAllNodesWithContentDescription("Download video").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(MoreMenuKey(id, saveVideo = true), keys().last())
+    }
+
+    @Test
+    fun withRoomInThePillSaveVideoStaysThereAndMoreOptionsDoesNotRepeatIt() {
+        val id = tabs.newTab(incognito = false, url = PAGE)
+        engine.openPage(id, PAGE)
+        tabs.events.onMediaUrl(id, PAGE, VIDEO)
+        showBrowser()
+
+        composeRule.onNodeWithContentDescription("Download video").assertExists()
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(MoreMenuKey(id), keys().last())
+    }
+
+    @Test
     fun askSkimInThePillAsksAboutThisPageInOneTap() {
         val id = tabs.newTab(incognito = false, url = PAGE)
         engine.openPage(id, PAGE)
@@ -464,6 +494,7 @@ class BrowsingRouteTest {
 
     private companion object {
         const val PAGE = "https://daylightjournal.com/energy/heat-pumps-cold"
+        const val VIDEO = "https://cdn.daylightjournal.com/heat-pumps.mp4"
         const val OTHER_PAGE = "https://daylightjournal.com/energy/batteries"
         const val FAILED_PAGE = "https://nightbus-kansai.jp/timetable"
         const val NEW_TAB_PAGE = "new-tab-page"

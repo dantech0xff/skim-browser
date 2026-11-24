@@ -115,6 +115,7 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 | Share page | Android share sheet with title and URL |  |
 | Find in page | 05c Find in page |  |
 | Desktop site | Toggle; reloads with a desktop user agent |  |
+| Download video | The video sheet; only on a narrow screen, where the pill has no room for Save video |  |
 | New tab, New incognito tab | 04 and 09c |  |
 | Bookmarks, History | 14 and 13 |  |
 | Settings | 12 |  |

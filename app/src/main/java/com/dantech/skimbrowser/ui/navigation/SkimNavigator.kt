@@ -142,7 +142,8 @@ class SkimNavigator @AssistedInject constructor(
 
     fun openSavedArticle(articleId: Long) = push(SavedArticleKey(articleId))
 
-    fun openMoreMenu(tabId: String) = push(MoreMenuKey(tabId))
+    /** Opens 05b for [tabId]; [saveVideo] adds Download video, which the pill had no room for. */
+    fun openMoreMenu(tabId: String, saveVideo: Boolean = false) = push(MoreMenuKey(tabId, saveVideo))
 
     fun openVideoDownload(tabId: String) = push(VideoDownloadKey(tabId))
 

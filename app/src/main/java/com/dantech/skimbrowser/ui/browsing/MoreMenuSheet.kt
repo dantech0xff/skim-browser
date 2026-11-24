@@ -56,6 +56,7 @@ import com.dantech.skimbrowser.ui.navigation.HistoryKey
 import com.dantech.skimbrowser.ui.navigation.MoreMenuKey
 import com.dantech.skimbrowser.ui.navigation.SettingsKey
 import com.dantech.skimbrowser.ui.navigation.SkimNavigator
+import com.dantech.skimbrowser.ui.navigation.VideoDownloadKey
 import com.dantech.skimbrowser.ui.snackbar.SnackbarAction
 import com.dantech.skimbrowser.ui.snackbar.SnackbarController
 import com.dantech.skimbrowser.ui.text.UiText
@@ -251,12 +252,19 @@ fun MoreMenuRoute(key: MoreMenuKey, navigator: SkimNavigator) {
         onHistory = { navigator.replaceTop(HistoryKey) },
         onDownloads = { navigator.replaceTop(DownloadsKey) },
         onSettings = { navigator.replaceTop(SettingsKey) },
+        onDownloadVideo = if (key.saveVideo) {
+            { navigator.replaceTop(VideoDownloadKey(key.tabId)) }
+        } else {
+            null
+        },
     )
 }
 
 /**
  * More options (05b): the page's header and page actions when [state] is a page, then New tab,
  * Bookmarks and History, and Settings. The New tab page leaves the header and page actions out.
+ * [onDownloadVideo], when set, adds Download video beside Translate page: the page has a video and
+ * the pill had no room for Save video.
  */
 @Composable
 fun MoreMenuSheet(
@@ -273,14 +281,16 @@ fun MoreMenuSheet(
     onDownloads: () -> Unit = {},
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onDownloadVideo: (() -> Unit)? = null,
 ) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         if (state.page) {
             PageHeader(state, onStar, onShare)
             PageActions(state.desktopSite, onFind, onDesktop)
-            if (!state.incognito) {
-                MenuGroup(MenuEntry(R.drawable.ic_public, stringResource(R.string.translate_page), onTranslate))
-            }
+            val translate = MenuEntry(R.drawable.ic_public, stringResource(R.string.translate_page), onTranslate)
+            val video = onDownloadVideo?.let { MenuEntry(R.drawable.ic_download, stringResource(R.string.menu_download_video), it) }
+            val pageEntries = listOfNotNull(translate.takeIf { !state.incognito }, video)
+            if (pageEntries.isNotEmpty()) MenuGroup(*pageEntries.toTypedArray())
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MenuGroup(

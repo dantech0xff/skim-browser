@@ -32,6 +32,7 @@ Dan, 2026-11-24:
 - Toolbar: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. Done in `BrowserToolbar`; Forward has no control left in the app.
 - Size: the baseline in `size-budget/` moves to the measured size of this work.
 - Forward stays in the tab engine (`TabsController.goForward`, the pool's pending Forward and the scam warning's forward flag in `SkimWebViewClient`), though nothing in the app calls it now, for a later use.
+- From the review of PR 41: on a narrow screen Save video moves from the pill into More options as Download video, and Cached images and files also clears the site icons.
 
 ## Goals
 

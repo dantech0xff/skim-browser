@@ -31,6 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.components.AddressBar
 import com.dantech.skimbrowser.ui.components.AddressLoadProgress
+import com.dantech.skimbrowser.ui.components.CompactFieldChrome
 import com.dantech.skimbrowser.ui.components.DisabledContentAlpha
 import com.dantech.skimbrowser.ui.components.ShapeArt
 import com.dantech.skimbrowser.ui.components.SiteIndicator
@@ -61,6 +64,16 @@ import com.dantech.skimbrowser.ui.theme.isDarkScheme
 import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 private val PillShadow = 3.dp
+
+/** The pill's row padding before the address field and after Ask Skim. */
+private val PillRowStart = 8.dp
+private val PillRowEnd = 4.dp
+
+/** The narrowest the host may get in the pill at the default text size: about five characters. */
+private val MinHostWidth = 48.dp
+
+/** Reader view, Save video, Tabs, More options and Ask Skim. */
+private const val PILL_CONTROLS_WITH_VIDEO = 5
 
 /** Ask Skim's slot in the collapsed chip, and the space after it. */
 private val ChipAskSlot = 36.dp
@@ -145,9 +158,10 @@ private fun FullPill(
 ) {
     val find = state.find
     val fade = if (rememberReducedMotion()) snap() else tween<Float>(FIND_FADE_MS)
+    val videoInPill = state.videoAvailable && saveVideoFitsInPill()
     Box(Modifier.fillMaxWidth().height(ToolbarMetrics.AddressRowHeight)) {
         Row(
-            Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp),
+            Modifier.fillMaxSize().padding(start = PillRowStart, end = PillRowEnd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AnimatedContent(
@@ -188,7 +202,8 @@ private fun FullPill(
             )
             AnimatedVisibility(visible = find == null, enter = fadeIn(fade), exit = fadeOut(fade)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (state.videoAvailable) {
+                    // On a narrow window More options offers it instead (BrowsingRoute).
+                    if (videoInPill) {
                         PillButton(onClick = actions.onDownloadVideo) {
                             Icon(
                                 painterResource(R.drawable.ic_download),
@@ -284,6 +299,26 @@ private fun CollapsedChip(
             )
         }
     }
+}
+
+/**
+ * Whether Save video has room in the pill of a window [windowWidth] wide, beside Reader view, Tabs,
+ * More options and Ask Skim: the host keeps at least [MinHostWidth], more when [fontScale] makes the
+ * text larger. Without room the pill leaves Save video out and More options offers Download video.
+ */
+internal fun saveVideoFitsInPill(windowWidth: Dp, fontScale: Float): Boolean {
+    val controls = ToolbarMetrics.BrowsingSlot * PILL_CONTROLS_WITH_VIDEO
+    val pill = windowWidth - ToolbarMetrics.BrowsingSideInset * 2
+    val host = pill - PillRowStart - PillRowEnd - controls - CompactFieldChrome
+    return host >= MinHostWidth * fontScale.coerceAtLeast(1f)
+}
+
+/** [saveVideoFitsInPill] for the window and the text size this composition draws in. */
+@Composable
+internal fun saveVideoFitsInPill(): Boolean {
+    val density = LocalDensity.current
+    val width = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+    return saveVideoFitsInPill(width, density.fontScale)
 }
 
 /** A button of the pill outside the address field: a 40 dp slot, touching its neighbours. */

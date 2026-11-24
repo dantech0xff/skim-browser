@@ -219,7 +219,7 @@ private fun CompactAddressField(
                         text = AnnotatedString(address)
                     },
             )
-            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = FieldInnerPadding), verticalAlignment = Alignment.CenterVertically) {
                 when (indicator) {
                     SiteIndicator.Secure, SiteIndicator.NotSecure -> {
                         val secure = indicator == SiteIndicator.Secure
@@ -256,7 +256,7 @@ private fun CompactAddressField(
                     // The field's node already says the address.
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .padding(start = 2.dp, end = 10.dp)
+                        .padding(start = HostPaddingStart, end = HostPaddingEnd)
                         .clearAndSetSemantics {},
                     style = MaterialTheme.typography.bodyLarge,
                     color = colors.onSurface,
@@ -324,6 +324,14 @@ private val IconSlot = 48.dp
 
 /** The site mark's tap slot inside the pill's address field. */
 private val FieldSlotSize = 28.dp
+
+/** The padding inside the pill's address field, on each side of the mark and the host together. */
+private val FieldInnerPadding = 4.dp
+private val HostPaddingStart = 2.dp
+private val HostPaddingEnd = 10.dp
+
+/** What the pill's address field takes besides the host: the site mark's slot and the paddings. */
+internal val CompactFieldChrome: Dp = FieldInnerPadding * 2 + FieldSlotSize + HostPaddingStart + HostPaddingEnd
 private val FlatWave: (Float) -> Float = { 0f }
 
 @PreviewLightDark

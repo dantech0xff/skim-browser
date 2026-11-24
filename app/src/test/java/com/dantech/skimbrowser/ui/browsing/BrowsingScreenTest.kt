@@ -213,6 +213,19 @@ class BrowsingScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w320dp-h640dp-xhdpi")
+    fun onANarrowScreenSaveVideoLeavesThePillToMoreOptions() {
+        state = Loaded.copy(videoAvailable = true)
+        show()
+
+        composeRule.onAllNodesWithContentDescription("Download video").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("Reader view").assertExists()
+        composeRule.onNodeWithContentDescription("More options").performClick()
+
+        assertEquals(listOf("more"), calls)
+    }
+
+    @Test
     fun anIncognitoTabsPillCountsIncognitoTabsAndItsAskSkimIsOff() {
         state = Loaded.copy(incognito = true, tabCount = 2, aiMode = AiFabMode.OffInIncognito)
         show(incognito = true)

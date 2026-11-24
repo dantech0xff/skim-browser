@@ -111,6 +111,29 @@ class BrowsingDataCleanerTest {
     }
 
     @Test
+    fun clearingOnlyCachedImagesForgetsTheSiteIconsAndKeepsHistory() = runTest {
+        val f = fixture()
+        f.manager.newTab(incognito = false, url = PAGE)
+        runCurrent()
+        f.history.recordVisit(PAGE, "Heat pumps", f.now())
+        f.siteIcons.put(PAGE, icon(), incognito = false)
+        val tile = f.siteIcons.observe(PAGE_HOST)
+        f.settle()
+        assertTrue(File(f.siteIconDir, "$PAGE_HOST.png").isFile)
+        val idle = UndoRegistry(backgroundScope)
+
+        // No WebView pool yet: the WebView cache waits for one, the icons go at once.
+        cleaner(f, SnackbarUndo(idle, SnackbarController(idle)), RecordingSiteData())
+            .clearAll(history = false, cookies = false, cache = true, pages = null)
+        runCurrent()
+        f.settle()
+
+        assertNull(tile.value)
+        assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
+        assertTrue("history stays", f.history.observe(null).first().isNotEmpty())
+    }
+
+    @Test
     fun clearingCookiesReloadsNormalTabsAndAMissingEngineDefersCache() = runTest {
         val f = fixture()
         val normal = f.manager.newTab(incognito = false, url = PAGE)

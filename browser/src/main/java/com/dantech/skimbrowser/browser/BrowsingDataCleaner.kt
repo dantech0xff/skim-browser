@@ -71,9 +71,10 @@ class BrowsingDataCleaner(
      * throws, so one store failing does not keep the others.
      *
      * History also drops the back/forward list of every normal tab, their saved WebView state and
-     * thumbnails, the icons sites sent, and the grouping snapshot, and cancels history Undo so it cannot bring a row
-     * back. Cookies are flushed, then normal tabs reload so a page still open cannot write the
-     * old cookies out again.
+     * thumbnails, the icons sites sent, and the grouping snapshot, and cancels history Undo so it
+     * cannot bring a row back. Cookies are flushed, then normal tabs reload so a page still open
+     * cannot write the old cookies out again. Cached images and files also drops the icons sites
+     * sent.
      */
     override suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
         val failures = mutableListOf<String>()
@@ -116,6 +117,10 @@ class BrowsingDataCleaner(
     }
 
     private suspend fun clearCache(pages: OpenPages?) {
+        // Skim's own copies of the icons sites sent are cached images too. They go now, also while
+        // no WebView pool exists to clear the WebView cache.
+        siteIcons.clearAll()
+        siteIcons.awaitIdle()
         if (pages == null) {
             pendingCacheClear.set(true)
             return
