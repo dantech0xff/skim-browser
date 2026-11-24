@@ -272,8 +272,6 @@ fun SavedArticleRoute(articleId: Long, navigator: SkimNavigator) {
             scalePercent = current.scalePercent,
             font = current.font,
             panelOpen = panelOpen,
-            canGoBack = false,
-            canGoForward = false,
             tabCount = 0,
             incognito = false,
             actions = com.dantech.skimbrowser.ui.reader.ReaderActions(
@@ -282,8 +280,6 @@ fun SavedArticleRoute(articleId: Long, navigator: SkimNavigator) {
                 onClosePanel = { panelOpen = false },
                 onScale = model::setScale,
                 onFont = model::setFont,
-                onBack = navigator::back,
-                onForward = {},
                 onTabs = {},
                 onMore = {},
                 onSummarize = model::summarize,

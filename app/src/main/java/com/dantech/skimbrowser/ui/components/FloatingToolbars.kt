@@ -97,8 +97,9 @@ object ToolbarMetrics {
 internal const val DisabledContentAlpha = 0.38f
 
 /**
- * The browser's floating toolbar: Back, Forward, Tabs with the tab count and More options, with
- * [aiFab] beside it (usually an [AiFab]).
+ * The browser's floating toolbar: Tabs with the tab count and More options, with [aiFab] beside it
+ * (usually an [AiFab]). It has no Back or Forward: Back is the system gesture, and Skim offers no
+ * Forward.
  *
  * The component does not handle insets. Place it at the bottom center of the screen with
  * `Modifier.navigationBarsPadding().padding(bottom = ToolbarMetrics.BottomOffset)`: its bounds are
@@ -109,12 +110,8 @@ internal const val DisabledContentAlpha = 0.38f
  */
 @Composable
 fun BrowserToolbar(
-    canGoBack: Boolean,
-    canGoForward: Boolean,
     tabCount: Int,
     incognito: Boolean,
-    onBack: () -> Unit,
-    onForward: () -> Unit,
     onTabs: () -> Unit,
     onMore: () -> Unit,
     aiFab: @Composable () -> Unit,
@@ -125,32 +122,18 @@ fun BrowserToolbar(
         fab = aiFab,
         modifier = modifier,
     ) {
-        BrowserToolbarActions(canGoBack, canGoForward, tabCount, incognito, onBack, onForward, onTabs, onMore)
+        BrowserToolbarActions(tabCount, incognito, onTabs, onMore)
     }
 }
 
-/**
- * Back, Forward, Tabs and More, without a container. [BrowserToolbar] draws these in its bar;
- * the browsing cluster draws the same row under the address.
- */
+/** Tabs and More, without a container. [BrowserToolbar] draws these in its bar. */
 @Composable
 internal fun BrowserToolbarActions(
-    canGoBack: Boolean,
-    canGoForward: Boolean,
     tabCount: Int,
     incognito: Boolean,
-    onBack: () -> Unit,
-    onForward: () -> Unit,
     onTabs: () -> Unit,
     onMore: () -> Unit,
 ) {
-    ToolbarIconButton(R.drawable.ic_arrow_back, stringResource(R.string.cd_back), onBack, enabled = canGoBack)
-    ToolbarIconButton(
-        R.drawable.ic_arrow_forward,
-        stringResource(R.string.cd_forward),
-        onForward,
-        enabled = canGoForward,
-    )
     val tabsLabel = pluralStringResource(
         if (incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
         tabCount,
@@ -392,12 +375,8 @@ private fun BrowserToolbarPreview() {
     SkimTheme(ThemeSetting.System, dynamicColor = false) {
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
             BrowserToolbar(
-                canGoBack = true,
-                canGoForward = false,
                 tabCount = 7,
                 incognito = false,
-                onBack = {},
-                onForward = {},
                 onTabs = {},
                 onMore = {},
                 aiFab = {
@@ -414,12 +393,8 @@ private fun BrowserToolbarIncognitoPreview() {
     SkimTheme(ThemeSetting.System, incognito = true, dynamicColor = false) {
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
             BrowserToolbar(
-                canGoBack = false,
-                canGoForward = false,
                 tabCount = 2,
                 incognito = true,
-                onBack = {},
-                onForward = {},
                 onTabs = {},
                 onMore = {},
                 aiFab = {

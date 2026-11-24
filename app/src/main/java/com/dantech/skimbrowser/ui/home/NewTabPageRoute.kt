@@ -71,12 +71,8 @@ fun NewTabPageRoute(tab: Tab, navigator: SkimNavigator) {
     val toolbar = @Composable {
         val controls: @Composable (Modifier) -> Unit = { bar ->
             BrowserToolbar(
-                canGoBack = false,
-                canGoForward = false,
                 tabCount = tabsState.tabs.count { it.incognito == tab.incognito },
                 incognito = tab.incognito,
-                onBack = {},
-                onForward = {},
                 onTabs = { navigator.openTabs(tab.incognito) },
                 onMore = { navigator.openMoreMenu(tab.id) },
                 aiFab = { TabAiFab(tab, runtime, onClick = { navigator.openAskTabs() }) },

@@ -27,6 +27,11 @@ Dan, 2026-11-23:
 - Pill: Back and Forward leave the pill. Back is the system gesture. Forward is not supported.
 - Order: identity first, then the pill, then motion.
 
+Dan, 2026-11-24:
+
+- Toolbar: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. Done in `BrowserToolbar`; Forward has no control left in the app.
+- Size: the baseline in `size-budget/` moves to the measured size of this work.
+
 ## Goals
 
 | # | Goal | Priority |
@@ -77,8 +82,7 @@ Phase 5 was built before phase 4, so everything on the branch up to it can be ch
 
 ## Open questions
 
-- The 64 dp toolbar of Home, Reader and the incognito New tab page also has Back and Forward. Should they leave with the pill's? On Home both are always off.
-- Size: phase 5 put `playReleaseSmoke` at 4,413,305 bytes, one 16 KB page over the baseline. May the baseline in `size-budget/releaseSmoke.json` move to that, with a note that the bytes are the touch feedback? Until it does, the size check fails.
+- Forward stays in the tab engine: `TabsController.goForward`, the pool's pending Forward and the scam warning's forward flag in `SkimWebViewClient`. Nothing in the app calls it now. Removing it changes `:domain`, `:browser` and their tests, so it is left for a change of its own if Dan wants it.
 - Phase 4 needs a phone or the dedicated AVD in the loop, to look at the transitions and to run `FrameBenchmarks`. Who runs that, and when?
 
 <!-- slug: skim-identity-pill-motion -->

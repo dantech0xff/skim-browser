@@ -58,6 +58,6 @@ Rebuild the pill of a page around the address and Ask Skim. Back and Forward lea
 - The lock's touch area on a short host: it is widened to 48 dp inside the field, so on a host like `t.co` it reaches the first letters.
 - TalkBack's order inside the field.
 
-## Open question
+## Decided after the phase
 
-- The 64 dp toolbar of Home, Reader and the incognito New tab page still has Back and Forward. On Home both are always off. Removing them there is not in this phase until Dan says so.
+- Dan, 2026-11-24: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. In Reader view system Back leaves Reader; a second Back goes back in the page. Forward has no control left; it stays in the tab engine (see the plan's open questions).

@@ -10,7 +10,7 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 
 ## Rules for every screen
 
-- Floating toolbar: On 04, 08 and 09c. Back, Forward, Tabs, More options, then the AI FAB. On 05, 05c and 11 one bottom pill holds the address, Reader view, Save video, Tabs, More options and Ask Skim, without Back or Forward: Back is the system gesture. While the page scrolls down the pill is a chip with the host. 06d shows the pill behind the dialog.
+- Floating toolbar: On 04, 08 and 09c. Tabs, More options, then the AI FAB; no Back or Forward, as on the pill. On 05, 05c and 11 one bottom pill holds the address, Reader view, Save video, Tabs, More options and Ask Skim, without Back or Forward: Back is the system gesture. While the page scrolls down the pill is a chip with the host. 06d shows the pill behind the dialog.
 - AI FAB (AI): Disabled in incognito (09b, 09c) and on 11 until the page loads.
 - Tab switcher: 09 and 09b swap the toolbar for tab actions and add a New tab or New incognito tab FAB.
 - Sheets and menus: Close on swipe down, scrim tap or Back. 08b has no scrim: tap the page instead.
@@ -56,7 +56,6 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 | Add | Add shortcut dialog (15) |  |
 | See all | 04c Skim history |  |
 | Continue with Skim card | 05 with its saved chat open (06) |  |
-| Back, Forward | Disabled on a new tab |  |
 | Tabs, More options | 09, and 05b without the page actions |  |
 | Ask Skim | 06b Ask Skim | AI |
 
@@ -149,7 +148,6 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 |---|---|---|
 | Exit reader view, system Back | 05 at the same scroll position |  |
 | Text size | 08b Reader text settings |  |
-| Back, Forward | This tab's page history |  |
 | Tabs | Same as 05 |  |
 | More options | 05b More menu |  |
 | Ask Skim about this page | 06, reading the article text | AI |
@@ -243,7 +241,6 @@ The first time Skim reads a site, 05 shows 06d first: Allow opens 06, Not now re
 |---|---|---|
 | Search or type URL | 04b in dark, no history or Ask Skim row |  |
 | Voice search | Speech input; text goes to the dark 04b |  |
-| Back, Forward | Disabled on a new tab |  |
 | Incognito tabs, More options | 09b, and 05b in dark |  |
 | Ask Skim, off in incognito | Disabled | AI |
 | Storage | Own WebView profile (androidx.webkit) |  |

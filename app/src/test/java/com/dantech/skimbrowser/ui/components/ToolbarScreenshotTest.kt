@@ -42,23 +42,22 @@ class ToolbarScreenshotTest {
 
     @Test
     fun browserToolbarOnAPage() = captureToolbar("browser-toolbar-05") { modifier ->
-        PageToolbar(canGoBack = true, tabCount = 7, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
+        PageToolbar(tabCount = 7, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
     }
 
     @Test
     fun browserToolbarOnANewTab() = captureToolbar("browser-toolbar-04") { modifier ->
-        PageToolbar(canGoBack = false, tabCount = 7, aiEnabled = true, aiLabel = R.string.ask_skim, modifier = modifier)
+        PageToolbar(tabCount = 7, aiEnabled = true, aiLabel = R.string.ask_skim, modifier = modifier)
     }
 
     @Test
     fun browserToolbarWhenThePageFailedToLoad() = captureToolbar("browser-toolbar-11") { modifier ->
-        PageToolbar(canGoBack = true, tabCount = 7, aiEnabled = false, aiLabel = R.string.cd_ask_skim_unavailable, modifier = modifier)
+        PageToolbar(tabCount = 7, aiEnabled = false, aiLabel = R.string.cd_ask_skim_unavailable, modifier = modifier)
     }
 
     @Test
     fun browserToolbarInIncognito() = captureToolbar("browser-toolbar-09c", incognito = true) { modifier ->
         PageToolbar(
-            canGoBack = false,
             tabCount = 2,
             aiEnabled = false,
             aiLabel = R.string.cd_ask_skim_off_incognito,
@@ -69,12 +68,12 @@ class ToolbarScreenshotTest {
 
     @Test
     fun browserToolbarInTheDarkTheme() = captureToolbar("browser-toolbar-05-dark", dark = true) { modifier ->
-        PageToolbar(canGoBack = true, tabCount = 7, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
+        PageToolbar(tabCount = 7, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
     }
 
     @Test
     fun browserToolbarWithAHundredTabs() = captureToolbar("browser-toolbar-tab-count-overflow") { modifier ->
-        PageToolbar(canGoBack = true, tabCount = 120, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
+        PageToolbar(tabCount = 120, aiEnabled = true, aiLabel = R.string.cd_ask_skim_about_page, modifier = modifier)
     }
 
     @Test
@@ -105,7 +104,6 @@ class ToolbarScreenshotTest {
 
     @Composable
     private fun PageToolbar(
-        canGoBack: Boolean,
         tabCount: Int,
         aiEnabled: Boolean,
         aiLabel: Int,
@@ -114,12 +112,8 @@ class ToolbarScreenshotTest {
     ) {
         val label = stringResource(aiLabel)
         BrowserToolbar(
-            canGoBack = canGoBack,
-            canGoForward = false,
             tabCount = tabCount,
             incognito = incognito,
-            onBack = {},
-            onForward = {},
             onTabs = {},
             onMore = {},
             aiFab = { AiFab(enabled = aiEnabled, contentDescription = label, onClick = {}) },

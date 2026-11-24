@@ -53,8 +53,6 @@ class ReaderActions(
     val onClosePanel: () -> Unit,
     val onScale: (Int) -> Unit,
     val onFont: (ReaderFont) -> Unit,
-    val onBack: () -> Unit,
-    val onForward: () -> Unit,
     val onTabs: () -> Unit,
     val onMore: () -> Unit,
     val onSave: (() -> Unit)? = null,
@@ -75,8 +73,6 @@ fun ReaderScreen(
     scalePercent: Int,
     font: ReaderFont,
     panelOpen: Boolean,
-    canGoBack: Boolean,
-    canGoForward: Boolean,
     tabCount: Int,
     incognito: Boolean,
     actions: ReaderActions,
@@ -159,12 +155,8 @@ fun ReaderScreen(
             )
         } else {
             BrowserToolbar(
-                canGoBack = canGoBack,
-                canGoForward = canGoForward,
                 tabCount = tabCount,
                 incognito = incognito,
-                onBack = actions.onBack,
-                onForward = actions.onForward,
                 onTabs = actions.onTabs,
                 onMore = actions.onMore,
                 aiFab = aiFab,

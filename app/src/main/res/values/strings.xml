@@ -438,7 +438,6 @@
     <string name="cd_browser_controls">Browser controls</string>
     <string name="cd_show_browser_controls">Show browser controls</string>
     <string name="cd_back">Back</string>
-    <string name="cd_forward">Forward</string>
     <plurals name="cd_tabs_open">
         <item quantity="one">Tabs, %d open</item>
         <item quantity="other">Tabs, %d open</item>

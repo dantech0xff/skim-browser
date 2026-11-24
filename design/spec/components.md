@@ -4,10 +4,10 @@ How each component is drawn and which Compose Material 3 Expressive API builds i
 
 ## Floating toolbar
 
-Screens: 04, 05, 05c, 08, 09c, 11
+Screens: 04, 08, 09c. A page (05, 05c, 11) has the browsing pill instead.
 
 - 64 high, full radius, surfaceContainer (surfaceContainerHigh in dark).
-- Back, Forward, Tabs and More options as 48 icon buttons.
+- Tabs and More options as 48 icon buttons. There is no Back or Forward: Back is the system gesture.
 - Sits 24 above the bottom edge; pages scroll underneath it.
 - Tabs shows the count in a 22 square with a 2 border and radius 7.
 
@@ -15,16 +15,16 @@ Screens: 04, 05, 05c, 08, 09c, 11
 HorizontalFloatingToolbar(expanded = true,
     floatingActionButton = { AiFab() },
     colors = FloatingToolbarDefaults.standardFloatingToolbarColors()
-) { BackButton(); ForwardButton(); TabsButton(); MoreButton() }
+) { TabsButton(); MoreButton() }
 ```
 
 ## AI FAB
 
-Screens: 04, 05, 05c, 08, 09c, 11
+Screens: 04, 08, 09c. On 05, 05c and 11 Ask Skim is the Sunny mark at the end of the browsing pill.
 
 - 56, radius 16, tertiaryContainer with a filled auto_awesome, 8 from the bar.
-- On a page it opens 06; on Home (04) it opens 06b.
-- Disabled on 09c and 11: onSurface at 10% behind 38% content, no shadow.
+- In Reader view (08) it opens 06; on Home (04) it opens 06b.
+- Disabled on 09c: onSurface at 10% behind 38% content, no shadow.
 - Compose FABs have no enabled state: draw that look and drop the click.
 
 ```kotlin
