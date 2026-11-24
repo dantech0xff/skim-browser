@@ -168,11 +168,7 @@ fun BrowsingScreen(
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
-                .windowInsetsPadding(
-                    WindowInsets.navigationBars
-                        .union(WindowInsets.ime)
-                        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
-                )
+                .windowInsetsPadding(pillInsets)
                 .padding(bottom = ToolbarMetrics.BrowsingBottomOffset + ToolbarMetrics.BrowsingClusterHeight + 8.dp)
                 .padding(horizontal = ToolbarMetrics.BrowsingSideInset),
         ) {
@@ -180,11 +176,7 @@ fun BrowsingScreen(
         }
         val barModifier = Modifier
             .align(Alignment.BottomCenter)
-            .windowInsetsPadding(
-                WindowInsets.navigationBars
-                    .union(WindowInsets.ime)
-                    .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)),
-            )
+            .windowInsetsPadding(pillInsets)
             .padding(bottom = ToolbarMetrics.BrowsingBottomOffset)
             .padding(horizontal = ToolbarMetrics.BrowsingSideInset)
         if (previousTab == null && nextTab == null) {
@@ -220,6 +212,12 @@ fun BrowsingScreen(
         }
     }
 }
+
+/** The system insets the pill keeps clear of: the navigation bar, the keyboard and a side cutout. */
+internal val pillInsets: WindowInsets
+    @Composable get() = WindowInsets.navigationBars
+        .union(WindowInsets.ime)
+        .union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
 
 /** A warning or the error screen covers the page. */
 private val BrowsingUiState.covered: Boolean

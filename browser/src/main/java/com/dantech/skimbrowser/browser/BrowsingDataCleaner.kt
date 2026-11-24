@@ -74,7 +74,7 @@ class BrowsingDataCleaner(
      * thumbnails, the icons sites sent, and the grouping snapshot, and cancels history Undo so it
      * cannot bring a row back. Cookies are flushed, then normal tabs reload so a page still open
      * cannot write the old cookies out again. Cached images and files also drops the icons sites
-     * sent.
+     * sent. Neither touches the icons an open incognito session received.
      */
     override suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
         val failures = mutableListOf<String>()
@@ -105,7 +105,7 @@ class BrowsingDataCleaner(
         stateStore.awaitIdle()
         thumbnails.clearAll()
         thumbnails.awaitIdle()
-        siteIcons.clearAll()
+        siteIcons.clearNormal()
         siteIcons.awaitIdle()
         tabRepo.clearSnapshot()
     }
@@ -118,8 +118,8 @@ class BrowsingDataCleaner(
 
     private suspend fun clearCache(pages: OpenPages?) {
         // Skim's own copies of the icons sites sent are cached images too. They go now, also while
-        // no WebView pool exists to clear the WebView cache.
-        siteIcons.clearAll()
+        // no WebView pool exists to clear the WebView cache. An open incognito session keeps its own.
+        siteIcons.clearNormal()
         siteIcons.awaitIdle()
         if (pages == null) {
             pendingCacheClear.set(true)

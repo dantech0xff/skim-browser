@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -103,7 +104,7 @@ class BrowsingDataCleanerTest {
         assertTrue(f.thumbsDir.listFiles().isNullOrEmpty())
         assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
         assertNull(normalIcon.value)
-        assertNull(incognitoIcon.value)
+        assertNotNull("an open incognito session keeps the icon it received", incognitoIcon.value)
         assertNull(f.siteIcons.observe(PAGE_HOST).value)
         assertTrue(f.engine.calls.any { it is Call.ClearHistory })
         assertEquals(listOf(Call.TemporaryWebView(null)), f.engine.callsOf<Call.TemporaryWebView>())
@@ -117,9 +118,13 @@ class BrowsingDataCleanerTest {
         runCurrent()
         f.history.recordVisit(PAGE, "Heat pumps", f.now())
         f.siteIcons.put(PAGE, icon(), incognito = false)
+        f.siteIcons.put(INCOGNITO_PAGE, icon(), incognito = true)
         val tile = f.siteIcons.observe(PAGE_HOST)
+        val incognitoFallback = f.siteIcons.observe(PAGE_HOST, incognito = true)
+        val incognitoOwn = f.siteIcons.observe(INCOGNITO_HOST, incognito = true)
         f.settle()
         assertTrue(File(f.siteIconDir, "$PAGE_HOST.png").isFile)
+        assertNotNull(incognitoFallback.value)
         val idle = UndoRegistry(backgroundScope)
 
         // No WebView pool yet: the WebView cache waits for one, the icons go at once.
@@ -129,6 +134,8 @@ class BrowsingDataCleanerTest {
         f.settle()
 
         assertNull(tile.value)
+        assertNull("an incognito tile loses the normal icon it showed", incognitoFallback.value)
+        assertNotNull("an open incognito session keeps the icon it received", incognitoOwn.value)
         assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
         assertTrue("history stays", f.history.observe(null).first().isNotEmpty())
     }
@@ -191,5 +198,7 @@ class BrowsingDataCleanerTest {
     private companion object {
         const val PAGE = "https://daylightjournal.com/energy"
         const val PAGE_HOST = "daylightjournal.com"
+        const val INCOGNITO_PAGE = "https://tabi-note.jp/osaka"
+        const val INCOGNITO_HOST = "tabi-note.jp"
     }
 }

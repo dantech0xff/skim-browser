@@ -53,4 +53,4 @@ Show the icon a site sends wherever Skim lists that site. Today every site is a 
 
 ## Decided after the phase
 
-- Dan, 2026-11-24, from the review of PR 41: Cached images and files also clears the site icons, also while no WebView pool exists. History still clears them too.
+- Dan, 2026-11-24, from the review of PR 41: Cached images and files also clears the site icons, also while no WebView pool exists. History still clears them too. Both clear only the default profile's icons (`SiteIconStore.clearNormal`): the icons an open incognito session received stay.

@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -302,8 +303,8 @@ private fun CollapsedChip(
 }
 
 /**
- * Whether Save video has room in the pill of a window [windowWidth] wide, beside Reader view, Tabs,
- * More options and Ask Skim: the host keeps at least [MinHostWidth], more when [fontScale] makes the
+ * Whether Save video has room in the pill of a window [windowWidth] wide (less its side insets),
+ * beside Reader view, Tabs, More options and Ask Skim: the host keeps at least [MinHostWidth], more when [fontScale] makes the
  * text larger. Without room the pill leaves Save video out and More options offers Download video.
  */
 internal fun saveVideoFitsInPill(windowWidth: Dp, fontScale: Float): Boolean {
@@ -313,11 +314,17 @@ internal fun saveVideoFitsInPill(windowWidth: Dp, fontScale: Float): Boolean {
     return host >= MinHostWidth * fontScale.coerceAtLeast(1f)
 }
 
-/** [saveVideoFitsInPill] for the window and the text size this composition draws in. */
+/**
+ * [saveVideoFitsInPill] for the window and the text size this composition draws in, less the side
+ * insets the screen pads the pill by ([pillInsets]).
+ */
 @Composable
 internal fun saveVideoFitsInPill(): Boolean {
     val density = LocalDensity.current
-    val width = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val direction = LocalLayoutDirection.current
+    val insets = pillInsets
+    val sides = insets.getLeft(density, direction) + insets.getRight(density, direction)
+    val width = with(density) { (LocalWindowInfo.current.containerSize.width - sides).toDp() }
     return saveVideoFitsInPill(width, density.fontScale)
 }
 

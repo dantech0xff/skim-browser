@@ -143,14 +143,17 @@ class SiteIconStore(
         return flow.asStateFlow()
     }
 
-    /** Forgets every icon, the incognito ones too, in memory and on disk. */
+    /**
+     * Forgets the icons normal tabs received, in memory and on disk: what Clear browsing data
+     * clears. The icons an open incognito session received stay. An incognito tile that showed a
+     * normal icon in place of its own shows none.
+     */
     @AnyThread
-    fun clearAll() {
+    fun clearNormal() {
         synchronized(lock) {
             normalEntries.snapshot().values.forEach { it.flow.value = null }
             normalEntries.evictAll()
-            incognitoEntries.snapshot().values.forEach { it.flow.value = null }
-            incognitoEntries.evictAll()
+            incognitoEntries.snapshot().values.forEach { entry -> if (entry.image == null) entry.flow.value = null }
             // Queued under the lock, as put queues its write.
             writer.post { dir.listFiles()?.forEach { it.delete() } }
         }

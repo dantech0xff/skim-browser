@@ -117,20 +117,24 @@ class SiteIconStoreTest {
     }
 
     @Test
-    fun clearAllForgetsEveryIconInMemoryAndOnDisk() = runTest {
+    fun clearNormalForgetsTheNormalIconsInMemoryAndOnDiskAndKeepsTheIncognitoOnes() = runTest {
         val store = store()
         store.put("https://daylightjournal.com/", solid(Color.RED, 16, 16), incognito = false)
-        store.put("https://tabi-note.jp/", solid(Color.RED, 16, 16), incognito = true)
+        val ownIcon = solid(Color.BLUE, 16, 16)
+        store.put("https://tabi-note.jp/", ownIcon, incognito = true)
         val normal = store.observe("daylightjournal.com")
         val incognito = store.observe("tabi-note.jp", incognito = true)
+        val fallback = store.observe("daylightjournal.com", incognito = true)
         store.awaitIdle()
+        assertNotNull("an incognito tile shows the normal icon in place of its own", fallback.value)
         File(dir, "daylightjournal.com.png.tmp").writeText("interrupted write")
 
-        store.clearAll()
+        store.clearNormal()
         store.awaitIdle()
 
         assertNull(normal.value)
-        assertNull(incognito.value)
+        assertNull("the normal icon is gone from the incognito tile too", fallback.value)
+        assertSame("the icon the incognito session received stays", ownIcon, incognito.value?.asAndroidBitmap())
         assertTrue(dir.list().orEmpty().isEmpty())
         val again = store.observe("daylightjournal.com")
         store.awaitIdle()
@@ -145,7 +149,7 @@ class SiteIconStoreTest {
         store.awaitIdle()
         assertNotNull(tile.value)
 
-        store.clearAll()
+        store.clearNormal()
         store.awaitIdle()
 
         assertNull(tile.value)
@@ -163,7 +167,7 @@ class SiteIconStoreTest {
         restored.awaitIdle()
         assertNotNull(tile.value)
 
-        restored.clearAll()
+        restored.clearNormal()
         restored.awaitIdle()
 
         assertNull(tile.value)
@@ -178,7 +182,7 @@ class SiteIconStoreTest {
         val tile = store.observe("daylightjournal.com")
         store.awaitIdle()
 
-        store.clearAll()
+        store.clearNormal()
         store.awaitIdle()
 
         assertNull(tile.value)
