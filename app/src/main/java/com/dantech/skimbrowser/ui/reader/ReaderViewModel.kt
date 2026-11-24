@@ -99,16 +99,6 @@ class ReaderViewModel @AssistedInject constructor(
         writes.launch { settings.setReaderFont(font) }
     }
 
-    /** Goes back in this tab's page history. The route leaves reader first. */
-    fun goBack() {
-        tabs.goBack(tabId)
-    }
-
-    /** Goes forward in this tab's page history. The route leaves reader first. */
-    fun goForward() {
-        tabs.goForward(tabId)
-    }
-
     private sealed interface Load {
         data object Pending : Load
         data object Failed : Load

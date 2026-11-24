@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -29,9 +28,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -56,6 +59,9 @@ import com.dantech.skimbrowser.ui.components.AnswerCard
 import com.dantech.skimbrowser.ui.components.AnswerText
 import com.dantech.skimbrowser.ui.components.ChatInputPill
 import com.dantech.skimbrowser.ui.components.CompactIconButton
+import com.dantech.skimbrowser.ui.components.EntranceStaggerMillis
+import com.dantech.skimbrowser.ui.components.entrance
+import com.dantech.skimbrowser.ui.components.rememberChatScrollState
 import com.dantech.skimbrowser.ui.components.SkimSnackbar
 import com.dantech.skimbrowser.ui.components.SunnyMark
 import com.dantech.skimbrowser.ui.components.UserBubble
@@ -126,6 +132,10 @@ fun AskTabsRoute(key: AskTabsKey, navigator: SkimNavigator) {
  *
  * [bodyHeight] fixes the scrolling region so a screenshot can match the board. On screen the region
  * fills the sheet.
+ *
+ * The suggested questions arrive one after another the first time they show. A follow-up asked
+ * here, and its answer, fade and rise in; what the sheet opened with is shown in place. The chat
+ * goes to a question asked here and follows its answer ([rememberChatScrollState]).
  */
 @Composable
 fun AskTabsSheet(
@@ -136,13 +146,17 @@ fun AskTabsSheet(
     field: TextFieldState = rememberTextFieldState(),
     bodyHeight: Dp? = null,
 ) {
+    // Follow-ups the sheet opened with are shown in place; the newest comes in while Skim answers
+    // it. A saved chat that loads after the first composition is not answering, so it shows in place.
+    val openedTurns = remember { state.turns.size }
+    var chipsShown by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().then(if (bodyHeight == null) Modifier.fillMaxHeight() else Modifier)) {
         Column(if (bodyHeight == null) Modifier.fillMaxSize() else Modifier.fillMaxWidth()) {
             AskTabsHeader(state.tabCount, state.showSubtitle, actions.onClose)
             Column(
                 Modifier
                     .then(if (bodyHeight != null) Modifier.height(bodyHeight) else Modifier.weight(1f))
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberChatScrollState(state.turns.size, answering = state.generating))
                     .padding(start = 16.dp, top = 4.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -150,9 +164,13 @@ fun AskTabsSheet(
                 OverviewBlock(state.overview, actions)
                 val ready = state.overview as? TabsOverviewState.Ready
                 if (ready != null && !state.generating && ready.followUps.isNotEmpty()) {
-                    FollowUps(ready.followUps, actions.onChip)
+                    FollowUps(ready.followUps, actions.onChip, play = !chipsShown, onShown = { chipsShown = true })
                 }
-                state.turns.forEach { turn -> FollowUpBlock(turn) }
+                state.turns.forEachIndexed { index, turn ->
+                    key(index) {
+                        FollowUpBlock(turn, arriving = index >= openedTurns && index == state.turns.lastIndex && state.generating)
+                    }
+                }
                 if (state.generating && state.overview is TabsOverviewState.Ready && state.turns.lastOrNull()?.answer == null) {
                     AiLoadingIndicator(stringResource(R.string.cd_writing_summary))
                 }
@@ -332,20 +350,27 @@ private fun OverviewFeedback(actions: AskTabsActions, feedback: MessageFeedback)
     }
 }
 
+/** The suggested questions, one after another when [play] is set as they first show. */
 @Composable
-private fun FollowUps(questions: ImmutableList<String>, onChip: (String) -> Unit) {
+private fun FollowUps(questions: ImmutableList<String>, onChip: (String) -> Unit, play: Boolean, onShown: () -> Unit) {
+    LaunchedEffect(Unit) { onShown() }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        questions.forEach { question ->
-            AiSuggestionChip(question, onClick = { onChip(question) })
+        questions.forEachIndexed { index, question ->
+            AiSuggestionChip(
+                question,
+                onClick = { onChip(question) },
+                modifier = Modifier.entrance(play, delayMillis = index * EntranceStaggerMillis),
+            )
         }
     }
 }
 
+/** A follow-up and its answer. Each comes in as it is added when [arriving]. */
 @Composable
-private fun FollowUpBlock(turn: TabsAnswer) {
+private fun FollowUpBlock(turn: TabsAnswer, arriving: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        UserBubble(turn.question)
-        if (turn.answer != null) AnswerText(turn.answer)
+        UserBubble(turn.question, Modifier.entrance(arriving))
+        if (turn.answer != null) AnswerText(turn.answer, Modifier.entrance(arriving))
     }
 }
 

@@ -2,5 +2,5 @@
 <resources>
     <!-- Window behind the first frame. Matches SkimLightColors.surface and SkimDarkColors.surface. -->
     <color name="skim_window_light">#FFFFFF</color>
-    <color name="skim_window_dark">#202124</color>
+    <color name="skim_window_dark">#212127</color>
 </resources>

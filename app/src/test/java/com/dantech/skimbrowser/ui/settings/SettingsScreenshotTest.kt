@@ -115,7 +115,7 @@ class SettingsScreenshotTest {
         showDialog {
             DeleteAiDataDialog(onDelete = {}, onDismiss = {})
         }
-        captureDialog("dialog-delete-ai-data-15")
+        captureDialog("dialog-delete-ai-data-settings-15")
     }
 
     private fun showDialog(content: @androidx.compose.runtime.Composable () -> Unit) {

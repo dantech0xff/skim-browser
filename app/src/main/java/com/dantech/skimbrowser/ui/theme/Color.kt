@@ -4,9 +4,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// Neutral chrome, the same gray family as Chrome and Safari. Accent is Google blue #0B57D0.
-// Surfaces stay achromatic so the browser frame matches other dark backgrounds.
-val SkimLightColors = lightColorScheme(
+// Two schemes share one accent, Google blue #0B57D0, and the tertiary roles of Skim AI.
+//
+// The chrome scheme is for what floats over a web page: the browsing pill and the bars above it.
+// Its surfaces are achromatic, the same gray family as Chrome and Safari, so the browser frame
+// matches the page under it, dark pages included.
+//
+// The Skim scheme is for every surface Skim draws itself. Each neutral role keeps the tone of the
+// chrome scheme, so text contrast is the same, and takes the lavender hue of the design boards
+// (HCT hue 283) at a small chroma.
+
+val SkimChromeLightColors = lightColorScheme(
     primary = Color(0xFF0B57D0),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFF0B57D0),
@@ -45,8 +53,8 @@ val SkimLightColors = lightColorScheme(
     surfaceDim = Color(0xFFDADCE0),
 )
 
-// Same neutrals, dark. Page #202124, omnibox and toolbar #303134, accent #8AB4F8.
-val SkimDarkColors = darkColorScheme(
+// Page #202124, omnibox and toolbar #303134, accent #8AB4F8.
+val SkimChromeDarkColors = darkColorScheme(
     primary = Color(0xFF8AB4F8),
     onPrimary = Color(0xFF202124),
     primaryContainer = Color(0xFF8AB4F8),
@@ -83,4 +91,50 @@ val SkimDarkColors = darkColorScheme(
     surfaceContainerLow = Color(0xFF292A2D),
     surfaceContainerLowest = Color(0xFF000000),
     surfaceDim = Color(0xFF131314),
+)
+
+// White stays the page of Home and Reader; the containers on it carry the tint. The ink keeps the
+// red of the neutral ink, 0x20: one step lower and text edges render about 5 L* lighter.
+val SkimLightColors = SkimChromeLightColors.copy(
+    secondary = Color(0xFF616170),
+    secondaryContainer = Color(0xFFE9E8FF),
+    onSecondaryContainer = Color(0xFF20212F),
+    onBackground = Color(0xFF20212F),
+    onSurface = Color(0xFF20212F),
+    surfaceVariant = Color(0xFFEAE8FC),
+    onSurfaceVariant = Color(0xFF616170),
+    surfaceTint = Color(0xFF616170),
+    inverseSurface = Color(0xFF30303B),
+    inverseOnSurface = Color(0xFFECE9EF),
+    outline = Color(0xFF767582),
+    outlineVariant = Color(0xFFC7C5D3),
+    surfaceContainerLow = Color(0xFFFBF8FF),
+    surfaceContainer = Color(0xFFF4F1FE),
+    surfaceContainerHigh = Color(0xFFEAE8FC),
+    surfaceContainerHighest = Color(0xFFDADAF4),
+    surfaceDim = Color(0xFFDADAF4),
+)
+
+// surfaceContainerHigh is a step of its own here, between surfaceContainer and the highest.
+val SkimDarkColors = SkimChromeDarkColors.copy(
+    secondary = Color(0xFFC7C5D1),
+    secondaryContainer = Color(0xFF3E3E4F),
+    onSecondaryContainer = Color(0xFFECE9EF),
+    background = Color(0xFF212127),
+    onBackground = Color(0xFFECE9EF),
+    surface = Color(0xFF212127),
+    onSurface = Color(0xFFECE9EF),
+    surfaceVariant = Color(0xFF3E3E4C),
+    onSurfaceVariant = Color(0xFF9F9EAA),
+    surfaceTint = Color(0xFFC7C5D1),
+    inverseSurface = Color(0xFFECE9EF),
+    inverseOnSurface = Color(0xFF20202B),
+    outline = Color(0xFF908F9B),
+    outlineVariant = Color(0xFF464550),
+    surfaceBright = Color(0xFF3E3E4C),
+    surfaceContainerLow = Color(0xFF292933),
+    surfaceContainer = Color(0xFF30303B),
+    surfaceContainerHigh = Color(0xFF373743),
+    surfaceContainerHighest = Color(0xFF3E3E4C),
+    surfaceDim = Color(0xFF131318),
 )

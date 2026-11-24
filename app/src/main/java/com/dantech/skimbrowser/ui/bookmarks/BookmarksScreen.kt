@@ -217,7 +217,7 @@ private fun ColumnScope.BookmarkItems(
             count = state.bookmarks.size,
             onClick = { onOpenBookmark(bookmark.url) },
             singleLine = true,
-            leading = { FaviconLetterTile(bookmark.letter, content = colors.onSurfaceVariant) },
+            leading = { FaviconLetterTile(bookmark.letter, content = colors.onSurfaceVariant, host = bookmark.host) },
             trailing = {
                 BookmarkOptions(menuBookmarkId == bookmark.id, onOpenMenu, onDismissMenu, onEdit, onMove, onDelete, bookmark.id)
             },

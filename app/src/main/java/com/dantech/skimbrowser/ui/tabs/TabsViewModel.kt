@@ -43,7 +43,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
-/** One tab card. [letter] is the site's letter; [title] is the page title, or blank on a new tab. */
+/**
+ * One tab card. [letter] is the site's letter and [host] the site whose icon the tile shows; [title]
+ * is the page title, or blank on a new tab.
+ */
 @Immutable
 data class TabCardState(
     val id: String,
@@ -51,6 +54,7 @@ data class TabCardState(
     val letter: String,
     val isCurrent: Boolean,
     val hasSkimChat: Boolean,
+    val host: String? = null,
 )
 
 /**
@@ -271,13 +275,17 @@ internal fun sectionsOf(state: TabsState, incognito: Boolean, query: String?): P
     return mine.size to sections.toImmutableList()
 }
 
-private fun Tab.toCard(state: TabsState) = TabCardState(
-    id = id,
-    title = title,
-    letter = siteLetter(url?.let(::hostOf), title),
-    isCurrent = id == state.currentTabId,
-    hasSkimChat = chatId != null && !incognito,
-)
+private fun Tab.toCard(state: TabsState): TabCardState {
+    val host = url?.let(::hostOf)
+    return TabCardState(
+        id = id,
+        title = title,
+        letter = siteLetter(host, title),
+        isCurrent = id == state.currentTabId,
+        hasSkimChat = chatId != null && !incognito,
+        host = host,
+    )
+}
 
 /** [tab] moved to [toIndex] inside its group. Null when it would stay, or it is not in the layout. */
 private fun reordered(layout: GroupLayout, tab: Tab, toIndex: Int): GroupLayout? {

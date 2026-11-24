@@ -41,6 +41,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.zIndex
+import com.dantech.skimbrowser.ui.components.TabCardShape
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
+import kotlin.math.abs
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -211,6 +222,16 @@ fun TabsScreen(
     val belowGrid = navigationBar + ToolbarMetrics.BottomOffset + ToolbarMetrics.Height + 16.dp
     val searching = searchState != null
     var menuGroupId by remember { mutableStateOf<Long?>(null) }
+    // The order a drop of the dragged tab would give. The ViewModel decides the order; this only
+    // shows it until the drop has settled.
+    var reorder by remember { mutableStateOf<ReorderPreview?>(null) }
+    val sections = remember(state.sections, reorder) { previewSections(state.sections, reorder) }
+    val indexInGroup = remember(sections) {
+        val map = HashMap<String, Int>()
+        sections.forEach { section -> section.tabs.forEachIndexed { index, card -> map[card.id] = index } }
+        return@remember { id: String -> map[id] }
+    }
+    val reduced = rememberReducedMotion()
     val tabKeys = remember(state.sections) {
         state.sections.flatMap { section -> section.tabs.map { it.id } }.toImmutableSet()
     }
@@ -218,6 +239,11 @@ fun TabsScreen(
         val map = HashMap<String, Long?>()
         state.sections.forEach { section -> section.tabs.forEach { map[it.id] = section.group?.id } }
         return@remember { id: String -> map[id] }
+    }
+    LaunchedEffect(tabKeys, reorder) {
+        // A tab closed while it was dragged takes its preview with it, also when the cancelled drag
+        // writes the preview once more after the card has left.
+        if (reorder?.tabId?.let { it !in tabKeys } == true) reorder = null
     }
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -264,7 +290,7 @@ fun TabsScreen(
                 if (state.empty && !searching) {
                     item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { EmptyTabs() }
                 }
-                state.sections.forEachIndexed { sectionIndex, section ->
+                sections.forEachIndexed { sectionIndex, section ->
                     if (section.showHeader) {
                         item(key = headerKey(section), span = { GridItemSpan(maxLineSpan) }) {
                             SectionHeader(
@@ -286,6 +312,9 @@ fun TabsScreen(
                     section.tabs.forEachIndexed { index, card ->
                         val row = index / GRID_COLUMNS
                         item(key = card.id) {
+                            // The dragged card follows the finger itself; the others move by the
+                            // grid's placement, at once with Remove animations.
+                            val placed = reorder?.tabId != card.id && !reduced
                             SwipeCard(
                                 card = card,
                                 preview = previewOf(card.id, thumbnails),
@@ -294,6 +323,14 @@ fun TabsScreen(
                                 gridState = gridState,
                                 tabKeys = tabKeys,
                                 groupOf = groupOf,
+                                indexInGroup = indexInGroup,
+                                onPreview = { index ->
+                                    when {
+                                        index != null -> reorder = ReorderPreview(card.id, index)
+                                        // Another card may have been picked up while this one settled.
+                                        reorder?.tabId == card.id -> reorder = null
+                                    }
+                                },
                                 onOpen = { actions.onOpen(card.id) },
                                 onClose = { actions.onClose(card.id) },
                                 onMove = { index -> actions.onMove(card.id, index) },
@@ -303,7 +340,7 @@ fun TabsScreen(
                                         bottom = if (row == lastRow) 0.dp else CARD_GAP,
                                     )
                                     .testTag("tab-card")
-                                    .animateItem(),
+                                    .then(if (placed) Modifier.animateItem() else Modifier.animateItem(placementSpec = null)),
                             )
                         }
                     }
@@ -520,6 +557,12 @@ private fun SectionHeader(
     }
 }
 
+/**
+ * A tab card that closes when swiped sideways past [SwipeCloseFraction] of its width. While it is
+ * dragged, the space it leaves shows a close mark on errorContainer; at rest nothing is drawn
+ * behind it. Passing the point where a release closes the tab gives a threshold haptic, each time
+ * the drag passes it. A card picked up for reorder is drawn above the others.
+ */
 @Composable
 private fun SwipeCard(
     card: TabCardState,
@@ -529,6 +572,8 @@ private fun SwipeCard(
     gridState: LazyGridState,
     tabKeys: ImmutableSet<String>,
     groupOf: (String) -> Long?,
+    indexInGroup: (String) -> Int?,
+    onPreview: (Int?) -> Unit,
     onOpen: () -> Unit,
     onClose: () -> Unit,
     onMove: (Int) -> Unit,
@@ -541,18 +586,29 @@ private fun SwipeCard(
                 true
             }
         },
-        positionalThreshold = { distance -> distance * 0.4f },
+        positionalThreshold = { distance -> distance * SwipeCloseFraction },
     )
+    var width by remember { mutableIntStateOf(0) }
+    var lifted by remember { mutableStateOf(false) }
+    val haptics by rememberUpdatedState(LocalHapticFeedback.current)
+    LaunchedEffect(dismissState) {
+        snapshotFlow { width > 0 && abs(dismissState.requireOffset()) >= width * SwipeCloseFraction }
+            .distinctUntilChanged()
+            .collect { closes -> if (closes) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
+    }
     SwipeToDismissBox(
         state = dismissState,
-        backgroundContent = {},
-        modifier = modifier,
+        backgroundContent = { SwipeCloseBackground(dismissState) },
+        modifier = modifier
+            .onSizeChanged { width = it.width }
+            .zIndex(if (lifted) 1f else 0f),
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
     ) {
         TabCard(
             title = card.title.ifBlank { stringResource(R.string.new_tab) },
             letter = card.letter,
+            host = card.host,
             preview = preview,
             isCurrent = card.isCurrent,
             hasSkimChat = card.hasSkimChat,
@@ -568,8 +624,36 @@ private fun SwipeCard(
                     enabled = reorderEnabled && !incognito,
                     tabKeys = tabKeys,
                     groupOf = groupOf,
+                    indexInGroup = indexInGroup,
+                    onPreview = onPreview,
                     onMove = onMove,
+                    onLiftChange = { lifted = it },
                 ),
+        )
+    }
+}
+
+/**
+ * What a swiped card uncovers: errorContainer in the card's shape with the close mark in
+ * onErrorContainer on the side the card leaves. Decoration only: the card's Close tab button is
+ * the accessible way to close it. Nothing is drawn while the card is at rest.
+ */
+@Composable
+private fun SwipeCloseBackground(state: SwipeToDismissBoxState) {
+    val direction by remember(state) { derivedStateOf { state.dismissDirection } }
+    if (direction == SwipeToDismissBoxValue.Settled) return
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.errorContainer, TabCardShape)
+            .padding(horizontal = SwipeIconInset),
+        contentAlignment = if (direction == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_close),
+            contentDescription = null,
+            tint = colors.onErrorContainer,
         )
     }
 }
@@ -599,6 +683,10 @@ private fun EmptyTabs() {
 private fun headerKey(section: TabSection): String = "header-${section.group?.id ?: "other"}"
 
 private const val GRID_COLUMNS = 2
+
+/** How far across its width a card is swiped before a release closes it. */
+private const val SwipeCloseFraction = 0.4f
+private val SwipeIconInset = 24.dp
 private val CARD_GAP = 12.dp
 private val HEADER_GAP = 8.dp
 private val SECTION_GAP = 16.dp

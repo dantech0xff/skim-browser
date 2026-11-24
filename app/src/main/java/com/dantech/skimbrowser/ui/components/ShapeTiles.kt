@@ -2,6 +2,7 @@ package com.dantech.skimbrowser.ui.components
 
 import android.graphics.Matrix
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,9 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
@@ -96,9 +99,11 @@ fun ShapeArt(
 }
 
 /**
- * A site's first letter on a Cookie4Sided tile, used in place of a favicon. Defaults are the 40 dp
- * list tile of 04c; the Continue cards of 04 (24 dp) and tab cards of 09 (20 dp) pass their own
- * size, style and colors. The letter is decoration next to the site's name, so it is not read out.
+ * A site's icon on a Cookie4Sided tile: the icon [host] sent ([siteIcon]) filling the tile over
+ * [container], or the site's first letter while there is none. Defaults are the 40 dp list tile of
+ * 04c; the Continue cards of 04 (24 dp) and tab cards of 09 (20 dp) pass their own size, style and
+ * colors. The tile is decoration next to the site's name, so it is not read out. An [incognito]
+ * tab's tile may show the icon its session received.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -109,13 +114,22 @@ fun FaviconLetterTile(
     textStyle: TextStyle = MaterialTheme.typography.titleMediumEmphasized,
     container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     content: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    host: String? = null,
+    incognito: Boolean = false,
 ) {
-    LetterTile(letter, MaterialShapes.Cookie4Sided.toDrawnShape(), size, textStyle, container, content, modifier)
+    val shape = MaterialShapes.Cookie4Sided.toDrawnShape()
+    val icon = siteIcon(host, incognito)
+    if (icon != null) {
+        IconImageTile(icon, shape, size, iconSize = size, container, modifier)
+    } else {
+        LetterTile(letter, shape, size, textStyle, container, content, modifier)
+    }
 }
 
 /**
- * The 64 dp tile of a shortcut on Home (04): its first letter on the shape of its [position], so
- * neighbouring shortcuts look different at a glance. The name below it is the label.
+ * The 64 dp tile of a shortcut on Home (04): the icon [host] sent, 32 dp in the middle, or its
+ * first letter while there is none, on the shape of its [position], so neighbouring shortcuts look
+ * different at a glance. The name below it is the label.
  *
  * @param container surfaceContainerHighest; secondaryContainer while the shortcut's menu is open (15).
  */
@@ -126,16 +140,23 @@ fun ShortcutTile(
     position: Int,
     modifier: Modifier = Modifier,
     container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    host: String? = null,
 ) {
-    LetterTile(
-        letter = letter,
-        shape = shortcutShapeFor(position).toDrawnShape(),
-        size = ShortcutTileSize,
-        textStyle = MaterialTheme.typography.titleLargeEmphasized,
-        container = container,
-        content = MaterialTheme.colorScheme.onSecondaryContainer,
-        modifier = modifier,
-    )
+    val shape = shortcutShapeFor(position).toDrawnShape()
+    val icon = siteIcon(host)
+    if (icon != null) {
+        IconImageTile(icon, shape, ShortcutTileSize, ShortcutIconSize, container, modifier)
+    } else {
+        LetterTile(
+            letter = letter,
+            shape = shape,
+            size = ShortcutTileSize,
+            textStyle = MaterialTheme.typography.titleLargeEmphasized,
+            container = container,
+            content = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = modifier,
+        )
+    }
 }
 
 /** The Add tile after the shortcuts (04): a 64 dp circle with a 2 dp dashed border and a plus. */
@@ -292,7 +313,30 @@ private fun LetterTile(
     }
 }
 
+/** A site's [icon], [iconSize] in the middle of a [shape] tile; decoration, like the letter. */
+@Composable
+private fun IconImageTile(
+    icon: ImageBitmap,
+    shape: Shape,
+    size: Dp,
+    iconSize: Dp,
+    container: Color,
+    modifier: Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(container)
+            .clearAndSetSemantics {},
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(icon, contentDescription = null, modifier = Modifier.size(iconSize), contentScale = ContentScale.Fit)
+    }
+}
+
 private val ShortcutTileSize = 64.dp
+private val ShortcutIconSize = 32.dp
 private val DashedBorderWidth = 2.dp
 private val DashLength = 6.dp
 private val DashGap = 4.dp

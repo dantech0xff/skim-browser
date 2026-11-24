@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
 
 /** The drawn button heights: M 56 (Get started, Try again), S 40, XS 32 (AI suggestions, citations). */
 enum class SkimButtonSize { M, S, XS }

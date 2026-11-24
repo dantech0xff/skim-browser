@@ -21,7 +21,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -196,11 +195,11 @@ class NewTabPageRouteTest {
     // The toolbar and the AI FAB
 
     @Test
-    fun onHomeTabsOpensTabsAndMoreOptionsTheMoreMenuOfTheTab() {
+    fun onHomeTheToolbarHasNoBackOrForwardTabsOpensTabsAndMoreOptionsTheMoreMenuOfTheTab() {
         val tabId = showHome()
 
-        composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Forward").assertIsNotEnabled()
+        composeRule.onAllNodesWithContentDescription("Back").assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription("Forward").assertCountEquals(0)
         composeRule.onNodeWithContentDescription("Tabs, 1 open").performClick()
         composeRule.onNodeWithContentDescription("More options").performClick()
 
@@ -234,8 +233,8 @@ class NewTabPageRouteTest {
         composeRule.onNodeWithContentDescription("More options").performClick()
 
         assertEquals(listOf(BrowserKey, TabsKey(incognito = true), MoreMenuKey(tab.id)), keys())
-        composeRule.onNodeWithContentDescription("Back").assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Forward").assertIsNotEnabled()
+        composeRule.onAllNodesWithContentDescription("Back").assertCountEquals(0)
+        composeRule.onAllNodesWithContentDescription("Forward").assertCountEquals(0)
     }
 
     // The search layer

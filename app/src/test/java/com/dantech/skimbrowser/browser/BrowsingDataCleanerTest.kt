@@ -1,5 +1,7 @@
 package com.dantech.skimbrowser.browser
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dantech.skimbrowser.browser.FakeTabEngine.Call
 import com.dantech.skimbrowser.data.db.entity.TabGroupingSnapshotEntity
@@ -22,6 +24,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -29,7 +32,10 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 
-/** Clear browsing data drops history, cancels its Undo, and clears the default profile's cache. */
+/**
+ * Clear browsing data drops history with the icons sites sent, cancels its Undo, and clears the
+ * default profile's cache.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class BrowsingDataCleanerTest {
@@ -64,7 +70,13 @@ class BrowsingDataCleanerTest {
         )
         File(f.stateDir.apply { mkdirs() }, "old.bin").writeText("state")
         File(f.thumbsDir.apply { mkdirs() }, "old.webp").writeBytes(byteArrayOf(1))
+        File(f.siteIconDir.apply { mkdirs() }, "old.example.png").writeBytes(byteArrayOf(1))
+        f.siteIcons.put(PAGE, icon(), incognito = false)
+        f.siteIcons.put(PAGE, icon(), incognito = true)
+        val normalIcon = f.siteIcons.observe(PAGE_HOST)
+        val incognitoIcon = f.siteIcons.observe(PAGE_HOST, incognito = true)
         f.settle()
+        assertTrue(File(f.siteIconDir, "$PAGE_HOST.png").isFile)
 
         val undo = UndoRegistry(backgroundScope)
         var finalized = false
@@ -90,9 +102,42 @@ class BrowsingDataCleanerTest {
         assertNull(f.tabRepo.snapshot())
         assertTrue(f.stateDir.listFiles().isNullOrEmpty())
         assertTrue(f.thumbsDir.listFiles().isNullOrEmpty())
+        assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
+        assertNull(normalIcon.value)
+        assertNotNull("an open incognito session keeps the icon it received", incognitoIcon.value)
+        assertNull(f.siteIcons.observe(PAGE_HOST).value)
         assertTrue(f.engine.calls.any { it is Call.ClearHistory })
         assertEquals(listOf(Call.TemporaryWebView(null)), f.engine.callsOf<Call.TemporaryWebView>())
         assertTrue(site.clearedAll.not())
+    }
+
+    @Test
+    fun clearingOnlyCachedImagesForgetsTheSiteIconsAndKeepsHistory() = runTest {
+        val f = fixture()
+        f.manager.newTab(incognito = false, url = PAGE)
+        runCurrent()
+        f.history.recordVisit(PAGE, "Heat pumps", f.now())
+        f.siteIcons.put(PAGE, icon(), incognito = false)
+        f.siteIcons.put(INCOGNITO_PAGE, icon(), incognito = true)
+        val tile = f.siteIcons.observe(PAGE_HOST)
+        val incognitoFallback = f.siteIcons.observe(PAGE_HOST, incognito = true)
+        val incognitoOwn = f.siteIcons.observe(INCOGNITO_HOST, incognito = true)
+        f.settle()
+        assertTrue(File(f.siteIconDir, "$PAGE_HOST.png").isFile)
+        assertNotNull(incognitoFallback.value)
+        val idle = UndoRegistry(backgroundScope)
+
+        // No WebView pool yet: the WebView cache waits for one, the icons go at once.
+        cleaner(f, SnackbarUndo(idle, SnackbarController(idle)), RecordingSiteData())
+            .clearAll(history = false, cookies = false, cache = true, pages = null)
+        runCurrent()
+        f.settle()
+
+        assertNull(tile.value)
+        assertNull("an incognito tile loses the normal icon it showed", incognitoFallback.value)
+        assertNotNull("an open incognito session keeps the icon it received", incognitoOwn.value)
+        assertTrue(f.siteIconDir.listFiles().isNullOrEmpty())
+        assertTrue("history stays", f.history.observe(null).first().isNotEmpty())
     }
 
     @Test
@@ -133,11 +178,14 @@ class BrowsingDataCleanerTest {
         tabs = f.manager,
         stateStore = f.stateStore,
         thumbnails = f.thumbnails,
+        siteIcons = f.siteIcons,
         incognito = f.incognito,
         pendingUndo = pendingUndo,
         siteData = site,
         mainDispatcher = f.main,
     )
+
+    private fun icon(): Bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
 
     private class RecordingSiteData : DefaultProfileSiteData {
         var clearedAll = false
@@ -149,5 +197,8 @@ class BrowsingDataCleanerTest {
 
     private companion object {
         const val PAGE = "https://daylightjournal.com/energy"
+        const val PAGE_HOST = "daylightjournal.com"
+        const val INCOGNITO_PAGE = "https://tabi-note.jp/osaka"
+        const val INCOGNITO_HOST = "tabi-note.jp"
     }
 }

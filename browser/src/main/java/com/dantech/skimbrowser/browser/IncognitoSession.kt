@@ -58,6 +58,7 @@ class IncognitoSession(
         app: Application,
         @AppScope appScope: CoroutineScope,
         shield: RequestShield,
+        siteIcons: SiteIconStore,
         log: DownloadLog,
     ) : this(
         profiles,
@@ -65,6 +66,7 @@ class IncognitoSession(
         appScope,
         onEnded = {
             shield.clearIncognito()
+            siteIcons.clearIncognito()
             appScope.launch { log.clearIncognito() }
         },
         log = log,

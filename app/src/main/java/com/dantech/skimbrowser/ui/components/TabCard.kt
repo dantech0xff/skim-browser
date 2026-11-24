@@ -33,9 +33,10 @@ import androidx.compose.ui.unit.sp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
 
 /**
- * A tab in the tab switcher (09, 09b): radius 20, a 44 dp title row (a 20 dp favicon letter tile,
+ * A tab in the tab switcher (09, 09b): radius 20, a 44 dp title row (the 20 dp tile of [host],
  * the [title] in labelMedium, Close tab), then the [preview] of the page, 92 dp high with radius 12,
  * cropped from its top. Without a preview the frame is surfaceContainerLowest. The card is 144 dp
  * high; its width comes from the grid.
@@ -60,14 +61,15 @@ fun TabCard(
     onClick: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    host: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val container = if (incognito || isDarkScheme()) colors.surfaceContainer else colors.surfaceContainerLow
     Box(
         modifier = modifier
-            .clip(CardShape)
+            .clip(TabCardShape)
             .background(container)
-            .then(if (isCurrent) Modifier.border(CurrentRingWidth, colors.primary, CardShape) else Modifier)
+            .then(if (isCurrent) Modifier.border(CurrentRingWidth, colors.primary, TabCardShape) else Modifier)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { selected = isCurrent },
     ) {
@@ -87,6 +89,8 @@ fun TabCard(
                     textStyle = MaterialTheme.typography.labelMediumEmphasized.copy(fontSize = 10.sp, lineHeight = 12.sp),
                     container = colors.surfaceContainerHighest,
                     content = colors.onSurfaceVariant,
+                    host = host,
+                    incognito = incognito,
                 )
                 Text(
                     text = title,
@@ -134,7 +138,8 @@ fun TabCard(
     }
 }
 
-private val CardShape = RoundedCornerShape(20.dp)
+/** The card's outline, also the shape of what the tab switcher draws behind or under a card. */
+internal val TabCardShape = RoundedCornerShape(20.dp)
 private val CurrentRingWidth = 3.dp
 private val TitleRowHeight = 44.dp
 private val FaviconSize = 20.dp

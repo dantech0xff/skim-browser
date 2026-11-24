@@ -123,10 +123,8 @@ class AskPageViewModelTest {
         try {
             model.state.first { (it.summary as? SummaryState.Streaming)?.text?.contains("First.") == true }
             stores.last().clear()
-            advanceUntilIdle()
-            open.fixture.settle()
 
-            val saved = open.chats.messages(open.fixture.tab(open.id)!!.chatId!!).single()
+            val saved = open.savedAfterStop().single()
             assertEquals(MessageStatus.STOPPED, saved.status)
             assertEquals(MessageKind.SUMMARY, saved.kind)
             assertTrue(saved.text.contains("First."))
@@ -150,6 +148,11 @@ class AskPageViewModelTest {
             assertTrue(text.contains("First."))
             assertFalse(text.contains("STILL_GOING"))
             assertFalse(stopped.generating)
+
+            val saved = open.savedAfterStop().single()
+            assertEquals(MessageStatus.STOPPED, saved.status)
+            assertEquals(MessageKind.SUMMARY, saved.kind)
+            assertEquals(text, saved.text)
         } finally {
             slow.close()
         }
@@ -207,7 +210,10 @@ class AskPageViewModelTest {
 
         model.state.first { it.summary is SummaryState.Done }
         model.ask("Key numbers")
-        val asked = model.state.first { it.turns.any { turn -> turn.question == "Key numbers" && turn.answer != null } }
+        // Not generating means the answer is saved too, so no write is left when the database closes.
+        val asked = model.state.first {
+            !it.generating && it.turns.any { turn -> turn.question == "Key numbers" && turn.answer != null }
+        }
         assertEquals("Key numbers", asked.turns.single().question)
         advanceUntilIdle()
         open.fixture.settle()
@@ -294,6 +300,16 @@ class AskPageViewModelTest {
         assertEquals(Call.Load(id, PAGE_URL), open.fixture.engine.callsOf<Call.Load>().single())
         assertEquals(listOf(id), open.fixture.tabIds())
         assertEquals(chatId, open.fixture.tab(id)?.chatId)
+    }
+
+    /**
+     * The chat's saved messages once the session holds the stopped one. Stopping or closing the
+     * sheet saves the text that arrived on Room's thread, after Stop has already shown it. The
+     * database closes when the test ends, so a test that stops waits for that write.
+     */
+    private suspend fun Open.savedAfterStop(): List<SavedMessage> {
+        sessions.sessionFor(id)!!.messages.first { messages -> messages.any { it.status == MessageStatus.STOPPED } }
+        return chats.messages(fixture.tab(id)!!.chatId!!)
     }
 
     /** The readable-page check evaluates too. A summary reads the page with the extract script. */

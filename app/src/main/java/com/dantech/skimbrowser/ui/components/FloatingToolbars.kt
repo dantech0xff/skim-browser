@@ -1,6 +1,16 @@
 package com.dantech.skimbrowser.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -25,12 +36,10 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -42,10 +51,14 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.ui.theme.SkimTheme
 import com.dantech.skimbrowser.ui.theme.ThemeSetting
+import com.dantech.skimbrowser.ui.theme.isDarkScheme
+import com.dantech.skimbrowser.ui.theme.rememberReducedMotion
 
 /** Sizes of the floating toolbars (04, 05, 05c, 06d, 08, 09, 09b, 09c, 11). */
 object ToolbarMetrics {
@@ -69,22 +82,24 @@ object ToolbarMetrics {
 
     /** The browsing pill. It replaces the separate address band and toolbar on a page. */
     val BrowsingClusterHeight = AddressRowHeight
+
+    /** A button of the browsing pill outside its address field. The slots touch each other. */
+    val BrowsingSlot = 40.dp
+
+    /** The browsing pill collapsed to a chip while the page scrolls down. */
+    val BrowsingChipHeight = 40.dp
+
+    /** The widest the collapsed chip grows for a long host. */
+    val BrowsingChipMaxWidth = 280.dp
 }
 
 /** Content at 38% for disabled controls, as drawn on every board. */
 internal const val DisabledContentAlpha = 0.38f
 
 /**
- * Whether the colors in use are a dark scheme: incognito (09b, 09c), or Theme Dark (12). Some roles
- * differ between the two drawings, such as the toolbar container and the disabled container.
- */
-@Composable
-@ReadOnlyComposable
-internal fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-
-/**
- * The browser's floating toolbar: Back, Forward, Tabs with the tab count and More options, with
- * [aiFab] beside it (usually an [AiFab]).
+ * The browser's floating toolbar: Tabs with the tab count and More options, with [aiFab] beside it
+ * (usually an [AiFab]). It has no Back or Forward: Back is the system gesture, and Skim offers no
+ * Forward.
  *
  * The component does not handle insets. Place it at the bottom center of the screen with
  * `Modifier.navigationBarsPadding().padding(bottom = ToolbarMetrics.BottomOffset)`: its bounds are
@@ -95,12 +110,8 @@ internal fun isDarkScheme(): Boolean = MaterialTheme.colorScheme.surface.luminan
  */
 @Composable
 fun BrowserToolbar(
-    canGoBack: Boolean,
-    canGoForward: Boolean,
     tabCount: Int,
     incognito: Boolean,
-    onBack: () -> Unit,
-    onForward: () -> Unit,
     onTabs: () -> Unit,
     onMore: () -> Unit,
     aiFab: @Composable () -> Unit,
@@ -111,32 +122,18 @@ fun BrowserToolbar(
         fab = aiFab,
         modifier = modifier,
     ) {
-        BrowserToolbarActions(canGoBack, canGoForward, tabCount, incognito, onBack, onForward, onTabs, onMore)
+        BrowserToolbarActions(tabCount, incognito, onTabs, onMore)
     }
 }
 
-/**
- * Back, Forward, Tabs and More, without a container. [BrowserToolbar] draws these in its bar;
- * the browsing cluster draws the same row under the address.
- */
+/** Tabs and More, without a container. [BrowserToolbar] draws these in its bar. */
 @Composable
 internal fun BrowserToolbarActions(
-    canGoBack: Boolean,
-    canGoForward: Boolean,
     tabCount: Int,
     incognito: Boolean,
-    onBack: () -> Unit,
-    onForward: () -> Unit,
     onTabs: () -> Unit,
     onMore: () -> Unit,
 ) {
-    ToolbarIconButton(R.drawable.ic_arrow_back, stringResource(R.string.cd_back), onBack, enabled = canGoBack)
-    ToolbarIconButton(
-        R.drawable.ic_arrow_forward,
-        stringResource(R.string.cd_forward),
-        onForward,
-        enabled = canGoForward,
-    )
     val tabsLabel = pluralStringResource(
         if (incognito) R.plurals.cd_incognito_tabs_open else R.plurals.cd_tabs_open,
         tabCount,
@@ -265,15 +262,20 @@ fun AiFab(
  * The tab count inside the Tabs button: a 22 dp square with a 2 dp border and radius 7 in the
  * content color. 100 tabs or more read "99+", which widens the square. The number is part of the
  * icon, so it is hidden from accessibility; the button's label says it ("Tabs, 7 open").
+ *
+ * When [count] changes, the new number rolls in: from below as the count grows, from above as it
+ * shrinks, with a short fade, while the old one leaves the other way. The first number shows
+ * without motion, and with Remove animations on every change is immediate.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TabsCountIcon(count: Int, modifier: Modifier = Modifier) {
     val color = LocalContentColor.current
-    val text = if (count > MaxShownTabCount) {
-        stringResource(R.string.tabs_count_overflow)
-    } else {
-        count.coerceAtLeast(0).toString()
-    }
+    val reduced = rememberReducedMotion()
+    val motion = MaterialTheme.motionScheme
+    val slide = motion.fastSpatialSpec<IntOffset>()
+    val resize = motion.fastSpatialSpec<IntSize>()
+    val fade = motion.fastEffectsSpec<Float>()
     Box(
         modifier = modifier
             .defaultMinSize(minWidth = TabsCountSize)
@@ -283,7 +285,26 @@ fun TabsCountIcon(count: Int, modifier: Modifier = Modifier) {
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = color, style = MaterialTheme.typography.labelMediumEmphasized, maxLines = 1)
+        AnimatedContent(
+            targetState = count.coerceAtLeast(0),
+            transitionSpec = {
+                if (reduced) {
+                    EnterTransition.None togetherWith ExitTransition.None using SizeTransform { _, _ -> snap() }
+                } else {
+                    val grows = targetState > initialState
+                    val enter = slideInVertically(slide) { height -> if (grows) height else -height } + fadeIn(fade)
+                    val exit = slideOutVertically(slide) { height -> if (grows) -height else height } + fadeOut(fade)
+                    enter togetherWith exit using SizeTransform { _, _ -> resize }
+                }
+            },
+            contentAlignment = Alignment.Center,
+            // Every count from 100 on reads the same, so it does not roll.
+            contentKey = { it.coerceAtMost(MaxShownTabCount + 1) },
+            label = "tab count",
+        ) { shown ->
+            val text = if (shown > MaxShownTabCount) stringResource(R.string.tabs_count_overflow) else shown.toString()
+            Text(text, color = color, style = MaterialTheme.typography.labelMediumEmphasized, maxLines = 1)
+        }
     }
 }
 
@@ -354,12 +375,8 @@ private fun BrowserToolbarPreview() {
     SkimTheme(ThemeSetting.System, dynamicColor = false) {
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
             BrowserToolbar(
-                canGoBack = true,
-                canGoForward = false,
                 tabCount = 7,
                 incognito = false,
-                onBack = {},
-                onForward = {},
                 onTabs = {},
                 onMore = {},
                 aiFab = {
@@ -376,12 +393,8 @@ private fun BrowserToolbarIncognitoPreview() {
     SkimTheme(ThemeSetting.System, incognito = true, dynamicColor = false) {
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
             BrowserToolbar(
-                canGoBack = false,
-                canGoForward = false,
                 tabCount = 2,
                 incognito = true,
-                onBack = {},
-                onForward = {},
                 onTabs = {},
                 onMore = {},
                 aiFab = {

@@ -1,9 +1,11 @@
 # Skim tokens
 
-Material 3 Expressive. Surfaces are neutral, in the same gray family as Chrome and Safari. Light accent is #0B57D0; dark accent is #8AB4F8. AI stays on the tertiary roles.
+Material 3 Expressive. Two schemes share one accent, #0B57D0 in light and #8AB4F8 in dark. AI stays on the tertiary roles.
+The Skim scheme is for every surface Skim draws itself. Its neutral roles carry a lavender tint: HCT hue 283, at the tone of the matching chrome role, so text contrast is the same in both.
+The chrome scheme is for what floats over a web page: the browsing pill with Find in page, the translation bar above it, and the tab swipe caption on a page. It is neutral, in the same gray family as Chrome and Safari, so the browser frame matches the page under it.
 Light is the default. Dark is used for incognito (09b, 09c) and for every screen when Theme is Dark (12).
 
-## Color roles
+## Color roles: Skim scheme
 
 | Role | Light | Dark | Used for |
 |---|---|---|---|
@@ -11,33 +13,55 @@ Light is the default. Dark is used for incognito (09b, 09c) and for every screen
 | onPrimary | #FFFFFF | #202124 | Text and icons on primary |
 | primaryContainer | #0B57D0 | #8AB4F8 | New tab FABs, Default browser tile |
 | onPrimaryContainer | #FFFFFF | #202124 | Text and icons on primaryContainer |
-| secondaryContainer | #E8EAED | #3C4043 | Tonal buttons, chat bubbles, badges, list tiles |
-| onSecondaryContainer | #202124 | #E8EAED | Text and icons on secondaryContainer |
+| secondaryContainer | #E9E8FF | #3E3E4F | Tonal buttons, chat bubbles, badges, list tiles |
+| onSecondaryContainer | #20212F | #ECE9EF | Text and icons on secondaryContainer |
 | inversePrimary | #8AB4F8 | #0B57D0 | Snackbar actions |
-| inverseSurface | #303134 | #E8EAED | Snackbars |
+| inverseSurface | #30303B | #ECE9EF | Snackbars |
 | tertiary | #8E3A88 | #FFAFF2 | AI labels, the AI icon on 09, AI progress |
 | tertiaryContainer | #FC99EF | #FC99EF | AI FAB, Sunny tiles, AI hero card, AI banner |
 | onTertiaryContainer | #651162 | #651162 | Text and icons on AI surfaces |
-| inverseOnSurface | #E8EAED | #202124 | Snackbar text |
+| inverseOnSurface | #ECE9EF | #20202B | Snackbar text |
 | error | #B3261E | #F2B8B5 | Destructive actions in dialogs and on 10 |
 | errorContainer | #F9DEDC | #8C1D18 | Delete tiles in lists (10, 12, 13) |
 | onErrorContainer | #410E0B | #F9DEDC | Icons on errorContainer |
 | scrim | #000000 | #000000 | Behind sheets and dialogs, black at 32% |
-| surface | #FFFFFF | #202124 | Screen background |
+| surface | #FFFFFF | #212127 | Screen background |
 | surfaceContainerLowest | #FFFFFF | #000000 | List items, AI answer cards, tab previews |
-| surfaceContainerLow | #F8F9FA | #292A2D | List screens, sheets, tab cards, cards on surface |
-| surfaceContainer | #F1F3F4 | #303134 | Floating toolbar (light), menus, unselected buttons |
-| surfaceContainerHigh | #E8EAED | #303134 | Address bar, search bar, input pill, dialogs, dark toolbar |
-| surfaceContainerHighest | #DADCE0 | #3C4043 | Shortcut tiles, favicon tiles, switch track off |
-| onSurface | #202124 | #E8EAED | Main text |
-| onSurfaceVariant | #5F6368 | #9AA0A6 | Supporting text and icons |
-| outline | #747775 | #8E918F | Switch border and thumb when off, diagram lines |
-| outlineVariant | #C4C7C5 | #444746 | Outlined buttons, dividers, card borders |
+| surfaceContainerLow | #FBF8FF | #292933 | List screens, sheets, tab cards, cards on surface |
+| surfaceContainer | #F4F1FE | #30303B | Floating toolbar (light), menus, unselected buttons |
+| surfaceContainerHigh | #EAE8FC | #373743 | Search bar, input pill, dialogs, dark toolbar |
+| surfaceContainerHighest | #DADAF4 | #3E3E4C | Shortcut tiles, favicon tiles, switch track off |
+| onSurface | #20212F | #ECE9EF | Main text |
+| onSurfaceVariant | #616170 | #9F9EAA | Supporting text and icons |
+| outline | #767582 | #908F9B | Switch border and thumb when off, diagram lines |
+| outlineVariant | #C7C5D3 | #464550 | Outlined buttons, dividers, card borders |
 | disabled content | see note | see note | onSurface at 38%: disabled icons and text |
 | disabled container | see note | see note | onSurface at 10% (dark 12%): the disabled AI FAB |
 
 Scrim is black at 32%. Disabled content is onSurface at 38%; disabled containers are onSurface at 10% (12% in dark).
-The full fallback schemes, every role included, are in compose/Color.kt and tokens.json.
+In the dark Skim scheme surfaceContainerHigh is a step of its own, lighter than surfaceContainer. In the chrome scheme the two are equal.
+Both schemes, every role included, are in tokens.json and in the app's ui/theme/Color.kt. compose/Color.kt is the scheme of the boards.
+
+## Color roles: chrome scheme
+
+The roles that differ from the Skim scheme. Primary, tertiary, error, scrim and surfaceContainerLowest are the same.
+The pill is surfaceContainer in light and surfaceContainerHigh in dark. The translation bar and the tab swipe caption are surfaceContainerHigh. The address is onSurface, the pill's icons are onSurfaceVariant, and the outline around the address is outlineVariant.
+
+| Role | Light | Dark |
+|---|---|---|
+| surface | #FFFFFF | #202124 |
+| surfaceContainerLow | #F8F9FA | #292A2D |
+| surfaceContainer | #F1F3F4 | #303134 |
+| surfaceContainerHigh | #E8EAED | #303134 |
+| surfaceContainerHighest | #DADCE0 | #3C4043 |
+| secondaryContainer | #E8EAED | #3C4043 |
+| onSecondaryContainer | #202124 | #E8EAED |
+| inverseSurface | #303134 | #E8EAED |
+| inverseOnSurface | #E8EAED | #202124 |
+| onSurface | #202124 | #E8EAED |
+| onSurfaceVariant | #5F6368 | #9AA0A6 |
+| outline | #747775 | #8E918F |
+| outlineVariant | #C4C7C5 | #444746 |
 
 ## Type: Google Sans Flex
 
@@ -103,14 +127,14 @@ Read springs from MaterialTheme.motionScheme. Spatial springs may overshoot, eff
 
 | Spec | Damping | Stiffness | Used for |
 |---|---|---|---|
-| fastSpatialSpec | 0.6 | 800 | Switch thumb, press shape morphs, toggles |
-| defaultSpatialSpec | 0.8 | 380 | Sheets, search bar expanding, toolbar and FAB |
+| fastSpatialSpec | 0.6 | 800 | Switch thumb, press shape morphs, toggles, the tab count rolling to a new number |
+| defaultSpatialSpec | 0.8 | 380 | Sheets, search bar expanding, toolbar and FAB, a tab card lifting for reorder, Ask Skim items rising 8 dp into place |
 | slowSpatialSpec | 0.8 | 200 | Whole screen changes such as 05 to 09 and 08 |
-| fastEffectsSpec | 1 | 3800 | Icon fill and color on press or selection |
-| defaultEffectsSpec | 1 | 1600 | Scrim, snackbars and menus fading in or out |
+| fastEffectsSpec | 1 | 3800 | Icon fill and color on press or selection, the tab count's fade |
+| defaultEffectsSpec | 1 | 1600 | Scrim, snackbars and menus fading in or out, the tab swipe caption, Ask Skim items fading in |
 | slowEffectsSpec | 1 | 800 | The summary replacing the loading state (06c) |
 
-With Remove animations on, show a still frame of the loading indicator and a flat wave.
+With Remove animations on, show a still frame of the loading indicator and a flat wave. Every other motion snaps to its end. Haptics stay.
 
 ## Spacing (dp)
 

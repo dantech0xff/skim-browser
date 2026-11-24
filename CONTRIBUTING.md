@@ -52,7 +52,7 @@ Screenshot goldens are Roborazzi images under `app/src/test/screenshots/`. Verif
 ./gradlew :app:verifyRoborazziPlayDebug --no-configuration-cache
 ```
 
-Record a golden only for a deliberate UI change, and name the test class you changed. `:app:verifyRoborazziPlayDebug` is not in CI. A Linux run against the committed goldens failed five images. One of them, `boards/06d-ai-permission-first-time-per-site.png`, differed in 70,298 of 1,507,920 pixels. Run verify on the machine that recorded the goldens.
+Record a golden only for a deliberate UI change, and name the test class you changed. `:app:verifyRoborazziPlayDebug` is not in CI. It passes on Linux against the committed goldens. A dialog or a menu recorded on another machine can differ by one level on a few hundred pixels of its rounded corners, and verify accepts that. Any larger difference is a change in the UI or a golden that fell behind it.
 
 ```
 ./gradlew :app:recordRoborazziPlayDebug --no-configuration-cache --tests 'com.dantech.skimbrowser.ui.example.*'

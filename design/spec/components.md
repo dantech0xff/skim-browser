@@ -4,10 +4,10 @@ How each component is drawn and which Compose Material 3 Expressive API builds i
 
 ## Floating toolbar
 
-Screens: 04, 05, 05c, 08, 09c, 11
+Screens: 04, 08, 09c. A page (05, 05c, 11) has the browsing pill instead.
 
 - 64 high, full radius, surfaceContainer (surfaceContainerHigh in dark).
-- Back, Forward, Tabs and More options as 48 icon buttons.
+- Tabs and More options as 48 icon buttons. There is no Back or Forward: Back is the system gesture.
 - Sits 24 above the bottom edge; pages scroll underneath it.
 - Tabs shows the count in a 22 square with a 2 border and radius 7.
 
@@ -15,16 +15,16 @@ Screens: 04, 05, 05c, 08, 09c, 11
 HorizontalFloatingToolbar(expanded = true,
     floatingActionButton = { AiFab() },
     colors = FloatingToolbarDefaults.standardFloatingToolbarColors()
-) { BackButton(); ForwardButton(); TabsButton(); MoreButton() }
+) { TabsButton(); MoreButton() }
 ```
 
 ## AI FAB
 
-Screens: 04, 05, 05c, 08, 09c, 11
+Screens: 04, 08, 09c. On 05, 05c and 11 Ask Skim is the Sunny mark at the end of the browsing pill.
 
 - 56, radius 16, tertiaryContainer with a filled auto_awesome, 8 from the bar.
-- On a page it opens 06; on Home (04) it opens 06b.
-- Disabled on 09c and 11: onSurface at 10% behind 38% content, no shadow.
+- In Reader view (08) it opens 06; on Home (04) it opens 06b.
+- Disabled on 09c: onSurface at 10% behind 38% content, no shadow.
 - Compose FABs have no enabled state: draw that look and drop the click.
 
 ```kotlin
@@ -38,8 +38,9 @@ FloatingToolbarDefaults.StandardFloatingActionButton(
 
 Screens: 05 to 05d, 06 to 06d, 11
 
-- On 05, 05c and 11 the address sits in the middle of one 56 dp pill with small Back and Forward, Reader view and Tabs. Ask Skim is hidden for now. It is not a band under the status bar.
-- Site information (lock, or error on 11), the address as a button, Reader view.
+- On 05, 05c and 11 the address field starts one 56 dp pill, followed by Reader view, Save video, Tabs, More options and Ask Skim. The pill has no Back or Forward. On a narrow screen, where Save video would leave the host under 48 dp (more with larger text), Save video moves into More options as Download video. It is not a band under the status bar.
+- Inside the field, Site information (lock, globe, or error on 11) and the host are centered together; the rest of the field is the address as a button.
+- While the page scrolls down, the pill becomes a 40 dp chip with the site mark, the host and Ask Skim. Tapping the chip brings the pill back.
 - While a page loads, wavy progress in primary runs along the bottom edge of that row.
 - Tapping the address opens 04b with the URL ready to edit.
 - 06 and 06d show the same pill and toolbar on the page behind the sheet or dialog.

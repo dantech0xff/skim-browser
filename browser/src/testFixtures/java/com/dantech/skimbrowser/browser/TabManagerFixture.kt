@@ -25,7 +25,7 @@ import kotlinx.coroutines.test.TestScope
 
 /**
  * A [TabManager] as the app builds it, over a real in-memory database, a real settings file and
- * real state and thumbnail stores in [root], with fakes only on the WebView side: [engine] (attach
+ * real state, thumbnail and site icon stores in [root], with fakes only on the WebView side: [engine] (attach
  * it to [engines] to drive pages), [profiles] and [network]. Commands run on the test thread,
  * standing for the main thread; page work runs on [main], on the test's virtual clock; Room writes
  * run on a real thread, so check the database after [settle].
@@ -58,6 +58,8 @@ class TabManagerFixture(
     val stateStore = TabStateStore(stateDir, { WEBVIEW_VERSION }, scope.backgroundScope, main)
     val thumbsDir = File(root, "thumbs")
     val thumbnails = ThumbnailStore(thumbsDir, scope.backgroundScope, main)
+    val siteIconDir = File(root, "site-icons")
+    val siteIcons = SiteIconStore(siteIconDir, scope.backgroundScope, main)
     val network = FakeNetworkMonitor()
     val scripts = FakePageScripts()
 
@@ -98,6 +100,7 @@ class TabManagerFixture(
         manager.awaitWrites()
         stateStore.awaitIdle()
         thumbnails.awaitIdle()
+        siteIcons.awaitIdle()
     }
 
     /** The tab rows that are open, by group and position. */

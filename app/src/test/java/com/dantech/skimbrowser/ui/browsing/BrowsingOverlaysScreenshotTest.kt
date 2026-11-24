@@ -165,7 +165,7 @@ class BrowsingOverlaysScreenshotTest {
     ) {
         composeRule.setSkimContent(incognito = incognito) {
             BrowsingScreen(
-                if (incognito) Loaded.copy(incognito = true) else Loaded,
+                if (incognito) Loaded.copy(incognito = true, aiMode = AiFabMode.OffInIncognito) else Loaded,
                 TextFieldState(),
                 actions,
                 page = { Box(Modifier.fillMaxSize().background(Color.White)) },
@@ -191,11 +191,9 @@ class BrowsingOverlaysScreenshotTest {
             readerAvailable = true,
             progress = null,
             loadError = null,
-            backEnabled = true,
-            forwardEnabled = false,
             tabCount = 7,
             incognito = false,
-            aiFab = AiFabMode.Enabled,
+            aiMode = AiFabMode.Enabled,
             find = null,
             refreshing = false,
         )
@@ -221,8 +219,6 @@ class BrowsingOverlaysScreenshotTest {
             onFindPrevious = {},
             onFindNext = {},
             onCloseFind = {},
-            onBack = {},
-            onForward = {},
             onTabs = {},
             onMore = {},
             onAskPage = {},

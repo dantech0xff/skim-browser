@@ -103,9 +103,12 @@ data object LicensesKey : SkimKey
 
 // Sheets
 
-/** 05b More menu of [tabId]. */
+/**
+ * 05b More menu of [tabId]. [saveVideo]: the page has a video and the pill had no room for Save
+ * video, so the menu offers Download video.
+ */
 @Serializable
-data class MoreMenuKey(override val tabId: String) : SheetKey
+data class MoreMenuKey(override val tabId: String, val saveVideo: Boolean = false) : SheetKey
 
 /** Variants of the video playing in [tabId]. */
 @Serializable

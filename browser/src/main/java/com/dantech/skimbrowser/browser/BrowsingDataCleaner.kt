@@ -34,6 +34,7 @@ class BrowsingDataCleaner(
     private val tabs: TabManager,
     private val stateStore: TabStateStore,
     private val thumbnails: ThumbnailStore,
+    private val siteIcons: SiteIconStore,
     private val incognito: IncognitoSession,
     private val pendingUndo: PendingUndo,
     private val siteData: DefaultProfileSiteData = AndroidDefaultProfileSiteData(),
@@ -46,10 +47,11 @@ class BrowsingDataCleaner(
         tabs: TabManager,
         stateStore: TabStateStore,
         thumbnails: ThumbnailStore,
+        siteIcons: SiteIconStore,
         incognito: IncognitoSession,
         pendingUndo: PendingUndo,
     ) : this(
-        history, tabRepo, tabs, stateStore, thumbnails, incognito, pendingUndo,
+        history, tabRepo, tabs, stateStore, thumbnails, siteIcons, incognito, pendingUndo,
         siteData = AndroidDefaultProfileSiteData(),
     )
 
@@ -69,9 +71,10 @@ class BrowsingDataCleaner(
      * throws, so one store failing does not keep the others.
      *
      * History also drops the back/forward list of every normal tab, their saved WebView state and
-     * thumbnails, and the grouping snapshot, and cancels history Undo so it cannot bring a row
-     * back. Cookies are flushed, then normal tabs reload so a page still open cannot write the
-     * old cookies out again.
+     * thumbnails, the icons sites sent, and the grouping snapshot, and cancels history Undo so it
+     * cannot bring a row back. Cookies are flushed, then normal tabs reload so a page still open
+     * cannot write the old cookies out again. Cached images and files also drops the icons sites
+     * sent. Neither touches the icons an open incognito session received.
      */
     override suspend fun clearAll(history: Boolean, cookies: Boolean, cache: Boolean, pages: OpenPages?) {
         val failures = mutableListOf<String>()
@@ -102,6 +105,8 @@ class BrowsingDataCleaner(
         stateStore.awaitIdle()
         thumbnails.clearAll()
         thumbnails.awaitIdle()
+        siteIcons.clearNormal()
+        siteIcons.awaitIdle()
         tabRepo.clearSnapshot()
     }
 
@@ -112,6 +117,10 @@ class BrowsingDataCleaner(
     }
 
     private suspend fun clearCache(pages: OpenPages?) {
+        // Skim's own copies of the icons sites sent are cached images too. They go now, also while
+        // no WebView pool exists to clear the WebView cache. An open incognito session keeps its own.
+        siteIcons.clearNormal()
+        siteIcons.awaitIdle()
         if (pages == null) {
             pendingCacheClear.set(true)
             return

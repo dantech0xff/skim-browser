@@ -67,8 +67,6 @@ fun ReaderRoute(key: ReaderKey, navigator: SkimNavigator) {
                 scalePercent = current.scalePercent,
                 font = current.font,
                 panelOpen = panelOpen,
-                canGoBack = runtime.canGoBack,
-                canGoForward = runtime.canGoForward,
                 tabCount = tabs.tabs.count { it.incognito == tab?.incognito },
                 incognito = tab?.incognito == true,
                 actions = ReaderActions(
@@ -77,14 +75,6 @@ fun ReaderRoute(key: ReaderKey, navigator: SkimNavigator) {
                     onClosePanel = { panelOpen = false },
                     onScale = model::setScale,
                     onFont = model::setFont,
-                    onBack = {
-                        navigator.remove(key)
-                        model.goBack()
-                    },
-                    onForward = {
-                        navigator.remove(key)
-                        model.goForward()
-                    },
                     onTabs = { navigator.openTabs(tab?.incognito == true) },
                     onMore = { navigator.openMoreMenu(key.tabId) },
                     onSave = if (tab?.incognito == true) null else model::save,

@@ -71,12 +71,8 @@ object HomeFixtures {
     @Composable
     fun Toolbar(tab: Tab, tabCount: Int) {
         BrowserToolbar(
-            canGoBack = false,
-            canGoForward = false,
             tabCount = tabCount,
             incognito = tab.incognito,
-            onBack = {},
-            onForward = {},
             onTabs = {},
             onMore = {},
             aiFab = { TabAiFab(tab, TabRuntime(), onClick = {}) },

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dantech.skimbrowser.R
 import com.dantech.skimbrowser.domain.shortcut.Shortcut
+import com.dantech.skimbrowser.domain.url.hostOf
 import com.dantech.skimbrowser.ui.components.AddShortcutTile
 import com.dantech.skimbrowser.ui.components.AiHeroCard
 import com.dantech.skimbrowser.ui.components.FaviconLetterTile
@@ -294,6 +295,7 @@ private fun ShortcutCell(
                 letter = siteLetter(host = null, title = shortcut.name),
                 position = position,
                 container = if (menuOpen) colors.secondaryContainer else colors.surfaceContainerHighest,
+                host = remember(shortcut.url) { hostOf(shortcut.url) },
             )
             CellLabel(shortcut.name)
         }
@@ -368,7 +370,7 @@ private fun ContinueWithSkim(cards: ImmutableList<ContinueCard>, onOpenChat: (Lo
 }
 
 /**
- * A Continue with Skim card: the site's letter tile, host and time, then the page title in
+ * A Continue with Skim card: the site's tile, host and time, then the page title in
  * titleMedium and the chat's summary line in two lines at most. The card is one button.
  */
 @Composable
@@ -390,6 +392,7 @@ private fun ContinueCardItem(card: ContinueCard, index: Int, count: Int, onClick
                     size = 24.dp,
                     textStyle = typography.labelMediumEmphasized,
                     content = colors.onSurfaceVariant,
+                    host = card.host,
                 )
                 Text(
                     card.host,

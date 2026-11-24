@@ -152,7 +152,7 @@ private fun HistoryMark(row: SkimHistoryRow) {
     if (row.kind == ChatKind.TABS) {
         SunnyMark(size = 40.dp, iconSize = 20.dp)
     } else {
-        FaviconLetterTile(row.letter)
+        FaviconLetterTile(row.letter, host = row.host)
     }
 }
 

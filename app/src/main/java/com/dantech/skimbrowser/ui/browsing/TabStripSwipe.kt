@@ -1,8 +1,13 @@
 package com.dantech.skimbrowser.ui.browsing
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
@@ -21,10 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +52,10 @@ import kotlinx.coroutines.launch
  *
  * A tap still reaches the buttons. The drag is claimed only after it is clearly horizontal.
  * With Remove animations on, the tab changes as soon as the drag commits and the bar does not travel.
+ *
+ * The caption fades in and out above the bar; the bar does not move for it. Each time the drag
+ * passes the point where a release opens a tab that exists, the phone gives a threshold haptic;
+ * the release itself gives none. Haptics stay with Remove animations on.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -59,28 +70,36 @@ fun TabStripSwipe(
 ) {
     val reduced = rememberReducedMotion()
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     // The id under the finger. The caption reads the current neighbor, so a title or group
     // that arrives during the drag is shown without restarting the gesture.
     var captionId by remember { mutableStateOf<String?>(null) }
+    // The last caption shown and its direction, kept on screen while it fades out. After a swipe
+    // that switched tab, that tab is the current one and no longer a neighbour to look up.
+    var heldCaption by remember { mutableStateOf<Pair<TabNeighbor, Boolean>?>(null) }
     val latestPrevious = rememberUpdatedState(previous)
     val latestNext = rememberUpdatedState(next)
     val latestSelect = rememberUpdatedState(onSelect)
     val latestReduced = rememberUpdatedState(reduced)
     val latestSpatial = rememberUpdatedState(spatial)
-    val caption = when (captionId) {
-        null -> null
-        next?.id -> next
-        previous?.id -> previous
-        else -> null
-    }
+    val latestHaptics = rememberUpdatedState(LocalHapticFeedback.current)
+    val caption = neighborWithId(captionId, previous, next)
+    val shownCaption = caption?.let { it to (it.id == next?.id) } ?: heldCaption
     val density = LocalDensity.current
     val travel = with(density) { Travel.toPx() }
     val threshold = with(density) { Threshold.toPx() }
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        caption?.let { neighbor ->
-            TabSwipeCaption(neighbor, groups, forward = neighbor.id == next?.id, Modifier.padding(bottom = 8.dp))
+        AnimatedVisibility(
+            visible = caption != null,
+            enter = if (reduced) EnterTransition.None else fadeIn(effects),
+            exit = if (reduced) ExitTransition.None else fadeOut(effects),
+            label = "tab swipe caption",
+        ) {
+            shownCaption?.let { (neighbor, forward) ->
+                TabSwipeCaption(neighbor, groups, forward, Modifier.padding(bottom = 8.dp))
+            }
         }
         content(
             Modifier
@@ -94,6 +113,7 @@ fun TabStripSwipe(
                             var totalX = 0f
                             var totalY = 0f
                             var dragging = false
+                            var committing = false
                             while (true) {
                                 val event = awaitPointerEvent(PointerEventPass.Initial)
                                 val change = event.changes.firstOrNull { it.id == down.id }
@@ -118,7 +138,14 @@ fun TabStripSwipe(
                                 if (!dragging) continue
                                 change.consume()
                                 scope.launch { offset.snapTo(visualOffset(totalX, before, after, travel)) }
-                                captionId = neighborFor(totalX, before, after)?.id
+                                val neighbor = neighborFor(totalX, before, after)
+                                captionId = neighbor?.id
+                                if (neighbor != null) heldCaption = neighbor to (neighbor.id == after?.id)
+                                val commits = committedNeighbor(totalX, threshold, before, after) != null
+                                if (commits && !committing) {
+                                    latestHaptics.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                }
+                                committing = commits
                             }
                         }
                     } finally {
@@ -184,6 +211,17 @@ private fun neighborFor(totalX: Float, previous: TabNeighbor?, next: TabNeighbor
     else -> null
 }
 
+/** The tab a release at [totalX] opens: the neighbor in that direction, once the drag is past [threshold]. */
+private fun committedNeighbor(totalX: Float, threshold: Float, previous: TabNeighbor?, next: TabNeighbor?): TabNeighbor? =
+    neighborFor(totalX, previous, next)?.takeIf { abs(totalX) >= threshold }
+
+private fun neighborWithId(id: String?, previous: TabNeighbor?, next: TabNeighbor?): TabNeighbor? = when (id) {
+    null -> null
+    next?.id -> next
+    previous?.id -> previous
+    else -> null
+}
+
 /** A drag toward a missing neighbor stays put. Finger left (negative) opens the next tab. */
 private fun visualOffset(totalX: Float, previous: TabNeighbor?, next: TabNeighbor?, travel: Float): Float = when {
     totalX < 0f && next == null -> 0f
@@ -219,7 +257,7 @@ private suspend fun settle(
     onSelect: (String) -> Unit,
     clearCaption: () -> Unit,
 ) {
-    val chosen = neighborFor(totalX, previous, next)?.takeIf { abs(totalX) >= threshold }
+    val chosen = committedNeighbor(totalX, threshold, previous, next)
     // Select before the spring. A later touch can cancel the animation; it must not drop the tab.
     if (chosen != null) onSelect(chosen.id)
     clearCaption()

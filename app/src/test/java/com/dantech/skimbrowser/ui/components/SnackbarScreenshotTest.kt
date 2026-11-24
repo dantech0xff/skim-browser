@@ -75,12 +75,8 @@ class SnackbarScreenshotTest {
                     .testTag(FRAME),
             ) {
                 BrowserToolbar(
-                    canGoBack = true,
-                    canGoForward = false,
                     tabCount = 6,
                     incognito = false,
-                    onBack = {},
-                    onForward = {},
                     onTabs = {},
                     onMore = {},
                     aiFab = { AiFab(true, stringResource(R.string.cd_ask_skim_about_page), onClick = {}) },

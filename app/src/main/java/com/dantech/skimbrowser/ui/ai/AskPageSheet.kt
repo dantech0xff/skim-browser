@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +30,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
@@ -49,6 +54,9 @@ import com.dantech.skimbrowser.ui.components.AnswerText
 import com.dantech.skimbrowser.ui.components.ChatInputPill
 import com.dantech.skimbrowser.ui.components.CitationChip
 import com.dantech.skimbrowser.ui.components.CompactIconButton
+import com.dantech.skimbrowser.ui.components.EntranceStaggerMillis
+import com.dantech.skimbrowser.ui.components.entrance
+import com.dantech.skimbrowser.ui.components.rememberChatScrollState
 import androidx.compose.ui.window.Dialog
 import com.dantech.skimbrowser.ui.components.DialogAction
 import com.dantech.skimbrowser.ui.components.SkimButton
@@ -85,6 +93,10 @@ data class AskPageActions(
  *
  * [bodyHeight] fixes the scrolling region so a screenshot can match a board's sheet. On screen the
  * region fills the sheet, which opens at half height and drags to full height.
+ *
+ * The suggested questions arrive one after another the first time they show. A question asked
+ * here, and its answer, fade and rise in; what the sheet opened with is shown in place. The chat
+ * goes to a question asked here and follows its answer ([rememberChatScrollState]).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -98,13 +110,17 @@ fun AskPageSheet(
 ) {
     val reduced = rememberReducedMotion()
     val fade = if (reduced) snap<Float>() else MaterialTheme.motionScheme.slowEffectsSpec()
+    // Turns the sheet opened with are shown in place; the newest comes in while Skim answers it. A
+    // saved chat that loads after the first composition is not answering, so it shows in place too.
+    val openedTurns = remember { state.turns.size }
+    var chipsShown by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().then(if (bodyHeight == null) Modifier.fillMaxHeight() else Modifier)) {
         Column(if (bodyHeight == null) Modifier.fillMaxSize() else Modifier.fillMaxWidth()) {
             AskPageHeader(state.title, state.host, actions.onClose)
             Column(
                 Modifier
                     .then(if (bodyHeight != null) Modifier.height(bodyHeight) else Modifier.weight(1f))
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberChatScrollState(state.turns.size, answering = state.generating || state.waitingForAnswer))
                     .padding(start = 16.dp, top = 4.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -116,9 +132,13 @@ fun AskPageSheet(
                 ) { summary ->
                     SummaryBlock(summary, actions)
                 }
-                if (state.showChips) SuggestedQuestions(actions.onChip)
-                state.turns.forEach { turn ->
-                    QuestionBlock(turn, state, actions)
+                if (state.showChips) SuggestedQuestions(actions.onChip, play = !chipsShown, onShown = { chipsShown = true })
+                state.turns.forEachIndexed { index, turn ->
+                    key(index) {
+                        val arriving = index >= openedTurns && index == state.turns.lastIndex &&
+                            (state.generating || state.waitingForAnswer)
+                        QuestionBlock(turn, state, actions, arriving)
+                    }
                 }
                 if (state.waitingForAnswer && state.turns.lastOrNull()?.answer == null) {
                     AiLoadingIndicator(stringResource(R.string.cd_writing_summary))
@@ -277,26 +297,33 @@ private fun InterruptedCard(text: String, onRetry: () -> Unit) {
     }
 }
 
+/** The suggested questions, one after another when [play] is set as they first show. */
 @Composable
-private fun SuggestedQuestions(onChip: (String) -> Unit) {
+private fun SuggestedQuestions(onChip: (String) -> Unit, play: Boolean, onShown: () -> Unit) {
     val keyNumbers = stringResource(R.string.ai_chip_key_numbers)
     val explain = stringResource(R.string.ai_chip_explain_simply)
     val catch = stringResource(R.string.ai_chip_the_catch)
+    LaunchedEffect(Unit) { onShown() }
     FlowRow(Modifier.drawnHeight(ChipFrameOverhang), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AiSuggestionChip(keyNumbers, onClick = { onChip(keyNumbers) })
-        AiSuggestionChip(explain, onClick = { onChip(explain) })
-        AiSuggestionChip(catch, onClick = { onChip(catch) })
+        listOf(keyNumbers, explain, catch).forEachIndexed { index, question ->
+            AiSuggestionChip(
+                question,
+                onClick = { onChip(question) },
+                modifier = Modifier.entrance(play, delayMillis = index * EntranceStaggerMillis),
+            )
+        }
     }
 }
 
+/** A question and its answer. Each comes in as it is added when [arriving]. */
 @Composable
-private fun QuestionBlock(turn: QaTurn, state: AskPageUiState, actions: AskPageActions) {
+private fun QuestionBlock(turn: QaTurn, state: AskPageUiState, actions: AskPageActions, arriving: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        UserBubble(turn.question)
+        UserBubble(turn.question, Modifier.entrance(arriving))
         val answer = turn.answer
         val stillStreaming = state.generating && turn == state.turns.lastOrNull()
         if (answer != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.entrance(arriving), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AnswerText(answer)
                 if (!stillStreaming && turn.question == stringResource(R.string.ai_translate_prompt)) {
                     SkimButton(

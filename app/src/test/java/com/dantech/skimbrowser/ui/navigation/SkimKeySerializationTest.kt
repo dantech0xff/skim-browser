@@ -123,6 +123,7 @@ class SkimKeySerializationTest {
             SkimHistoryKey,
             LicensesKey,
             MoreMenuKey("tab-1"),
+            MoreMenuKey("tab-1", saveVideo = true),
             VideoDownloadKey("tab-1"),
             LinkOptionsKey("tab-1", HitTarget.Image("https://example.com/cat.png", alt = "A cat", linkUrl = null)),
             SiteInfoKey("tab-1"),
