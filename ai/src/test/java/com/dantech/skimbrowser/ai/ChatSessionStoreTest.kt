@@ -125,10 +125,10 @@ class ChatSessionStoreTest {
      * end while that write is still running. The assertions that follow say what was missing.
      */
     private fun TestScope.runStoreUntil(done: () -> Boolean) {
-        val started = System.currentTimeMillis()
+        val deadline = System.nanoTime() + STORE_WAIT_MS * 1_000_000
         while (true) {
             advanceUntilIdle()
-            if (done() || System.currentTimeMillis() - started > STORE_WAIT_MS) return
+            if (done() || System.nanoTime() > deadline) return
             Thread.sleep(10)
         }
     }
