@@ -60,4 +60,4 @@ Rebuild the pill of a page around the address and Ask Skim. Back and Forward lea
 
 ## Decided after the phase
 
-- Dan, 2026-11-24: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. In Reader view system Back leaves Reader; a second Back goes back in the page. Forward has no control left; it stays in the tab engine (see the plan's open questions).
+- Dan, 2026-11-24: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. In Reader view system Back leaves Reader; a second Back goes back in the page. Forward has no control left; Dan keeps it in the tab engine for a later use.

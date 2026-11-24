@@ -31,6 +31,7 @@ Dan, 2026-11-24:
 
 - Toolbar: Back and Forward also leave the 64 dp toolbar of Home, Reader, the incognito New tab page and a saved article. Done in `BrowserToolbar`; Forward has no control left in the app.
 - Size: the baseline in `size-budget/` moves to the measured size of this work.
+- Forward stays in the tab engine (`TabsController.goForward`, the pool's pending Forward and the scam warning's forward flag in `SkimWebViewClient`), though nothing in the app calls it now, for a later use.
 
 ## Goals
 
@@ -82,7 +83,6 @@ Phase 5 was built before phase 4, so everything on the branch up to it can be ch
 
 ## Open questions
 
-- Forward stays in the tab engine: `TabsController.goForward`, the pool's pending Forward and the scam warning's forward flag in `SkimWebViewClient`. Nothing in the app calls it now. Removing it changes `:domain`, `:browser` and their tests, so it is left for a change of its own if Dan wants it.
-- Phase 4 needs a phone or the dedicated AVD in the loop, to look at the transitions and to run `FrameBenchmarks`. Who runs that, and when?
+- Phase 4 needs a phone or the dedicated AVD in the loop, to look at the transitions and to run `FrameBenchmarks`. Dan agreed on 2026-11-24 that it waits for one.
 
 <!-- slug: skim-identity-pill-motion -->
