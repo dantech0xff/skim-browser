@@ -4,7 +4,7 @@ description: "Give Skim its own look and movement: identity first, then the brow
 status: in-progress
 priority: P1
 effort: "46h"
-branch: claude/adoring-lovelace-1sstzn
+branch: master
 tags: [feature, frontend, android, design]
 blockedBy: []
 blocks: []
@@ -70,7 +70,7 @@ Dan, 2026-11-24:
 | 4 | [Spatial transitions](./phase-04-spatial-transitions.md) | Pending: scouted, waits for a device |
 | 5 | [Touch feedback](./phase-05-touch-feedback.md) | Done |
 
-Phase 5 was built before phase 4, so everything on the branch up to it can be checked and merged without the transitions. Phase 4 is scouted, not built: its open risk is how the swap from a thumbnail to the live WebView looks, and that only shows on a device.
+Phase 5 was built before phase 4, so phases 1, 2, 3 and 5 merged into master without the transitions, on 2026-11-24 in pull request #41 (squash commit `b1151e1`). Phase 4 is scouted, not built: its open risk is how the swap from a thumbnail to the live WebView looks, and that only shows on a device.
 
 ## Success Criteria
 

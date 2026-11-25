@@ -1,7 +1,7 @@
 ---
 title: "Smooth onboarding motion"
 description: "Stagger the pieces inside Welcome and Setup, including each shape badge, and crossfade the Setup action when Skim becomes the default browser."
-status: pending
+status: completed
 priority: P2
 effort: 4h
 issue:
@@ -49,8 +49,10 @@ On a fresh launch the Welcome pieces arrive in order: the brand mark, the wordma
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Onboarding piece entrance](./phase-01-start.md) | Pending |
-| 2 | [Lock the settled frames](./phase-02-verify.md) | Pending |
+| 1 | [Onboarding piece entrance](./phase-01-start.md) | Done |
+| 2 | [Lock the settled frames](./phase-02-verify.md) | Done |
+
+Built in `a2aebaf` on 2026-10-30, in the same commit as this plan, so its status stayed at pending. The entrance is `app/src/main/java/com/dantech/skimbrowser/ui/onboarding/OnboardingMotion.kt`. `OnboardingScreenshotTest` covers the settled boards, Remove animations and the crossfade to Done. The 01 and 03 boards were re-recorded later, on 2026-11-24 in pull request #41, for Skim's identity colors, not for this motion.
 
 ## Success Criteria
 

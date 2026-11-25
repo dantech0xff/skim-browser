@@ -1,7 +1,7 @@
 ---
 title: "Browsing floating chrome"
 description: "Replace the browsing screen's top address band and bottom toolbar with one floating cluster so the WebView draws edge to edge."
-status: pending
+status: completed
 priority: P1
 effort: 7h
 branch: master
@@ -58,8 +58,10 @@ A loaded page, find in page, and the load-error screen show no top address band.
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Edge-to-edge page and bottom cluster](./phase-01-start.md) | Pending |
-| 2 | [Snackbar, spec, and goldens](./phase-02-verify.md) | Pending |
+| 1 | [Edge-to-edge page and bottom cluster](./phase-01-start.md) | Done |
+| 2 | [Snackbar, spec, and goldens](./phase-02-verify.md) | Done |
+
+Built in `5e0e644` on 2026-10-30, in the same commit as this plan, so its status stayed at pending. It shipped as one 56 dp bottom row, the browsing pill, rather than the two rows planned above. The page draws edge to edge with no top address band, and a snackbar on a page sits above the pill (`SnackbarPlacement.AboveBrowsingChrome`). Three follow-ups went past this plan's non-goals: `2bcf627` pads the page under the chrome, `7bf9cbf` shrinks the pill while reading, and `33260a6` keeps fixed page headers below the status bar. On 2026-11-24, pull request #41 took Back and Forward out of the pill, added Ask Skim, and turned the shrink into a host chip. [The identity plan](../261123-1527-skim-identity-pill-motion/plan.md) records those decisions.
 
 ## Success Criteria
 
