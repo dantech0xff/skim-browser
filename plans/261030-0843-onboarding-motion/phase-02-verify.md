@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Lock the settled frames"
-status: pending
+status: done
 priority: P2
 effort: "1h"
 dependencies: [1]

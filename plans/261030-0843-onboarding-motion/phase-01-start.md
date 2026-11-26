@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Onboarding piece entrance"
-status: pending
+status: done
 priority: P2
 effort: "3h"
 dependencies: []
