@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Edge-to-edge page and bottom cluster"
-status: pending
+status: done
 priority: P1
 effort: "4h"
 dependencies: []
